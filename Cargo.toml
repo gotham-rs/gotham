@@ -1,6 +1,8 @@
 [package]
-name = "gotham"
-version = "0.1.0"
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
+description = "Work in progress library with no initial release yet"
+license = "MIT"
+name = "gotham"
+version = "0.0.1"
 
 [dependencies]
