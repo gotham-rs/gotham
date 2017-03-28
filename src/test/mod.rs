@@ -26,7 +26,8 @@ pub enum TestRequestError {
 impl<S> TestServer<S>
     where S: server::NewService<Request = server::Request,
                                 Response = server::Response,
-                                Error = hyper::Error> + 'static
+                                Error = hyper::Error>,
+          S::Instance: 'static
 {
     pub fn new(new_service: S) -> Result<TestServer<S>, io::Error> {
         reactor::Core::new().map(|core| {
