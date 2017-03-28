@@ -12,6 +12,7 @@ pub struct TestServer<S> {
     http: server::Http,
     timeout: u64,
     new_service: S,
+    client_addr: net::SocketAddr,
 }
 
 #[derive(Debug)]
@@ -33,6 +34,7 @@ impl<S> TestServer<S>
                 http: server::Http::new(),
                 timeout: 10,
                 new_service: new_service,
+                client_addr: "127.0.0.1:10000".parse().unwrap(),
             }
         })
     }
@@ -41,16 +43,19 @@ impl<S> TestServer<S>
         TestServer { timeout: t, ..self }
     }
 
+    pub fn client_addr(self, addr: net::SocketAddr) -> TestServer<S> {
+        TestServer { client_addr: addr, ..self }
+    }
+
     pub fn client(&self) -> io::Result<client::Client<TestConnect>> {
         let handle = self.core.handle();
 
         let (cs, ss) = AsyncUnixStream::pair()?;
         let cs = reactor::PollEvented::new(cs, &handle)?;
         let ss = reactor::PollEvented::new(ss, &handle)?;
-        let remote_addr = "127.0.0.1:0".parse().unwrap();
 
         let service = self.new_service.new_service()?;
-        self.http.bind_connection(&handle, ss, remote_addr, service);
+        self.http.bind_connection(&handle, ss, self.client_addr, service);
         Ok(client::Client::configure()
                .connector(TestConnect { stream: cell::RefCell::new(Some(cs)) })
                .build(&self.core.handle()))
@@ -182,6 +187,7 @@ mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
     use hyper::StatusCode;
+    use futures::Stream;
 
     #[derive(Clone)]
     struct TestService {
@@ -204,6 +210,13 @@ mod tests {
                     future::ok(response).boxed()
                 }
                 "/timeout" => future::empty().boxed(),
+                "/myaddr" => {
+                    let response = server::Response::new()
+                        .with_status(StatusCode::Ok)
+                        .with_body(format!("{}", req.remote_addr().unwrap()));
+
+                    future::ok(response).boxed()
+                }
                 _ => {
                     let not_found = server::Response::new()
                         .with_status(StatusCode::NotFound)
@@ -219,9 +232,10 @@ mod tests {
     fn serves_requests() {
         let ticks = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
         let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
+        let uri = "http://localhost/".parse().unwrap();
 
         let mut test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client().unwrap().get("http://localhost/".parse().unwrap());
+        let response = test_server.client().unwrap().get(uri);
         let response = test_server.run_request(response).unwrap();
 
         assert_eq!(*response.status(), StatusCode::Ok);
@@ -231,8 +245,8 @@ mod tests {
     fn times_out() {
         let new_service = || Ok(TestService { response: "".to_owned() });
         let mut test_server = TestServer::new(new_service).unwrap().timeout(1);
-        let response =
-            test_server.client().unwrap().get("http://localhost/timeout".parse().unwrap());
+        let uri = "http://localhost/timeout".parse().unwrap();
+        let response = test_server.client().unwrap().get(uri);
 
         match test_server.run_request(response) {
             Err(TestRequestError::TimedOut) => (),
@@ -241,5 +255,29 @@ mod tests {
             }
             Ok(_) => panic!("expected timeout, but was Ok(_)"),
         }
+    }
+
+    #[test]
+    fn sets_client_addr() {
+        let ticks = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
+        let client_addr = "9.8.7.6:58901".parse().unwrap();
+        let uri = "http://localhost/myaddr".parse().unwrap();
+
+        let mut test_server = TestServer::new(new_service).unwrap().client_addr(client_addr);
+        let response = test_server.client().unwrap().get(uri);
+        let response = test_server.run_request(response).unwrap();
+
+        assert_eq!(*response.status(), StatusCode::Ok);
+        let mut vec = Vec::new();
+
+        {
+            let f: hyper::Body = response.body();
+            let f = f.for_each(|chunk| future::ok(vec.extend(chunk.into_iter())));
+            test_server.core.run(f).unwrap();
+        }
+
+        let received_addr: net::SocketAddr = String::from_utf8(vec).unwrap().parse().unwrap();
+        assert_eq!(received_addr, client_addr);
     }
 }
