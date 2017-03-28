@@ -11,7 +11,7 @@ pub struct TestServer<S> {
     core: reactor::Core,
     http: server::Http,
     timeout: u64,
-    service: S,
+    new_service: S,
 }
 
 #[derive(Debug)]
@@ -22,17 +22,17 @@ pub enum TestRequestError {
 }
 
 impl<S> TestServer<S>
-    where S: server::Service<Request = server::Request,
-                             Response = server::Response,
-                             Error = hyper::Error> + Clone + 'static
+    where S: server::NewService<Request = server::Request,
+                                Response = server::Response,
+                                Error = hyper::Error> + 'static
 {
-    pub fn new(service: S) -> Result<TestServer<S>, io::Error> {
+    pub fn new(new_service: S) -> Result<TestServer<S>, io::Error> {
         reactor::Core::new().map(|core| {
             TestServer {
                 core: core,
                 http: server::Http::new(),
                 timeout: 10,
-                service: service,
+                new_service: new_service,
             }
         })
     }
@@ -49,7 +49,8 @@ impl<S> TestServer<S>
         let ss = reactor::PollEvented::new(ss, &handle)?;
         let remote_addr = "127.0.0.1:0".parse().unwrap();
 
-        self.http.bind_connection(&handle, ss, remote_addr, self.service.clone());
+        let service = self.new_service.new_service()?;
+        self.http.bind_connection(&handle, ss, remote_addr, service);
         Ok(client::Client::configure()
                .connector(TestConnect { stream: cell::RefCell::new(Some(cs)) })
                .build(&self.core.handle()))
@@ -217,9 +218,9 @@ mod tests {
     #[test]
     fn serves_requests() {
         let ticks = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
-        let service = TestService { response: format!("time: {}", ticks) };
+        let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
 
-        let mut test_server = TestServer::new(service).unwrap();
+        let mut test_server = TestServer::new(new_service).unwrap();
         let response = test_server.client().unwrap().get("http://localhost/".parse().unwrap());
         let response = test_server.run_request(response).unwrap();
 
@@ -228,8 +229,8 @@ mod tests {
 
     #[test]
     fn times_out() {
-        let service = TestService { response: "".to_owned() };
-        let mut test_server = TestServer::new(service).unwrap().timeout(1);
+        let new_service = || Ok(TestService { response: "".to_owned() });
+        let mut test_server = TestServer::new(new_service).unwrap().timeout(1);
         let response =
             test_server.client().unwrap().get("http://localhost/timeout".parse().unwrap());
 
