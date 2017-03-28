@@ -3,7 +3,7 @@ use std::{cell, io, net, time};
 use std::os::unix::net::UnixStream;
 use std::os::unix::io::AsRawFd;
 use hyper::{self, client, server};
-use futures::{future, Future, Async};
+use futures::{future, Future, Async, Stream};
 use tokio_core::reactor;
 use tokio_io::{AsyncRead, AsyncWrite};
 use mio;
@@ -77,6 +77,18 @@ impl<S> TestServer<S>
             Err(future::Either::A((e, _))) => Err(TestRequestError::HyperError(e)),
             Err(future::Either::B((e, _))) => Err(TestRequestError::IoError(e)),
         }
+    }
+
+    pub fn read_body(&mut self, response: client::Response) -> hyper::Result<Vec<u8>> {
+        let mut buf = Vec::new();
+
+        let r = {
+            let f: hyper::Body = response.body();
+            let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
+            self.core.run(f)
+        };
+
+        r.map(move |()| buf)
     }
 }
 
@@ -182,7 +194,6 @@ mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
     use hyper::StatusCode;
-    use futures::Stream;
 
     #[derive(Clone)]
     struct TestService {
@@ -264,15 +275,8 @@ mod tests {
         let response = test_server.run_request(response).unwrap();
 
         assert_eq!(*response.status(), StatusCode::Ok);
-        let mut vec = Vec::new();
-
-        {
-            let f: hyper::Body = response.body();
-            let f = f.for_each(|chunk| future::ok(vec.extend(chunk.into_iter())));
-            test_server.core.run(f).unwrap();
-        }
-
-        let received_addr: net::SocketAddr = String::from_utf8(vec).unwrap().parse().unwrap();
+        let buf = test_server.read_body(response).unwrap();
+        let received_addr: net::SocketAddr = String::from_utf8(buf).unwrap().parse().unwrap();
         assert_eq!(received_addr, client_addr);
     }
 }
