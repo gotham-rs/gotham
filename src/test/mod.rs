@@ -1,6 +1,7 @@
 use std::{cell, io, net, time};
 // TODO: Cross platform
 use std::os::unix::net::UnixStream;
+use std::os::unix::io::AsRawFd;
 use hyper::{self, client, server};
 use futures::{future, Future, Async};
 use tokio_core::reactor;
@@ -65,7 +66,8 @@ impl<S> TestServer<S>
         where F: Future<Error = hyper::Error>
     {
         let timeout_duration = time::Duration::from_secs(self.timeout);
-        let timeout = reactor::Timeout::new(timeout_duration, &self.core.handle()).unwrap();
+        let timeout = reactor::Timeout::new(timeout_duration, &self.core.handle())
+            .map_err(|e| TestRequestError::IoError(e))?;
 
         let run_result = self.core.run(f.select2(timeout));
         match run_result {
@@ -88,15 +90,9 @@ impl client::Service for TestConnect {
     type Future = future::FutureResult<Self::Response, Self::Error>;
 
     fn call(&self, _req: Self::Request) -> Self::Future {
-        match self.stream.try_borrow_mut() {
-            Ok(ref mut borrowed) => {
-                match borrowed.take() {
-                    Some(stream) => future::ok(stream),
-                    None => {
-                        future::err(io::Error::new(io::ErrorKind::Other, "stream already taken"))
-                    }
-                }
-            }
+        match self.stream.try_borrow_mut().map(|ref mut o| o.take()) {
+            Ok(Some(stream)) => future::ok(stream),
+            Ok(None) => future::err(io::Error::new(io::ErrorKind::Other, "stream already taken")),
             Err(_) => {
                 future::err(io::Error::new(io::ErrorKind::Other, "stream.try_borrow_mut() failed"))
             }
@@ -128,8 +124,6 @@ impl AsyncUnixStream {
         Ok((cs, ss))
     }
 }
-
-use std::os::unix::io::AsRawFd;
 
 impl io::Read for AsyncUnixStream {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, io::Error> {
