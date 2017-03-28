@@ -13,7 +13,6 @@ pub struct TestServer<S> {
     http: server::Http,
     timeout: u64,
     new_service: S,
-    client_addr: net::SocketAddr,
 }
 
 #[derive(Debug)]
@@ -36,7 +35,6 @@ impl<S> TestServer<S>
                 http: server::Http::new(),
                 timeout: 10,
                 new_service: new_service,
-                client_addr: "127.0.0.1:10000".parse().unwrap(),
             }
         })
     }
@@ -45,11 +43,7 @@ impl<S> TestServer<S>
         TestServer { timeout: t, ..self }
     }
 
-    pub fn client_addr(self, addr: net::SocketAddr) -> TestServer<S> {
-        TestServer { client_addr: addr, ..self }
-    }
-
-    pub fn client(&self) -> io::Result<client::Client<TestConnect>> {
+    pub fn client(&self, client_addr: net::SocketAddr) -> io::Result<client::Client<TestConnect>> {
         let handle = self.core.handle();
 
         let (cs, ss) = AsyncUnixStream::pair()?;
@@ -57,7 +51,7 @@ impl<S> TestServer<S>
         let ss = reactor::PollEvented::new(ss, &handle)?;
 
         let service = self.new_service.new_service()?;
-        self.http.bind_connection(&handle, ss, self.client_addr, service);
+        self.http.bind_connection(&handle, ss, client_addr, service);
         Ok(client::Client::configure()
                .connector(TestConnect { stream: cell::RefCell::new(Some(cs)) })
                .build(&self.core.handle()))
@@ -241,7 +235,7 @@ mod tests {
         let uri = "http://localhost/".parse().unwrap();
 
         let mut test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client().unwrap().get(uri);
+        let response = test_server.client("127.0.0.1:0".parse().unwrap()).unwrap().get(uri);
         let response = test_server.run_request(response).unwrap();
 
         assert_eq!(*response.status(), StatusCode::Ok);
@@ -252,7 +246,7 @@ mod tests {
         let new_service = || Ok(TestService { response: "".to_owned() });
         let mut test_server = TestServer::new(new_service).unwrap().timeout(1);
         let uri = "http://localhost/timeout".parse().unwrap();
-        let response = test_server.client().unwrap().get(uri);
+        let response = test_server.client("127.0.0.1:0".parse().unwrap()).unwrap().get(uri);
 
         match test_server.run_request(response) {
             Err(TestRequestError::TimedOut) => (),
@@ -270,8 +264,8 @@ mod tests {
         let client_addr = "9.8.7.6:58901".parse().unwrap();
         let uri = "http://localhost/myaddr".parse().unwrap();
 
-        let mut test_server = TestServer::new(new_service).unwrap().client_addr(client_addr);
-        let response = test_server.client().unwrap().get(uri);
+        let mut test_server = TestServer::new(new_service).unwrap();
+        let response = test_server.client(client_addr).unwrap().get(uri);
         let response = test_server.run_request(response).unwrap();
 
         assert_eq!(*response.status(), StatusCode::Ok);
