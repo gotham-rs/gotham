@@ -1,4 +1,4 @@
-use handler::{Handler, HandlerFuture};
+use handler::{Handler, HandlerFuture, HandlerService};
 
 pub use hyper::{Method, StatusCode};
 pub use hyper::Method::*;
@@ -15,6 +15,10 @@ impl Router {
         let mut builder = RouterBuilder::new();
         f(&mut builder);
         builder.into_router()
+    }
+
+    pub fn service(self) -> HandlerService<Router> {
+        HandlerService::new(self)
     }
 }
 
