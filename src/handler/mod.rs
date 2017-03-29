@@ -32,12 +32,12 @@ impl<T> server::Service for HandlerService<T>
     }
 }
 
-pub trait Handler {
+pub trait Handler: Send + Sync {
     fn handle(&self, req: Request) -> Box<HandlerFuture>;
 }
 
 impl<F> Handler for F
-    where F: Fn(Request) -> Box<HandlerFuture>
+    where F: Fn(Request) -> Box<HandlerFuture> + Send + Sync
 {
     fn handle(&self, req: Request) -> Box<HandlerFuture> {
         self(req)

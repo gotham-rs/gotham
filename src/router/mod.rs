@@ -1,11 +1,16 @@
+use std::io;
+use std::sync::Arc;
 use handler::{Handler, HandlerFuture, HandlerService};
+use hyper;
+use hyper::server::NewService;
 
 pub use hyper::{Method, StatusCode};
 pub use hyper::Method::*;
 pub use hyper::server::{Request, Response};
 
+#[derive(Clone)]
 pub struct Router {
-    routes: Vec<Route>,
+    routes: Arc<Vec<Route>>,
 }
 
 impl Router {
@@ -16,9 +21,16 @@ impl Router {
         f(&mut builder);
         builder.into_router()
     }
+}
 
-    pub fn service(self) -> HandlerService<Router> {
-        HandlerService::new(self)
+impl NewService for Router {
+    type Request = Request;
+    type Response = Response;
+    type Error = hyper::Error;
+    type Instance = HandlerService<Router>;
+
+    fn new_service(&self) -> io::Result<Self::Instance> {
+        Ok(HandlerService::new(self.clone()))
     }
 }
 
@@ -53,7 +65,7 @@ impl RouterBuilder {
     }
 
     fn into_router(mut self) -> Router {
-        Router { routes: self.routes.drain(..).collect() }
+        Router { routes: Arc::new(self.routes.drain(..).collect()) }
     }
 
     pub fn match_direct<'a>(&'a mut self,
@@ -90,7 +102,7 @@ pub struct Route {
     handler: Box<Handler>,
 }
 
-pub trait RouteMatcher {
+pub trait RouteMatcher: Send + Sync {
     fn matches(&self, req: &Request) -> bool;
 
     fn to<H>(self, h: H) -> Route
