@@ -9,7 +9,7 @@
 //! [futures]: https://github.com/alexcrichton/futures-rs
 //! [mio]: https://github.com/carllerche/mio
 
-#![deny(missing_docs)]
+#![warn(missing_docs)]
 
 extern crate hyper;
 extern crate futures;
