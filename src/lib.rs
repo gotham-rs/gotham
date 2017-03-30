@@ -1,3 +1,16 @@
+//! A fast and safe web application framework
+//!
+//! This crate builds on the [hyper][], [tokio][], [futures][], and [mio][] libraries to provide an
+//! ergonomic API for routing requests and structuring a web application without sacrificing type
+//! safety.
+//!
+//! [hyper]: https://github.com/hyperium/hyper
+//! [tokio]: https://github.com/tokio-rs/tokio
+//! [futures]: https://github.com/alexcrichton/futures-rs
+//! [mio]: https://github.com/carllerche/mio
+
+#![deny(missing_docs)]
+
 extern crate hyper;
 extern crate futures;
 extern crate tokio_core;
