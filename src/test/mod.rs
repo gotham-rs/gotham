@@ -217,13 +217,7 @@ mod tests {
 
                     future::ok(response).boxed()
                 }
-                _ => {
-                    let not_found = server::Response::new()
-                        .with_status(StatusCode::NotFound)
-                        .with_body(self.response.clone());
-
-                    future::ok(not_found).boxed()
-                }
+                _ => unreachable!(),
             }
         }
     }
