@@ -6,3 +6,8 @@ name = "gotham"
 version = "0.0.1"
 
 [dependencies]
+hyper = { git = "https://github.com/hyperium/hyper.git" }
+futures = "~0.1.11"
+tokio-core = "*"
+tokio-io = "*"
+mio = "*"
