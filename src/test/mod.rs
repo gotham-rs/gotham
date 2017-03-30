@@ -239,6 +239,8 @@ mod tests {
         let response = test_server.run_request(response).unwrap();
 
         assert_eq!(*response.status(), StatusCode::Ok);
+        let buf = test_server.read_body(response).unwrap();
+        assert_eq!(buf.as_slice(), format!("time: {}", ticks).as_bytes());
     }
 
     #[test]
