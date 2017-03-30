@@ -184,13 +184,6 @@ pub struct AsyncUnixStream {
     stream: UnixStream,
 }
 
-fn io_error_to_async_io_error<T>(r: Result<T, io::Error>) -> Result<T, io::Error> {
-    r.map_err(|e| match e.raw_os_error() {
-                  Some(35) => io::Error::new(io::ErrorKind::WouldBlock, "test socket would block"),
-                  _ => e,
-              })
-}
-
 impl AsyncUnixStream {
     fn new(stream: UnixStream) -> Result<AsyncUnixStream, io::Error> {
         stream.set_nonblocking(true)?;
@@ -203,6 +196,24 @@ impl AsyncUnixStream {
         let ss = AsyncUnixStream::new(ss)?;
         Ok((cs, ss))
     }
+}
+
+fn io_error_to_async_io_error<T>(r: Result<T, io::Error>) -> Result<T, io::Error> {
+    // Here, we trap the EAGAIN (35) error that is reported by nonblocking unix sockets, and return
+    // the `WouldBlock` that tokio/hyper expect to work with.
+    //
+    // From: https://tokio.rs/docs/going-deeper/core-low-level/ (as at 2017-03-30)
+    //
+    // All I/O with tokio-core consistently adheres to two properties:
+    //
+    // * Operations are non-blocking. If an operation would otherwise block an error of the
+    //   WouldBlock error kind is returned.
+    // * When a WouldBlock error is returned, the current future task is scheduled to receive a
+    //   notification when the I/O object would otherwise be ready.
+    r.map_err(|e| match e.raw_os_error() {
+                  Some(35) => io::Error::new(io::ErrorKind::WouldBlock, "test socket would block"),
+                  _ => e,
+              })
 }
 
 impl io::Read for AsyncUnixStream {
