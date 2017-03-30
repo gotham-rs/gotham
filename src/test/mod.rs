@@ -151,7 +151,7 @@ impl<S> TestServer<S>
             self.core.run(f)
         };
 
-        r.map(move |()| buf)
+        r.map(|_| buf)
     }
 }
 
