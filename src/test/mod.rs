@@ -8,6 +8,54 @@ use tokio_core::reactor;
 use tokio_io::{AsyncRead, AsyncWrite};
 use mio;
 
+/// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
+/// (which Gotham's `Router` is). An instance of `TestServer` is run single-threaded and
+/// asynchronous, and only accessible by a client returned from the `TestServer`.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate hyper;
+/// # extern crate futures;
+/// # extern crate gotham;
+/// #
+/// # use hyper::{server, StatusCode};
+/// # use futures::{future, Future};
+/// #
+/// # struct MyService;
+/// #
+/// # impl server::Service for MyService {
+/// #
+/// #     type Request = server::Request;
+/// #     type Response = server::Response;
+/// #     type Error = hyper::Error;
+/// #     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+/// #
+/// #     fn call(&self, _req: Self::Request) -> Self::Future {
+/// #         future::ok(server::Response::new().with_status(StatusCode::Accepted)).boxed()
+/// #     }
+/// # }
+/// #
+/// # impl MyService {
+/// #     fn new() -> MyService {
+/// #         MyService
+/// #     }
+/// # }
+/// #
+/// # fn main() {
+/// use gotham::test::TestServer;
+///
+/// let mut test_server = TestServer::new(|| Ok(MyService::new())).unwrap();
+///
+/// let uri = "http://localhost/".parse().unwrap();
+/// let client_addr = "127.0.0.1:15100".parse().unwrap();
+///
+/// let future = test_server.client(client_addr).unwrap().get(uri);
+/// let response = test_server.run_request(future).unwrap();
+///
+/// assert_eq!(*response.status(), StatusCode::Accepted);
+/// # }
+/// ```
 pub struct TestServer<S> {
     core: reactor::Core,
     http: server::Http,
@@ -15,10 +63,15 @@ pub struct TestServer<S> {
     new_service: S,
 }
 
+/// The `TestRequestError` type represents all error states that can result from evaluating a
+/// response future. See `TestServer::run_request` for usage.
 #[derive(Debug)]
 pub enum TestRequestError {
+    /// The response was not received before the timeout duration elapsed
     TimedOut,
+    /// A `std::io::Error` occurred before a response was received
     IoError(io::Error),
+    /// A `hyper::Error` occurred before a response was received
     HyperError(hyper::Error),
 }
 
@@ -28,6 +81,9 @@ impl<S> TestServer<S>
                                 Error = hyper::Error>,
           S::Instance: 'static
 {
+    /// Creates a `TestServer` instance for the service spawned by `new_service`. This server has
+    /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
+    /// for each connection.
     pub fn new(new_service: S) -> Result<TestServer<S>, io::Error> {
         reactor::Core::new().map(|core| {
             TestServer {
@@ -39,10 +95,15 @@ impl<S> TestServer<S>
         })
     }
 
+    /// Sets the request timeout to `t` seconds and returns a new `TestServer`. The default timeout
+    /// value is 10 seconds.
     pub fn timeout(self, t: u64) -> TestServer<S> {
         TestServer { timeout: t, ..self }
     }
 
+    /// Returns a client connected to the `TestServer`. The transport is handled internally, and
+    /// the server will see `client_addr` as the source address for the connection. The
+    /// `client_addr` can be any value, and need not be contactable.
     pub fn client(&self, client_addr: net::SocketAddr) -> io::Result<client::Client<TestConnect>> {
         let handle = self.core.handle();
 
@@ -57,6 +118,12 @@ impl<S> TestServer<S>
                .build(&self.core.handle()))
     }
 
+    /// Runs the event loop until the response future is completed.
+    ///
+    /// If the future came from a different instance of `TestServer`, the event loop will run until
+    /// the timeout is triggered.
+    // TODO: Ensure this is impossible to trigger in the more ergonomic client interface to
+    // `TestServer`, when such a thing is written.
     pub fn run_request<F>(&mut self, f: F) -> Result<F::Item, TestRequestError>
         where F: Future<Error = hyper::Error>
     {
@@ -73,6 +140,8 @@ impl<S> TestServer<S>
         }
     }
 
+    /// Runs the event loop until the response body has been fully read. An `Ok(_)` response holds
+    /// a buffer containing all bytes of the response body.
     pub fn read_body(&mut self, response: client::Response) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
 
@@ -86,6 +155,8 @@ impl<S> TestServer<S>
     }
 }
 
+/// `TestConnect` represents the connection between a test client and the `TestServer` instance
+/// that created it. This type should never be used directly.
 pub struct TestConnect {
     stream: cell::RefCell<Option<reactor::PollEvented<AsyncUnixStream>>>,
 }
@@ -107,6 +178,8 @@ impl client::Service for TestConnect {
     }
 }
 
+/// Wrapping type for an asynchronous `std::os::unix::net::UnixStream`. This type should never be
+/// used directly.
 pub struct AsyncUnixStream {
     stream: UnixStream,
 }
