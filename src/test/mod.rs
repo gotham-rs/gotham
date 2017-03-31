@@ -1,3 +1,9 @@
+//! Contains helpers for Gotham applications to use during testing.
+//!
+//! [`TestServer::new(_)`][TestServer::new] is the most useful entry point.
+//!
+//! [TestServer::new]: struct.TestServer.html#method.new
+
 use std::{cell, io, net, time};
 // TODO: Cross platform
 use std::os::unix::net::UnixStream;
@@ -25,7 +31,6 @@ use mio;
 /// # struct MyService;
 /// #
 /// # impl server::Service for MyService {
-/// #
 /// #     type Request = server::Request;
 /// #     type Response = server::Response;
 /// #     type Error = hyper::Error;
