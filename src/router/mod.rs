@@ -1,15 +1,66 @@
+//! Defines the Gotham `Router`, which dispatches requests to the correct `Handler`
+
 use std::io;
 use std::sync::Arc;
 use handler::{Handler, HandlerFuture, HandlerService};
-use hyper::{self, Method, StatusCode};
+use hyper::{self, Method};
 use hyper::server::{Request, Response, NewService};
 
+/// The `Router` type is the main entry point into a Gotham app, and it implements
+/// `hyper::server::NewService` so that it can be passed directly to hyper after creation.
+///
+/// To create a `Router`, call `Router::build` with a closure which receives a `RouterBuilder` and
+/// uses it to define routes.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// use gotham::router::Router;
+/// use gotham::handler::HandlerFuture;
+/// use hyper::server::{Http, Request, Response};
+/// use hyper::Method::Get;
+///
+/// fn router() -> Router {
+///     Router::build(|routes| {
+///         routes.match_direct(Get, "/").to(MyApp::top);
+///         routes.match_direct(Get, "/profile").to(MyApp::profile);
+///     })
+/// }
+///
+/// struct MyApp;
+///
+/// impl MyApp {
+///     fn top(req: Request) -> Box<HandlerFuture> {
+///         // Handler logic here
+/// #       unimplemented!()
+///     }
+///
+///     fn profile(req: Request) -> Box<HandlerFuture> {
+///         // Handler logic here
+/// #       unimplemented!()
+///     }
+/// }
+///
+/// fn main() {
+///     let addr = "127.0.0.1:9000".parse().unwrap();
+///     let server = Http::new().bind(&addr, router()).unwrap();
+///     // As normal:
+///     // server.run().unwrap()
+/// }
+/// ```
 #[derive(Clone)]
 pub struct Router {
     routes: Arc<Vec<Route>>,
 }
 
 impl Router {
+    /// Calls the provided closure with a `RouterBuilder`, and then compiles the routes into a
+    /// `Router`. See [`RouterBuilder`][RouterBuilder] for the available API.
+    ///
+    /// [RouterBuilder]: struct.RouterBuilder.html
     pub fn build<F>(f: F) -> Router
         where F: FnOnce(&mut RouterBuilder) -> ()
     {
@@ -44,10 +95,38 @@ impl Handler for Router {
     }
 }
 
+/// `RouterBuilder` provides an API for constructing a `Router`. This is only instantiated by
+/// [`Router::build(_)`][Router::build] and passed to the provided closure.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use gotham::router::{Router, RouterBuilder};
+/// # use hyper::Method::Get;
+/// # use hyper::server::{Http, Request, Response};
+/// #
+/// # fn handler(req: Request) -> Response {
+/// #     Response::new()
+/// # }
+/// #
+/// # fn main() {
+/// Router::build(|routes: &mut RouterBuilder| {
+///     routes.match_direct(Get, "/").to(handler);
+/// })
+/// # ;()
+/// # }
+/// ```
+///
+/// [Router::build]: struct.Router.html#method.build
 pub struct RouterBuilder {
     routes: Vec<Route>,
 }
 
+/// Provides an API for a route matcher to be targeted at a `Handler`. This is instantiated by
+/// `RouterBuilder`. See [RouterBuilder][] for a usage example.
 pub struct RouterBuilderTo<'a> {
     builder: &'a mut RouterBuilder,
     matcher: Box<RouteMatcher>,
@@ -62,6 +141,34 @@ impl RouterBuilder {
         Router { routes: Arc::new(self.routes.drain(..).collect()) }
     }
 
+    /// Creates a route matching a single HTTP method and a fixed string.
+    ///
+    /// The provided `path` must match the complete path of the request. For example, a request for
+    /// `https://example.com/path/to/my/handler?query=params+go+here` would be matched by:
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use gotham::router::Router;
+    /// # use hyper::Method::Get;
+    /// # use hyper::server::{Request, Response};
+    /// #
+    /// #
+    /// fn handler(req: Request) -> Response {
+    ///     // Handler implementation here
+    /// #   Response::new()
+    /// }
+    ///
+    /// fn router() -> Router {
+    ///     Router::build(|routes| {
+    ///         routes.match_direct(Get, "/path/to/my/handler").to(handler);
+    ///     })
+    /// }
+    /// #
+    /// # fn main() {
+    /// #   router();
+    /// # }
+    /// ```
     pub fn match_direct<'a>(&'a mut self,
                             method: Method,
                             path: &'static str)
@@ -77,6 +184,7 @@ impl RouterBuilder {
 }
 
 impl<'a> RouterBuilderTo<'a> {
+    /// Targets the current route at a specific handler.
     pub fn to<H>(self, handler: H)
         where H: Handler + 'static
     {
@@ -124,6 +232,7 @@ mod tests {
     use super::*;
     use handler::{HandlerService, HandlerFuture};
     use hyper::Method::*;
+    use hyper::StatusCode;
     use futures::{future, Future};
     use test::TestServer;
 
@@ -144,6 +253,21 @@ mod tests {
         let mut test_server = TestServer::new(new_service).unwrap();
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/".parse().unwrap();
+        let response = test_server.run_request(client.get(uri)).unwrap();
+        assert_eq!(*response.status(), StatusCode::Ok);
+        assert_eq!(test_server.read_body(response).unwrap(), "Index".as_bytes());
+
+    }
+
+    #[test]
+    fn route_direct_request_ignoring_query_params() {
+        let new_service = || {
+            let router = Router::build(|route| route.match_direct(Get, "/").to(Root::index));
+            Ok(HandlerService::new(router))
+        };
+        let mut test_server = TestServer::new(new_service).unwrap();
+        let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
+        let uri = "http://example.com/?x=y".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
         assert_eq!(*response.status(), StatusCode::Ok);
         assert_eq!(test_server.read_body(response).unwrap(), "Index".as_bytes());
