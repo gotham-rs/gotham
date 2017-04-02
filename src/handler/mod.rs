@@ -1,7 +1,7 @@
 use hyper;
 use hyper::server;
 use hyper::server::Request;
-use futures::Future;
+use futures::{future, Future};
 
 pub type HandlerFuture = Future<Item = server::Response, Error = hyper::Error>;
 
@@ -36,10 +36,27 @@ pub trait Handler: Send + Sync {
     fn handle(&self, req: Request) -> Box<HandlerFuture>;
 }
 
-impl<F> Handler for F
-    where F: Fn(Request) -> Box<HandlerFuture> + Send + Sync
+pub trait IntoAsyncResponse {
+    fn into_async_response(self) -> Box<HandlerFuture>;
+}
+
+impl IntoAsyncResponse for server::Response {
+    fn into_async_response(self) -> Box<HandlerFuture> {
+        future::ok(self).boxed()
+    }
+}
+
+impl IntoAsyncResponse for Box<HandlerFuture> {
+    fn into_async_response(self) -> Box<HandlerFuture> {
+        self
+    }
+}
+
+impl<F, R> Handler for F
+    where F: Fn(Request) -> R + Send + Sync,
+          R: IntoAsyncResponse
 {
     fn handle(&self, req: Request) -> Box<HandlerFuture> {
-        self(req)
+        self(req).into_async_response()
     }
 }
