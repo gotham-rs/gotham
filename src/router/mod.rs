@@ -25,8 +25,8 @@ use hyper::server::{Request, Response, NewService};
 ///
 /// fn router() -> Router {
 ///     Router::build(|routes| {
-///         routes.match_direct(Get, "/").to(MyApp::top);
-///         routes.match_direct(Get, "/profile").to(MyApp::profile);
+///         routes.direct(Get, "/").to(MyApp::top);
+///         routes.direct(Get, "/profile").to(MyApp::profile);
 ///     })
 /// }
 ///
@@ -114,7 +114,7 @@ impl Handler for Router {
 /// #
 /// # fn main() {
 /// Router::build(|routes: &mut RouterBuilder| {
-///     routes.match_direct(Get, "/").to(handler);
+///     routes.direct(Get, "/").to(handler);
 /// })
 /// # ;()
 /// # }
@@ -161,7 +161,7 @@ impl RouterBuilder {
     ///
     /// fn router() -> Router {
     ///     Router::build(|routes| {
-    ///         routes.match_direct(Get, "/path/to/my/handler").to(handler);
+    ///         routes.direct(Get, "/path/to/my/handler").to(handler);
     ///     })
     /// }
     /// #
@@ -169,10 +169,7 @@ impl RouterBuilder {
     /// #   router();
     /// # }
     /// ```
-    pub fn match_direct<'a>(&'a mut self,
-                            method: Method,
-                            path: &'static str)
-                            -> RouterBuilderTo<'a> {
+    pub fn direct<'a>(&'a mut self, method: Method, path: &'static str) -> RouterBuilderTo<'a> {
         RouterBuilderTo {
             builder: self,
             matcher: Box::new(DirectRouteMatcher {
@@ -247,7 +244,7 @@ mod tests {
     #[test]
     fn route_direct_request() {
         let new_service = || {
-            let router = Router::build(|route| route.match_direct(Get, "/").to(Root::index));
+            let router = Router::build(|route| route.direct(Get, "/").to(Root::index));
             Ok(HandlerService::new(router))
         };
         let mut test_server = TestServer::new(new_service).unwrap();
@@ -262,7 +259,7 @@ mod tests {
     #[test]
     fn route_direct_request_ignoring_query_params() {
         let new_service = || {
-            let router = Router::build(|route| route.match_direct(Get, "/").to(Root::index));
+            let router = Router::build(|route| route.direct(Get, "/").to(Root::index));
             Ok(HandlerService::new(router))
         };
         let mut test_server = TestServer::new(new_service).unwrap();

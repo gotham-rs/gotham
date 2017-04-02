@@ -19,9 +19,9 @@ static INDEX: &'static [u8] = b"Try POST /echo";
 
 fn router() -> Router {
     Router::build(|routes| {
-                      routes.match_direct(Get, "/").to(Echo::get);
-                      routes.match_direct(Get, "/echo").to(Echo::get);
-                      routes.match_direct(Post, "/echo").to(Echo::post);
+                      routes.direct(Get, "/").to(Echo::get);
+                      routes.direct(Get, "/echo").to(Echo::get);
+                      routes.direct(Post, "/echo").to(Echo::post);
                   })
 }
 
