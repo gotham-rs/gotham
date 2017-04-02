@@ -1,12 +1,8 @@
 use std::io;
 use std::sync::Arc;
 use handler::{Handler, HandlerFuture, HandlerService};
-use hyper;
-use hyper::server::NewService;
-
-pub use hyper::{Method, StatusCode};
-pub use hyper::Method::*;
-pub use hyper::server::{Request, Response};
+use hyper::{self, Method, StatusCode};
+use hyper::server::{Request, Response, NewService};
 
 #[derive(Clone)]
 pub struct Router {
@@ -52,11 +48,9 @@ pub struct RouterBuilder {
     routes: Vec<Route>,
 }
 
-pub struct RouterBuilderTo<'a, M>
-    where M: RouteMatcher
-{
+pub struct RouterBuilderTo<'a> {
     builder: &'a mut RouterBuilder,
-    matcher: M,
+    matcher: Box<RouteMatcher>,
 }
 
 impl RouterBuilder {
@@ -71,25 +65,23 @@ impl RouterBuilder {
     pub fn match_direct<'a>(&'a mut self,
                             method: Method,
                             path: &'static str)
-                            -> RouterBuilderTo<'a, DirectRouteMatcher> {
+                            -> RouterBuilderTo<'a> {
         RouterBuilderTo {
             builder: self,
-            matcher: DirectRouteMatcher {
-                method: method,
-                path: path,
-            },
+            matcher: Box::new(DirectRouteMatcher {
+                                  method: method,
+                                  path: path,
+                              }),
         }
     }
 }
 
-impl<'a, M> RouterBuilderTo<'a, M>
-    where M: RouteMatcher + 'static
-{
+impl<'a> RouterBuilderTo<'a> {
     pub fn to<H>(self, handler: H)
         where H: Handler + 'static
     {
         let route = Route {
-            matcher: Box::new(self.matcher),
+            matcher: self.matcher,
             handler: Box::new(handler),
         };
 
@@ -97,12 +89,12 @@ impl<'a, M> RouterBuilderTo<'a, M>
     }
 }
 
-pub struct Route {
+struct Route {
     matcher: Box<RouteMatcher>,
     handler: Box<Handler>,
 }
 
-pub trait RouteMatcher: Send + Sync {
+trait RouteMatcher: Send + Sync {
     fn matches(&self, req: &Request) -> bool;
 
     fn to<H>(self, h: H) -> Route
@@ -116,7 +108,7 @@ pub trait RouteMatcher: Send + Sync {
     }
 }
 
-pub struct DirectRouteMatcher {
+struct DirectRouteMatcher {
     method: Method,
     path: &'static str,
 }
@@ -131,6 +123,7 @@ impl RouteMatcher for DirectRouteMatcher {
 mod tests {
     use super::*;
     use handler::{HandlerService, HandlerFuture};
+    use hyper::Method::*;
     use futures::{future, Future};
     use test::TestServer;
 
