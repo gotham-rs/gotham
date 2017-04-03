@@ -19,7 +19,6 @@ use hyper::server::{Request, Response, NewService};
 /// # extern crate hyper;
 /// #
 /// use gotham::router::Router;
-/// use gotham::handler::HandlerFuture;
 /// use hyper::server::{Http, Request, Response};
 /// use hyper::Method::Get;
 ///
@@ -33,12 +32,12 @@ use hyper::server::{Request, Response, NewService};
 /// struct MyApp;
 ///
 /// impl MyApp {
-///     fn top(req: Request) -> Box<HandlerFuture> {
+///     fn top(req: Request) -> Response {
 ///         // Handler logic here
 /// #       unimplemented!()
 ///     }
 ///
-///     fn profile(req: Request) -> Box<HandlerFuture> {
+///     fn profile(req: Request) -> Response {
 ///         // Handler logic here
 /// #       unimplemented!()
 ///     }
@@ -227,17 +226,16 @@ impl RouteMatcher for DirectRouteMatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use handler::{HandlerService, HandlerFuture};
+    use handler::HandlerService;
     use hyper::Method::*;
     use hyper::StatusCode;
-    use futures::{future, Future};
     use test::TestServer;
 
     struct Root {}
 
     impl Root {
-        fn index(_req: Request) -> Box<HandlerFuture> {
-            future::ok(Response::new().with_status(StatusCode::Ok).with_body("Index")).boxed()
+        fn index(_req: Request) -> Response {
+            Response::new().with_status(StatusCode::Ok).with_body("Index")
         }
     }
 

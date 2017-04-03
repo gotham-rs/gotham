@@ -4,14 +4,11 @@ extern crate hyper;
 extern crate pretty_env_logger;
 extern crate gotham;
 
-use futures::{future, Future};
-
 use hyper::{Get, Post};
 use hyper::header::ContentLength;
 use hyper::server::{Http, Request, Response};
 
 use gotham::router::Router;
-use gotham::handler::HandlerFuture;
 
 struct Echo;
 
@@ -26,17 +23,16 @@ fn router() -> Router {
 }
 
 impl Echo {
-    fn get(_req: Request) -> Box<HandlerFuture> {
-        future::ok(Response::new().with_header(ContentLength(INDEX.len() as u64)).with_body(INDEX))
-            .boxed()
+    fn get(_req: Request) -> Response {
+        Response::new().with_header(ContentLength(INDEX.len() as u64)).with_body(INDEX)
     }
 
-    fn post(req: Request) -> Box<HandlerFuture> {
+    fn post(req: Request) -> Response {
         let mut res = Response::new();
         if let Some(len) = req.headers().get::<ContentLength>() {
             res.headers_mut().set(len.clone());
         }
-        future::ok(res.with_body(req.body())).boxed()
+        res.with_body(req.body())
     }
 }
 
