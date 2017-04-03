@@ -72,7 +72,7 @@ pub trait Handler: Send + Sync {
 /// # extern crate futures;
 /// #
 /// # use gotham::router::{Router, RouterBuilder};
-/// # use gotham::handler::{HandlerFuture, IntoAsyncResponse};
+/// # use gotham::handler::{HandlerFuture, IntoHandlerFuture};
 /// # use futures::{future, Future};
 /// # use hyper::Method::Get;
 /// # use hyper::StatusCode;
@@ -89,8 +89,8 @@ pub trait Handler: Send + Sync {
 ///     }
 /// }
 ///
-/// impl IntoAsyncResponse for MyStruct {
-///     fn into_async_response(self) -> Box<HandlerFuture> {
+/// impl IntoHandlerFuture for MyStruct {
+///     fn into_handler_future(self) -> Box<HandlerFuture> {
 ///         let response = Response::new()
 ///             .with_status(StatusCode::Ok)
 ///             .with_body(self.value);
@@ -118,28 +118,28 @@ pub trait Handler: Send + Sync {
 ///
 /// * `hyper::server::Response` &ndash; The response is wrapped in a completed future and boxed
 /// * `Box<HandlerFuture>` &ndash; The boxed future is returned directly
-pub trait IntoAsyncResponse {
+pub trait IntoHandlerFuture {
     /// Converts this object into a boxed future resolving to a response.
-    fn into_async_response(self) -> Box<HandlerFuture>;
+    fn into_handler_future(self) -> Box<HandlerFuture>;
 }
 
-impl IntoAsyncResponse for server::Response {
-    fn into_async_response(self) -> Box<HandlerFuture> {
+impl IntoHandlerFuture for server::Response {
+    fn into_handler_future(self) -> Box<HandlerFuture> {
         future::ok(self).boxed()
     }
 }
 
-impl IntoAsyncResponse for Box<HandlerFuture> {
-    fn into_async_response(self) -> Box<HandlerFuture> {
+impl IntoHandlerFuture for Box<HandlerFuture> {
+    fn into_handler_future(self) -> Box<HandlerFuture> {
         self
     }
 }
 
 impl<F, R> Handler for F
     where F: Fn(Request) -> R + Send + Sync,
-          R: IntoAsyncResponse
+          R: IntoHandlerFuture
 {
     fn handle(&self, req: Request) -> Box<HandlerFuture> {
-        self(req).into_async_response()
+        self(req).into_handler_future()
     }
 }
