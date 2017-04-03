@@ -58,7 +58,7 @@ use mio;
 /// let future = test_server.client(client_addr).unwrap().get(uri);
 /// let response = test_server.run_request(future).unwrap();
 ///
-/// assert_eq!(*response.status(), StatusCode::Accepted);
+/// assert_eq!(response.status(), StatusCode::Accepted);
 /// # }
 /// ```
 pub struct TestServer<S> {
@@ -321,7 +321,7 @@ mod tests {
         let response = test_server.client("127.0.0.1:0".parse().unwrap()).unwrap().get(uri);
         let response = test_server.run_request(response).unwrap();
 
-        assert_eq!(*response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::Ok);
         let buf = test_server.read_body(response).unwrap();
         assert_eq!(buf.as_slice(), format!("time: {}", ticks).as_bytes());
     }
@@ -353,7 +353,7 @@ mod tests {
         let response = test_server.client(client_addr).unwrap().get(uri);
         let response = test_server.run_request(response).unwrap();
 
-        assert_eq!(*response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::Ok);
         let buf = test_server.read_body(response).unwrap();
         let received_addr: net::SocketAddr = String::from_utf8(buf).unwrap().parse().unwrap();
         assert_eq!(received_addr, client_addr);

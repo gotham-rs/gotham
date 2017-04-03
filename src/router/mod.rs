@@ -254,7 +254,7 @@ mod tests {
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
-        assert_eq!(*response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::Ok);
         assert_eq!(test_server.read_body(response).unwrap(), "Index".as_bytes());
 
     }
@@ -269,7 +269,7 @@ mod tests {
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/?x=y".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
-        assert_eq!(*response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::Ok);
         assert_eq!(test_server.read_body(response).unwrap(), "Index".as_bytes());
     }
 }
