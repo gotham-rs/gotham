@@ -226,10 +226,10 @@ impl RouteMatcher for DirectRouteMatcher {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use handler::HandlerService;
     use hyper::Method::*;
     use hyper::StatusCode;
     use test::TestServer;
+    use futures::{future, Future};
 
     struct Root {}
 
@@ -237,30 +237,43 @@ mod tests {
         fn index(_req: Request) -> Response {
             Response::new().with_status(StatusCode::Ok).with_body("Index")
         }
+
+        fn async(_req: Request) -> Box<HandlerFuture> {
+            let response = Response::new().with_status(StatusCode::Ok).with_body("Async");
+            future::lazy(move || future::ok(response)).boxed()
+        }
+
+        fn router() -> Router {
+            Router::build(|route| {
+                              route.direct(Get, "/").to(Root::index);
+                              route.direct(Get, "/async").to(Root::async);
+                          })
+        }
+    }
+
+    #[test]
+    fn route_async_request() {
+        let mut test_server = TestServer::new(Root::router()).unwrap();
+        let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
+        let uri = "http://example.com/async".parse().unwrap();
+        let response = test_server.run_request(client.get(uri)).unwrap();
+        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(test_server.read_body(response).unwrap(), "Async".as_bytes());
     }
 
     #[test]
     fn route_direct_request() {
-        let new_service = || {
-            let router = Router::build(|route| route.direct(Get, "/").to(Root::index));
-            Ok(HandlerService::new(router))
-        };
-        let mut test_server = TestServer::new(new_service).unwrap();
+        let mut test_server = TestServer::new(Root::router()).unwrap();
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
         assert_eq!(response.status(), StatusCode::Ok);
         assert_eq!(test_server.read_body(response).unwrap(), "Index".as_bytes());
-
     }
 
     #[test]
     fn route_direct_request_ignoring_query_params() {
-        let new_service = || {
-            let router = Router::build(|route| route.direct(Get, "/").to(Root::index));
-            Ok(HandlerService::new(router))
-        };
-        let mut test_server = TestServer::new(new_service).unwrap();
+        let mut test_server = TestServer::new(Root::router()).unwrap();
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/?x=y".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
