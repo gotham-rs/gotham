@@ -105,7 +105,7 @@ pub trait Handler: Send + Sync {
 ///
 /// fn router() -> Router {
 ///     Router::build(|routes| {
-///        routes.match_direct(Get, "/").to(handler);
+///        routes.direct(Get, "/").to(handler);
 ///     })
 /// }
 ///
