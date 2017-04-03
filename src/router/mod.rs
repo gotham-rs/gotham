@@ -125,7 +125,9 @@ pub struct RouterBuilder {
 }
 
 /// Provides an API for a route matcher to be targeted at a `Handler`. This is instantiated by
-/// `RouterBuilder`. See [RouterBuilder][] for a usage example.
+/// `RouterBuilder`. See [`RouterBuilder`][RouterBuilder] for a usage example.
+///
+/// [RouterBuilder]: struct.RouterBuilder.html
 pub struct RouterBuilderTo<'a> {
     builder: &'a mut RouterBuilder,
     matcher: Box<RouteMatcher>,
