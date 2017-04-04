@@ -4,21 +4,26 @@ extern crate hyper;
 extern crate pretty_env_logger;
 extern crate gotham;
 
+use futures::{future, Future};
+
 use hyper::{Get, Post};
 use hyper::header::ContentLength;
 use hyper::server::{Http, Request, Response};
 
 use gotham::router::Router;
+use gotham::handler::HandlerFuture;
 
 struct Echo;
 
 static INDEX: &'static [u8] = b"Try POST /echo";
+static ASYNC: &'static [u8] = b"Got async response";
 
 fn router() -> Router {
     Router::build(|routes| {
                       routes.direct(Get, "/").to(Echo::get);
                       routes.direct(Get, "/echo").to(Echo::get);
                       routes.direct(Post, "/echo").to(Echo::post);
+                      routes.direct(Get, "/async").to(Echo::async);
                   })
 }
 
@@ -33,6 +38,12 @@ impl Echo {
             res.headers_mut().set(len.clone());
         }
         res.with_body(req.body())
+    }
+
+    fn async(_req: Request) -> Box<HandlerFuture> {
+        let mut res = Response::new();
+        res = res.with_header(ContentLength(ASYNC.len() as u64)).with_body(ASYNC);
+        future::lazy(move || future::ok(res)).boxed()
     }
 }
 
