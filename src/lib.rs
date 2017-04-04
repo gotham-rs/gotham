@@ -10,6 +10,9 @@
 //! [mio]: https://github.com/carllerche/mio
 
 #![warn(missing_docs)]
+// TODO: Remove this when it's a hard error by default (error E0446).
+// See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+#![deny(private_in_public)]
 
 extern crate hyper;
 extern crate futures;
@@ -17,6 +20,8 @@ extern crate tokio_core;
 extern crate tokio_io;
 extern crate mio;
 
+pub mod handler;
+pub mod router;
 pub mod test;
 
 #[cfg(test)]
