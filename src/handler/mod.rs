@@ -12,7 +12,7 @@ use futures::{future, Future};
 use state::State;
 
 /// A type alias for the trait objects returned by `HandlerService`
-pub type HandlerFuture = Future<Item = server::Response, Error = hyper::Error>;
+pub type HandlerFuture = Future<Item = server::Response, Error = hyper::Error> + Send;
 
 /// `HandlerService` wraps a Gotham `Handler` and exposes a hyper `Service`.
 ///
