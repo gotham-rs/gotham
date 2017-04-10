@@ -3,6 +3,7 @@
 use std::io;
 use std::sync::Arc;
 use handler::{Handler, HandlerFuture, HandlerService};
+use state::State;
 use hyper::{self, Method};
 use hyper::server::{Request, Response, NewService};
 
@@ -18,6 +19,7 @@ use hyper::server::{Request, Response, NewService};
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// use gotham::state::State;
 /// use gotham::router::Router;
 /// use hyper::server::{Http, Request, Response};
 /// use hyper::Method::Get;
@@ -32,12 +34,12 @@ use hyper::server::{Request, Response, NewService};
 /// struct MyApp;
 ///
 /// impl MyApp {
-///     fn top(req: Request) -> Response {
+///     fn top(state: &mut State, req: Request) -> Response {
 ///         // Handler logic here
 /// #       unimplemented!()
 ///     }
 ///
-///     fn profile(req: Request) -> Response {
+///     fn profile(state: &mut State, req: Request) -> Response {
 ///         // Handler logic here
 /// #       unimplemented!()
 ///     }
@@ -81,14 +83,14 @@ impl NewService for Router {
 }
 
 impl Handler for Router {
-    fn handle(&self, req: Request) -> Box<HandlerFuture> {
+    fn handle(&self, state: &mut State, req: Request) -> Box<HandlerFuture> {
         // Deliberately obtuse implementation while we hash out the API.
         match self.routes
                   .iter()
                   .filter(|r| r.matcher.matches(&req))
                   .take(1)
                   .next() {
-            Some(ref route_box) => route_box.handler.handle(req),
+            Some(ref route_box) => route_box.handler.handle(state, req),
             None => unimplemented!(),
         }
     }
@@ -103,11 +105,12 @@ impl Handler for Router {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// # use gotham::state::State;
 /// # use gotham::router::{Router, RouterBuilder};
 /// # use hyper::Method::Get;
 /// # use hyper::server::{Http, Request, Response};
 /// #
-/// # fn handler(req: Request) -> Response {
+/// # fn handler(state: &mut State, req: Request) -> Response {
 /// #     Response::new()
 /// # }
 /// #
@@ -150,12 +153,13 @@ impl RouterBuilder {
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use hyper::Method::Get;
     /// # use hyper::server::{Request, Response};
     /// #
     /// #
-    /// fn handler(req: Request) -> Response {
+    /// fn handler(state: &mut State, req: Request) -> Response {
     ///     // Handler implementation here
     /// #   Response::new()
     /// }
@@ -236,11 +240,11 @@ mod tests {
     struct Root {}
 
     impl Root {
-        fn index(_req: Request) -> Response {
+        fn index(_state: &mut State, _req: Request) -> Response {
             Response::new().with_status(StatusCode::Ok).with_body("Index")
         }
 
-        fn async(_req: Request) -> Box<HandlerFuture> {
+        fn async(_state: &mut State, _req: Request) -> Box<HandlerFuture> {
             let response = Response::new().with_status(StatusCode::Ok).with_body("Async");
             future::lazy(move || future::ok(response)).boxed()
         }

@@ -9,6 +9,7 @@ use hyper;
 use hyper::server;
 use hyper::server::Request;
 use futures::{future, Future};
+use state::State;
 
 /// A type alias for the trait objects returned by `HandlerService`
 pub type HandlerFuture = Future<Item = server::Response, Error = hyper::Error>;
@@ -42,7 +43,8 @@ impl<T> server::Service for HandlerService<T>
     type Future = Box<HandlerFuture>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        self.handler.handle(req)
+        let mut state = State::new();
+        self.handler.handle(&mut state, req)
     }
 }
 
@@ -58,7 +60,7 @@ impl<T> server::Service for HandlerService<T>
 /// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
 pub trait Handler: Send + Sync {
     /// Handles the request, returning a boxed future which resolves to a response.
-    fn handle(&self, req: Request) -> Box<HandlerFuture>;
+    fn handle(&self, &mut State, Request) -> Box<HandlerFuture>;
 }
 
 /// Represents an object which can be converted to a response, perhaps asynchronously. This trait
@@ -71,6 +73,7 @@ pub trait Handler: Send + Sync {
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
+/// # use gotham::state::State;
 /// # use gotham::router::{Router, RouterBuilder};
 /// # use gotham::handler::{HandlerFuture, IntoHandlerFuture};
 /// # use futures::{future, Future};
@@ -99,7 +102,7 @@ pub trait Handler: Send + Sync {
 ///     }
 /// }
 ///
-/// fn handler(req: Request) -> MyStruct {
+/// fn handler(state: &mut State, req: Request) -> MyStruct {
 ///     MyStruct::new()
 /// }
 ///
@@ -136,10 +139,10 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 }
 
 impl<F, R> Handler for F
-    where F: Fn(Request) -> R + Send + Sync,
+    where F: Fn(&mut State, Request) -> R + Send + Sync,
           R: IntoHandlerFuture
 {
-    fn handle(&self, req: Request) -> Box<HandlerFuture> {
-        self(req).into_handler_future()
+    fn handle(&self, state: &mut State, req: Request) -> Box<HandlerFuture> {
+        self(state, req).into_handler_future()
     }
 }

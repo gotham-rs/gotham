@@ -8,9 +8,8 @@ pub struct Pipeline {
 }
 
 impl Handler for Pipeline {
-    fn handle(&self, req: Request) -> Box<HandlerFuture> {
-        let mut s = State::new();
-        (self.f)(&mut s, req)
+    fn handle(&self, state: &mut State, req: Request) -> Box<HandlerFuture> {
+        (self.f)(state, req)
     }
 }
 
@@ -27,7 +26,7 @@ pub trait PipelineBuilder: Sized {
     fn build<H>(self, handler: H) -> Pipeline
         where H: Handler + 'static
     {
-        self.build_recurse(move |state: &mut State, req: Request| handler.handle(req))
+        self.build_recurse(move |state: &mut State, req: Request| handler.handle(state, req))
     }
 
     fn add<M>(self, m: M) -> PipeSegment<M, Self>
@@ -83,9 +82,7 @@ mod tests {
     use hyper::server::Response;
     use hyper::StatusCode;
 
-    fn handler(/*_state: &mut State,*/
-               _req: Request)
-               -> Response {
+    fn handler(_state: &mut State, _req: Request) -> Response {
         Response::new().with_status(StatusCode::Ok).with_body("21")
     }
 
