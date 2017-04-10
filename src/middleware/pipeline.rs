@@ -82,8 +82,9 @@ mod tests {
     use hyper::server::Response;
     use hyper::StatusCode;
 
-    fn handler(_state: &mut State, _req: Request) -> Response {
-        Response::new().with_status(StatusCode::Ok).with_body("21")
+    fn handler(state: &mut State, _req: Request) -> Response {
+        let number = state.borrow::<Number>().unwrap();
+        Response::new().with_status(StatusCode::Ok).with_body(format!("{}", number.value))
     }
 
     #[derive(Clone)]
@@ -140,8 +141,8 @@ mod tests {
                 .add(Multiplication { value: 2 }) // 2
                 .add(Addition { value: 1 }) // 3
                 .add(Multiplication { value: 2 }) // 6
-                .add(Addition { value: 1 }) // 7
-                .add(Multiplication { value: 3 }) // 21
+                .add(Addition { value: 2 }) // 8
+                .add(Multiplication { value: 3 }) // 24
                 .build(handler);
             Ok(HandlerService::new(pipeline))
         };
@@ -153,6 +154,6 @@ mod tests {
         let response = test_server.run_request(response).unwrap();
 
         let buf = test_server.read_body(response).unwrap();
-        assert_eq!(buf.as_slice(), "21".as_bytes());
+        assert_eq!(buf.as_slice(), "24".as_bytes());
     }
 }
