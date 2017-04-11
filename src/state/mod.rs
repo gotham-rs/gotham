@@ -1,3 +1,5 @@
+//! Defines types for passing request state through `Middleware` and `Handler` implementations
+
 use std::collections::HashMap;
 use std::any::{Any, TypeId};
 
