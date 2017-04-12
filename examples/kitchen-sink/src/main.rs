@@ -39,27 +39,27 @@ fn app() -> Pipeline {
 }
 
 impl Echo {
-    fn get(_state: &mut State, _req: Request) -> Response {
-        Response::new().with_header(ContentLength(INDEX.len() as u64)).with_body(INDEX)
+    fn get(state: State, _req: Request) -> (State, Response) {
+        (state, Response::new().with_header(ContentLength(INDEX.len() as u64)).with_body(INDEX))
     }
 
-    fn post(_state: &mut State, req: Request) -> Response {
+    fn post(state: State, req: Request) -> (State, Response) {
         let mut res = Response::new();
         if let Some(len) = req.headers().get::<ContentLength>() {
             res.headers_mut().set(len.clone());
         }
-        res.with_body(req.body())
+        (state, res.with_body(req.body()))
     }
 
-    fn async(_state: &mut State, _req: Request) -> Box<HandlerFuture> {
+    fn async(state: State, _req: Request) -> Box<HandlerFuture> {
         let mut res = Response::new();
         res = res.with_header(ContentLength(ASYNC.len() as u64)).with_body(ASYNC);
-        future::lazy(move || future::ok(res)).boxed()
+        future::lazy(move || future::ok((state, res))).boxed()
     }
 
-    fn header_value(state: &mut State, _req: Request) -> Response {
+    fn header_value(mut state: State, _req: Request) -> (State, Response) {
         state.borrow_mut::<KitchenSinkData>().unwrap().header_value = "different value!".to_owned();
-        Response::new().with_header(ContentLength(INDEX.len() as u64)).with_body(INDEX)
+        (state, Response::new().with_header(ContentLength(INDEX.len() as u64)).with_body(INDEX))
     }
 }
 

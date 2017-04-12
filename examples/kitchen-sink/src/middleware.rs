@@ -15,19 +15,22 @@ pub struct KitchenSinkMiddleware {
 }
 
 impl Middleware for KitchenSinkMiddleware {
-    fn call<Chain>(&self, state: &mut State, request: Request, chain: Chain) -> Box<HandlerFuture>
-        where Chain: FnOnce(&mut State, Request) -> Box<HandlerFuture>
+    fn call<Chain>(&self, mut state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
+        where Chain: FnOnce(State, Request) -> Box<HandlerFuture>
     {
         state.put(KitchenSinkData { header_value: "default value".to_owned() });
 
         let result = chain(state, request);
         let header_name = self.header_name;
-        let data = state.take::<KitchenSinkData>().unwrap();
 
-        result.and_then(move |mut response| {
-                            response.headers_mut().set_raw(header_name, data.header_value);
-                            future::ok(response)
-                        })
+        result.and_then(move |(state, mut response)| {
+                {
+                    let data = state.borrow::<KitchenSinkData>().unwrap();
+                    response.headers_mut().set_raw(header_name, data.header_value.to_owned());
+                }
+
+                future::ok((state, response))
+            })
             .boxed()
     }
 }
