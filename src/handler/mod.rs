@@ -12,7 +12,8 @@ use futures::{future, Future};
 use state::State;
 
 /// A type alias for the trait objects returned by `HandlerService`
-pub type HandlerFuture = Future<Item = server::Response, Error = hyper::Error> + Send;
+pub type HandlerFuture =
+    Future<Item = (State, server::Response), Error = (State, hyper::Error)> + Send;
 
 /// `HandlerService` wraps a Gotham `Handler` and exposes a hyper `Service`.
 ///
@@ -40,11 +41,14 @@ impl<T> server::Service for HandlerService<T>
     type Request = server::Request;
     type Response = server::Response;
     type Error = hyper::Error;
-    type Future = Box<HandlerFuture>;
+    type Future = Box<Future<Item = server::Response, Error = hyper::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        let mut state = State::new();
-        self.handler.handle(&mut state, req)
+        self.handler
+            .handle(State::new(), req)
+            .and_then(|(_, response)| future::ok(response))
+            .or_else(|(_, error)| future::err(error))
+            .boxed()
     }
 }
 
@@ -60,11 +64,38 @@ impl<T> server::Service for HandlerService<T>
 /// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
 pub trait Handler: Send + Sync {
     /// Handles the request, returning a boxed future which resolves to a response.
-    fn handle(&self, &mut State, Request) -> Box<HandlerFuture>;
+    fn handle(&self, State, Request) -> Box<HandlerFuture>;
 }
 
-/// Represents an object which can be converted to a response, perhaps asynchronously. This trait
-/// is used in converting the return type of a function into a response.
+/// Represents a type which can be converted into the future type returned by a
+/// [`Handler`][Handler].
+///
+/// [Handler]: trait.Handler.html
+pub trait IntoHandlerFuture {
+    /// Converts this value into a boxed future resolving to a state and response.
+    fn into_handler_future(self) -> Box<HandlerFuture>;
+}
+
+impl<T> IntoHandlerFuture for (State, T)
+    where T: IntoResponse
+{
+    fn into_handler_future(self) -> Box<HandlerFuture> {
+        let (state, t) = self;
+        future::ok((state, t.into_response())).boxed()
+    }
+}
+
+impl IntoHandlerFuture for Box<HandlerFuture> {
+    fn into_handler_future(self) -> Box<HandlerFuture> {
+        self
+    }
+}
+
+/// Represents a type which can be converted to a response. This trait is used in converting the
+/// return type of a function into a response.
+///
+/// The only default implementation is the noop which converts a `hyper::server::Response` by
+/// returning the value unmodified.
 ///
 /// # Examples
 ///
@@ -75,7 +106,7 @@ pub trait Handler: Send + Sync {
 /// #
 /// # use gotham::state::State;
 /// # use gotham::router::{Router, RouterBuilder};
-/// # use gotham::handler::{HandlerFuture, IntoHandlerFuture};
+/// # use gotham::handler::IntoResponse;
 /// # use futures::{future, Future};
 /// # use hyper::Method::Get;
 /// # use hyper::StatusCode;
@@ -92,18 +123,16 @@ pub trait Handler: Send + Sync {
 ///     }
 /// }
 ///
-/// impl IntoHandlerFuture for MyStruct {
-///     fn into_handler_future(self) -> Box<HandlerFuture> {
-///         let response = Response::new()
+/// impl IntoResponse for MyStruct {
+///     fn into_response(self) -> Response {
+///         Response::new()
 ///             .with_status(StatusCode::Ok)
-///             .with_body(self.value);
-///
-///         future::ok(response).boxed()
+///             .with_body(self.value)
 ///     }
 /// }
 ///
-/// fn handler(state: &mut State, req: Request) -> MyStruct {
-///     MyStruct::new()
+/// fn handler(state: State, req: Request) -> (State, MyStruct) {
+///     (state, MyStruct::new())
 /// }
 ///
 /// fn router() -> Router {
@@ -111,7 +140,7 @@ pub trait Handler: Send + Sync {
 ///        routes.direct(Get, "/").to(handler);
 ///     })
 /// }
-///
+/// #
 /// # fn main() {
 /// #   router();
 /// # }
@@ -121,28 +150,22 @@ pub trait Handler: Send + Sync {
 ///
 /// * `hyper::server::Response` &ndash; The response is wrapped in a completed future and boxed
 /// * `Box<HandlerFuture>` &ndash; The boxed future is returned directly
-pub trait IntoHandlerFuture {
-    /// Converts this object into a boxed future resolving to a response.
-    fn into_handler_future(self) -> Box<HandlerFuture>;
+pub trait IntoResponse {
+    /// Converts this value into a `hyper::server::Response`
+    fn into_response(self) -> server::Response;
 }
 
-impl IntoHandlerFuture for server::Response {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
-        future::ok(self).boxed()
-    }
-}
-
-impl IntoHandlerFuture for Box<HandlerFuture> {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
+impl IntoResponse for server::Response {
+    fn into_response(self) -> server::Response {
         self
     }
 }
 
 impl<F, R> Handler for F
-    where F: Fn(&mut State, Request) -> R + Send + Sync,
+    where F: Fn(State, Request) -> R + Send + Sync,
           R: IntoHandlerFuture
 {
-    fn handle(&self, state: &mut State, req: Request) -> Box<HandlerFuture> {
+    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
         self(state, req).into_handler_future()
     }
 }
