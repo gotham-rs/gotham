@@ -6,11 +6,11 @@ use std::any::{Any, TypeId};
 /// Provides storage for request state, and stores one item of each type. The types used for
 /// storage must implement the `gotham::state::StateData` trait to allow its storage.
 pub struct State {
-    data: HashMap<TypeId, Box<Any>>,
+    data: HashMap<TypeId, Box<Any + Send>>,
 }
 
 /// A marker trait for types that can be stored in `State`.
-pub trait StateData {}
+pub trait StateData: Any + Send {}
 
 impl State {
     /// Creates a new, empty `State`
@@ -54,7 +54,7 @@ impl State {
     /// # }
     /// ```
     pub fn put<T>(&mut self, t: T)
-        where T: StateData + 'static
+        where T: StateData
     {
         let type_id = TypeId::of::<T>();
         self.data.insert(type_id, Box::new(t));
@@ -91,7 +91,7 @@ impl State {
     /// # }
     /// ```
     pub fn borrow<T>(&self) -> Option<&T>
-        where T: StateData + 'static
+        where T: StateData
     {
         let type_id = TypeId::of::<T>();
         self.data.get(&type_id).and_then(|b| b.downcast_ref::<T>())
@@ -133,7 +133,7 @@ impl State {
     /// assert!(state.borrow_mut::<AnotherStruct>().is_none());
     /// # }
     pub fn borrow_mut<T>(&mut self) -> Option<&mut T>
-        where T: StateData + 'static
+        where T: StateData
     {
         let type_id = TypeId::of::<T>();
         self.data.get_mut(&type_id).and_then(|b| b.downcast_mut::<T>())
@@ -174,7 +174,7 @@ impl State {
     /// assert!(state.take::<AnotherStruct>().is_none());
     /// # }
     pub fn take<T>(&mut self) -> Option<T>
-        where T: StateData + 'static
+        where T: StateData
     {
         let type_id = TypeId::of::<T>();
         self.data
