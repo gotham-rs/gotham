@@ -34,12 +34,12 @@ use hyper::server::{Request, Response, NewService};
 /// struct MyApp;
 ///
 /// impl MyApp {
-///     fn top(state: &mut State, req: Request) -> Response {
+///     fn top(state: State, req: Request) -> (State, Response) {
 ///         // Handler logic here
 /// #       unimplemented!()
 ///     }
 ///
-///     fn profile(state: &mut State, req: Request) -> Response {
+///     fn profile(state: State, req: Request) -> (State, Response) {
 ///         // Handler logic here
 /// #       unimplemented!()
 ///     }
@@ -83,7 +83,7 @@ impl NewService for Router {
 }
 
 impl Handler for Router {
-    fn handle(&self, state: &mut State, req: Request) -> Box<HandlerFuture> {
+    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
         // Deliberately obtuse implementation while we hash out the API.
         match self.routes
                   .iter()
@@ -110,8 +110,8 @@ impl Handler for Router {
 /// # use hyper::Method::Get;
 /// # use hyper::server::{Http, Request, Response};
 /// #
-/// # fn handler(state: &mut State, req: Request) -> Response {
-/// #     Response::new()
+/// # fn handler(state: State, req: Request) -> (State, Response) {
+/// #     (state, Response::new())
 /// # }
 /// #
 /// # fn main() {
@@ -159,9 +159,9 @@ impl RouterBuilder {
     /// # use hyper::server::{Request, Response};
     /// #
     /// #
-    /// fn handler(state: &mut State, req: Request) -> Response {
+    /// fn handler(state: State, req: Request) -> (State, Response) {
     ///     // Handler implementation here
-    /// #   Response::new()
+    /// #   (state, Response::new())
     /// }
     ///
     /// fn router() -> Router {
@@ -240,13 +240,13 @@ mod tests {
     struct Root {}
 
     impl Root {
-        fn index(_state: &mut State, _req: Request) -> Response {
-            Response::new().with_status(StatusCode::Ok).with_body("Index")
+        fn index(state: State, _req: Request) -> (State, Response) {
+            (state, Response::new().with_status(StatusCode::Ok).with_body("Index"))
         }
 
-        fn async(_state: &mut State, _req: Request) -> Box<HandlerFuture> {
+        fn async(state: State, _req: Request) -> Box<HandlerFuture> {
             let response = Response::new().with_status(StatusCode::Ok).with_body("Async");
-            future::lazy(move || future::ok(response)).boxed()
+            future::lazy(move || future::ok((state, response))).boxed()
         }
 
         fn router() -> Router {
