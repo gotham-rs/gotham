@@ -181,7 +181,7 @@ impl Pipeline {
 ///
 /// `(&mut state, request)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree`
 /// &rarr; `handler`
-pub trait PipelineBuilder: Sized {
+pub unsafe trait PipelineBuilder: Sized {
     /// Builds a `Pipeline`, which has all middleware in the order provided via
     /// `PipelineBuilder::add`, with the `Handler` set to receive requests that pass through the
     /// pipeline.
@@ -228,7 +228,7 @@ pub struct PipeEnd {
     _nothing: (),
 }
 
-impl<M, Tail> PipelineBuilder for PipeSegment<M, Tail>
+unsafe impl<M, Tail> PipelineBuilder for PipeSegment<M, Tail>
     where M: Middleware + Send + Sync + 'static,
           Tail: PipelineBuilder
 {
@@ -242,7 +242,7 @@ impl<M, Tail> PipelineBuilder for PipeSegment<M, Tail>
     }
 }
 
-impl PipelineBuilder for PipeEnd {
+unsafe impl PipelineBuilder for PipeEnd {
     fn build_recurse<F>(self, f: F) -> Pipeline
         where F: Fn(&mut State, Request) -> Box<HandlerFuture> + Send + Sync + 'static
     {
