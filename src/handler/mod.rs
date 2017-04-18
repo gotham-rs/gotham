@@ -21,22 +21,22 @@ pub type HandlerFuture =
 ///
 /// [Handler::handle]: trait.Handler.html#tymethod.handle
 pub struct HandlerService<T>
-    where T: Handler
+    where T: NewHandler
 {
-    handler: T,
+    new_handler: T,
 }
 
 impl<T> HandlerService<T>
-    where T: Handler
+    where T: NewHandler
 {
     /// Creates a new `HandlerService` for the given `Handler`.
     pub fn new(t: T) -> HandlerService<T> {
-        HandlerService { handler: t }
+        HandlerService { new_handler: t }
     }
 }
 
 impl<T> server::Service for HandlerService<T>
-    where T: Handler
+    where T: NewHandler
 {
     type Request = server::Request;
     type Response = server::Response;
@@ -44,7 +44,8 @@ impl<T> server::Service for HandlerService<T>
     type Future = Box<Future<Item = server::Response, Error = hyper::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        self.handler
+        self.new_handler
+            .new_handler()
             .handle(State::new(), req)
             .and_then(|(_, response)| future::ok(response))
             .or_else(|(_, error)| future::err(error))
@@ -68,16 +69,16 @@ pub trait Handler: Send + Sync {
 }
 
 pub trait NewHandler: Send + Sync {
-    type Handler: Handler;
+    type Instance: Handler;
 
-    fn new_handler(&self) -> Self::Handler;
+    fn new_handler(&self) -> Self::Instance;
 }
 
 impl<F, H> NewHandler for F
     where F: Fn() -> H + Send + Sync,
           H: Handler
 {
-    type Handler = H;
+    type Instance = H;
 
     fn new_handler(&self) -> H {
         self()

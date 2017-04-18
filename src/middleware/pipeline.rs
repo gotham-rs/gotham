@@ -1,7 +1,7 @@
 //! Defines types for a middleware pipeline
 
-use middleware::Middleware;
-use handler::{Handler, HandlerFuture};
+use middleware::{Middleware, NewMiddleware};
+use handler::{NewHandler, Handler, HandlerFuture};
 use state::State;
 use hyper::server::Request;
 
@@ -22,8 +22,8 @@ use hyper::server::Request;
 /// #
 /// # use gotham::state::{State, StateData};
 /// # use gotham::handler::{Handler, HandlerFuture, HandlerService};
-/// # use gotham::middleware::Middleware;
-/// # use gotham::middleware::pipeline::{Pipeline, PipelineBuilder};
+/// # use gotham::middleware::{Middleware, NewMiddleware};
+/// # use gotham::middleware::pipeline::{new_pipeline, Pipeline, PipelineBuilder};
 /// # use gotham::router::Router;
 /// # use gotham::test::TestServer;
 /// # use hyper::server::{Request, Response};
@@ -36,34 +36,58 @@ use hyper::server::Request;
 ///
 /// impl StateData for MiddlewareData {}
 ///
+/// #[derive(Clone)]
 /// struct MiddlewareOne;
+/// #[derive(Clone)]
 /// struct MiddlewareTwo;
+/// #[derive(Clone)]
 /// struct MiddlewareThree;
 ///
 /// impl Middleware for MiddlewareOne {
 ///     fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture>
+///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         state.put(MiddlewareData { vec: vec![1] });
 ///         chain(state, req)
 ///     }
 /// }
 ///
+/// impl NewMiddleware for MiddlewareOne {
+///     type Instance = MiddlewareOne;
+///     fn new_middleware(&self) -> MiddlewareOne {
+///         self.clone()
+///     }
+/// }
+///
 /// impl Middleware for MiddlewareTwo {
 ///     fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture>
+///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         state.borrow_mut::<MiddlewareData>().unwrap().vec.push(2);
 ///         chain(state, req)
 ///     }
 /// }
 ///
+/// impl NewMiddleware for MiddlewareTwo {
+///     type Instance = MiddlewareTwo;
+///     fn new_middleware(&self) -> MiddlewareTwo {
+///         self.clone()
+///     }
+/// }
+///
 /// impl Middleware for MiddlewareThree {
 ///     fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture>
+///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         state.borrow_mut::<MiddlewareData>().unwrap().vec.push(3);
 ///         chain(state, req)
+///     }
+/// }
+///
+/// impl NewMiddleware for MiddlewareThree {
+///     type Instance = MiddlewareThree;
+///     fn new_middleware(&self) -> MiddlewareThree {
+///         self.clone()
 ///     }
 /// }
 ///
@@ -76,20 +100,24 @@ use hyper::server::Request;
 ///     (state, Response::new().with_status(StatusCode::Ok).with_body(body))
 /// }
 ///
-/// fn router() -> Pipeline {
-///     let router = Router::build(|routes| {
-///         routes.direct(Get, "/").to(handler);
-///     });
-///
-///     Pipeline::new()
-///         .add(MiddlewareOne)
-///         .add(MiddlewareTwo)
-///         .add(MiddlewareThree)
-///         .build(router)
-/// }
-///
 /// fn main() {
-///     let mut test_server = TestServer::new(|| Ok(HandlerService::new(router()))).unwrap();
+///     let new_service = || {
+///         let router = Router::build(|routes| {
+///             routes.direct(Get, "/").to(handler);
+///         });
+///
+///         let new_handler = move || {
+///             new_pipeline()
+///                 .add(MiddlewareOne)
+///                 .add(MiddlewareTwo)
+///                 .add(MiddlewareThree)
+///                 .build(router.clone())
+///         };
+///
+///         Ok(HandlerService::new(new_handler))
+///     };
+///
+///     let mut test_server = TestServer::new(new_service).unwrap();
 ///     let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
 ///     let uri = "http://example.com/".parse().unwrap();
 ///     let response = test_server.run_request(client.get(uri)).unwrap();
@@ -97,27 +125,65 @@ use hyper::server::Request;
 ///     assert_eq!(test_server.read_body(response).unwrap(), "[1, 2, 3]".as_bytes());
 /// }
 /// ```
-pub struct Pipeline {
-    f: Box<Fn(State, Request) -> Box<HandlerFuture> + Send + Sync>,
+pub struct Pipeline<T, H>
+    where T: PipelineInstance,
+          H: NewHandler
+{
+    builder: Box<PipelineBuilder<Instance = T>>,
+    new_handler: H,
 }
 
-impl Handler for Pipeline {
+impl<T, H> Handler for Pipeline<T, H>
+    where T: PipelineInstance,
+          H: NewHandler,
+          H::Instance: 'static
+{
     fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        (self.f)(state, req)
+        let handler = self.new_handler.new_handler();
+        self.builder.spawn().call(state, req, move |state, req| handler.handle(state, req))
     }
 }
 
-impl Pipeline {
-    /// Begins defining a new pipeline. The returned [`PipeEnd`][PipeEnd] implements the
-    /// [`PipelineBuilder`][PipelineBuilder] trait, which is used to define a pipeline using the
-    /// builder pattern.
-    ///
-    /// See [`PipelineBuilder`][PipelineBuilder] for information on using `Pipeline::new()`
-    ///
-    /// [PipelineBuilder]: trait.PipelineBuilder.html
-    /// [PipeEnd]: struct.PipeEnd.html
-    pub fn new() -> PipeEnd {
-        PipeEnd { _nothing: () }
+/// Begins defining a new pipeline. The returned [`PipeEnd`][PipeEnd] implements the
+/// [`PipelineBuilder`][PipelineBuilder] trait, which is used to define a pipeline using the
+/// builder pattern.
+///
+/// See [`PipelineBuilder`][PipelineBuilder] for information on using `Pipeline::new()`
+///
+/// [PipelineBuilder]: trait.PipelineBuilder.html
+/// [PipeEnd]: struct.PipeEnd.html
+pub fn new_pipeline() -> PipeEnd {
+    PipeEnd { _nothing: () }
+}
+
+pub unsafe trait PipelineInstance: Sized {
+    fn call<H>(self, state: State, request: Request, handler: H) -> Box<HandlerFuture>
+        where H: Handler + 'static
+    {
+        self.call_recurse(state, request, move |state, req| handler.handle(state, req))
+    }
+
+    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static;
+}
+
+unsafe impl PipelineInstance for () {
+    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static
+    {
+        f(state, request)
+    }
+}
+
+unsafe impl<T, U> PipelineInstance for (T, U)
+    where T: Middleware + Send + Sync + 'static,
+          U: PipelineInstance
+{
+    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static
+    {
+        let (m, p) = self;
+        p.call_recurse(state, request, move |state, req| m.call(state, req, f))
     }
 }
 
@@ -131,36 +197,60 @@ impl Pipeline {
 /// #
 /// # use gotham::state::State;
 /// # use gotham::handler::{Handler, HandlerFuture};
-/// # use gotham::middleware::Middleware;
-/// # use gotham::middleware::pipeline::{Pipeline, PipelineBuilder};
+/// # use gotham::middleware::{Middleware, NewMiddleware};
+/// # use gotham::middleware::pipeline::{new_pipeline, Pipeline, PipelineBuilder};
 /// # use hyper::server::{Request, Response};
 /// # use hyper::StatusCode;
 /// #
+/// # #[derive(Clone)]
 /// # struct MiddlewareOne;
+/// # #[derive(Clone)]
 /// # struct MiddlewareTwo;
+/// # #[derive(Clone)]
 /// # struct MiddlewareThree;
 /// #
 /// # impl Middleware for MiddlewareOne {
 /// #   fn call<Chain>(&self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State, Request) -> Box<HandlerFuture>
+/// #       where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
 /// #   {
 /// #       chain(state, req)
+/// #   }
+/// # }
+/// #
+/// # impl NewMiddleware for MiddlewareOne {
+/// #   type Instance = MiddlewareOne;
+/// #   fn new_middleware(&self) -> MiddlewareOne {
+/// #       self.clone()
 /// #   }
 /// # }
 /// #
 /// # impl Middleware for MiddlewareTwo {
 /// #   fn call<Chain>(&self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State, Request) -> Box<HandlerFuture>
+/// #       where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
 /// #   {
 /// #       chain(state, req)
 /// #   }
 /// # }
 /// #
+/// # impl NewMiddleware for MiddlewareTwo {
+/// #   type Instance = MiddlewareTwo;
+/// #   fn new_middleware(&self) -> MiddlewareTwo {
+/// #       self.clone()
+/// #   }
+/// # }
+/// #
 /// # impl Middleware for MiddlewareThree {
 /// #   fn call<Chain>(&self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State, Request) -> Box<HandlerFuture>
+/// #       where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
 /// #   {
 /// #       chain(state, req)
+/// #   }
+/// # }
+/// #
+/// # impl NewMiddleware for MiddlewareThree {
+/// #   type Instance = MiddlewareThree;
+/// #   fn new_middleware(&self) -> MiddlewareThree {
+/// #       self.clone()
 /// #   }
 /// # }
 /// #
@@ -169,11 +259,11 @@ impl Pipeline {
 /// # }
 /// #
 /// # fn main() {
-/// let pipeline: Pipeline = Pipeline::new()
+/// let pipeline: Pipeline<_, _> = new_pipeline()
 ///     .add(MiddlewareOne)
 ///     .add(MiddlewareTwo)
 ///     .add(MiddlewareThree)
-///     .build(handler);
+///     .build(|| handler);
 /// # }
 /// ```
 ///
@@ -181,19 +271,26 @@ impl Pipeline {
 ///
 /// `(&mut state, request)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree`
 /// &rarr; `handler`
-pub unsafe trait PipelineBuilder: Sized {
+pub unsafe trait PipelineBuilder: Send + Sync {
+    type Instance: PipelineInstance;
+
     /// Builds a `Pipeline`, which has all middleware in the order provided via
     /// `PipelineBuilder::add`, with the `Handler` set to receive requests that pass through the
     /// pipeline.
-    fn build<H>(self, handler: H) -> Pipeline
-        where H: Handler + 'static
+    fn build<H>(self, h: H) -> Pipeline<Self::Instance, H>
+        where H: NewHandler,
+              Self: Sized + 'static
     {
-        self.build_recurse(move |state: State, req: Request| handler.handle(state, req))
+        Pipeline {
+            builder: Box::new(self),
+            new_handler: h,
+        }
     }
 
     /// Adds a `Middleware` which will be in the `Pipeline` returned from `PipelineBuilder::build`.
     fn add<M>(self, m: M) -> PipeSegment<M, Self>
-        where M: Middleware + Send + Sync
+        where M: NewMiddleware + Send + Sync,
+              Self: Sized
     {
         PipeSegment {
             middleware: m,
@@ -201,10 +298,9 @@ pub unsafe trait PipelineBuilder: Sized {
         }
     }
 
-    /// Internal function for recursively building a `Pipeline`.
+    /// Internal function for spawning a `Pipeline`.
     #[doc(hidden)]
-    fn build_recurse<F>(self, f: F) -> Pipeline
-        where F: Fn(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static;
+    fn spawn(&self) -> Self::Instance;
 }
 
 /// A segment of a [`PipelineBuilder`][PipelineBuilder] which represents a
@@ -214,7 +310,7 @@ pub unsafe trait PipelineBuilder: Sized {
 /// [Middleware]: ../trait.Middleware.html
 /// [PipelineBuilder]: trait.PipelineBuilder.html
 pub struct PipeSegment<M, Tail>
-    where M: Middleware + Send + Sync,
+    where M: NewMiddleware + Send + Sync,
           Tail: PipelineBuilder
 {
     middleware: M,
@@ -229,23 +325,21 @@ pub struct PipeEnd {
 }
 
 unsafe impl<M, Tail> PipelineBuilder for PipeSegment<M, Tail>
-    where M: Middleware + Send + Sync + 'static,
+    where M: NewMiddleware + Send + Sync,
+          M::Instance: Send + Sync + 'static,
           Tail: PipelineBuilder
 {
-    fn build_recurse<F>(self, f: F) -> Pipeline
-        where F: Fn(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static
-    {
-        let middleware = self.middleware;
-        self.tail.build_recurse(move |state: State, req: Request| middleware.call(state, req, &f))
+    type Instance = (M::Instance, Tail::Instance);
+
+    fn spawn(&self) -> Self::Instance {
+        (self.middleware.new_middleware(), self.tail.spawn())
     }
 }
 
 unsafe impl PipelineBuilder for PipeEnd {
-    fn build_recurse<F>(self, f: F) -> Pipeline
-        where F: Fn(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static
-    {
-        Pipeline { f: Box::new(f) }
-    }
+    type Instance = ();
+
+    fn spawn(&self) {}
 }
 
 #[cfg(test)]
@@ -267,9 +361,17 @@ mod tests {
         value: i32,
     }
 
+    impl NewMiddleware for Number {
+        type Instance = Number;
+
+        fn new_middleware(&self) -> Number {
+            self.clone()
+        }
+    }
+
     impl Middleware for Number {
         fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-            where Chain: FnOnce(State, Request) -> Box<HandlerFuture>,
+            where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
                   Self: Sized
         {
             state.put(self.clone());
@@ -283,9 +385,17 @@ mod tests {
         value: i32,
     }
 
+    impl NewMiddleware for Addition {
+        type Instance = Addition;
+
+        fn new_middleware(&self) -> Addition {
+            Addition { ..*self }
+        }
+    }
+
     impl Middleware for Addition {
         fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-            where Chain: FnOnce(State, Request) -> Box<HandlerFuture>,
+            where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
                   Self: Sized
         {
             state.borrow_mut::<Number>().unwrap().value += self.value;
@@ -297,9 +407,17 @@ mod tests {
         value: i32,
     }
 
+    impl NewMiddleware for Multiplication {
+        type Instance = Multiplication;
+
+        fn new_middleware(&self) -> Multiplication {
+            Multiplication { ..*self }
+        }
+    }
+
     impl Middleware for Multiplication {
         fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-            where Chain: FnOnce(State, Request) -> Box<HandlerFuture>,
+            where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
                   Self: Sized
         {
             state.borrow_mut::<Number>().unwrap().value *= self.value;
@@ -310,7 +428,8 @@ mod tests {
     #[test]
     fn pipeline_ordering_test() {
         let new_service = || {
-            let pipeline = Pipeline::new()
+            Ok(HandlerService::new(|| {
+                new_pipeline()
                 .add(Number { value: 0 }) // 0
                 .add(Addition { value: 1 }) // 1
                 .add(Multiplication { value: 2 }) // 2
@@ -318,8 +437,8 @@ mod tests {
                 .add(Multiplication { value: 2 }) // 6
                 .add(Addition { value: 2 }) // 8
                 .add(Multiplication { value: 3 }) // 24
-                .build(handler);
-            Ok(HandlerService::new(pipeline))
+                .build(|| handler)
+            }))
         };
 
         let uri = "http://localhost/".parse().unwrap();

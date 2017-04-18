@@ -2,7 +2,7 @@
 
 use std::io;
 use std::sync::Arc;
-use handler::{Handler, HandlerFuture, HandlerService};
+use handler::{Handler, HandlerFuture, HandlerService, NewHandler};
 use state::State;
 use hyper::{self, Method};
 use hyper::server::{Request, Response, NewService};
@@ -79,6 +79,14 @@ impl NewService for Router {
 
     fn new_service(&self) -> io::Result<Self::Instance> {
         Ok(HandlerService::new(self.clone()))
+    }
+}
+
+impl NewHandler for Router {
+    type Instance = Router;
+
+    fn new_handler(&self) -> Self::Instance {
+        self.clone()
     }
 }
 
