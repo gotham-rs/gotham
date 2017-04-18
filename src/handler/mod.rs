@@ -67,6 +67,23 @@ pub trait Handler: Send + Sync {
     fn handle(&self, State, Request) -> Box<HandlerFuture>;
 }
 
+pub trait NewHandler: Send + Sync {
+    type Handler: Handler;
+
+    fn new_handler(&self) -> Self::Handler;
+}
+
+impl<F, H> NewHandler for F
+    where F: Fn() -> H + Send + Sync,
+          H: Handler
+{
+    type Handler = H;
+
+    fn new_handler(&self) -> H {
+        self()
+    }
+}
+
 /// Represents a type which can be converted into the future type returned by a
 /// [`Handler`][Handler].
 ///
