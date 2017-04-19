@@ -1,6 +1,6 @@
 use gotham::handler::HandlerFuture;
 use gotham::state::{State, StateData};
-use gotham::middleware::Middleware;
+use gotham::middleware::{Middleware, NewMiddleware};
 use hyper::server::Request;
 use futures::{future, Future};
 
@@ -12,6 +12,14 @@ impl StateData for KitchenSinkData {}
 
 pub struct KitchenSinkMiddleware {
     pub header_name: &'static str,
+}
+
+impl NewMiddleware for KitchenSinkMiddleware {
+    type Instance = KitchenSinkMiddleware;
+
+    fn new_middleware(&self) -> Self::Instance {
+        KitchenSinkMiddleware { ..*self }
+    }
 }
 
 impl Middleware for KitchenSinkMiddleware {

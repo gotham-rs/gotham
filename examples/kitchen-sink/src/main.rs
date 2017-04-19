@@ -15,7 +15,7 @@ use hyper::server::{Http, Request, Response};
 use gotham::router::Router;
 use gotham::handler::{HandlerFuture, HandlerService};
 use gotham::state::State;
-use gotham::middleware::pipeline::{Pipeline, PipelineBuilder};
+use gotham::middleware::pipeline::{new_pipeline, Pipeline, PipelineBuilder};
 
 use self::middleware::{KitchenSinkData, KitchenSinkMiddleware};
 
@@ -34,8 +34,8 @@ fn router() -> Router {
     })
 }
 
-fn app() -> Pipeline {
-    Pipeline::new().add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" }).build(router())
+fn app() -> Pipeline<(KitchenSinkMiddleware, ()), Router> {
+    new_pipeline().add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" }).build(router())
 }
 
 impl Echo {
