@@ -43,62 +43,69 @@ use futures::{future, Future};
 ///
 /// impl StateData for MiddlewareData {}
 ///
-/// #[derive(Clone)]
+/// # #[derive(Clone)]
 /// struct MiddlewareOne;
-/// #[derive(Clone)]
+/// # #[derive(Clone)]
 /// struct MiddlewareTwo;
-/// #[derive(Clone)]
+/// # #[derive(Clone)]
 /// struct MiddlewareThree;
 ///
 /// impl Middleware for MiddlewareOne {
-///     fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
-///     {
-///         state.put(MiddlewareData { vec: vec![1] });
-///         chain(state, req)
-///     }
+///     // Implementation elided.
+///     // Appends `1` to `MiddlewareData.vec`
+/// #     fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
+/// #         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+/// #     {
+/// #         state.put(MiddlewareData { vec: vec![1] });
+/// #         chain(state, req)
+/// #     }
 /// }
-///
-/// impl NewMiddleware for MiddlewareOne {
-///     type Instance = MiddlewareOne;
-///     fn new_middleware(&self) -> io::Result<MiddlewareOne> {
-///         Ok(self.clone())
-///     }
-/// }
+/// #
+/// # impl NewMiddleware for MiddlewareOne {
+/// #     type Instance = MiddlewareOne;
+/// #     fn new_middleware(&self) -> io::Result<MiddlewareOne> {
+/// #         Ok(self.clone())
+/// #     }
+/// # }
 ///
 /// impl Middleware for MiddlewareTwo {
-///     fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
-///     {
-///         state.borrow_mut::<MiddlewareData>().unwrap().vec.push(2);
-///         chain(state, req)
-///     }
+///     // Implementation elided.
+///     // Appends `2` to `MiddlewareData.vec`
+/// #     fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
+/// #         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+/// #     {
+/// #         state.borrow_mut::<MiddlewareData>().unwrap().vec.push(2);
+/// #         chain(state, req)
+/// #     }
 /// }
-///
-/// impl NewMiddleware for MiddlewareTwo {
-///     type Instance = MiddlewareTwo;
-///     fn new_middleware(&self) -> io::Result<MiddlewareTwo> {
-///         Ok(self.clone())
-///     }
-/// }
+/// #
+/// # impl NewMiddleware for MiddlewareTwo {
+/// #     type Instance = MiddlewareTwo;
+/// #     fn new_middleware(&self) -> io::Result<MiddlewareTwo> {
+/// #         Ok(self.clone())
+/// #     }
+/// # }
 ///
 /// impl Middleware for MiddlewareThree {
-///     fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
-///     {
-///         state.borrow_mut::<MiddlewareData>().unwrap().vec.push(3);
-///         chain(state, req)
-///     }
+///     // Implementation elided.
+///     // Appends `3` to `MiddlewareData.vec`
+/// #     fn call<Chain>(&self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
+/// #         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+/// #     {
+/// #         state.borrow_mut::<MiddlewareData>().unwrap().vec.push(3);
+/// #         chain(state, req)
+/// #     }
 /// }
-///
-/// impl NewMiddleware for MiddlewareThree {
-///     type Instance = MiddlewareThree;
-///     fn new_middleware(&self) -> io::Result<MiddlewareThree> {
-///         Ok(self.clone())
-///     }
-/// }
+/// #
+/// # impl NewMiddleware for MiddlewareThree {
+/// #     type Instance = MiddlewareThree;
+/// #     fn new_middleware(&self) -> io::Result<MiddlewareThree> {
+/// #         Ok(self.clone())
+/// #     }
+/// # }
 ///
 /// fn handler(mut state: State, req: Request) -> (State, Response) {
+///     // Dump the contents of the `Vec<i32>` into the response body.
 ///     let body = {
 ///         let data = state.borrow::<MiddlewareData>().unwrap();
 ///         format!("{:?}", data.vec)
@@ -109,10 +116,12 @@ use futures::{future, Future};
 ///
 /// fn main() {
 ///     let new_service = NewHandlerService::new(|| {
+///         // Define a `Router`
 ///         let router = Router::build(|routes| {
 ///             routes.direct(Get, "/").to(handler);
 ///         });
 ///
+///         // Build the `Pipeline`
 ///         Ok(new_pipeline()
 ///             .add(MiddlewareOne)
 ///             .add(MiddlewareTwo)
@@ -166,6 +175,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
     PipelineBuilder { t: () }
 }
 
+/// Allows a pipeline to be defined by adding `NewMiddleware` values, and building a `Pipeline`.
 ///
 /// # Examples
 ///
@@ -260,9 +270,8 @@ pub struct PipelineBuilder<T>
 impl<T> PipelineBuilder<T>
     where T: NewPipelineInstance
 {
-    /// Builds a `Pipeline`, which has all middleware in the order provided via
-    /// `PipelineBuilder::add`, with the `Handler` set to receive requests that pass through the
-    /// pipeline.
+    /// Builds a `Pipeline`, which will execute all middleware in the order provided via `add` and
+    /// process requests via the `Handler` instance created by the `NewHandler`.
     pub fn build<H>(self, h: H) -> Pipeline<T, H>
         where T: NewPipelineInstance,
               H: NewHandler,

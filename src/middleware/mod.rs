@@ -121,8 +121,8 @@ pub mod pipeline;
 ///     fn call<Chain>(&self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
 ///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
 ///     {
-///         // This could be any asynchronous action. `future::lazy(_)` defers a function until the
-///         // next cycle of tokio's event loop.
+///         // This could be any asynchronous action. `future::lazy(_)` defers a function
+///         // until the next cycle of tokio's event loop.
 ///         let f = future::lazy(|| future::ok(()));
 ///         f.and_then(move |_| chain(state, req)).boxed()
 ///     }
