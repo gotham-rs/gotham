@@ -10,10 +10,38 @@ use hyper::server;
 use hyper::server::Request;
 use futures::{future, Future};
 use state::State;
+use std::io;
 
 /// A type alias for the trait objects returned by `HandlerService`
 pub type HandlerFuture =
     Future<Item = (State, server::Response), Error = (State, hyper::Error)> + Send;
+
+pub struct NewHandlerService<T>
+    where T: NewHandler + 'static
+{
+    t: T,
+}
+
+impl<T> NewHandlerService<T>
+    where T: NewHandler + 'static
+{
+    pub fn new(t: T) -> NewHandlerService<T> {
+        NewHandlerService { t: t }
+    }
+}
+
+impl<T> server::NewService for NewHandlerService<T>
+    where T: NewHandler + 'static
+{
+    type Request = server::Request;
+    type Response = server::Response;
+    type Error = hyper::Error;
+    type Instance = HandlerService<T::Instance>;
+
+    fn new_service(&self) -> io::Result<Self::Instance> {
+        Ok(HandlerService::new(self.t.new_handler()))
+    }
+}
 
 /// `HandlerService` wraps a Gotham `Handler` and exposes a hyper `Service`.
 ///
@@ -21,22 +49,22 @@ pub type HandlerFuture =
 ///
 /// [Handler::handle]: trait.Handler.html#tymethod.handle
 pub struct HandlerService<T>
-    where T: NewHandler
+    where T: Handler
 {
-    new_handler: T,
+    handler: T,
 }
 
 impl<T> HandlerService<T>
-    where T: NewHandler
+    where T: Handler
 {
     /// Creates a new `HandlerService` for the given `Handler`.
     pub fn new(t: T) -> HandlerService<T> {
-        HandlerService { new_handler: t }
+        HandlerService { handler: t }
     }
 }
 
 impl<T> server::Service for HandlerService<T>
-    where T: NewHandler
+    where T: Handler
 {
     type Request = server::Request;
     type Response = server::Response;
@@ -44,8 +72,7 @@ impl<T> server::Service for HandlerService<T>
     type Future = Box<Future<Item = server::Response, Error = hyper::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        self.new_handler
-            .new_handler()
+        self.handler
             .handle(State::new(), req)
             .and_then(|(_, response)| future::ok(response))
             .or_else(|(_, error)| future::err(error))

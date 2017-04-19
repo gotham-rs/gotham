@@ -21,7 +21,7 @@ use hyper::server::Request;
 /// # extern crate futures;
 /// #
 /// # use gotham::state::{State, StateData};
-/// # use gotham::handler::{Handler, HandlerFuture, HandlerService};
+/// # use gotham::handler::{Handler, HandlerFuture, HandlerService, NewHandlerService};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
 /// # use gotham::middleware::pipeline::{new_pipeline, Pipeline, PipelineBuilder};
 /// # use gotham::router::Router;
@@ -101,21 +101,17 @@ use hyper::server::Request;
 /// }
 ///
 /// fn main() {
-///     let new_service = || {
+///     let new_service = NewHandlerService::new(|| {
 ///         let router = Router::build(|routes| {
 ///             routes.direct(Get, "/").to(handler);
 ///         });
 ///
-///         let new_handler = move || {
-///             new_pipeline()
-///                 .add(MiddlewareOne)
-///                 .add(MiddlewareTwo)
-///                 .add(MiddlewareThree)
-///                 .build(router.clone())
-///         };
-///
-///         Ok(HandlerService::new(new_handler))
-///     };
+///         new_pipeline()
+///             .add(MiddlewareOne)
+///             .add(MiddlewareTwo)
+///             .add(MiddlewareThree)
+///             .build(router.clone())
+///     });
 ///
 ///     let mut test_server = TestServer::new(new_service).unwrap();
 ///     let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
@@ -346,7 +342,7 @@ unsafe impl PipelineBuilder for PipeEnd {
 mod tests {
     use super::*;
     use test::TestServer;
-    use handler::HandlerService;
+    use handler::NewHandlerService;
     use state::StateData;
     use hyper::server::Response;
     use hyper::StatusCode;
@@ -427,9 +423,8 @@ mod tests {
 
     #[test]
     fn pipeline_ordering_test() {
-        let new_service = || {
-            Ok(HandlerService::new(|| {
-                new_pipeline()
+        let new_service = NewHandlerService::new(|| {
+            new_pipeline()
                 .add(Number { value: 0 }) // 0
                 .add(Addition { value: 1 }) // 1
                 .add(Multiplication { value: 2 }) // 2
@@ -438,8 +433,7 @@ mod tests {
                 .add(Addition { value: 2 }) // 8
                 .add(Multiplication { value: 3 }) // 24
                 .build(|| handler)
-            }))
-        };
+        });
 
         let uri = "http://localhost/".parse().unwrap();
 
