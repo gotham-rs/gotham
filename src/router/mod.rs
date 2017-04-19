@@ -1,11 +1,10 @@
 //! Defines the Gotham `Router`, which dispatches requests to the correct `Handler`
 
-use std::io;
 use std::sync::Arc;
-use handler::{Handler, HandlerFuture, HandlerService, NewHandler};
+use handler::{Handler, HandlerFuture, NewHandler, NewHandlerService};
 use state::State;
-use hyper::{self, Method};
-use hyper::server::{Request, Response, NewService};
+use hyper::Method;
+use hyper::server::Request;
 
 /// The `Router` type is the main entry point into a Gotham app, and it implements
 /// `hyper::server::NewService` so that it can be passed directly to hyper after creation.
@@ -47,7 +46,7 @@ use hyper::server::{Request, Response, NewService};
 ///
 /// fn main() {
 ///     let addr = "127.0.0.1:9000".parse().unwrap();
-///     let server = Http::new().bind(&addr, router()).unwrap();
+///     let server = Http::new().bind(&addr, router().into_new_service()).unwrap();
 ///     // As normal:
 ///     // server.run().unwrap()
 /// }
@@ -69,16 +68,9 @@ impl Router {
         f(&mut builder);
         builder.into_router()
     }
-}
 
-impl NewService for Router {
-    type Request = Request;
-    type Response = Response;
-    type Error = hyper::Error;
-    type Instance = HandlerService<Router>;
-
-    fn new_service(&self) -> io::Result<Self::Instance> {
-        Ok(HandlerService::new(self.clone()))
+    pub fn into_new_service(self) -> NewHandlerService<Router> {
+        NewHandlerService::new(self)
     }
 }
 
@@ -242,6 +234,7 @@ mod tests {
     use super::*;
     use hyper::Method::*;
     use hyper::StatusCode;
+    use hyper::server::Response;
     use test::TestServer;
     use futures::{future, Future};
 
@@ -267,7 +260,7 @@ mod tests {
 
     #[test]
     fn route_async_request() {
-        let mut test_server = TestServer::new(Root::router()).unwrap();
+        let mut test_server = TestServer::new(Root::router().into_new_service()).unwrap();
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/async".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
@@ -277,7 +270,7 @@ mod tests {
 
     #[test]
     fn route_direct_request() {
-        let mut test_server = TestServer::new(Root::router()).unwrap();
+        let mut test_server = TestServer::new(Root::router().into_new_service()).unwrap();
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
@@ -287,7 +280,7 @@ mod tests {
 
     #[test]
     fn route_direct_request_ignoring_query_params() {
-        let mut test_server = TestServer::new(Root::router()).unwrap();
+        let mut test_server = TestServer::new(Root::router().into_new_service()).unwrap();
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/?x=y".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
