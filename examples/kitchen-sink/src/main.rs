@@ -15,7 +15,7 @@ use hyper::server::{Http, Request, Response};
 use gotham::router::Router;
 use gotham::handler::{HandlerFuture, HandlerService};
 use gotham::state::State;
-use gotham::middleware::pipeline::{new_pipeline, Pipeline, PipelineBuilder};
+use gotham::middleware::pipeline::{new_pipeline, Pipeline};
 
 use self::middleware::{KitchenSinkData, KitchenSinkMiddleware};
 

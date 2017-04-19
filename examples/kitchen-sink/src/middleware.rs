@@ -1,3 +1,4 @@
+use std::io;
 use gotham::handler::HandlerFuture;
 use gotham::state::{State, StateData};
 use gotham::middleware::{Middleware, NewMiddleware};
