@@ -129,22 +129,22 @@ use futures::{future, Future};
 /// }
 /// ```
 pub struct Pipeline<T, H>
-    where T: PipelineInstance,
+    where T: NewPipelineInstance,
           H: NewHandler
 {
-    builder: Box<PipelineBuilder<Instance = T>>,
+    builder: PipelineBuilder<T>,
     new_handler: H,
 }
 
 impl<T, H> Handler for Pipeline<T, H>
-    where T: PipelineInstance,
+    where T: NewPipelineInstance + Send + Sync,
           H: NewHandler,
           H::Instance: 'static
 {
     fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
         match self.new_handler.new_handler() {
             Ok(handler) => {
-                match self.builder.spawn() {
+                match self.builder.t.new_pipeline_instance() {
                     Ok(p) => p.call(state, req, move |state, req| handler.handle(state, req)),
                     Err(e) => future::err((state, e.into())).boxed(),
                 }
@@ -162,47 +162,8 @@ impl<T, H> Handler for Pipeline<T, H>
 ///
 /// [PipelineBuilder]: trait.PipelineBuilder.html
 /// [PipeEnd]: struct.PipeEnd.html
-pub fn new_pipeline() -> PipeEnd {
-    PipeEnd { _nothing: () }
-}
-
-/// A recursive type representing an instance of a pipeline, which is used to process a single
-/// request.
-///
-/// This type should never be implemented outside of Gotham, does not form part of the public API,
-/// and is subject to change without notice.
-pub unsafe trait PipelineInstance: Sized {
-    /// Dispatches a request to the given `Handler` after processing all `Middleware` in the
-    /// pipeline.
-    fn call<H>(self, state: State, request: Request, handler: H) -> Box<HandlerFuture>
-        where H: Handler + 'static
-    {
-        self.call_recurse(state, request, move |state, req| handler.handle(state, req))
-    }
-
-    /// Recursive function for processing middleware and chaining to the given function.
-    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
-        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static;
-}
-
-unsafe impl PipelineInstance for () {
-    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
-        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static
-    {
-        f(state, request)
-    }
-}
-
-unsafe impl<T, U> PipelineInstance for (T, U)
-    where T: Middleware + Send + Sync + 'static,
-          U: PipelineInstance
-{
-    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
-        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static
-    {
-        let (m, p) = self;
-        p.call_recurse(state, request, move |state, req| m.call(state, req, f))
-    }
+pub fn new_pipeline() -> PipelineBuilder<()> {
+    PipelineBuilder { t: () }
 }
 
 ///
@@ -290,77 +251,110 @@ unsafe impl<T, U> PipelineInstance for (T, U)
 ///
 /// `(&mut state, request)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree`
 /// &rarr; `handler`
-pub unsafe trait PipelineBuilder: Send + Sync {
-    /// The type of `PipelineInstance` created by the builder.
-    type Instance: PipelineInstance;
+pub struct PipelineBuilder<T>
+    where T: NewPipelineInstance
+{
+    t: T,
+}
 
+impl<T> PipelineBuilder<T>
+    where T: NewPipelineInstance
+{
     /// Builds a `Pipeline`, which has all middleware in the order provided via
     /// `PipelineBuilder::add`, with the `Handler` set to receive requests that pass through the
     /// pipeline.
-    fn build<H>(self, h: H) -> Pipeline<Self::Instance, H>
-        where H: NewHandler,
+    pub fn build<H>(self, h: H) -> Pipeline<T, H>
+        where T: NewPipelineInstance,
+              H: NewHandler,
               Self: Sized + 'static
     {
         Pipeline {
-            builder: Box::new(self),
+            builder: self,
             new_handler: h,
         }
     }
 
-    /// Adds a `Middleware` which will be in the `Pipeline` returned from `PipelineBuilder::build`.
-    fn add<M>(self, m: M) -> PipeSegment<M, Self>
-        where M: NewMiddleware + Send + Sync,
+    /// Adds a `NewMiddleware` which will have its `Middleware` added to the `Pipeline` returned
+    /// from `PipelineBuilder::build`.
+    pub fn add<M>(self, m: M) -> PipelineBuilder<(M, T)>
+        where M: NewMiddleware,
+              M::Instance: Send + 'static,
               Self: Sized
     {
-        PipeSegment {
-            middleware: m,
-            tail: self,
-        }
-    }
-
-    /// Internal function for spawning a `Pipeline`.
-    #[doc(hidden)]
-    fn spawn(&self) -> io::Result<Self::Instance>;
-}
-
-/// A segment of a [`PipelineBuilder`][PipelineBuilder] which represents a
-/// [`Middleware`][Middleware] that has been added to an existing
-/// [`PipelineBuilder`][PipelineBuilder].
-///
-/// [Middleware]: ../trait.Middleware.html
-/// [PipelineBuilder]: trait.PipelineBuilder.html
-pub struct PipeSegment<M, Tail>
-    where M: NewMiddleware + Send + Sync,
-          Tail: PipelineBuilder
-{
-    middleware: M,
-    tail: Tail,
-}
-
-/// An empty [`PipelineBuilder`][PipelineBuilder].
-///
-/// [PipelineBuilder]: trait.PipelineBuilder.html
-pub struct PipeEnd {
-    _nothing: (),
-}
-
-unsafe impl<M, Tail> PipelineBuilder for PipeSegment<M, Tail>
-    where M: NewMiddleware + Send + Sync,
-          M::Instance: Send + Sync + 'static,
-          Tail: PipelineBuilder
-{
-    type Instance = (M::Instance, Tail::Instance);
-
-    fn spawn(&self) -> io::Result<Self::Instance> {
-        Ok((self.middleware.new_middleware()?, self.tail.spawn()?))
+        PipelineBuilder { t: (m, self.t) }
     }
 }
 
-unsafe impl PipelineBuilder for PipeEnd {
+/// A recursive type representing a pipeline, which is used to spawn a `PipelineInstance`.
+///
+/// This type should never be implemented outside of Gotham, does not form part of the public API,
+/// and is subject to change without notice.
+#[doc(hidden)]
+pub unsafe trait NewPipelineInstance: Sized {
+    type Instance: PipelineInstance;
+
+    /// Create and return a new `PipelineInstance` value.
+    fn new_pipeline_instance(&self) -> io::Result<Self::Instance>;
+}
+
+unsafe impl<T, U> NewPipelineInstance for (T, U)
+    where T: NewMiddleware,
+          T::Instance: Send + 'static,
+          U: NewPipelineInstance
+{
+    type Instance = (T::Instance, U::Instance);
+
+    fn new_pipeline_instance(&self) -> io::Result<Self::Instance> {
+        let (ref nm, ref tail) = *self;
+        Ok((nm.new_middleware()?, tail.new_pipeline_instance()?))
+    }
+}
+
+unsafe impl NewPipelineInstance for () {
     type Instance = ();
 
-    fn spawn(&self) -> io::Result<Self::Instance> {
+    fn new_pipeline_instance(&self) -> io::Result<Self::Instance> {
         Ok(())
+    }
+}
+
+/// A recursive type representing an instance of a pipeline, which is used to process a single
+/// request.
+///
+/// This type should never be implemented outside of Gotham, does not form part of the public API,
+/// and is subject to change without notice.
+#[doc(hidden)]
+pub unsafe trait PipelineInstance: Sized {
+    /// Dispatches a request to the given `Handler` after processing all `Middleware` in the
+    /// pipeline.
+    fn call<H>(self, state: State, request: Request, handler: H) -> Box<HandlerFuture>
+        where H: Handler + 'static
+    {
+        self.call_recurse(state, request, move |state, req| handler.handle(state, req))
+    }
+
+    /// Recursive function for processing middleware and chaining to the given function.
+    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static;
+}
+
+unsafe impl PipelineInstance for () {
+    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+    {
+        f(state, request)
+    }
+}
+
+unsafe impl<T, U> PipelineInstance for (T, U)
+    where T: Middleware + Send + 'static,
+          U: PipelineInstance
+{
+    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+    {
+        let (m, p) = self;
+        p.call_recurse(state, request, move |state, req| m.call(state, req, f))
     }
 }
 
