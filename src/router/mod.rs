@@ -7,15 +7,15 @@ use state::State;
 use hyper::Method;
 use hyper::server::Request;
 
-/// The `Router` type is the main entry point into a Gotham app, and it implements
-/// `hyper::server::NewService` so that it can be passed directly to hyper after creation.
+/// The `Router` type is the main entry point into a Gotham app, and supports being used directly
+/// with hyper via the `Router::into_new_service(self)` function.
 ///
 /// To create a `Router`, call `Router::build` with a closure which receives a `RouterBuilder` and
 /// uses it to define routes.
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
@@ -48,8 +48,7 @@ use hyper::server::Request;
 /// fn main() {
 ///     let addr = "127.0.0.1:9000".parse().unwrap();
 ///     let server = Http::new().bind(&addr, router().into_new_service()).unwrap();
-///     // As normal:
-///     // server.run().unwrap()
+///     server.run().unwrap()
 /// }
 /// ```
 #[derive(Clone)]
@@ -70,6 +69,8 @@ impl Router {
         builder.into_router()
     }
 
+    /// Returns a value which implements `hyper::server::NewService`, and can be used directly when
+    /// spawning a new server.
     pub fn into_new_service(self) -> NewHandlerService<Router> {
         NewHandlerService::new(self)
     }

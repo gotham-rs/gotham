@@ -16,6 +16,8 @@ use std::io;
 pub type HandlerFuture =
     Future<Item = (State, server::Response), Error = (State, hyper::Error)> + Send;
 
+/// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
+/// handlers.
 pub struct NewHandlerService<T>
     where T: NewHandler + 'static
 {
@@ -25,6 +27,54 @@ pub struct NewHandlerService<T>
 impl<T> NewHandlerService<T>
     where T: NewHandler + 'static
 {
+    /// Creates a `NewHandlerService` for the given `NewHandler`.
+    ///
+    /// # Examples
+    ///
+    /// Using a closure which is a `NewHandler`:
+    ///
+    /// ```rust,no_run
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use gotham::handler::{NewHandlerService, NewHandler, Handler};
+    /// # use gotham::state::State;
+    /// # use hyper::server::{Request, Response};
+    /// # use hyper::StatusCode;
+    /// #
+    /// # fn main() {
+    /// fn handler(state: State, request: Request) -> (State, Response) {
+    ///     (state, Response::new().with_status(StatusCode::Accepted))
+    /// }
+    ///
+    /// NewHandlerService::new(|| Ok(handler));
+    /// # }
+    /// ```
+    ///
+    /// Using a `Router`:
+    ///
+    /// ```rust,no_run
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use gotham::handler::{NewHandlerService, NewHandler, Handler};
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use hyper::server::{Request, Response};
+    /// # use hyper::{StatusCode, Method};
+    /// #
+    /// # fn main() {
+    /// fn handler(state: State, request: Request) -> (State, Response) {
+    ///     (state, Response::new().with_status(StatusCode::Accepted))
+    /// }
+    ///
+    /// let router = Router::build(|routes| {
+    ///     routes.direct(Method::Get, "/").to(handler);
+    /// });
+    ///
+    /// NewHandlerService::new(router);
+    /// # }
+    /// ```
     pub fn new(t: T) -> NewHandlerService<T> {
         NewHandlerService { t: t }
     }
@@ -95,9 +145,12 @@ pub trait Handler: Send + Sync {
     fn handle(&self, State, Request) -> Box<HandlerFuture>;
 }
 
+/// Creates new `Handler` values.
 pub trait NewHandler: Send + Sync {
+    /// The type of `Handler` created by the implementor.
     type Instance: Handler;
 
+    /// Create and return a new `Handler` value.
     fn new_handler(&self) -> io::Result<Self::Instance>;
 }
 

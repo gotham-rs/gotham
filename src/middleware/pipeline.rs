@@ -15,6 +15,10 @@ use futures::{future, Future};
 /// [Middleware]: ../trait.Middleware.html
 /// [Handler]: ../../handler/trait.Handler.html
 ///
+/// The `PipelineBuilder` used to define a pipeline expects to receive values of type
+/// `NewMiddleware` and a `NewHandler`, which are used to spawn a new set of `Middleware` and a
+/// `Handler` for each request.
+///
 /// # Examples
 ///
 /// ```rust
@@ -162,13 +166,21 @@ pub fn new_pipeline() -> PipeEnd {
     PipeEnd { _nothing: () }
 }
 
+/// A recursive type representing an instance of a pipeline, which is used to process a single
+/// request.
+///
+/// This type should never be implemented outside of Gotham, does not form part of the public API,
+/// and is subject to change without notice.
 pub unsafe trait PipelineInstance: Sized {
+    /// Dispatches a request to the given `Handler` after processing all `Middleware` in the
+    /// pipeline.
     fn call<H>(self, state: State, request: Request, handler: H) -> Box<HandlerFuture>
         where H: Handler + 'static
     {
         self.call_recurse(state, request, move |state, req| handler.handle(state, req))
     }
 
+    /// Recursive function for processing middleware and chaining to the given function.
     fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static;
 }
@@ -279,6 +291,7 @@ unsafe impl<T, U> PipelineInstance for (T, U)
 /// `(&mut state, request)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree`
 /// &rarr; `handler`
 pub unsafe trait PipelineBuilder: Send + Sync {
+    /// The type of `PipelineInstance` created by the builder.
     type Instance: PipelineInstance;
 
     /// Builds a `Pipeline`, which has all middleware in the order provided via

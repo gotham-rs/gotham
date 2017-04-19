@@ -121,8 +121,8 @@ pub mod pipeline;
 ///     fn call<Chain>(&self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
 ///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
 ///     {
-///         // This could be any asynchronous action. `future::lazy(_)` ensures all the necessary
-///         // type checks are completed for the closures / combinators.
+///         // This could be any asynchronous action. `future::lazy(_)` defers a function until the
+///         // next cycle of tokio's event loop.
 ///         let f = future::lazy(|| future::ok(()));
 ///         f.and_then(move |_| chain(state, req)).boxed()
 ///     }
@@ -144,8 +144,11 @@ pub trait Middleware {
               Self: Sized;
 }
 
+/// Creates new `Middleware` values.
 pub trait NewMiddleware {
+    /// The type of `Middleware` created by the implementor.
     type Instance: Middleware;
 
+    /// Create and return a new `Middleware` value.
     fn new_middleware(&self) -> io::Result<Self::Instance>;
 }
