@@ -1,9 +1,11 @@
 //! Defines types for a middleware pipeline
 
+use std::io;
 use middleware::{Middleware, NewMiddleware};
 use handler::{NewHandler, Handler, HandlerFuture};
 use state::State;
 use hyper::server::Request;
+use futures::{future, Future};
 
 // TODO: Refactor this example when the `Router` API properly integrates with pipelines.
 /// When using middleware, one or more [`Middleware`][Middleware] are combined with a
@@ -20,6 +22,7 @@ use hyper::server::Request;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
+/// # use std::io;
 /// # use gotham::state::{State, StateData};
 /// # use gotham::handler::{Handler, HandlerFuture, HandlerService, NewHandlerService};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
@@ -54,8 +57,8 @@ use hyper::server::Request;
 ///
 /// impl NewMiddleware for MiddlewareOne {
 ///     type Instance = MiddlewareOne;
-///     fn new_middleware(&self) -> MiddlewareOne {
-///         self.clone()
+///     fn new_middleware(&self) -> io::Result<MiddlewareOne> {
+///         Ok(self.clone())
 ///     }
 /// }
 ///
@@ -70,8 +73,8 @@ use hyper::server::Request;
 ///
 /// impl NewMiddleware for MiddlewareTwo {
 ///     type Instance = MiddlewareTwo;
-///     fn new_middleware(&self) -> MiddlewareTwo {
-///         self.clone()
+///     fn new_middleware(&self) -> io::Result<MiddlewareTwo> {
+///         Ok(self.clone())
 ///     }
 /// }
 ///
@@ -86,8 +89,8 @@ use hyper::server::Request;
 ///
 /// impl NewMiddleware for MiddlewareThree {
 ///     type Instance = MiddlewareThree;
-///     fn new_middleware(&self) -> MiddlewareThree {
-///         self.clone()
+///     fn new_middleware(&self) -> io::Result<MiddlewareThree> {
+///         Ok(self.clone())
 ///     }
 /// }
 ///
@@ -106,11 +109,11 @@ use hyper::server::Request;
 ///             routes.direct(Get, "/").to(handler);
 ///         });
 ///
-///         new_pipeline()
+///         Ok(new_pipeline()
 ///             .add(MiddlewareOne)
 ///             .add(MiddlewareTwo)
 ///             .add(MiddlewareThree)
-///             .build(router.clone())
+///             .build(router))
 ///     });
 ///
 ///     let mut test_server = TestServer::new(new_service).unwrap();
@@ -135,8 +138,15 @@ impl<T, H> Handler for Pipeline<T, H>
           H::Instance: 'static
 {
     fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        let handler = self.new_handler.new_handler();
-        self.builder.spawn().call(state, req, move |state, req| handler.handle(state, req))
+        match self.new_handler.new_handler() {
+            Ok(handler) => {
+                match self.builder.spawn() {
+                    Ok(p) => p.call(state, req, move |state, req| handler.handle(state, req)),
+                    Err(e) => future::err((state, e.into())).boxed(),
+                }
+            }
+            Err(e) => future::err((state, e.into())).boxed(),
+        }
     }
 }
 
@@ -191,6 +201,7 @@ unsafe impl<T, U> PipelineInstance for (T, U)
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
+/// # use std::io;
 /// # use gotham::state::State;
 /// # use gotham::handler::{Handler, HandlerFuture};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
@@ -215,8 +226,8 @@ unsafe impl<T, U> PipelineInstance for (T, U)
 /// #
 /// # impl NewMiddleware for MiddlewareOne {
 /// #   type Instance = MiddlewareOne;
-/// #   fn new_middleware(&self) -> MiddlewareOne {
-/// #       self.clone()
+/// #   fn new_middleware(&self) -> io::Result<MiddlewareOne> {
+/// #       Ok(self.clone())
 /// #   }
 /// # }
 /// #
@@ -230,8 +241,8 @@ unsafe impl<T, U> PipelineInstance for (T, U)
 /// #
 /// # impl NewMiddleware for MiddlewareTwo {
 /// #   type Instance = MiddlewareTwo;
-/// #   fn new_middleware(&self) -> MiddlewareTwo {
-/// #       self.clone()
+/// #   fn new_middleware(&self) -> io::Result<MiddlewareTwo> {
+/// #       Ok(self.clone())
 /// #   }
 /// # }
 /// #
@@ -245,8 +256,8 @@ unsafe impl<T, U> PipelineInstance for (T, U)
 /// #
 /// # impl NewMiddleware for MiddlewareThree {
 /// #   type Instance = MiddlewareThree;
-/// #   fn new_middleware(&self) -> MiddlewareThree {
-/// #       self.clone()
+/// #   fn new_middleware(&self) -> io::Result<MiddlewareThree> {
+/// #       Ok(self.clone())
 /// #   }
 /// # }
 /// #
@@ -259,7 +270,7 @@ unsafe impl<T, U> PipelineInstance for (T, U)
 ///     .add(MiddlewareOne)
 ///     .add(MiddlewareTwo)
 ///     .add(MiddlewareThree)
-///     .build(|| handler);
+///     .build(|| Ok(handler));
 /// # }
 /// ```
 ///
@@ -296,7 +307,7 @@ pub unsafe trait PipelineBuilder: Send + Sync {
 
     /// Internal function for spawning a `Pipeline`.
     #[doc(hidden)]
-    fn spawn(&self) -> Self::Instance;
+    fn spawn(&self) -> io::Result<Self::Instance>;
 }
 
 /// A segment of a [`PipelineBuilder`][PipelineBuilder] which represents a
@@ -327,15 +338,17 @@ unsafe impl<M, Tail> PipelineBuilder for PipeSegment<M, Tail>
 {
     type Instance = (M::Instance, Tail::Instance);
 
-    fn spawn(&self) -> Self::Instance {
-        (self.middleware.new_middleware(), self.tail.spawn())
+    fn spawn(&self) -> io::Result<Self::Instance> {
+        Ok((self.middleware.new_middleware()?, self.tail.spawn()?))
     }
 }
 
 unsafe impl PipelineBuilder for PipeEnd {
     type Instance = ();
 
-    fn spawn(&self) {}
+    fn spawn(&self) -> io::Result<Self::Instance> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -360,8 +373,8 @@ mod tests {
     impl NewMiddleware for Number {
         type Instance = Number;
 
-        fn new_middleware(&self) -> Number {
-            self.clone()
+        fn new_middleware(&self) -> io::Result<Number> {
+            Ok(self.clone())
         }
     }
 
@@ -384,8 +397,8 @@ mod tests {
     impl NewMiddleware for Addition {
         type Instance = Addition;
 
-        fn new_middleware(&self) -> Addition {
-            Addition { ..*self }
+        fn new_middleware(&self) -> io::Result<Addition> {
+            Ok(Addition { ..*self })
         }
     }
 
@@ -406,8 +419,8 @@ mod tests {
     impl NewMiddleware for Multiplication {
         type Instance = Multiplication;
 
-        fn new_middleware(&self) -> Multiplication {
-            Multiplication { ..*self }
+        fn new_middleware(&self) -> io::Result<Multiplication> {
+            Ok(Multiplication { ..*self })
         }
     }
 
@@ -424,7 +437,7 @@ mod tests {
     #[test]
     fn pipeline_ordering_test() {
         let new_service = NewHandlerService::new(|| {
-            new_pipeline()
+            Ok(new_pipeline()
                 .add(Number { value: 0 }) // 0
                 .add(Addition { value: 1 }) // 1
                 .add(Multiplication { value: 2 }) // 2
@@ -432,7 +445,7 @@ mod tests {
                 .add(Multiplication { value: 2 }) // 6
                 .add(Addition { value: 2 }) // 8
                 .add(Multiplication { value: 3 }) // 24
-                .build(|| handler)
+                .build(|| Ok(handler)))
         });
 
         let uri = "http://localhost/".parse().unwrap();

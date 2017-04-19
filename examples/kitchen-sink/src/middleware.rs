@@ -17,8 +17,8 @@ pub struct KitchenSinkMiddleware {
 impl NewMiddleware for KitchenSinkMiddleware {
     type Instance = KitchenSinkMiddleware;
 
-    fn new_middleware(&self) -> Self::Instance {
-        KitchenSinkMiddleware { ..*self }
+    fn new_middleware(&self) -> io::Result<Self::Instance> {
+        Ok(KitchenSinkMiddleware { ..*self })
     }
 }
 

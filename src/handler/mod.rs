@@ -39,7 +39,7 @@ impl<T> server::NewService for NewHandlerService<T>
     type Instance = HandlerService<T::Instance>;
 
     fn new_service(&self) -> io::Result<Self::Instance> {
-        Ok(HandlerService::new(self.t.new_handler()))
+        self.t.new_handler().map(HandlerService::new)
     }
 }
 
@@ -98,16 +98,16 @@ pub trait Handler: Send + Sync {
 pub trait NewHandler: Send + Sync {
     type Instance: Handler;
 
-    fn new_handler(&self) -> Self::Instance;
+    fn new_handler(&self) -> io::Result<Self::Instance>;
 }
 
 impl<F, H> NewHandler for F
-    where F: Fn() -> H + Send + Sync,
+    where F: Fn() -> io::Result<H> + Send + Sync,
           H: Handler
 {
     type Instance = H;
 
-    fn new_handler(&self) -> H {
+    fn new_handler(&self) -> io::Result<H> {
         self()
     }
 }

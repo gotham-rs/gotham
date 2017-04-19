@@ -1,5 +1,6 @@
 //! Defines types for Gotham middleware
 
+use std::io;
 use handler::HandlerFuture;
 use state::State;
 use hyper::server::Request;
@@ -146,5 +147,5 @@ pub trait Middleware {
 pub trait NewMiddleware {
     type Instance: Middleware;
 
-    fn new_middleware(&self) -> Self::Instance;
+    fn new_middleware(&self) -> io::Result<Self::Instance>;
 }

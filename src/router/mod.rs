@@ -1,5 +1,6 @@
 //! Defines the Gotham `Router`, which dispatches requests to the correct `Handler`
 
+use std::io;
 use std::sync::Arc;
 use handler::{Handler, HandlerFuture, NewHandler, NewHandlerService};
 use state::State;
@@ -77,8 +78,8 @@ impl Router {
 impl NewHandler for Router {
     type Instance = Router;
 
-    fn new_handler(&self) -> Self::Instance {
-        self.clone()
+    fn new_handler(&self) -> io::Result<Self::Instance> {
+        Ok(self.clone())
     }
 }
 
