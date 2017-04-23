@@ -151,10 +151,11 @@ impl<T, H> Handler for Pipeline<T, H>
           H::Instance: 'static
 {
     fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
+        // Creates the per-request `Handler` and `Middleware` instances, and then calls to them.
         match self.new_handler.new_handler() {
             Ok(handler) => {
                 match self.builder.t.new_pipeline_instance() {
-                    Ok(p) => p.call(state, req, handler),
+                    Ok(p) => p.call(state, req, handler), // See: `PipelineInstance::call`
                     Err(e) => future::err((state, e.into())).boxed(),
                 }
             }
@@ -172,6 +173,7 @@ impl<T, H> Handler for Pipeline<T, H>
 /// [PipelineBuilder]: trait.PipelineBuilder.html
 /// [PipeEnd]: struct.PipeEnd.html
 pub fn new_pipeline() -> PipelineBuilder<()> {
+    // See: `impl NewPipelineInstance for ()`
     PipelineBuilder { t: () }
 }
 
@@ -277,6 +279,8 @@ impl<T> PipelineBuilder<T>
               H: NewHandler,
               Self: Sized + 'static
     {
+        // TODO: Don't associate a `NewHandler` here. Instead, let the `Router` do late binding of
+        // the `Handler` during request dispatch.
         Pipeline {
             builder: self,
             new_handler: h,
@@ -290,6 +294,18 @@ impl<T> PipelineBuilder<T>
               M::Instance: Send + 'static,
               Self: Sized
     {
+        // "cons" the most recently added `NewMiddleware` onto the front of the list. This is
+        // essentially building an HList-style tuple in reverse order. So for a call like:
+        //
+        //     new_pipeline().add(MiddlewareOne).add(MiddlewareTwo).add(MiddlewareThree)
+        //
+        // The resulting `PipelineBuilder` will be:
+        //
+        //     PipelineBuilder { t: (MiddlewareThree, (MiddlewareTwo, (MiddlewareOne, ()))) }
+        //
+        // An empty `PipelineBuilder` is represented as:
+        //
+        //     PipelineBuilder { t: () }
         PipelineBuilder { t: (m, self.t) }
     }
 }
@@ -314,6 +330,10 @@ unsafe impl<T, U> NewPipelineInstance for (T, U)
     type Instance = (T::Instance, U::Instance);
 
     fn new_pipeline_instance(&self) -> io::Result<Self::Instance> {
+        // This works as a recursive `map` over the "list" of `NewMiddleware`, and is used in
+        // creating the `Middleware` instances for serving a single request.
+        //
+        // The reversed order is preserved in the return value.
         let (ref nm, ref tail) = *self;
         Ok((nm.new_middleware()?, tail.new_pipeline_instance()?))
     }
@@ -323,6 +343,7 @@ unsafe impl NewPipelineInstance for () {
     type Instance = ();
 
     fn new_pipeline_instance(&self) -> io::Result<Self::Instance> {
+        // () marks the end of the list, so is returned as-is.
         Ok(())
     }
 }
@@ -339,6 +360,8 @@ pub unsafe trait PipelineInstance: Sized {
     fn call<H>(self, state: State, request: Request, handler: H) -> Box<HandlerFuture>
         where H: Handler + 'static
     {
+        // Entry point into the `PipelineInstance`. Begins recursively constructing a function,
+        // starting with a function which invokes the `Handler`.
         self.call_recurse(state, request, move |state, req| handler.handle(state, req))
     }
 
@@ -351,6 +374,11 @@ unsafe impl PipelineInstance for () {
     fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
+        // At the last item in the `PipelineInstance`, the function is invoked to serve the
+        // request. `f` is the nested function of all `Middleware` and the `Handler`.
+        //
+        // In the case of 0 middleware, `f` is the function created in `PipelineInstance::call`
+        // which invokes the `Handler` directly.
         f(state, request)
     }
 }
@@ -363,6 +391,21 @@ unsafe impl<T, U> PipelineInstance for (T, U)
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
         let (m, p) = self;
+        // Construct the function from the inside, out. Starting with a function which calls the
+        // `Handler`, and then creating a new function which calls the `Middleware` with the
+        // previous function as the `chain` argument, we end up with a structure somewhat like
+        // this (using `m0`, `m1`, `m2` as middleware names, where `m2` is the last middleware
+        // before the `Handler`):
+        //
+        //  move |state, req| {
+        //      m0.call(state, req, move |state, req| {
+        //          m1.call(state, req, move |state, req| {
+        //              m2.call(state, req, move |state, req| handler.call(state, req))
+        //          })
+        //      })
+        //  }
+        //
+        // The resulting function is called by `<() as PipelineInstance>::call_recurse`
         p.call_recurse(state, request, move |state, req| m.call(state, req, f))
     }
 }
