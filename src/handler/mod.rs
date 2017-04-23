@@ -130,10 +130,12 @@ impl<T> server::Service for HandlerService<T>
     }
 }
 
-// TODO: Update this doc comment if necessary when the `Middleware` type is created.
+// TODO: Ensure this is actually true in the new implementation of `Router`
 /// A `Handler` receives some subset of requests to the application, and returns a future which
 /// resolves to a response. This represents the common entry point for the parts of a Gotham
-/// application, implemented by `Router` and `Middleware`.
+/// application, implemented by `Router` and `Pipeline`.
+///
+/// The `Handler` is created by its `NewHandler` implementation, and is used for a single request.
 ///
 /// A `Handler` is basically an asynchronous function. To anybody familiar with tokio's
 /// documentation, this explanation will sound familiar as it's exactly [the description of a tokio
