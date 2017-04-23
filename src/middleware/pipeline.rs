@@ -154,7 +154,7 @@ impl<T, H> Handler for Pipeline<T, H>
         match self.new_handler.new_handler() {
             Ok(handler) => {
                 match self.builder.t.new_pipeline_instance() {
-                    Ok(p) => p.call(state, req, move |state, req| handler.handle(state, req)),
+                    Ok(p) => p.call(state, req, handler),
                     Err(e) => future::err((state, e.into())).boxed(),
                 }
             }
