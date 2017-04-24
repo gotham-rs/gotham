@@ -9,9 +9,89 @@ use hyper;
 use hyper::server;
 use hyper::server::Request;
 use futures::{future, Future};
+use state::State;
+use std::io;
 
 /// A type alias for the trait objects returned by `HandlerService`
-pub type HandlerFuture = Future<Item = server::Response, Error = hyper::Error>;
+pub type HandlerFuture =
+    Future<Item = (State, server::Response), Error = (State, hyper::Error)> + Send;
+
+/// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
+/// handlers.
+pub struct NewHandlerService<T>
+    where T: NewHandler + 'static
+{
+    t: T,
+}
+
+impl<T> NewHandlerService<T>
+    where T: NewHandler + 'static
+{
+    /// Creates a `NewHandlerService` for the given `NewHandler`.
+    ///
+    /// # Examples
+    ///
+    /// Using a closure which is a `NewHandler`:
+    ///
+    /// ```rust,no_run
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use gotham::handler::{NewHandlerService, NewHandler, Handler};
+    /// # use gotham::state::State;
+    /// # use hyper::server::{Request, Response};
+    /// # use hyper::StatusCode;
+    /// #
+    /// # fn main() {
+    /// fn handler(state: State, request: Request) -> (State, Response) {
+    ///     (state, Response::new().with_status(StatusCode::Accepted))
+    /// }
+    ///
+    /// NewHandlerService::new(|| Ok(handler));
+    /// # }
+    /// ```
+    ///
+    /// Using a `Router`:
+    ///
+    /// ```rust,no_run
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use gotham::handler::{NewHandlerService, NewHandler, Handler};
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use hyper::server::{Request, Response};
+    /// # use hyper::{StatusCode, Method};
+    /// #
+    /// # fn main() {
+    /// fn handler(state: State, request: Request) -> (State, Response) {
+    ///     (state, Response::new().with_status(StatusCode::Accepted))
+    /// }
+    ///
+    /// let router = Router::build(|routes| {
+    ///     routes.direct(Method::Get, "/").to(handler);
+    /// });
+    ///
+    /// NewHandlerService::new(router);
+    /// # }
+    /// ```
+    pub fn new(t: T) -> NewHandlerService<T> {
+        NewHandlerService { t: t }
+    }
+}
+
+impl<T> server::NewService for NewHandlerService<T>
+    where T: NewHandler + 'static
+{
+    type Request = server::Request;
+    type Response = server::Response;
+    type Error = hyper::Error;
+    type Instance = HandlerService<T::Instance>;
+
+    fn new_service(&self) -> io::Result<Self::Instance> {
+        self.t.new_handler().map(HandlerService::new)
+    }
+}
 
 /// `HandlerService` wraps a Gotham `Handler` and exposes a hyper `Service`.
 ///
@@ -39,17 +119,23 @@ impl<T> server::Service for HandlerService<T>
     type Request = server::Request;
     type Response = server::Response;
     type Error = hyper::Error;
-    type Future = Box<HandlerFuture>;
+    type Future = Box<Future<Item = server::Response, Error = hyper::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        self.handler.handle(req)
+        self.handler
+            .handle(State::new(), req)
+            .and_then(|(_, response)| future::ok(response))
+            .or_else(|(_, error)| future::err(error))
+            .boxed()
     }
 }
 
-// TODO: Update this doc comment if necessary when the `Middleware` type is created.
+// TODO: Ensure this is actually true in the new implementation of `Router`
 /// A `Handler` receives some subset of requests to the application, and returns a future which
 /// resolves to a response. This represents the common entry point for the parts of a Gotham
-/// application, implemented by `Router` and `Middleware`.
+/// application, implemented by `Router` and `Pipeline`.
+///
+/// The `Handler` is created by its `NewHandler` implementation, and is used for a single request.
 ///
 /// A `Handler` is basically an asynchronous function. To anybody familiar with tokio's
 /// documentation, this explanation will sound familiar as it's exactly [the description of a tokio
@@ -58,11 +144,58 @@ impl<T> server::Service for HandlerService<T>
 /// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
 pub trait Handler: Send + Sync {
     /// Handles the request, returning a boxed future which resolves to a response.
-    fn handle(&self, req: Request) -> Box<HandlerFuture>;
+    fn handle(&self, State, Request) -> Box<HandlerFuture>;
 }
 
-/// Represents an object which can be converted to a response, perhaps asynchronously. This trait
-/// is used in converting the return type of a function into a response.
+/// Creates new `Handler` values.
+pub trait NewHandler: Send + Sync {
+    /// The type of `Handler` created by the implementor.
+    type Instance: Handler;
+
+    /// Create and return a new `Handler` value.
+    fn new_handler(&self) -> io::Result<Self::Instance>;
+}
+
+impl<F, H> NewHandler for F
+    where F: Fn() -> io::Result<H> + Send + Sync,
+          H: Handler
+{
+    type Instance = H;
+
+    fn new_handler(&self) -> io::Result<H> {
+        self()
+    }
+}
+
+/// Represents a type which can be converted into the future type returned by a
+/// [`Handler`][Handler].
+///
+/// [Handler]: trait.Handler.html
+pub trait IntoHandlerFuture {
+    /// Converts this value into a boxed future resolving to a state and response.
+    fn into_handler_future(self) -> Box<HandlerFuture>;
+}
+
+impl<T> IntoHandlerFuture for (State, T)
+    where T: IntoResponse
+{
+    fn into_handler_future(self) -> Box<HandlerFuture> {
+        let (state, t) = self;
+        future::ok((state, t.into_response())).boxed()
+    }
+}
+
+impl IntoHandlerFuture for Box<HandlerFuture> {
+    fn into_handler_future(self) -> Box<HandlerFuture> {
+        self
+    }
+}
+
+/// Represents a type which can be converted to a response. This trait is used in converting the
+/// return type of a function into a response.
+///
+/// The only default implementation is the noop which converts a `hyper::server::Response` by
+/// returning the value unmodified.
 ///
 /// # Examples
 ///
@@ -71,8 +204,9 @@ pub trait Handler: Send + Sync {
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
+/// # use gotham::state::State;
 /// # use gotham::router::{Router, RouterBuilder};
-/// # use gotham::handler::{HandlerFuture, IntoHandlerFuture};
+/// # use gotham::handler::IntoResponse;
 /// # use futures::{future, Future};
 /// # use hyper::Method::Get;
 /// # use hyper::StatusCode;
@@ -89,18 +223,16 @@ pub trait Handler: Send + Sync {
 ///     }
 /// }
 ///
-/// impl IntoHandlerFuture for MyStruct {
-///     fn into_handler_future(self) -> Box<HandlerFuture> {
-///         let response = Response::new()
+/// impl IntoResponse for MyStruct {
+///     fn into_response(self) -> Response {
+///         Response::new()
 ///             .with_status(StatusCode::Ok)
-///             .with_body(self.value);
-///
-///         future::ok(response).boxed()
+///             .with_body(self.value)
 ///     }
 /// }
 ///
-/// fn handler(req: Request) -> MyStruct {
-///     MyStruct::new()
+/// fn handler(state: State, req: Request) -> (State, MyStruct) {
+///     (state, MyStruct::new())
 /// }
 ///
 /// fn router() -> Router {
@@ -108,7 +240,7 @@ pub trait Handler: Send + Sync {
 ///        routes.direct(Get, "/").to(handler);
 ///     })
 /// }
-///
+/// #
 /// # fn main() {
 /// #   router();
 /// # }
@@ -118,28 +250,22 @@ pub trait Handler: Send + Sync {
 ///
 /// * `hyper::server::Response` &ndash; The response is wrapped in a completed future and boxed
 /// * `Box<HandlerFuture>` &ndash; The boxed future is returned directly
-pub trait IntoHandlerFuture {
-    /// Converts this object into a boxed future resolving to a response.
-    fn into_handler_future(self) -> Box<HandlerFuture>;
+pub trait IntoResponse {
+    /// Converts this value into a `hyper::server::Response`
+    fn into_response(self) -> server::Response;
 }
 
-impl IntoHandlerFuture for server::Response {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
-        future::ok(self).boxed()
-    }
-}
-
-impl IntoHandlerFuture for Box<HandlerFuture> {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
+impl IntoResponse for server::Response {
+    fn into_response(self) -> server::Response {
         self
     }
 }
 
 impl<F, R> Handler for F
-    where F: Fn(Request) -> R + Send + Sync,
+    where F: Fn(State, Request) -> R + Send + Sync,
           R: IntoHandlerFuture
 {
-    fn handle(&self, req: Request) -> Box<HandlerFuture> {
-        self(req).into_handler_future()
+    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
+        self(state, req).into_handler_future()
     }
 }

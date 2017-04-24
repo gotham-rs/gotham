@@ -21,7 +21,9 @@ extern crate tokio_io;
 extern crate mio;
 
 pub mod handler;
+pub mod middleware;
 pub mod router;
+pub mod state;
 pub mod test;
 
 #[cfg(test)]

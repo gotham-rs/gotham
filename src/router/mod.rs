@@ -2,22 +2,24 @@
 
 use std::io;
 use std::sync::Arc;
-use handler::{Handler, HandlerFuture, HandlerService};
-use hyper::{self, Method};
-use hyper::server::{Request, Response, NewService};
+use handler::{Handler, HandlerFuture, NewHandler, NewHandlerService};
+use state::State;
+use hyper::Method;
+use hyper::server::Request;
 
-/// The `Router` type is the main entry point into a Gotham app, and it implements
-/// `hyper::server::NewService` so that it can be passed directly to hyper after creation.
+/// The `Router` type is the main entry point into a Gotham app, and supports being used directly
+/// with hyper via the `Router::into_new_service(self)` function.
 ///
 /// To create a `Router`, call `Router::build` with a closure which receives a `RouterBuilder` and
 /// uses it to define routes.
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```rust,no_run
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// use gotham::state::State;
 /// use gotham::router::Router;
 /// use hyper::server::{Http, Request, Response};
 /// use hyper::Method::Get;
@@ -32,12 +34,12 @@ use hyper::server::{Request, Response, NewService};
 /// struct MyApp;
 ///
 /// impl MyApp {
-///     fn top(req: Request) -> Response {
+///     fn top(state: State, req: Request) -> (State, Response) {
 ///         // Handler logic here
 /// #       unimplemented!()
 ///     }
 ///
-///     fn profile(req: Request) -> Response {
+///     fn profile(state: State, req: Request) -> (State, Response) {
 ///         // Handler logic here
 /// #       unimplemented!()
 ///     }
@@ -45,9 +47,8 @@ use hyper::server::{Request, Response, NewService};
 ///
 /// fn main() {
 ///     let addr = "127.0.0.1:9000".parse().unwrap();
-///     let server = Http::new().bind(&addr, router()).unwrap();
-///     // As normal:
-///     // server.run().unwrap()
+///     let server = Http::new().bind(&addr, router().into_new_service()).unwrap();
+///     server.run().unwrap()
 /// }
 /// ```
 #[derive(Clone)]
@@ -67,28 +68,31 @@ impl Router {
         f(&mut builder);
         builder.into_router()
     }
+
+    /// Returns a value which implements `hyper::server::NewService`, and can be used directly when
+    /// spawning a new server.
+    pub fn into_new_service(self) -> NewHandlerService<Router> {
+        NewHandlerService::new(self)
+    }
 }
 
-impl NewService for Router {
-    type Request = Request;
-    type Response = Response;
-    type Error = hyper::Error;
-    type Instance = HandlerService<Router>;
+impl NewHandler for Router {
+    type Instance = Router;
 
-    fn new_service(&self) -> io::Result<Self::Instance> {
-        Ok(HandlerService::new(self.clone()))
+    fn new_handler(&self) -> io::Result<Self::Instance> {
+        Ok(self.clone())
     }
 }
 
 impl Handler for Router {
-    fn handle(&self, req: Request) -> Box<HandlerFuture> {
+    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
         // Deliberately obtuse implementation while we hash out the API.
         match self.routes
                   .iter()
                   .filter(|r| r.matcher.matches(&req))
                   .take(1)
                   .next() {
-            Some(ref route_box) => route_box.handler.handle(req),
+            Some(ref route_box) => route_box.handler.handle(state, req),
             None => unimplemented!(),
         }
     }
@@ -103,12 +107,13 @@ impl Handler for Router {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// # use gotham::state::State;
 /// # use gotham::router::{Router, RouterBuilder};
 /// # use hyper::Method::Get;
 /// # use hyper::server::{Http, Request, Response};
 /// #
-/// # fn handler(req: Request) -> Response {
-/// #     Response::new()
+/// # fn handler(state: State, req: Request) -> (State, Response) {
+/// #     (state, Response::new())
 /// # }
 /// #
 /// # fn main() {
@@ -150,14 +155,15 @@ impl RouterBuilder {
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use hyper::Method::Get;
     /// # use hyper::server::{Request, Response};
     /// #
     /// #
-    /// fn handler(req: Request) -> Response {
+    /// fn handler(state: State, req: Request) -> (State, Response) {
     ///     // Handler implementation here
-    /// #   Response::new()
+    /// #   (state, Response::new())
     /// }
     ///
     /// fn router() -> Router {
@@ -230,19 +236,20 @@ mod tests {
     use super::*;
     use hyper::Method::*;
     use hyper::StatusCode;
+    use hyper::server::Response;
     use test::TestServer;
     use futures::{future, Future};
 
     struct Root {}
 
     impl Root {
-        fn index(_req: Request) -> Response {
-            Response::new().with_status(StatusCode::Ok).with_body("Index")
+        fn index(state: State, _req: Request) -> (State, Response) {
+            (state, Response::new().with_status(StatusCode::Ok).with_body("Index"))
         }
 
-        fn async(_req: Request) -> Box<HandlerFuture> {
+        fn async(state: State, _req: Request) -> Box<HandlerFuture> {
             let response = Response::new().with_status(StatusCode::Ok).with_body("Async");
-            future::lazy(move || future::ok(response)).boxed()
+            future::lazy(move || future::ok((state, response))).boxed()
         }
 
         fn router() -> Router {
@@ -255,7 +262,7 @@ mod tests {
 
     #[test]
     fn route_async_request() {
-        let mut test_server = TestServer::new(Root::router()).unwrap();
+        let mut test_server = TestServer::new(Root::router().into_new_service()).unwrap();
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/async".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
@@ -265,7 +272,7 @@ mod tests {
 
     #[test]
     fn route_direct_request() {
-        let mut test_server = TestServer::new(Root::router()).unwrap();
+        let mut test_server = TestServer::new(Root::router().into_new_service()).unwrap();
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
@@ -275,7 +282,7 @@ mod tests {
 
     #[test]
     fn route_direct_request_ignoring_query_params() {
-        let mut test_server = TestServer::new(Root::router()).unwrap();
+        let mut test_server = TestServer::new(Root::router().into_new_service()).unwrap();
         let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
         let uri = "http://example.com/?x=y".parse().unwrap();
         let response = test_server.run_request(client.get(uri)).unwrap();
