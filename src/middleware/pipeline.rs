@@ -276,9 +276,8 @@ pub struct PipelineBuilder<T>
 impl<T> PipelineBuilder<T>
     where T: NewPipelineInstance
 {
-    /// Builds a `Pipeline`, which contain all middleware in the order provided via `add` and
-    /// be ready to process requests via a `NewHandler` provided to
-    /// [`Pipeline::call`][Pipeline::call]
+    /// Builds a `Pipeline`, which contains all middleware in the order provided via `add` and is
+    /// ready to process requests via a `NewHandler` provided to [`Pipeline::call`][Pipeline::call]
     ///
     /// [Pipeline::call]: struct.Pipeline.html#method.call
     pub fn build(self) -> Pipeline<T>
