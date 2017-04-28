@@ -8,16 +8,18 @@ use hyper::server::Request;
 use futures::{future, Future};
 
 // TODO: Refactor this example when the `Router` API properly integrates with pipelines.
-/// When using middleware, one or more [`Middleware`][Middleware] are combined with a
-/// [`Handler`][Handler] to form a `Pipeline`. `Middleware` are invoked strictly in the order
-/// they're added to the `Pipeline`.
+/// When using middleware, one or more [`Middleware`][Middleware] are combined to form a
+/// `Pipeline`. `Middleware` are invoked strictly in the order they're added to the `Pipeline`.
+///
+/// At request dispatch time, the `Middleware` are created from the
+/// [`NewMiddleware`][NewMiddleware] values given to the `PipelineBuilder`, and combined with a
+/// [`Handler`][Handler] created from the [`NewHandler`][NewHandler] provided to `Pipeline::call`.
+/// These `Middleware` and `Handler` values are used for a single request.
 ///
 /// [Middleware]: ../trait.Middleware.html
+/// [NewMiddleware]: ../trait.NewMiddleware.html
 /// [Handler]: ../../handler/trait.Handler.html
-///
-/// The `PipelineBuilder` used to define a pipeline expects to receive values of type
-/// `NewMiddleware` and a `NewHandler`, which are used to spawn a new set of `Middleware` and a
-/// `Handler` for each request.
+/// [NewHandler]: ../../handler/trait.NewHandler.html
 ///
 /// # Examples
 ///
@@ -122,11 +124,14 @@ use futures::{future, Future};
 ///         });
 ///
 ///         // Build the `Pipeline`
-///         Ok(new_pipeline()
+///         let pipeline = new_pipeline()
 ///             .add(MiddlewareOne)
 ///             .add(MiddlewareTwo)
 ///             .add(MiddlewareThree)
-///             .build(router))
+///             .build();
+///
+///         // Return the `Pipeline` as a `Handler`
+///         Ok(move |state, req| pipeline.call(&router, state, req))
 ///     });
 ///
 ///     let mut test_server = TestServer::new(new_service).unwrap();
@@ -137,22 +142,24 @@ use futures::{future, Future};
 ///     assert_eq!(test_server.read_body(response).unwrap(), "[1, 2, 3]".as_bytes());
 /// }
 /// ```
-pub struct Pipeline<T, H>
-    where T: NewPipelineInstance,
-          H: NewHandler
+pub struct Pipeline<T>
+    where T: NewPipelineInstance
 {
     builder: PipelineBuilder<T>,
-    new_handler: H,
 }
 
-impl<T, H> Handler for Pipeline<T, H>
-    where T: NewPipelineInstance + Send + Sync,
-          H: NewHandler,
-          H::Instance: 'static
+impl<T> Pipeline<T>
+    where T: NewPipelineInstance + Send + Sync
 {
-    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
+    /// Invokes the `Pipeline`, which will execute all middleware in the order provided via
+    /// `PipelineBuilder::add` and then process requests via the `Handler` instance created by the
+    /// `NewHandler`.
+    pub fn call<H>(&self, new_handler: &H, state: State, req: Request) -> Box<HandlerFuture>
+        where H: NewHandler,
+              H::Instance: 'static
+    {
         // Creates the per-request `Handler` and `Middleware` instances, and then calls to them.
-        match self.new_handler.new_handler() {
+        match new_handler.new_handler() {
             Ok(handler) => {
                 match self.builder.t.new_pipeline_instance() {
                     Ok(p) => p.call(state, req, handler), // See: `PipelineInstance::call`
@@ -164,14 +171,11 @@ impl<T, H> Handler for Pipeline<T, H>
     }
 }
 
-/// Begins defining a new pipeline. The returned [`PipeEnd`][PipeEnd] implements the
-/// [`PipelineBuilder`][PipelineBuilder] trait, which is used to define a pipeline using the
-/// builder pattern.
+/// Begins defining a new pipeline.
 ///
-/// See [`PipelineBuilder`][PipelineBuilder] for information on using `Pipeline::new()`
+/// See [`PipelineBuilder`][PipelineBuilder] for information on using `new_pipeline()`
 ///
-/// [PipelineBuilder]: trait.PipelineBuilder.html
-/// [PipeEnd]: struct.PipeEnd.html
+/// [PipelineBuilder]: struct.PipelineBuilder.html
 pub fn new_pipeline() -> PipelineBuilder<()> {
     // See: `impl NewPipelineInstance for ()`
     PipelineBuilder { t: () }
@@ -251,18 +255,18 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// # }
 /// #
 /// # fn main() {
-/// let pipeline: Pipeline<_, _> = new_pipeline()
+/// let pipeline: Pipeline<_> = new_pipeline()
 ///     .add(MiddlewareOne)
 ///     .add(MiddlewareTwo)
 ///     .add(MiddlewareThree)
-///     .build(|| Ok(handler));
+///     .build();
 /// # }
 /// ```
 ///
 /// The pipeline defined here is invoked in this order:
 ///
 /// `(&mut state, request)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree`
-/// &rarr; `handler`
+/// &rarr; `handler` (provided later)
 pub struct PipelineBuilder<T>
     where T: NewPipelineInstance
 {
@@ -272,23 +276,17 @@ pub struct PipelineBuilder<T>
 impl<T> PipelineBuilder<T>
     where T: NewPipelineInstance
 {
-    /// Builds a `Pipeline`, which will execute all middleware in the order provided via `add` and
-    /// process requests via the `Handler` instance created by the `NewHandler`.
-    pub fn build<H>(self, h: H) -> Pipeline<T, H>
-        where T: NewPipelineInstance,
-              H: NewHandler,
-              Self: Sized + 'static
+    /// Builds a `Pipeline`, which contains all middleware in the order provided via `add` and is
+    /// ready to process requests via a `NewHandler` provided to [`Pipeline::call`][Pipeline::call]
+    ///
+    /// [Pipeline::call]: struct.Pipeline.html#method.call
+    pub fn build(self) -> Pipeline<T>
+        where T: NewPipelineInstance
     {
-        // TODO: Don't associate a `NewHandler` here. Instead, let the `Router` do late binding of
-        // the `Handler` during request dispatch.
-        Pipeline {
-            builder: self,
-            new_handler: h,
-        }
+        Pipeline { builder: self }
     }
 
-    /// Adds a `NewMiddleware` which will have its `Middleware` added to the `Pipeline` returned
-    /// from `PipelineBuilder::build`.
+    /// Adds a `NewMiddleware` which will create a `Middleware` during request dispatch.
     pub fn add<M>(self, m: M) -> PipelineBuilder<(M, T)>
         where M: NewMiddleware,
               M::Instance: Send + 'static,
@@ -496,7 +494,7 @@ mod tests {
     #[test]
     fn pipeline_ordering_test() {
         let new_service = NewHandlerService::new(|| {
-            Ok(new_pipeline()
+            let pipeline = new_pipeline()
                 .add(Number { value: 0 }) // 0
                 .add(Addition { value: 1 }) // 1
                 .add(Multiplication { value: 2 }) // 2
@@ -504,7 +502,8 @@ mod tests {
                 .add(Multiplication { value: 2 }) // 6
                 .add(Addition { value: 2 }) // 8
                 .add(Multiplication { value: 3 }) // 24
-                .build(|| Ok(handler)))
+                .build();
+            Ok(move |state, req| pipeline.call(&|| Ok(handler), state, req))
         });
 
         let uri = "http://localhost/".parse().unwrap();
