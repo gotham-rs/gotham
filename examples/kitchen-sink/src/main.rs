@@ -34,8 +34,8 @@ fn router() -> Router {
     })
 }
 
-fn app() -> Pipeline<(KitchenSinkMiddleware, ()), Router> {
-    new_pipeline().add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" }).build(router())
+fn pipeline() -> Pipeline<(KitchenSinkMiddleware, ())> {
+    new_pipeline().add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" }).build()
 }
 
 impl Echo {
@@ -67,7 +67,14 @@ fn main() {
     pretty_env_logger::init().unwrap();
     let addr = "127.0.0.1:1337".parse().unwrap();
 
-    let server = Http::new().bind(&addr, || Ok(HandlerService::new(app()))).unwrap();
+    let new_service = || {
+        let router = router();
+        let pipeline = pipeline();
+        Ok(HandlerService::new(move |state, req| pipeline.call(&router, state, req)))
+    };
+
+    let server = Http::new().bind(&addr, new_service).unwrap();
+
     println!("Listening on http://{} with 1 thread.",
              server.local_addr().unwrap());
     server.run().unwrap();
