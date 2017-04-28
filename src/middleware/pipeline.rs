@@ -149,7 +149,7 @@ pub struct Pipeline<T>
 }
 
 impl<T> Pipeline<T>
-    where T: NewPipelineInstance + Send + Sync
+    where T: NewPipelineInstance
 {
     /// Invokes the `Pipeline`, which will execute all middleware in the order provided via
     /// `PipelineBuilder::add` and then process requests via the `Handler` instance created by the
