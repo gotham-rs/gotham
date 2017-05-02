@@ -143,13 +143,13 @@ use futures::{future, Future};
 /// }
 /// ```
 pub struct Pipeline<T>
-    where T: NewPipelineInstance
+    where T: NewMiddlewareChain
 {
     builder: PipelineBuilder<T>,
 }
 
 impl<T> Pipeline<T>
-    where T: NewPipelineInstance
+    where T: NewMiddlewareChain
 {
     /// Invokes the `Pipeline`, which will execute all middleware in the order provided via
     /// `PipelineBuilder::add` and then process requests via the `Handler` instance created by the
@@ -162,7 +162,7 @@ impl<T> Pipeline<T>
         match new_handler.new_handler() {
             Ok(handler) => {
                 match self.builder.t.new_pipeline_instance() {
-                    Ok(p) => p.call(state, req, handler), // See: `PipelineInstance::call`
+                    Ok(p) => p.call(state, req, handler), // See: `MiddlewareChain::call`
                     Err(e) => future::err((state, e.into())).boxed(),
                 }
             }
@@ -177,7 +177,7 @@ impl<T> Pipeline<T>
 ///
 /// [PipelineBuilder]: struct.PipelineBuilder.html
 pub fn new_pipeline() -> PipelineBuilder<()> {
-    // See: `impl NewPipelineInstance for ()`
+    // See: `impl NewMiddlewareChain for ()`
     PipelineBuilder { t: () }
 }
 
@@ -268,20 +268,20 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// `(&mut state, request)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree`
 /// &rarr; `handler` (provided later)
 pub struct PipelineBuilder<T>
-    where T: NewPipelineInstance
+    where T: NewMiddlewareChain
 {
     t: T,
 }
 
 impl<T> PipelineBuilder<T>
-    where T: NewPipelineInstance
+    where T: NewMiddlewareChain
 {
     /// Builds a `Pipeline`, which contains all middleware in the order provided via `add` and is
     /// ready to process requests via a `NewHandler` provided to [`Pipeline::call`][Pipeline::call]
     ///
     /// [Pipeline::call]: struct.Pipeline.html#method.call
     pub fn build(self) -> Pipeline<T>
-        where T: NewPipelineInstance
+        where T: NewMiddlewareChain
     {
         Pipeline { builder: self }
     }
@@ -308,22 +308,22 @@ impl<T> PipelineBuilder<T>
     }
 }
 
-/// A recursive type representing a pipeline, which is used to spawn a `PipelineInstance`.
+/// A recursive type representing a pipeline, which is used to spawn a `MiddlewareChain`.
 ///
 /// This type should never be implemented outside of Gotham, does not form part of the public API,
 /// and is subject to change without notice.
 #[doc(hidden)]
-pub unsafe trait NewPipelineInstance: Sized {
-    type Instance: PipelineInstance;
+pub unsafe trait NewMiddlewareChain: Sized {
+    type Instance: MiddlewareChain;
 
-    /// Create and return a new `PipelineInstance` value.
+    /// Create and return a new `MiddlewareChain` value.
     fn new_pipeline_instance(&self) -> io::Result<Self::Instance>;
 }
 
-unsafe impl<T, U> NewPipelineInstance for (T, U)
+unsafe impl<T, U> NewMiddlewareChain for (T, U)
     where T: NewMiddleware,
           T::Instance: Send + 'static,
-          U: NewPipelineInstance
+          U: NewMiddlewareChain
 {
     type Instance = (T::Instance, U::Instance);
 
@@ -337,7 +337,7 @@ unsafe impl<T, U> NewPipelineInstance for (T, U)
     }
 }
 
-unsafe impl NewPipelineInstance for () {
+unsafe impl NewMiddlewareChain for () {
     type Instance = ();
 
     fn new_pipeline_instance(&self) -> io::Result<Self::Instance> {
@@ -352,13 +352,13 @@ unsafe impl NewPipelineInstance for () {
 /// This type should never be implemented outside of Gotham, does not form part of the public API,
 /// and is subject to change without notice.
 #[doc(hidden)]
-pub unsafe trait PipelineInstance: Sized {
+pub unsafe trait MiddlewareChain: Sized {
     /// Dispatches a request to the given `Handler` after processing all `Middleware` in the
     /// pipeline.
     fn call<H>(self, state: State, request: Request, handler: H) -> Box<HandlerFuture>
         where H: Handler + 'static
     {
-        // Entry point into the `PipelineInstance`. Begins recursively constructing a function,
+        // Entry point into the `MiddlewareChain`. Begins recursively constructing a function,
         // starting with a function which invokes the `Handler`.
         self.call_recurse(state, request, move |state, req| handler.handle(state, req))
     }
@@ -368,22 +368,22 @@ pub unsafe trait PipelineInstance: Sized {
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static;
 }
 
-unsafe impl PipelineInstance for () {
+unsafe impl MiddlewareChain for () {
     fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
-        // At the last item in the `PipelineInstance`, the function is invoked to serve the
+        // At the last item in the `MiddlewareChain`, the function is invoked to serve the
         // request. `f` is the nested function of all `Middleware` and the `Handler`.
         //
-        // In the case of 0 middleware, `f` is the function created in `PipelineInstance::call`
+        // In the case of 0 middleware, `f` is the function created in `MiddlewareChain::call`
         // which invokes the `Handler` directly.
         f(state, request)
     }
 }
 
-unsafe impl<T, U> PipelineInstance for (T, U)
+unsafe impl<T, U> MiddlewareChain for (T, U)
     where T: Middleware + Send + 'static,
-          U: PipelineInstance
+          U: MiddlewareChain
 {
     fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
@@ -403,7 +403,7 @@ unsafe impl<T, U> PipelineInstance for (T, U)
         //      })
         //  }
         //
-        // The resulting function is called by `<() as PipelineInstance>::call_recurse`
+        // The resulting function is called by `<() as MiddlewareChain>::call_recurse`
         p.call_recurse(state, request, move |state, req| m.call(state, req, f))
     }
 }
