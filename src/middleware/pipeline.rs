@@ -131,7 +131,10 @@ use futures::{future, Future};
 ///             .build();
 ///
 ///         // Return the `Pipeline` as a `Handler`
-///         Ok(move |state, req| pipeline.call(&router, state, req))
+///         Ok(move |state, req| {
+///             let r = router.clone();
+///             pipeline.call(state, req, move |state, req| r.handle(state, req))
+///         })
 ///     });
 ///
 ///     let mut test_server = TestServer::new(new_service).unwrap();
@@ -151,21 +154,11 @@ pub struct Pipeline<T>
 impl<T> Pipeline<T>
     where T: NewMiddlewareChain
 {
-    /// Invokes the `Pipeline`, which will execute all middleware in the order provided via
-    /// `PipelineBuilder::add` and then process requests via the `Handler` instance created by the
-    /// `NewHandler`.
-    pub fn call<H>(&self, new_handler: &H, state: State, req: Request) -> Box<HandlerFuture>
-        where H: NewHandler,
-              H::Instance: 'static
+    pub fn call<F>(&self, state: State, req: Request, f: F) -> Box<HandlerFuture>
+        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + Sync + 'static
     {
-        // Creates the per-request `Handler` and `Middleware` instances, and then calls to them.
-        match new_handler.new_handler() {
-            Ok(handler) => {
-                match self.chain.new_pipeline_instance() {
-                    Ok(p) => p.call(state, req, handler), // See: `MiddlewareChain::call`
-                    Err(e) => future::err((state, e.into())).boxed(),
-                }
-            }
+        match self.chain.new_pipeline_instance() {
+            Ok(p) => p.call(state, req, f),
             Err(e) => future::err((state, e.into())).boxed(),
         }
     }
@@ -353,23 +346,14 @@ unsafe impl NewMiddlewareChain for () {
 /// and is subject to change without notice.
 #[doc(hidden)]
 pub unsafe trait MiddlewareChain: Sized {
-    /// Dispatches a request to the given `Handler` after processing all `Middleware` in the
-    /// pipeline.
-    fn call<H>(self, state: State, request: Request, handler: H) -> Box<HandlerFuture>
-        where H: Handler + 'static
-    {
-        // Entry point into the `MiddlewareChain`. Begins recursively constructing a function,
-        // starting with a function which invokes the `Handler`.
-        self.call_recurse(state, request, move |state, req| handler.handle(state, req))
-    }
-
+    // TODO: Update this after implementing the `dispatch` module.
     /// Recursive function for processing middleware and chaining to the given function.
-    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static;
 }
 
 unsafe impl MiddlewareChain for () {
-    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
         // At the last item in the `MiddlewareChain`, the function is invoked to serve the
@@ -385,7 +369,7 @@ unsafe impl<T, U> MiddlewareChain for (T, U)
     where T: Middleware + Send + 'static,
           U: MiddlewareChain
 {
-    fn call_recurse<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
         let (m, p) = self;
@@ -403,8 +387,8 @@ unsafe impl<T, U> MiddlewareChain for (T, U)
         //      })
         //  }
         //
-        // The resulting function is called by `<() as MiddlewareChain>::call_recurse`
-        p.call_recurse(state, request, move |state, req| m.call(state, req, f))
+        // The resulting function is called by `<() as MiddlewareChain>::call`
+        p.call(state, request, move |state, req| m.call(state, req, f))
     }
 }
 
@@ -503,7 +487,7 @@ mod tests {
                 .add(Addition { value: 2 }) // 8
                 .add(Multiplication { value: 3 }) // 24
                 .build();
-            Ok(move |state, req| pipeline.call(&|| Ok(handler), state, req))
+            Ok(move |state, req| pipeline.call(state, req, |state, req| handler.handle(state, req)))
         });
 
         let uri = "http://localhost/".parse().unwrap();
