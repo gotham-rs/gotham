@@ -145,7 +145,7 @@ use futures::{future, Future};
 pub struct Pipeline<T>
     where T: NewMiddlewareChain
 {
-    builder: PipelineBuilder<T>,
+    chain: T,
 }
 
 impl<T> Pipeline<T>
@@ -161,7 +161,7 @@ impl<T> Pipeline<T>
         // Creates the per-request `Handler` and `Middleware` instances, and then calls to them.
         match new_handler.new_handler() {
             Ok(handler) => {
-                match self.builder.t.new_pipeline_instance() {
+                match self.chain.new_pipeline_instance() {
                     Ok(p) => p.call(state, req, handler), // See: `MiddlewareChain::call`
                     Err(e) => future::err((state, e.into())).boxed(),
                 }
@@ -283,7 +283,7 @@ impl<T> PipelineBuilder<T>
     pub fn build(self) -> Pipeline<T>
         where T: NewMiddlewareChain
     {
-        Pipeline { builder: self }
+        Pipeline { chain: self.t }
     }
 
     /// Adds a `NewMiddleware` which will create a `Middleware` during request dispatch.
