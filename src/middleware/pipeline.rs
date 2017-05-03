@@ -2,10 +2,9 @@
 
 use std::io;
 use middleware::{Middleware, NewMiddleware};
-use handler::{NewHandler, Handler, HandlerFuture};
+use handler::HandlerFuture;
 use state::State;
 use hyper::server::Request;
-use futures::{future, Future};
 
 // TODO: Refactor this example when the `Router` API properly integrates with pipelines.
 /// When using middleware, one or more [`Middleware`][Middleware] are combined to form a
@@ -155,6 +154,10 @@ pub struct Pipeline<T>
     chain: T,
 }
 
+/// Represents an instance of a `Pipeline`. Returned from
+/// [`Pipeline::construct`][Pipeline::construct]
+///
+/// [Pipeline::construct]: struct.Pipeline.html#method.construct
 pub struct PipelineInstance<T>
     where T: MiddlewareChain
 {
@@ -164,6 +167,8 @@ pub struct PipelineInstance<T>
 impl<T> Pipeline<T>
     where T: NewMiddlewareChain
 {
+    /// Constructs an instance of this `Pipeline` by creating all `Middleware` instances required
+    /// to serve a request. If any middleware fails creation, its error will be returned.
     pub fn construct(&self) -> io::Result<PipelineInstance<T::Instance>> {
         Ok(PipelineInstance { chain: self.chain.construct()? })
     }
@@ -172,6 +177,8 @@ impl<T> Pipeline<T>
 impl<T> PipelineInstance<T>
     where T: MiddlewareChain
 {
+    /// Serves a request using this `PipelineInstance`. Requests that pass through all `Middleware`
+    /// will be served with the `f` function.
     pub fn call<F>(self, state: State, req: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
@@ -411,10 +418,11 @@ unsafe impl<T, U> MiddlewareChain for (T, U)
 mod tests {
     use super::*;
     use test::TestServer;
-    use handler::NewHandlerService;
+    use handler::{Handler, NewHandlerService};
     use state::StateData;
     use hyper::server::Response;
     use hyper::StatusCode;
+    use futures::{future, Future};
 
     fn handler(state: State, _req: Request) -> (State, Response) {
         let number = state.borrow::<Number>().unwrap().value;
