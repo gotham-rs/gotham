@@ -14,7 +14,7 @@ use futures::{future, Future};
 /// correct `Handler`.
 pub struct Dispatcher<H, C>
     where H: NewHandler,
-          C: PipelineChain + Sync
+          C: PipelineChain + Send + Sync
 {
     /// The `NewHandler` which will create `Handler` values used for serving requests via this
     /// `Dispatcher`
@@ -61,7 +61,7 @@ pub trait PipelineChain {
 
 /// Part of a `PipelineChain` which references a `Pipeline` and continues with a tail element.
 impl<'a, T, U> PipelineChain for (&'a Pipeline<T>, U)
-    where T: NewMiddlewareChain + Send + Sync,
+    where T: NewMiddlewareChain,
           T::Instance: Send + 'static,
           U: PipelineChain
 {

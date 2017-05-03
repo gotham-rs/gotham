@@ -149,7 +149,7 @@ use hyper::server::Request;
 /// }
 /// ```
 pub struct Pipeline<T>
-    where T: NewMiddlewareChain + Send + Sync
+    where T: NewMiddlewareChain
 {
     chain: T,
 }
@@ -296,14 +296,14 @@ impl<T> PipelineBuilder<T>
     ///
     /// [Pipeline::call]: struct.Pipeline.html#method.call
     pub fn build(self) -> Pipeline<T>
-        where T: NewMiddlewareChain + Send + Sync
+        where T: NewMiddlewareChain
     {
         Pipeline { chain: self.t }
     }
 
     /// Adds a `NewMiddleware` which will create a `Middleware` during request dispatch.
     pub fn add<M>(self, m: M) -> PipelineBuilder<(M, T)>
-        where M: NewMiddleware + Send + Sync,
+        where M: NewMiddleware,
               M::Instance: Send + 'static,
               Self: Sized
     {
