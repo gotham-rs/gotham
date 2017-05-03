@@ -24,15 +24,12 @@ pub struct Dispatcher<H, C>
     pub pipeline_chain: C,
 }
 
-// Implementing `Handler`, rather than just `impl Dispatcher` ensures we continue meeting the same
-// guarantees over time if the trait is refactored. `Dispatcher` isn't anticipated to ever act as
-// a normal `Handler`.
-impl<H, C> Handler for Dispatcher<H, C>
+impl<H, C> Dispatcher<H, C>
     where H: NewHandler,
           H::Instance: 'static,
           C: PipelineChain + Send + Sync
 {
-    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
+    pub fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture> {
         match self.new_handler.new_handler() {
             Ok(h) => self.pipeline_chain.call(state, req, move |state, req| h.handle(state, req)),
             Err(e) => future::err((state, e.into())).boxed(),
@@ -198,7 +195,7 @@ mod tests {
                     new_handler,
                     pipeline_chain,
                 };
-                dispatcher.handle(state, req)
+                dispatcher.dispatch(state, req)
             })
         });
 
