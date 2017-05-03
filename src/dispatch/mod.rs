@@ -10,16 +10,9 @@ use state::State;
 use hyper::server::Request;
 use futures::{future, Future};
 
-/// Internal type for dispatching requests, via a `Pipeline`, to a `NewHandler`
-///
-/// Having `Handler` as a supertrait ensures we continue meeting the same guarantees over time if
-/// the trait is refactored. A `Dispatcher` isn't anticipated to ever act as a normal `Handler`
-/// (which is why it carries its own marker trait).
-pub trait Dispatcher: Handler {}
-
-/// A concrete type implementing `Dispatcher`. The type is used by `Router` to dispatch requests
-/// via the configured `Pipeline`(s) and to the correct `Handler`.
-pub struct DispatcherImpl<H, C>
+/// Internal type used by `Router` to dispatch requests via the configured `Pipeline`(s) and to the
+/// correct `Handler`.
+pub struct Dispatcher<H, C>
     where H: NewHandler,
           C: PipelineChain + Sync
 {
@@ -31,7 +24,10 @@ pub struct DispatcherImpl<H, C>
     pub pipeline_chain: C,
 }
 
-impl<H, C> Handler for DispatcherImpl<H, C>
+// Implementing `Handler`, rather than just `impl Dispatcher` ensures we continue meeting the same
+// guarantees over time if the trait is refactored. `Dispatcher` isn't anticipated to ever act as
+// a normal `Handler`.
+impl<H, C> Handler for Dispatcher<H, C>
     where H: NewHandler,
           H::Instance: 'static,
           C: PipelineChain + Send + Sync
@@ -42,13 +38,6 @@ impl<H, C> Handler for DispatcherImpl<H, C>
             Err(e) => future::err((state, e.into())).boxed(),
         }
     }
-}
-
-impl<H, C> Dispatcher for DispatcherImpl<H, C>
-    where H: NewHandler,
-          H::Instance: 'static,
-          C: PipelineChain + Send + Sync
-{
 }
 
 /// A heterogeneous list of `Pipeline` values, which are invoked in order to serve a request.
@@ -205,7 +194,7 @@ mod tests {
                 let new_handler = || Ok(handler);
 
                 let pipeline_chain = (&p3, (&p2, (&p1, ())));
-                let dispatcher = DispatcherImpl {
+                let dispatcher = Dispatcher {
                     new_handler,
                     pipeline_chain,
                 };
