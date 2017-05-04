@@ -13,7 +13,7 @@ use hyper::header::ContentLength;
 use hyper::server::{Http, Request, Response};
 
 use gotham::router::Router;
-use gotham::handler::{HandlerFuture, HandlerService};
+use gotham::handler::{Handler, HandlerFuture, HandlerService};
 use gotham::state::State;
 use gotham::middleware::pipeline::{new_pipeline, Pipeline};
 
@@ -70,7 +70,16 @@ fn main() {
     let new_service = || {
         let router = router();
         let pipeline = pipeline();
-        Ok(HandlerService::new(move |state, req| pipeline.call(&router, state, req)))
+
+        let service = move |state, req| match pipeline.construct() {
+            Ok(p) => {
+                let r = router.clone();
+                p.call(state, req, move |state, req| r.handle(state, req))
+            }
+            Err(e) => future::err((state, e.into())).boxed(),
+        };
+
+        Ok(HandlerService::new(service))
     };
 
     let server = Http::new().bind(&addr, new_service).unwrap();
