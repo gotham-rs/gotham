@@ -16,12 +16,8 @@ pub struct Dispatcher<H, C>
     where H: NewHandler,
           C: PipelineChain + Send + Sync
 {
-    /// The `NewHandler` which will create `Handler` values used for serving requests via this
-    /// `Dispatcher`
-    pub new_handler: H,
-
-    /// The chain of `Pipeline`(s) used when dispatching via this `Dispatcher`
-    pub pipeline_chain: C,
+    new_handler: H,
+    pipeline_chain: C,
 }
 
 impl<H, C> Dispatcher<H, C>
@@ -29,6 +25,15 @@ impl<H, C> Dispatcher<H, C>
           H::Instance: 'static,
           C: PipelineChain + Send + Sync
 {
+    /// Creates a new `Dispatcher` value.
+    pub fn new(new_handler: H, pipeline_chain: C) -> Dispatcher<H, C> {
+        Dispatcher {
+            new_handler,
+            pipeline_chain,
+        }
+    }
+
+    /// Dispatches a request via this `Dispatcher`.
     pub fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture> {
         match self.new_handler.new_handler() {
             Ok(h) => self.pipeline_chain.call(state, req, move |state, req| h.handle(state, req)),
@@ -191,10 +196,7 @@ mod tests {
                 let new_handler = || Ok(handler);
 
                 let pipeline_chain = (&p3, (&p2, (&p1, ())));
-                let dispatcher = Dispatcher {
-                    new_handler,
-                    pipeline_chain,
-                };
+                let dispatcher = Dispatcher::new(new_handler, pipeline_chain);
                 dispatcher.dispatch(state, req)
             })
         });
