@@ -20,6 +20,7 @@ extern crate tokio_core;
 extern crate tokio_io;
 extern crate mio;
 
+pub mod dispatch;
 pub mod handler;
 pub mod middleware;
 pub mod router;
