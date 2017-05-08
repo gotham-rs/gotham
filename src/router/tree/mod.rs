@@ -38,7 +38,7 @@ pub mod segment_matcher;
 /// #   (state, Response::new())
 /// # }
 
-/// # fn basic_route() -> Box<Route> {
+/// # fn basic_route() -> Box<Route + Send + Sync> {
 /// #   let methods = vec![Method::Get];
 /// #   let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
@@ -102,7 +102,7 @@ impl<'n> Tree<'n> {
 
     /// Adds a `Route` be evaluated by the `Router` when the root of the `Tree` is requested
     ///
-    pub fn add_route(&mut self, route: Box<Route>) {
+    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
         self.root.add_route(route);
     }
 

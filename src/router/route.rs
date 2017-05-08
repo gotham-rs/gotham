@@ -53,7 +53,7 @@ pub trait Route {
 pub struct RouteImpl<RM, NH, PC>
     where RM: RequestMatcher,
           NH: NewHandler,
-          PC: PipelineChain + Send + Sync
+          PC: PipelineChain,
 {
     matcher: RM,
     dispatcher: Dispatcher<NH, PC>,
@@ -62,7 +62,7 @@ pub struct RouteImpl<RM, NH, PC>
 impl<RM, NH, PC> RouteImpl<RM, NH, PC>
     where RM: RequestMatcher,
           NH: NewHandler,
-          PC: PipelineChain + Send + Sync
+          PC: PipelineChain
 {
     /// Creates a new `RouteImpl`
     pub fn new(matcher: RM, dispatcher: Dispatcher<NH, PC>) -> Self {
@@ -77,7 +77,7 @@ impl<RM, NH, PC> Route for RouteImpl<RM, NH, PC>
     where RM: RequestMatcher,
           NH: NewHandler,
           NH::Instance: 'static,
-          PC: PipelineChain + Send + Sync
+          PC: PipelineChain
 {
     fn is_match(&self, req: &Request) -> bool {
         self.matcher.is_match(req)

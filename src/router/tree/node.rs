@@ -29,7 +29,7 @@ use router::tree::segment_matcher::SegmentMatcher;
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
 /// # }
-/// # fn basic_route() -> Box<Route> {
+/// # fn basic_route() -> Box<Route + Send + Sync> {
 /// #   let methods = vec![Method::Get];
 /// #   let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
@@ -62,15 +62,15 @@ use router::tree::segment_matcher::SegmentMatcher;
 // considered to be a valid trade off in the long run.
 pub struct Node<'n> {
     segment: &'n str,
-    segment_matcher: Box<SegmentMatcher>,
-    routes: Vec<Box<Route>>,
+    segment_matcher: Box<SegmentMatcher + Send + Sync>,
+    routes: Vec<Box<Route + Send + Sync>>,
 
     children: Vec<Node<'n>>,
 }
 
 impl<'n> Node<'n> {
     /// Creates new `Node` for the given segment.
-    pub fn new(segment: &'n str, segment_matcher: Box<SegmentMatcher>) -> Self {
+    pub fn new(segment: &'n str, segment_matcher: Box<SegmentMatcher + Send + Sync>) -> Self {
         Node {
             segment,
             segment_matcher,
@@ -90,7 +90,7 @@ impl<'n> Node<'n> {
     /// [tree]: ../struct.Tree.html
     /// [router]: ../../struct.Router.html
     /// [route]: ../../route/trait.Route.html
-    pub fn add_route(&mut self, route: Box<Route>) {
+    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
         self.routes.push(route);
     }
 
@@ -262,7 +262,7 @@ mod tests {
         (state, Response::new())
     }
 
-    fn get_route() -> Box<Route> {
+    fn get_route() -> Box<Route + Send + Sync> {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
