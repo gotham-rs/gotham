@@ -14,7 +14,7 @@ use futures::{future, Future};
 /// correct `Handler`.
 pub struct Dispatcher<H, C>
     where H: NewHandler,
-          C: PipelineChain + Send + Sync
+          C: PipelineChain
 {
     new_handler: H,
     pipeline_chain: C,
@@ -23,7 +23,7 @@ pub struct Dispatcher<H, C>
 impl<H, C> Dispatcher<H, C>
     where H: NewHandler,
           H::Instance: 'static,
-          C: PipelineChain + Send + Sync
+          C: PipelineChain
 {
     /// Creates a new `Dispatcher` value.
     pub fn new(new_handler: H, pipeline_chain: C) -> Dispatcher<H, C> {
