@@ -1,26 +1,32 @@
-//! Defines a type and default implementations that determine if a segment of the request path can be handled
-//! by a node in the route tree.
+//! Defines a type and default implementations that determine if a segment of the
+//! `Request` path is a match for a `Node` in the `Tree`.
 
-/// A type that is used to determine if a given node in the route tree
-/// is a match for the current request path segment.
+/// A type that is used to determine if a segment of the [`Request`][request] path is a
+/// match for a [`Node`][node] in the [`Tree`][tree].
 ///
-/// Consider a route tree with nodes represented by the following segments:
+/// Consider a [`Tree`][tree] with [`Nodes`][node] represented by the following segments:
 ///
 /// ```text
 ///     /
-///     |--segment1
+///     |--segment1      -> (Route)
 ///     |--segment2
-///     |  |--segment2a
+///     |  |--segment2a  -> (Route)
 /// ```
 ///
-/// and a web request of `GET /segment2/segment2a HTTP/1.1`
+/// and a [`Request`][request] path of `/segment2/segment2a`.
 ///
-/// which internally is represented as: `vec!["/", "segment2", "segment2a"]`
+/// In this case the SegmentMatcher **must** discount the [`Node`][node] represented by the
+/// segment `segment1` whilst successfully matching against the other segments in order to return
+/// a valid response.
 ///
-/// In this case the SegmentMatcher must discount the node represented by the node_segment `segment1`
-/// whilst successfully matching againt other `node_segments` in order to return a valid response.
+/// [node]: ../node/struct.Node.html
+/// [tree]: ../struct.Tree.html
+/// [router]: ../../struct.Router.html
+/// [route]: ../../route/trait.Route.html
+/// [request]: ../../../../hyper/server/struct.Request.html
+
 pub trait SegmentMatcher {
-    /// Returns a positive result if the req_segment is a match for some pre-existing condition.
+    /// Returns a positive result if `req_segment` is a match for some pre-existing condition.
     fn is_match(&self, node_segment: &str, req_segment: &str) -> bool;
 }
 
@@ -45,7 +51,7 @@ impl StaticSegmentMatcher {
 }
 
 impl SegmentMatcher for StaticSegmentMatcher {
-    /// Will return a positive result if `node_segment` and `req_segment` are String equivalent.
+    /// Will return a positive result if `node_segment` and `req_segment` are equivalent.
     fn is_match(&self, node_segment: &str, req_segment: &str) -> bool {
         node_segment == req_segment
     }
