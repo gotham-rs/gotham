@@ -94,6 +94,16 @@ impl<'n> Node<'n> {
         self.routes.push(route);
     }
 
+    /// Allow the [`Router`][router] to access the [`Routes`][route] for this `Node` when it is
+    /// selected as the lead in a single path through the [`Tree`][tree].
+    ///
+    /// [tree]: ../struct.Tree.html
+    /// [router]: ../../struct.Router.html
+    /// [route]: ../../route/trait.Route.html
+    pub fn borrow_routes(&self) -> &Vec<Box<Route + Send + Sync>> {
+        &self.routes
+    }
+
     /// Adds a child `Node`.
     ///
     /// e.g. for `/content/identifier` adding a child representing the segment `identifier` to
