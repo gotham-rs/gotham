@@ -60,6 +60,43 @@ impl State {
         self.data.insert(type_id, Box::new(t));
     }
 
+    /// Determines if the current value exists in `State` storage.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// #
+    /// # use gotham::state::{State, StateData};
+    /// #
+    /// # struct MyStruct {
+    /// #     value: i32
+    /// # }
+    /// #
+    /// # impl StateData for MyStruct {}
+    /// #
+    /// # struct AnotherStruct {
+    /// # }
+    /// #
+    /// # impl StateData for AnotherStruct {}
+    /// #
+    /// # fn main() {
+    /// # let mut state = State::new();
+    /// #
+    /// state.put(MyStruct { value: 1 });
+    /// assert!(state.has::<MyStruct>());
+    /// assert_eq!(state.borrow::<MyStruct>().unwrap().value, 1);
+    ///
+    /// assert!(!state.has::<AnotherStruct>());
+    /// # }
+    /// ```
+    pub fn has<T>(&self) -> bool
+        where T: StateData
+    {
+        let type_id = TypeId::of::<T>();
+        self.data.get(&type_id).is_some()
+    }
+
     /// Borrows a value from the `State` storage.
     ///
     /// # Examples
@@ -76,7 +113,6 @@ impl State {
     /// # impl StateData for MyStruct {}
     /// #
     /// # struct AnotherStruct {
-    /// #     value: &'static str
     /// # }
     /// #
     /// # impl StateData for AnotherStruct {}
@@ -86,6 +122,7 @@ impl State {
     /// #
     /// state.put(MyStruct { value: 1 });
     /// assert!(state.borrow::<MyStruct>().is_some());
+    /// assert_eq!(state.borrow::<MyStruct>().unwrap().value, 1);
     ///
     /// assert!(state.borrow::<AnotherStruct>().is_none());
     /// # }
@@ -113,7 +150,6 @@ impl State {
     /// # impl StateData for MyStruct {}
     /// #
     /// # struct AnotherStruct {
-    /// #     value: &'static str
     /// # }
     /// #
     /// # impl StateData for AnotherStruct {}
@@ -155,7 +191,6 @@ impl State {
     /// # impl StateData for MyStruct {}
     /// #
     /// # struct AnotherStruct {
-    /// #     value: &'static str
     /// # }
     /// #
     /// # impl StateData for AnotherStruct {}
