@@ -124,16 +124,23 @@ impl<'n> Tree<'n> {
     /// [node-traverse]: node/struct.Node.html#method.traverse
     /// [node]: node/struct.Node.html
     pub fn traverse(&'n self, path: &str) -> Option<Vec<&'n Node<'n>>> {
-        let segments = path.split('/').filter(|s| *s != "").collect::<Vec<&str>>();
-
-        if segments.is_empty() {
-            if self.root.is_routable() {
-                Some(vec![&self.root])
-            } else {
-                None
+        match self.split_request_path(path).split_first() {
+            Some((_root, rem)) => {
+                if rem.is_empty() {
+                    Some(vec![&self.root])
+                } else {
+                    self.root.traverse(rem)
+                }
             }
-        } else {
-            self.root.traverse(&segments)
+            None => None,
         }
+    }
+
+    /// Spilt a Request path into indivdual segments, leading leading "/" to represent
+    /// the root of the path.
+    pub fn split_request_path(&'n self, path: &'n str) -> Vec<&'n str> {
+        let mut segments = vec!["/"];
+        segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'n str>>());
+        segments
     }
 }
