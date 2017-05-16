@@ -53,7 +53,7 @@ pub trait Route {
 pub struct RouteImpl<RM, NH, PC>
     where RM: RequestMatcher,
           NH: NewHandler,
-          PC: PipelineChain,
+          PC: PipelineChain
 {
     matcher: RM,
     dispatcher: Dispatcher<NH, PC>,
