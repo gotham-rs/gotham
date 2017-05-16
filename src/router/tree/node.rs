@@ -60,15 +60,15 @@ use router::tree::segment_matcher::SegmentMatcher;
 // This struct was originally defined as multiple types to represent the various roles a single `Node`
 // can play (parent, leaf, parent+leaf) but this led to complexities in API that weren't
 // considered to be a valid trade off in the long run.
-pub struct Node<'n> {
+pub struct Node<'n, P> {
     segment: &'n str,
     segment_matcher: Box<SegmentMatcher + Send + Sync>,
-    routes: Vec<Box<Route + Send + Sync>>,
+    routes: Vec<Box<Route<P> + Send + Sync>>,
 
-    children: Vec<Node<'n>>,
+    children: Vec<Node<'n, P>>,
 }
 
-impl<'n> Node<'n> {
+impl<'n, P> Node<'n, P> {
     /// Creates new `Node` for the given segment.
     pub fn new(segment: &'n str, segment_matcher: Box<SegmentMatcher + Send + Sync>) -> Self {
         Node {
@@ -90,7 +90,7 @@ impl<'n> Node<'n> {
     /// [tree]: ../struct.Tree.html
     /// [router]: ../../struct.Router.html
     /// [route]: ../../route/trait.Route.html
-    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
         self.routes.push(route);
     }
 
@@ -100,7 +100,7 @@ impl<'n> Node<'n> {
     /// [tree]: ../struct.Tree.html
     /// [router]: ../../struct.Router.html
     /// [route]: ../../route/trait.Route.html
-    pub fn borrow_routes(&self) -> &Vec<Box<Route + Send + Sync>> {
+    pub fn borrow_routes(&self) -> &Vec<Box<Route<P> + Send + Sync>> {
         &self.routes
     }
 
@@ -108,7 +108,7 @@ impl<'n> Node<'n> {
     ///
     /// e.g. for `/content/identifier` adding a child representing the segment `identifier` to
     /// an existing parent `Node` representing `content`.
-    pub fn add_child(&mut self, child: Node<'n>) {
+    pub fn add_child(&mut self, child: Node<'n, P>) {
         self.children.push(child);
     }
 
@@ -129,7 +129,7 @@ impl<'n> Node<'n> {
     /// To be used in building a [`Tree`][tree] structure only.
     ///
     /// [tree]: ../struct.Tree.html
-    pub fn borrow_child(&self, segment: &str) -> Option<&Node<'n>> {
+    pub fn borrow_child(&self, segment: &str) -> Option<&Node<'n, P>> {
         match self.children.iter().find(|n| n.segment == segment) {
             Some(node) => Some(node),
             None => None,
@@ -141,7 +141,7 @@ impl<'n> Node<'n> {
     /// To be used in building a [`Tree`][tree] structure only.
     ///
     /// [tree]: ../struct.Tree.html
-    pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut Node<'n>> {
+    pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut Node<'n, P>> {
         match self.children.iter_mut().find(|n| n.segment == segment) {
             Some(node) => Some(node),
             None => None,
@@ -214,7 +214,7 @@ impl<'n> Node<'n> {
     /// [router]: ../../struct.Router.html
     /// [route]: ../../route/trait.Route.html
     /// [request]: ../../../../hyper/server/struct.Request.html
-    pub fn traverse(&'n self, req_segments: &[&str]) -> Option<Vec<&'n Node<'n>>> {
+    pub fn traverse(&'n self, req_segments: &[&str]) -> Option<Vec<&'n Node<'n, P>>> {
         match self.inner_traverse(req_segments) {
             Some(mut path) => {
                 path.reverse();
@@ -224,7 +224,7 @@ impl<'n> Node<'n> {
         }
     }
 
-    fn inner_traverse(&'n self, req_segments: &[&str]) -> Option<Vec<&'n Node<'n>>> {
+    fn inner_traverse(&'n self, req_segments: &[&str]) -> Option<Vec<&'n Node<'n, P>>> {
         match req_segments.split_first() {
             Some((req_segment, req_segments)) => {
                 self.children

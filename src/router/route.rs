@@ -5,21 +5,22 @@
 //! dispatch to it when it does so.
 
 use hyper::server::Request;
+use borrow_bag::BorrowBag;
 
 use handler::{HandlerFuture, NewHandler};
 use state::State;
-use dispatch::{PipelineChain, Dispatcher};
+use dispatch::{PipelineHandleChain, Dispatcher};
 use router::request_matcher::RequestMatcher;
 
 /// A type that determines if its associated logic can be exposed by the `Router`
 /// in response to an external request.
-pub trait Route {
+pub trait Route<P> {
     /// Determines if this `Route` can be invoked, based on the `Request`.
     fn is_match(&self, req: &Request) -> bool;
 
     /// Final call made by the `Router` to the matched `Route` allowing
     /// application specific logic to respond to the request.
-    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture>;
+    fn dispatch(&self, pipelines: &BorrowBag<P>, state: State, req: Request) -> Box<HandlerFuture>;
 }
 
 /// Default implementation for `Route`.
@@ -50,22 +51,22 @@ pub trait Route {
 ///   RouteImpl::new(matcher, dispatcher);
 /// # }
 /// ```
-pub struct RouteImpl<RM, NH, PC>
+pub struct RouteImpl<RM, NH, PC, P>
     where RM: RequestMatcher,
           NH: NewHandler,
-          PC: PipelineChain
+          PC: PipelineHandleChain<P>
 {
     matcher: RM,
-    dispatcher: Dispatcher<NH, PC>,
+    dispatcher: Dispatcher<NH, PC, P>,
 }
 
-impl<RM, NH, PC> RouteImpl<RM, NH, PC>
+impl<RM, NH, PC, P> RouteImpl<RM, NH, PC, P>
     where RM: RequestMatcher,
           NH: NewHandler,
-          PC: PipelineChain
+          PC: PipelineHandleChain<P>
 {
     /// Creates a new `RouteImpl`
-    pub fn new(matcher: RM, dispatcher: Dispatcher<NH, PC>) -> Self {
+    pub fn new(matcher: RM, dispatcher: Dispatcher<NH, PC, P>) -> Self {
         RouteImpl {
             matcher,
             dispatcher,
@@ -73,17 +74,17 @@ impl<RM, NH, PC> RouteImpl<RM, NH, PC>
     }
 }
 
-impl<RM, NH, PC> Route for RouteImpl<RM, NH, PC>
+impl<RM, NH, PC, P> Route<P> for RouteImpl<RM, NH, PC, P>
     where RM: RequestMatcher,
           NH: NewHandler,
           NH::Instance: 'static,
-          PC: PipelineChain
+          PC: PipelineHandleChain<P>
 {
     fn is_match(&self, req: &Request) -> bool {
         self.matcher.is_match(req)
     }
 
-    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        self.dispatcher.dispatch(state, req)
+    fn dispatch(&self, pipelines: &BorrowBag<P>, state: State, req: Request) -> Box<HandlerFuture> {
+        self.dispatcher.dispatch(pipelines, state, req)
     }
 }

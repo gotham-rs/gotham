@@ -21,7 +21,7 @@ struct RouterData<'n, P, NFH, ISEH>
     where NFH: NewHandler,
           ISEH: NewHandler
 {
-    tree: Tree<'n>,
+    tree: Tree<'n, P>,
     pipelines: BorrowBag<P>,
     not_found_handler: NFH,
     internal_server_error_handler: ISEH,
@@ -33,7 +33,7 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
           ISEH: NewHandler,
           ISEH::Instance: 'static
 {
-    pub fn new(tree: Tree<'n>,
+    pub fn new(tree: Tree<'n, P>,
                pipelines: BorrowBag<P>,
                not_found_handler: NFH,
                internal_server_error_handler: ISEH)
@@ -99,7 +99,7 @@ impl<'n, P, NFH, ISEH> Router<'n, P, NFH, ISEH>
     /// handlers for NotFound and InternalServerError responses.
     ///
     /// [tree]: tree/struct.Tree.html
-    pub fn new(tree: Tree<'n>,
+    pub fn new(tree: Tree<'n, P>,
                pipelines: BorrowBag<P>,
                not_found_handler: NFH,
                internal_server_error_handler: ISEH)
@@ -197,7 +197,7 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
                 if let Some(leaf) = tree_path.last() {
                     // dispatch
                     match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
-                        Some(route) => route.dispatch(state, req),
+                        Some(route) => route.dispatch(&self.data.pipelines, state, req),
                         None => self.internal_server_error(state, req),
                     }
                 } else {

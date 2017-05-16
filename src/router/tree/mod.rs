@@ -68,11 +68,11 @@ pub mod segment_matcher;
 /// [route]: ../route/trait.Route.html
 /// [request]: ../../../hyper/server/struct.Request.html
 
-pub struct Tree<'n> {
-    root: Node<'n>,
+pub struct Tree<'n, P> {
+    root: Node<'n, P>,
 }
 
-impl<'n> Tree<'n> {
+impl<'n, P> Tree<'n, P> {
     /// Creates a new `Tree` and root [`Node`][node] using a
     /// [`StaticSegmentMatcher`][ssm]
     ///
@@ -86,7 +86,7 @@ impl<'n> Tree<'n> {
     /// Adds a child [`Node`][node] to the root of the `Tree`.
     ///
     /// [node]: node/struct.Node.html
-    pub fn add_child(&mut self, child: Node<'n>) {
+    pub fn add_child(&mut self, child: Node<'n, P>) {
         self.root.add_child(child);
     }
 
@@ -102,7 +102,7 @@ impl<'n> Tree<'n> {
 
     /// Adds a `Route` be evaluated by the `Router` when the root of the `Tree` is requested
     ///
-    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
         self.root.add_route(route);
     }
 
@@ -111,7 +111,7 @@ impl<'n> Tree<'n> {
     /// To be used in building a `Tree` structure only.
     ///
     /// [node]: node/struct.Node.html
-    pub fn borrow_root(&self) -> &Node<'n> {
+    pub fn borrow_root(&self) -> &Node<'n, P> {
         &self.root
     }
 
@@ -123,7 +123,7 @@ impl<'n> Tree<'n> {
     ///
     /// [node-traverse]: node/struct.Node.html#method.traverse
     /// [node]: node/struct.Node.html
-    pub fn traverse(&'n self, path: &str) -> Option<Vec<&'n Node<'n>>> {
+    pub fn traverse(&'n self, path: &str) -> Option<Vec<&'n Node<'n, P>>> {
         let segments = path.split('/').filter(|s| *s != "").collect::<Vec<&str>>();
 
         if segments.is_empty() {
