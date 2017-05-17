@@ -37,22 +37,31 @@ pub mod segment_matcher;
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
 /// # }
-
-/// # fn basic_route() -> Box<Route + Send + Sync> {
-/// #   let methods = vec![Method::Get];
-/// #   let matcher = MethodOnlyRequestMatcher::new(methods);
-/// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #   Box::new(RouteImpl::new(matcher, dispatcher))
-/// # }
 /// #
 /// # fn main() {
-///   let mut tree = Tree::new();
-///   tree.add_route(basic_route());
+///   let mut tree: Tree<()> = Tree::new();
+///
+///   let route = {
+///       // Route construction elided
+/// #     let methods = vec![Method::Get];
+/// #     let matcher = MethodOnlyRequestMatcher::new(methods);
+/// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
+/// #     Box::new(RouteImpl::new(matcher, dispatcher))
+///   };
+///   tree.add_route(route);
 ///
 ///   let mut content_node = Node::new("content", Box::new(StaticSegmentMatcher::new()));
 ///
 ///   let mut identifier_node = Node::new("identifier", Box::new(StaticSegmentMatcher::new()));
-///   identifier_node.add_route(basic_route());
+///
+///   let route = {
+///       // Route construction elided
+/// #     let methods = vec![Method::Get];
+/// #     let matcher = MethodOnlyRequestMatcher::new(methods);
+/// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
+/// #     Box::new(RouteImpl::new(matcher, dispatcher))
+///   };
+///   identifier_node.add_route(route);
 ///
 ///   content_node.add_child(identifier_node);
 ///   tree.add_child(content_node);

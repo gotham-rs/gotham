@@ -29,19 +29,20 @@ use router::tree::segment_matcher::SegmentMatcher;
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
 /// # }
-/// # fn basic_route() -> Box<Route + Send + Sync> {
-/// #   let methods = vec![Method::Get];
-/// #   let matcher = MethodOnlyRequestMatcher::new(methods);
-/// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #   Box::new(RouteImpl::new(matcher, dispatcher))
-/// # }
 /// #
 /// # fn main() {
-/// #  let mut root_node = Node::new("/", Box::new(StaticSegmentMatcher::new()));
+/// #  let mut root_node: Node<()> = Node::new("/", Box::new(StaticSegmentMatcher::new()));
 ///   let mut content_node = Node::new("content", Box::new(StaticSegmentMatcher::new()));
 ///
 ///   let mut identifier_node = Node::new("identifier", Box::new(StaticSegmentMatcher::new()));
-///   identifier_node.add_route(basic_route());
+///   let route = {
+///       // Route construction elided
+/// #     let methods = vec![Method::Get];
+/// #     let matcher = MethodOnlyRequestMatcher::new(methods);
+/// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
+/// #     Box::new(RouteImpl::new(matcher, dispatcher))
+///   };
+///   identifier_node.add_route(route);
 ///
 ///   content_node.add_child(identifier_node);
 ///   root_node.add_child(content_node);
@@ -272,14 +273,14 @@ mod tests {
         (state, Response::new())
     }
 
-    fn get_route() -> Box<Route + Send + Sync> {
+    fn get_route() -> Box<Route<()> + Send + Sync> {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
         Box::new(RouteImpl::new(matcher, dispatcher))
     }
 
-    fn test_structure<'n>() -> Node<'n> {
+    fn test_structure<'n>() -> Node<'n, ()> {
         let sm = StaticSegmentMatcher::new();
         let dm = DynamicSegmentMatcher::new();
 
@@ -345,7 +346,7 @@ mod tests {
     #[test]
     fn assigns_segment() {
         let sm = StaticSegmentMatcher::new();
-        let node = Node::new("seg1", Box::new(sm));
+        let node: Node<()> = Node::new("seg1", Box::new(sm));
         assert_eq!("seg1", node.segment());
     }
 

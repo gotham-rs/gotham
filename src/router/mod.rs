@@ -55,6 +55,7 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
 /// ```
 /// # extern crate gotham;
 /// # extern crate hyper;
+/// # extern crate borrow_bag;
 /// #
 /// # use hyper::server::{Request, Response};
 /// # use gotham::router::tree::Tree;
@@ -73,8 +74,9 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
 ///   let tree = Tree::new();
 ///   let not_found = || Ok(handler);
 ///   let internal_server_error = || Ok(handler2);
+///   let pipelines = borrow_bag::new_borrow_bag();
 ///
-///   Router::new(tree, not_found, internal_server_error);
+///   Router::new(tree, pipelines, not_found, internal_server_error);
 /// # }
 /// ```
 ///

@@ -112,12 +112,7 @@ impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
 
 /// The marker for the end of a `PipelineHandleChain`.
 impl<P> PipelineHandleChain<P> for () {
-    fn call<F>(&self,
-               pipelines: &BorrowBag<P>,
-               state: State,
-               req: Request,
-               f: F)
-               -> Box<HandlerFuture>
+    fn call<F>(&self, _: &BorrowBag<P>, state: State, req: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
         f(state, req)
@@ -135,6 +130,7 @@ mod tests {
     use state::StateData;
     use hyper::server::Response;
     use hyper::StatusCode;
+    use borrow_bag;
 
     fn handler(state: State, _req: Request) -> (State, Response) {
         let number = state.borrow::<Number>().unwrap().value;
@@ -214,27 +210,29 @@ mod tests {
     fn pipeline_chain_ordering_test() {
         let new_service = NewHandlerService::new(|| {
             Ok(move |state, req| {
-                let p1 = new_pipeline()
+                let pipelines = borrow_bag::new_borrow_bag();
+
+                let (pipelines, p1) = pipelines.add(new_pipeline()
                     .add(Number { value: 0 }) // 0
                     .add(Addition { value: 1 }) // 1
                     .add(Multiplication { value: 2 }) // 2
-                    .build();
+                    .build());
 
-                let p2 = new_pipeline()
+                let (pipelines, p2) = pipelines.add(new_pipeline()
                     .add(Addition { value: 1 }) // 3
                     .add(Multiplication { value: 2 }) // 6
-                    .build();
+                    .build());
 
-                let p3 = new_pipeline()
+                let (pipelines, p3) = pipelines.add(new_pipeline()
                     .add(Addition { value: 2 }) // 8
                     .add(Multiplication { value: 3 }) // 24
-                    .build();
+                    .build());
 
                 let new_handler = || Ok(handler);
 
-                let pipeline_chain = (&p3, (&p2, (&p1, ())));
+                let pipeline_chain = (p3, (p2, (p1, ())));
                 let dispatcher = Dispatcher::new(new_handler, pipeline_chain);
-                dispatcher.dispatch(state, req)
+                dispatcher.dispatch(&pipelines, state, req)
             })
         });
 

@@ -47,7 +47,7 @@ pub trait Route<P> {
 ///
 ///   let methods = vec![Method::Get];
 ///   let matcher = MethodOnlyRequestMatcher::new(methods);
-///   let dispatcher = Dispatcher::new(|| Ok(handler), ());
+///   let dispatcher: Dispatcher<_, _, ()> = Dispatcher::new(|| Ok(handler), ());
 ///   RouteImpl::new(matcher, dispatcher);
 /// # }
 /// ```

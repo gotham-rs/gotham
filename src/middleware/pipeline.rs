@@ -26,22 +26,22 @@ use hyper::server::Request;
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate futures;
+/// # extern crate borrow_bag;
 /// #
 /// # use std::io;
 /// # use gotham::state::{State, StateData};
 /// # use gotham::handler::{HandlerFuture, NewHandlerService};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
-/// // # use gotham::middleware::pipeline::{new_pipeline, Pipeline, PipelineBuilder};
+/// # use gotham::middleware::pipeline::new_pipeline;
 /// # use gotham::router::Router;
 /// # use gotham::router::tree::Tree;
-/// # use gotham::router::route::{Route, RouteImpl};
+/// # use gotham::router::route::RouteImpl;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::test::TestServer;
 /// # use hyper::server::{Request, Response};
 /// # use hyper::StatusCode;
 /// # use hyper::Method;
-/// // # use futures::{future, Future};
 /// #
 /// struct MiddlewareData {
 ///     vec: Vec<i32>
@@ -111,21 +111,12 @@ use hyper::server::Request;
 /// # }
 ///
 /// fn handler(state: State, _req: Request) -> (State, Response) {
-///     // TODO: Dump the contents of the `Vec<i32>` into the response body.
-///     // let body = {
-///     //    let data = state.borrow::<MiddlewareData>().unwrap();
-///     //    format!("{:?}", data.vec)
-///     // };
+///     let body = {
+///        let data = state.borrow::<MiddlewareData>().unwrap();
+///        format!("{:?}", data.vec)
+///     };
 ///
-///     // (state, Response::new().with_status(StatusCode::Ok).with_body(body))
-///     (state, Response::new())
-/// }
-///
-/// fn basic_route() -> Box<Route + Send + Sync>
-/// {
-///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
-///     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-///     Box::new(RouteImpl::new(matcher, dispatcher))
+///     (state, Response::new().with_status(StatusCode::Ok).with_body(body))
 /// }
 ///
 /// fn not_found(state: State, _req: Request) -> (State, Response) {
@@ -137,17 +128,20 @@ use hyper::server::Request;
 /// }
 ///
 /// fn main() {
-///     // TODO: Pipeline issues currently outstanding
-///     // let pipeline = new_pipeline()
-///     //    .add(MiddlewareOne)
-///     //    .add(MiddlewareTwo)
-///     //    .add(MiddlewareThree)
-///     //    .build();
+///     let pipelines = borrow_bag::new_borrow_bag();
+///     let (pipelines, pipeline) = pipelines.add(new_pipeline()
+///         .add(MiddlewareOne)
+///         .add(MiddlewareTwo)
+///         .add(MiddlewareThree)
+///         .build());
 ///
 ///     let mut tree = Tree::new();
-///     tree.add_route(basic_route());
 ///
-///     let router = Router::new(tree, || Ok(not_found), || Ok(internal_server_error));
+///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+///     let dispatcher = Dispatcher::new(|| Ok(handler), (pipeline, ()));
+///     tree.add_route(Box::new(RouteImpl::new(matcher, dispatcher)));
+///
+///     let router = Router::new(tree, pipelines, || Ok(not_found), || Ok(internal_server_error));
 ///
 ///     let new_service = NewHandlerService::new(router);
 ///     let mut test_server = TestServer::new(new_service).unwrap();
@@ -155,9 +149,7 @@ use hyper::server::Request;
 ///     let uri = "http://example.com/".parse().unwrap();
 ///     let response = test_server.run_request(client.get(uri)).unwrap();
 ///     assert_eq!(response.status(), StatusCode::Ok);
-///
-///     // TODO: Pipeline issues currently outstanding
-///     // assert_eq!(test_server.read_body(response).unwrap(), "[1, 2, 3]".as_bytes());
+///     assert_eq!(test_server.read_body(response).unwrap(), "[1, 2, 3]".as_bytes());
 /// }
 /// ```
 pub struct Pipeline<T>
