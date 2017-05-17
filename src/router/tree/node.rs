@@ -1,7 +1,27 @@
-//! Defines a `Node` which is a recursive member of a `Tree` and represents a segment of a `Request`
-//! path
+//! Defines components of `Nodes` which live within a `Tree`.
+
+use std::cmp::Ordering;
+use std::collections::HashMap;
+
 use router::route::Route;
-use router::tree::segment_matcher::SegmentMatcher;
+
+/// Indicates the type of segment which is being represented by this Node.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub enum NodeSegmentType<'n> {
+    /// Is matched exactly to the corresponding segment for incoming request paths. Unlike all
+    /// other `NodeSegmentTypes` this segment is **not** stored within `State`.
+    Static,
+    /// Uses the supplied regex to determine match against incoming request paths.
+    Constrained {
+        /// Regex used to match against a single segment of a request path.
+        regex: &'n str,
+    },
+    /// Matches any corresponding segment for incoming request paths.
+    Dynamic,
+    /// Matches multiple path segments until the end of the request path or until a child
+    /// segment of the above defined types is found.
+    Glob,
+}
 
 /// A recursive member of [`Tree`][tree] and represents a segment of a [`Request`][request] path.
 ///
@@ -24,7 +44,7 @@ use router::tree::segment_matcher::SegmentMatcher;
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::node::Node;
-/// # use gotham::router::tree::segment_matcher::StaticSegmentMatcher;
+/// # use gotham::router::tree::node::NodeSegmentType;
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -37,16 +57,16 @@ use router::tree::segment_matcher::SegmentMatcher;
 /// # }
 /// #
 /// # fn main() {
-/// #  let mut root_node = Node::new("/", Box::new(StaticSegmentMatcher::new()));
-///   let mut content_node = Node::new("content", Box::new(StaticSegmentMatcher::new()));
+/// #  let mut root_node = Node::new("/", NodeSegmentType::Static);
+///   let mut content_node = Node::new("content", NodeSegmentType::Static);
 ///
-///   let mut identifier_node = Node::new("identifier", Box::new(StaticSegmentMatcher::new()));
+///   let mut identifier_node = Node::new("identifier", NodeSegmentType::Static);
 ///   identifier_node.add_route(basic_route());
 ///
 ///   content_node.add_child(identifier_node);
 ///   root_node.add_child(content_node);
 ///
-///   let traversal = root_node.traverse(&["content", "identifier"]);
+///   let traversal = root_node.traverse(&["/", "content", "identifier"]);
 ///   assert!(traversal.unwrap().last().unwrap().is_routable());
 /// # }
 /// ```
@@ -56,13 +76,9 @@ use router::tree::segment_matcher::SegmentMatcher;
 /// [route]: ../../route/trait.Route.html
 /// [request]: ../../../../hyper/server/struct.Request.html
 ///
-
-// This struct was originally defined as multiple types to represent the various roles a single `Node`
-// can play (parent, leaf, parent+leaf) but this led to complexities in API that weren't
-// considered to be a valid trade off in the long run.
 pub struct Node<'n> {
     segment: &'n str,
-    segment_matcher: Box<SegmentMatcher + Send + Sync>,
+    segment_type: NodeSegmentType<'n>,
     routes: Vec<Box<Route + Send + Sync>>,
 
     children: Vec<Node<'n>>,
@@ -70,10 +86,10 @@ pub struct Node<'n> {
 
 impl<'n> Node<'n> {
     /// Creates new `Node` for the given segment.
-    pub fn new(segment: &'n str, segment_matcher: Box<SegmentMatcher + Send + Sync>) -> Self {
+    pub fn new(segment: &'n str, segment_type: NodeSegmentType<'n>) -> Self {
         Node {
             segment,
-            segment_matcher,
+            segment_type,
             routes: vec![],
             children: vec![],
         }
@@ -82,6 +98,11 @@ impl<'n> Node<'n> {
     /// Provides the segment this `Node` represents.
     pub fn segment(&self) -> &str {
         self.segment
+    }
+
+    /// Provides the type of segment this `Node` represents.
+    pub fn segment_type(&self) -> &NodeSegmentType {
+        &self.segment_type
     }
 
     /// Adds a [`Route`][route] be evaluated by the [`Router`][router] when acting as a leaf in a
@@ -112,7 +133,22 @@ impl<'n> Node<'n> {
         self.children.push(child);
     }
 
-    /// Determines if a child representing the exact segment provided exists
+    /// Sorts all children
+    ///
+    /// Must be called before this Node and it's children are used in traversal, generally once
+    /// the owning [`Tree`][tree] has been fully constructed.
+    ///
+    /// [tree]: ../struct.Tree.html
+    pub fn sort(&mut self) {
+        self.children.sort();
+
+        // Recursively sort all children, if any.
+        for child in &mut self.children {
+            child.sort();
+        }
+    }
+
+    /// Determines if a child representing the exact segment provided exists.
     ///
     /// To be used in building a [`Tree`][tree] structure only.
     ///
@@ -166,57 +202,53 @@ impl<'n> Node<'n> {
     /// containing `1..n` [`Route`][route] instances for further processing by the
     /// [`Router`][router].
     ///
-    /// **Only the first fully matching path is returned.** Child nodes are simply stored in
-    /// the order of calls made to `add_child` with no further sorting applied.
+    /// **Only the first fully matching path is returned.**
     ///
     /// # Matching Nuances
     ///
     /// ```text
     ///    /
-    ///    |--segment1
-    ///       |--:var1     -> (Route)
-    ///       |--segment2  -> (Route)
+    ///    |--static1
+    ///       |--dynamic     -> (Route)
+    ///       |--static2     -> (Route)
     /// ```
     ///
-    /// Assume that `:var1` uses a segment matcher that simply returns true for any provided segment.
+    /// For the [`Request`][request] path `/static1/static2` the returned path is
+    /// `[Node("static1"), Node("dynamic")]`, **NOT** `[Node("static1"), Node("static2")]`.
     ///
-    /// For the [`Request`][request] path `/segment1/segment2`
-    /// the returned path is `[Node("segment1"), Node(":var1")]`, **NOT** `[Node("segment1"),
-    /// Node("segment2")]`.
-    ///
-    /// In this case a segment matcher for `:var1` that is restricted by a regular expression or
+    /// In this case a static matcher for `dynamic` that is restricted by a regular expression or
     /// a re-ordering of the `Tree` to:
     ///
     /// ```text
     ///    /
-    ///    |--segment1
-    ///       |--segment2  -> (Route)
-    ///       |--:var1     -> (Route)
+    ///    |--static1
+    ///       |--static2  -> (Route)
+    ///       |--dynamic     -> (Route)
     /// ```
     ///
-    /// would ensure the [`Request`][request] path `/segment1/segment2` is represented by the
-    /// returned path `[Node("segment1"), Node("segment2")]`.
+    /// would ensure the [`Request`][request] path `/static1/static2` is represented by the
+    /// returned path `[Node("static1"), Node("static2")]`.
     ///
     /// Finally if the `Tree` structure is:
     ///
     /// ```text
     ///    /
-    ///    |--segment1
-    ///       |--:var1
-    ///          |-- segment3 -> (Route)
-    ///       |--segment2     -> (Route)
+    ///    |--static1
+    ///       |--dynamic
+    ///          |-- static3 -> (Route)
+    ///       |--static2     -> (Route)
     /// ```
     ///
-    /// then for the [`Request`][request] path `/segment1/segment2` the  match against `:var1` would be
+    /// then for the [`Request`][request] path `/static1/static2` the  match against `dynamic` would be
     /// discounted as that `Node` itself is not routable. The algorithm then backtracks eventually
-    /// returning the path `[Node("segment1"), Node("segment2")]`.
+    /// returning the path `[Node("static1"), Node("static2")]`.
     ///
     /// [router]: ../../struct.Router.html
     /// [route]: ../../route/trait.Route.html
     /// [request]: ../../../../hyper/server/struct.Request.html
-    pub fn traverse(&'n self, req_segments: &[&str]) -> Option<Vec<&'n Node<'n>>> {
-        match self.inner_traverse(req_segments) {
-            Some(mut path) => {
+    pub fn traverse(&'n self, req_path_segments: &[&str]) -> Option<Vec<&Node<'n>>> {
+        match self.inner_traverse(req_path_segments, vec![]) {
+            Some((mut path, segment_mapping)) => {
                 path.reverse();
                 Some(path)
             }
@@ -224,31 +256,93 @@ impl<'n> Node<'n> {
         }
     }
 
-    fn inner_traverse(&'n self, req_segments: &[&str]) -> Option<Vec<&'n Node<'n>>> {
-        match req_segments.split_first() {
-            Some((req_segment, req_segments)) => {
-                self.children
-                    .iter()
-                    .filter(|ref c| c.segment_matcher.is_match(c.segment, req_segment))
-                    .flat_map(|ref c| match c.inner_traverse(req_segments) {
-                                  Some(mut path) => {
-                        path.push(self);
-                        Some(path)
+    fn inner_traverse(&self,
+                      req_path_segments: &[&str],
+                      mut consumed_segments: Vec<String>)
+                      -> Option<(Vec<&Node<'n>>, HashMap<&str, Vec<String>>)> {
+        match req_path_segments.split_first() {
+            Some((x, xs)) => {
+                if self.is_match(x) {
+                    if self.is_routable() && req_path_segments.len() == 1 {
+                        // Leaf Node for Route Path, start building result
+                        consumed_segments.push(String::from(*x));
+
+                        let mut segment_mapping = HashMap::new();
+                        segment_mapping.insert(self.segment(), consumed_segments);
+
+                        Some((vec![self], segment_mapping))
+                    } else {
+                        match xs.iter().peekable().peek() {
+                            Some(y) => {
+                                match self.children.iter().find(|c| c.is_match(y)) {
+                                    Some(c) => {
+                                        // Direct child, continue down tree
+                                        match c.inner_traverse(xs, vec![]) {
+                                            Some((mut path, mut segment_mapping)) => {
+                                                consumed_segments.push(String::from(*x));
+                                                segment_mapping.insert(self.segment(),
+                                                                       consumed_segments);
+                                                path.push(self);
+                                                Some((path, segment_mapping))
+                                            }
+                                            None => None,
+                                        }
+                                    }
+                                    None => {
+                                        match self.segment_type {
+                                            // If we're in a Glob consume segment and continue
+                                            // otherwise we've failed to find a suitable way
+                                            // forward.
+                                            NodeSegmentType::Glob => {
+                                                // Prepare for use within State
+                                                consumed_segments.push(String::from(*x));
+                                                self.inner_traverse(xs, consumed_segments)
+                                            }
+                                            _ => None,
+                                        }
+                                    }
+                                }
+                            }
+                            None => None,
+                        }
                     }
-                                  None => None,
-                              })
-                    .nth(0)
-            }
-            None => {
-                if self.is_routable() {
-                    Some(vec![self])
                 } else {
                     None
                 }
             }
+            None => None,
+        }
+    }
+
+    fn is_match(&self, request_path_segment: &str) -> bool {
+        match self.segment_type {
+            NodeSegmentType::Static => self.segment == request_path_segment,
+            NodeSegmentType::Constrained { regex: _ } => unimplemented!(), // TODO
+            NodeSegmentType::Dynamic => true,
+            NodeSegmentType::Glob => true,
         }
     }
 }
+
+impl<'n> Ord for Node<'n> {
+    fn cmp(&self, other: &Node<'n>) -> Ordering {
+        (&self.segment_type, &self.segment).cmp(&(&other.segment_type, &other.segment))
+    }
+}
+
+impl<'n> PartialOrd for Node<'n> {
+    fn partial_cmp(&self, other: &Node<'n>) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<'n> PartialEq for Node<'n> {
+    fn eq(&self, other: &Node<'n>) -> bool {
+        (&self.segment_type, &self.segment) == (&other.segment_type, &other.segment)
+    }
+}
+
+impl<'n> Eq for Node<'n> {}
 
 #[cfg(test)]
 mod tests {
@@ -262,7 +356,6 @@ mod tests {
 
     use router::request_matcher::MethodOnlyRequestMatcher;
     use router::route::{Route, RouteImpl};
-    use router::tree::segment_matcher::{StaticSegmentMatcher, DynamicSegmentMatcher};
 
     fn handler(state: State, _req: Request) -> (State, Response) {
         (state, Response::new())
@@ -280,14 +373,11 @@ mod tests {
     }
 
     fn test_structure<'n>() -> Node<'n> {
-        let sm = StaticSegmentMatcher::new();
-        let dm = DynamicSegmentMatcher::new();
-
-        let mut root = Node::new("/", Box::new(sm.clone()));
+        let mut root = Node::new("/", NodeSegmentType::Static);
 
         // Two methods, same path, same handler
         // [Get|Head]: /seg1
-        let mut seg1 = Node::new("seg1", Box::new(sm.clone()));
+        let mut seg1 = Node::new("seg1", NodeSegmentType::Static);
         let methods = vec![Method::Get, Method::Head];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
@@ -297,7 +387,7 @@ mod tests {
 
         // Two methods, same path, different handlers
         // Post: /seg2
-        let mut seg2 = Node::new("seg2", Box::new(sm.clone()));
+        let mut seg2 = Node::new("seg2", NodeSegmentType::Static);
         let methods = vec![Method::Post];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
@@ -314,8 +404,8 @@ mod tests {
 
         // Ensure basic traversal
         // Get: /seg3/seg4
-        let mut seg3 = Node::new("seg3", Box::new(sm.clone()));
-        let mut seg4 = Node::new("seg4", Box::new(sm.clone()));
+        let mut seg3 = Node::new("seg3", NodeSegmentType::Static);
+        let mut seg4 = Node::new("seg4", NodeSegmentType::Static);
         seg4.add_route(get_route());
         seg3.add_child(seg4);
         root.add_child(seg3);
@@ -326,26 +416,35 @@ mod tests {
         //
         // Get /seg5/:segdyn1/seg7
         // Get /seg5/seg6
-        let mut seg5 = Node::new("seg5", Box::new(sm.clone()));
-        let mut seg6 = Node::new("seg6", Box::new(sm.clone()));
+        let mut seg5 = Node::new("seg5", NodeSegmentType::Static);
+        let mut seg6 = Node::new("seg6", NodeSegmentType::Static);
         seg6.add_route(get_route());
 
-        let mut segdyn1 = Node::new(":segdyn1", Box::new(dm.clone()));
-        let mut seg7 = Node::new("seg7", Box::new(sm.clone()));
+        let mut segdyn1 = Node::new(":segdyn1", NodeSegmentType::Dynamic);
+        let mut seg7 = Node::new("seg7", NodeSegmentType::Static);
         seg7.add_route(get_route());
+
+        // Ensure traversal will respect Globs
+        let mut seg8 = Node::new("seg8", NodeSegmentType::Glob);
+        let mut seg9 = Node::new("seg9", NodeSegmentType::Static);
+        let mut seg10 = Node::new("seg10", NodeSegmentType::Glob);
+        seg10.add_route(get_route());
+        seg9.add_child(seg10);
+        seg8.add_child(seg9);
+        root.add_child(seg8);
 
         segdyn1.add_child(seg7);
         seg5.add_child(segdyn1);
         seg5.add_child(seg6);
         root.add_child(seg5);
 
+        root.sort();
         root
     }
 
     #[test]
     fn assigns_segment() {
-        let sm = StaticSegmentMatcher::new();
-        let node = Node::new("seg1", Box::new(sm));
+        let node = Node::new("seg1", NodeSegmentType::Static);
         assert_eq!("seg1", node.segment());
     }
 
@@ -369,7 +468,7 @@ mod tests {
         let root = test_structure();
 
         // GET /seg3/seg4
-        assert_eq!(root.traverse(&["seg3", "seg4"])
+        assert_eq!(root.traverse(&["/", "seg3", "seg4"])
                        .unwrap()
                        .last()
                        .unwrap()
@@ -377,10 +476,10 @@ mod tests {
                    "seg4");
 
         // GET /seg3/seg4/seg5
-        assert!(root.traverse(&["seg3", "seg4", "seg5"]).is_none());
+        assert!(root.traverse(&["/", "seg3", "seg4", "seg5"]).is_none());
 
         // GET /seg5/seg6
-        assert_eq!(root.traverse(&["seg5", "seg6"])
+        assert_eq!(root.traverse(&["/", "seg5", "seg6"])
                        .unwrap()
                        .last()
                        .unwrap()
@@ -388,11 +487,20 @@ mod tests {
                    "seg6");
 
         // GET /seg5/someval/seg7
-        assert_eq!(root.traverse(&["seg5", "someval", "seg7"])
+        assert_eq!(root.traverse(&["/", "seg5", "someval", "seg7"])
                        .unwrap()
                        .last()
                        .unwrap()
                        .segment(),
                    "seg7");
+
+        println!("~~~");
+        // GET /some/path/seg9/another/path
+        assert_eq!(root.traverse(&["/", "some", "path", "seg9", "some2", "path2"])
+                       .unwrap()
+                       .last()
+                       .unwrap()
+                       .segment(),
+                   "seg10");
     }
 }

@@ -19,7 +19,7 @@ use gotham::dispatch::{Dispatcher};
 use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 use gotham::router::tree::Tree;
 use gotham::router::tree::node::Node;
-use gotham::router::tree::segment_matcher::StaticSegmentMatcher;
+use gotham::router::tree::node::NodeSegmentType;
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
 use gotham::state::State;
 
@@ -50,21 +50,21 @@ fn basic_route<NH>(methods: Vec<Method>, new_handler: NH) -> Box<Route + Send + 
 fn add_routes(tree: &mut Tree) {
     tree.add_route(basic_route(vec![Method::Get], || Ok(Echo::get)));
 
-    let mut echo = Node::new("echo", Box::new(StaticSegmentMatcher::new()));
+    let mut echo = Node::new("echo", NodeSegmentType::Static);
     echo.add_route(basic_route(vec![Method::Get], || Ok(Echo::get)));
     echo.add_route(basic_route(vec![Method::Post], || Ok(Echo::post)));
     tree.add_child(echo);
 
-    let mut async = Node::new("async", Box::new(StaticSegmentMatcher::new()));
+    let mut async = Node::new("async", NodeSegmentType::Static);
     async.add_route(basic_route(vec![Method::Get], || Ok(Echo::async)));
     tree.add_child(async);
 
-    let mut header_value = Node::new("header_value", Box::new(StaticSegmentMatcher::new()));
+    let mut header_value = Node::new("header_value", NodeSegmentType::Static);
     header_value.add_route(basic_route(vec![Method::Get], || Ok(Echo::header_value)));
     tree.add_child(header_value);
 
-    let mut hello = Node::new("hello", Box::new(StaticSegmentMatcher::new()));
-    let mut world = Node::new("world", Box::new(StaticSegmentMatcher::new()));
+    let mut hello = Node::new("hello", NodeSegmentType::Static);
+    let mut world = Node::new("world", NodeSegmentType::Static);
     world.add_route(basic_route(vec![Method::Get], || Ok(Echo::world)));
     hello.add_child(world);
     tree.add_child(hello);

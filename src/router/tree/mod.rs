@@ -5,7 +5,7 @@
 
 use router::route::Route;
 use router::tree::node::Node;
-use router::tree::segment_matcher::StaticSegmentMatcher;
+use router::tree::node::NodeSegmentType;
 
 pub mod node;
 pub mod segment_matcher;
@@ -32,7 +32,7 @@ pub mod segment_matcher;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::Tree;
 /// # use gotham::router::tree::node::Node;
-/// # use gotham::router::tree::segment_matcher::StaticSegmentMatcher;
+/// # use gotham::router::tree::node::NodeSegmentType;
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -49,9 +49,9 @@ pub mod segment_matcher;
 ///   let mut tree = Tree::new();
 ///   tree.add_route(basic_route());
 ///
-///   let mut content_node = Node::new("content", Box::new(StaticSegmentMatcher::new()));
+///   let mut content_node = Node::new("content", NodeSegmentType::Static);
 ///
-///   let mut identifier_node = Node::new("identifier", Box::new(StaticSegmentMatcher::new()));
+///   let mut identifier_node = Node::new("identifier", NodeSegmentType::Static);
 ///   identifier_node.add_route(basic_route());
 ///
 ///   content_node.add_child(identifier_node);
@@ -67,20 +67,17 @@ pub mod segment_matcher;
 /// [router]: ../struct.Router.html
 /// [route]: ../route/trait.Route.html
 /// [request]: ../../../hyper/server/struct.Request.html
-
 pub struct Tree<'n> {
     root: Node<'n>,
 }
 
 impl<'n> Tree<'n> {
-    /// Creates a new `Tree` and root [`Node`][node] using a
-    /// [`StaticSegmentMatcher`][ssm]
+    /// Creates a new `Tree` and root [`Node`][node].
     ///
     /// [node]: node/struct.Node.html
     /// [ssm]: segment_matcher/struct.StaticSegmentMatcher.html
     pub fn new() -> Self {
-        let ssm = StaticSegmentMatcher::new();
-        Tree { root: Node::new("/", Box::new(ssm)) }
+        Tree { root: Node::new("/", NodeSegmentType::Static) }
     }
 
     /// Adds a child [`Node`][node] to the root of the `Tree`.
@@ -106,6 +103,19 @@ impl<'n> Tree<'n> {
         self.root.add_route(route);
     }
 
+    /// Finalizes the Tree for use with [`Requests`][request].
+    ///
+    /// **Must** be called before this Tree is used in traversal and only after all child nodes
+    /// have been fully populated.
+    ///
+    /// [request]: ../../../hyper/server/struct.Request.html
+    ///
+    /// TODO: Move this into a function of a `TreeBuilder` to hide modifcation from the `Router` and
+    /// ensure the `Tree` must be finalized before use.
+    pub fn finalize(&mut self) {
+        self.root.sort();
+    }
+
     /// Borrow the root [`Node`][node] of the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
@@ -123,22 +133,14 @@ impl<'n> Tree<'n> {
     ///
     /// [node-traverse]: node/struct.Node.html#method.traverse
     /// [node]: node/struct.Node.html
-    pub fn traverse(&'n self, path: &str) -> Option<Vec<&'n Node<'n>>> {
-        match self.split_request_path(path).split_first() {
-            Some((_root, rem)) => {
-                if rem.is_empty() {
-                    Some(vec![&self.root])
-                } else {
-                    self.root.traverse(rem)
-                }
-            }
-            None => None,
-        }
+    pub fn traverse(&'n self, req_path: &str) -> Option<Vec<&Node<'n>>> {
+        // TODO: Percent Decode Request Path here.
+        self.root.traverse(self.split_request_path(req_path).as_slice())
     }
 
     /// Spilt a Request path into indivdual segments, leading leading "/" to represent
     /// the root of the path.
-    pub fn split_request_path(&'n self, path: &'n str) -> Vec<&'n str> {
+    pub fn split_request_path(&self, path: &'n str) -> Vec<&str> {
         let mut segments = vec!["/"];
         segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'n str>>());
         segments
