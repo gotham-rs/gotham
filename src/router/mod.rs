@@ -9,6 +9,7 @@ use std::sync::Arc;
 
 use futures::{future, Future};
 use hyper::server::Request;
+use borrow_bag::BorrowBag;
 
 use router::tree::Tree;
 use handler::{NewHandler, Handler, HandlerFuture};
@@ -16,27 +17,30 @@ use state::State;
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
-struct RouterData<'n, NFH, ISEH>
+struct RouterData<'n, P, NFH, ISEH>
     where NFH: NewHandler,
           ISEH: NewHandler
 {
-    tree: Tree<'n>,
+    tree: Tree<'n, P>,
+    pipelines: BorrowBag<P>,
     not_found_handler: NFH,
     internal_server_error_handler: ISEH,
 }
 
-impl<'n, NFH, ISEH> RouterData<'n, NFH, ISEH>
+impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
     where NFH: NewHandler,
           NFH::Instance: 'static,
           ISEH: NewHandler,
           ISEH::Instance: 'static
 {
-    pub fn new(tree: Tree<'n>,
+    pub fn new(tree: Tree<'n, P>,
+               pipelines: BorrowBag<P>,
                not_found_handler: NFH,
                internal_server_error_handler: ISEH)
-               -> RouterData<'n, NFH, ISEH> {
+               -> RouterData<'n, P, NFH, ISEH> {
         RouterData {
-            tree: tree,
+            tree,
+            pipelines,
             not_found_handler,
             internal_server_error_handler,
         }
@@ -51,6 +55,7 @@ impl<'n, NFH, ISEH> RouterData<'n, NFH, ISEH>
 /// ```
 /// # extern crate gotham;
 /// # extern crate hyper;
+/// # extern crate borrow_bag;
 /// #
 /// # use hyper::server::{Request, Response};
 /// # use gotham::router::tree::Tree;
@@ -69,22 +74,25 @@ impl<'n, NFH, ISEH> RouterData<'n, NFH, ISEH>
 ///   let tree = Tree::new();
 ///   let not_found = || Ok(handler);
 ///   let internal_server_error = || Ok(handler2);
+///   let pipelines = borrow_bag::new_borrow_bag();
 ///
-///   Router::new(tree, not_found, internal_server_error);
+///   Router::new(tree, pipelines, not_found, internal_server_error);
 /// # }
 /// ```
 ///
 /// [request]: ../../hyper/server/struct.Request.html
 /// [route]: route/trait.Route.html
-pub struct Router<'n, NFH, ISEH>
-    where NFH: NewHandler,
+pub struct Router<'n, P, NFH, ISEH>
+    where P: Sync,
+          NFH: NewHandler,
           ISEH: NewHandler
 {
-    data: Arc<RouterData<'n, NFH, ISEH>>,
+    data: Arc<RouterData<'n, P, NFH, ISEH>>,
 }
 
-impl<'n, NFH, ISEH> Router<'n, NFH, ISEH>
-    where NFH: NewHandler,
+impl<'n, P, NFH, ISEH> Router<'n, P, NFH, ISEH>
+    where P: Sync,
+          NFH: NewHandler,
           NFH::Instance: 'static,
           ISEH: NewHandler,
           ISEH::Instance: 'static
@@ -93,12 +101,16 @@ impl<'n, NFH, ISEH> Router<'n, NFH, ISEH>
     /// handlers for NotFound and InternalServerError responses.
     ///
     /// [tree]: tree/struct.Tree.html
-    pub fn new(tree: Tree<'n>,
+    pub fn new(tree: Tree<'n, P>,
+               pipelines: BorrowBag<P>,
                not_found_handler: NFH,
                internal_server_error_handler: ISEH)
-               -> Router<'n, NFH, ISEH> {
+               -> Router<'n, P, NFH, ISEH> {
 
-        let router_data = RouterData::new(tree, not_found_handler, internal_server_error_handler);
+        let router_data = RouterData::new(tree,
+                                          pipelines,
+                                          not_found_handler,
+                                          internal_server_error_handler);
         Router { data: Arc::new(router_data) }
     }
 
@@ -124,24 +136,26 @@ impl<'n, NFH, ISEH> Router<'n, NFH, ISEH>
     }
 }
 
-impl<'n, NFH, ISEH> Clone for Router<'n, NFH, ISEH>
-    where NFH: NewHandler,
+impl<'n, P, NFH, ISEH> Clone for Router<'n, P, NFH, ISEH>
+    where P: Sync,
+          NFH: NewHandler,
           NFH::Instance: 'static,
           ISEH: NewHandler,
           ISEH::Instance: 'static
 {
-    fn clone(&self) -> Router<'n, NFH, ISEH> {
+    fn clone(&self) -> Router<'n, P, NFH, ISEH> {
         Router { data: self.data.clone() }
     }
 }
 
-impl<'n, NFH, ISEH> NewHandler for Router<'n, NFH, ISEH>
-    where NFH: NewHandler,
+impl<'n, P, NFH, ISEH> NewHandler for Router<'n, P, NFH, ISEH>
+    where P: Send + Sync,
+          NFH: NewHandler,
           NFH::Instance: 'static,
           ISEH: NewHandler,
           ISEH::Instance: 'static
 {
-    type Instance = Router<'n, NFH, ISEH>;
+    type Instance = Router<'n, P, NFH, ISEH>;
 
     // Creates a new Router instance to route new HTTP requests
     fn new_handler(&self) -> io::Result<Self::Instance> {
@@ -149,8 +163,9 @@ impl<'n, NFH, ISEH> NewHandler for Router<'n, NFH, ISEH>
     }
 }
 
-impl<'n, NFH, ISEH> Handler for Router<'n, NFH, ISEH>
-    where NFH: NewHandler,
+impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
+    where P: Send + Sync,
+          NFH: NewHandler,
           NFH::Instance: 'static,
           ISEH: NewHandler,
           ISEH::Instance: 'static
@@ -184,7 +199,7 @@ impl<'n, NFH, ISEH> Handler for Router<'n, NFH, ISEH>
                 if let Some(leaf) = tree_path.last() {
                     // dispatch
                     match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
-                        Some(route) => route.dispatch(state, req),
+                        Some(route) => route.dispatch(&self.data.pipelines, state, req),
                         None => self.internal_server_error(state, req),
                     }
                 } else {

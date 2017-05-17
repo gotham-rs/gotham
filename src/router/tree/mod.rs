@@ -8,7 +8,6 @@ use router::tree::node::Node;
 use router::tree::node::NodeSegmentType;
 
 pub mod node;
-pub mod segment_matcher;
 
 /// A hierarchical tree structure that provides a root [`Node`][node] and subtrees of linked nodes
 /// that represent valid [`Request`][request] paths.
@@ -26,7 +25,7 @@ pub mod segment_matcher;
 /// #
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
-/// # use gotham::router::route::{Route, RouteImpl};
+/// # use gotham::router::route::RouteImpl;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
@@ -37,22 +36,30 @@ pub mod segment_matcher;
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
 /// # }
-
-/// # fn basic_route() -> Box<Route + Send + Sync> {
-/// #   let methods = vec![Method::Get];
-/// #   let matcher = MethodOnlyRequestMatcher::new(methods);
-/// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #   Box::new(RouteImpl::new(matcher, dispatcher))
-/// # }
 /// #
 /// # fn main() {
-///   let mut tree = Tree::new();
-///   tree.add_route(basic_route());
+///   let mut tree: Tree<()> = Tree::new();
+///
+///   let route = {
+///       // Route construction elided
+/// #     let methods = vec![Method::Get];
+/// #     let matcher = MethodOnlyRequestMatcher::new(methods);
+/// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
+/// #     Box::new(RouteImpl::new(matcher, dispatcher))
+///   };
+///   tree.add_route(route);
 ///
 ///   let mut content_node = Node::new("content", NodeSegmentType::Static);
 ///
 ///   let mut identifier_node = Node::new("identifier", NodeSegmentType::Static);
-///   identifier_node.add_route(basic_route());
+///   let route = {
+///       // Route construction elided
+/// #     let methods = vec![Method::Get];
+/// #     let matcher = MethodOnlyRequestMatcher::new(methods);
+/// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
+/// #     Box::new(RouteImpl::new(matcher, dispatcher))
+///   };
+///   identifier_node.add_route(route);
 ///
 ///   content_node.add_child(identifier_node);
 ///   tree.add_child(content_node);
@@ -67,15 +74,14 @@ pub mod segment_matcher;
 /// [router]: ../struct.Router.html
 /// [route]: ../route/trait.Route.html
 /// [request]: ../../../hyper/server/struct.Request.html
-pub struct Tree<'n> {
-    root: Node<'n>,
+pub struct Tree<'n, P> {
+    root: Node<'n, P>,
 }
 
-impl<'n> Tree<'n> {
+impl<'n, P> Tree<'n, P> {
     /// Creates a new `Tree` and root [`Node`][node].
     ///
     /// [node]: node/struct.Node.html
-    /// [ssm]: segment_matcher/struct.StaticSegmentMatcher.html
     pub fn new() -> Self {
         Tree { root: Node::new("/", NodeSegmentType::Static) }
     }
@@ -83,7 +89,7 @@ impl<'n> Tree<'n> {
     /// Adds a child [`Node`][node] to the root of the `Tree`.
     ///
     /// [node]: node/struct.Node.html
-    pub fn add_child(&mut self, child: Node<'n>) {
+    pub fn add_child(&mut self, child: Node<'n, P>) {
         self.root.add_child(child);
     }
 
@@ -99,7 +105,7 @@ impl<'n> Tree<'n> {
 
     /// Adds a `Route` be evaluated by the `Router` when the root of the `Tree` is requested
     ///
-    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
         self.root.add_route(route);
     }
 
@@ -121,7 +127,7 @@ impl<'n> Tree<'n> {
     /// To be used in building a `Tree` structure only.
     ///
     /// [node]: node/struct.Node.html
-    pub fn borrow_root(&self) -> &Node<'n> {
+    pub fn borrow_root(&self) -> &Node<'n, P> {
         &self.root
     }
 
@@ -133,7 +139,7 @@ impl<'n> Tree<'n> {
     ///
     /// [node-traverse]: node/struct.Node.html#method.traverse
     /// [node]: node/struct.Node.html
-    pub fn traverse(&'n self, req_path: &str) -> Option<Vec<&Node<'n>>> {
+    pub fn traverse(&'n self, req_path: &str) -> Option<Vec<&Node<'n, P>>> {
         // TODO: Percent Decode Request Path here.
         self.root.traverse(self.split_request_path(req_path).as_slice())
     }

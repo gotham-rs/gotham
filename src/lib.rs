@@ -19,6 +19,7 @@ extern crate futures;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate mio;
+extern crate borrow_bag;
 
 pub mod dispatch;
 pub mod handler;

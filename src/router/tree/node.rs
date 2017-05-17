@@ -39,7 +39,7 @@ pub enum NodeSegmentType<'n> {
 /// #
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
-/// # use gotham::router::route::{Route, RouteImpl};
+/// # use gotham::router::route::RouteImpl;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
@@ -49,19 +49,20 @@ pub enum NodeSegmentType<'n> {
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
 /// # }
-/// # fn basic_route() -> Box<Route + Send + Sync> {
-/// #   let methods = vec![Method::Get];
-/// #   let matcher = MethodOnlyRequestMatcher::new(methods);
-/// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #   Box::new(RouteImpl::new(matcher, dispatcher))
-/// # }
 /// #
 /// # fn main() {
-/// #  let mut root_node = Node::new("/", NodeSegmentType::Static);
+/// # let mut root_node:Node<()> = Node::new("/", NodeSegmentType::Static);
 ///   let mut content_node = Node::new("content", NodeSegmentType::Static);
 ///
 ///   let mut identifier_node = Node::new("identifier", NodeSegmentType::Static);
-///   identifier_node.add_route(basic_route());
+///   let route = {
+///       // Route construction elided
+/// #     let methods = vec![Method::Get];
+/// #     let matcher = MethodOnlyRequestMatcher::new(methods);
+/// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
+/// #     Box::new(RouteImpl::new(matcher, dispatcher))
+///   };
+///   identifier_node.add_route(route);
 ///
 ///   content_node.add_child(identifier_node);
 ///   root_node.add_child(content_node);
@@ -76,15 +77,15 @@ pub enum NodeSegmentType<'n> {
 /// [route]: ../../route/trait.Route.html
 /// [request]: ../../../../hyper/server/struct.Request.html
 ///
-pub struct Node<'n> {
+pub struct Node<'n, P> {
     segment: &'n str,
     segment_type: NodeSegmentType<'n>,
-    routes: Vec<Box<Route + Send + Sync>>,
+    routes: Vec<Box<Route<P> + Send + Sync>>,
 
-    children: Vec<Node<'n>>,
+    children: Vec<Node<'n, P>>,
 }
 
-impl<'n> Node<'n> {
+impl<'n, P> Node<'n, P> {
     /// Creates new `Node` for the given segment.
     pub fn new(segment: &'n str, segment_type: NodeSegmentType<'n>) -> Self {
         Node {
@@ -111,7 +112,7 @@ impl<'n> Node<'n> {
     /// [tree]: ../struct.Tree.html
     /// [router]: ../../struct.Router.html
     /// [route]: ../../route/trait.Route.html
-    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
         self.routes.push(route);
     }
 
@@ -121,7 +122,7 @@ impl<'n> Node<'n> {
     /// [tree]: ../struct.Tree.html
     /// [router]: ../../struct.Router.html
     /// [route]: ../../route/trait.Route.html
-    pub fn borrow_routes(&self) -> &Vec<Box<Route + Send + Sync>> {
+    pub fn borrow_routes(&self) -> &Vec<Box<Route<P> + Send + Sync>> {
         &self.routes
     }
 
@@ -129,7 +130,7 @@ impl<'n> Node<'n> {
     ///
     /// e.g. for `/content/identifier` adding a child representing the segment `identifier` to
     /// an existing parent `Node` representing `content`.
-    pub fn add_child(&mut self, child: Node<'n>) {
+    pub fn add_child(&mut self, child: Node<'n, P>) {
         self.children.push(child);
     }
 
@@ -165,7 +166,7 @@ impl<'n> Node<'n> {
     /// To be used in building a [`Tree`][tree] structure only.
     ///
     /// [tree]: ../struct.Tree.html
-    pub fn borrow_child(&self, segment: &str) -> Option<&Node<'n>> {
+    pub fn borrow_child(&self, segment: &str) -> Option<&Node<'n, P>> {
         match self.children.iter().find(|n| n.segment == segment) {
             Some(node) => Some(node),
             None => None,
@@ -177,7 +178,7 @@ impl<'n> Node<'n> {
     /// To be used in building a [`Tree`][tree] structure only.
     ///
     /// [tree]: ../struct.Tree.html
-    pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut Node<'n>> {
+    pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut Node<'n, P>> {
         match self.children.iter_mut().find(|n| n.segment == segment) {
             Some(node) => Some(node),
             None => None,
@@ -246,9 +247,9 @@ impl<'n> Node<'n> {
     /// [router]: ../../struct.Router.html
     /// [route]: ../../route/trait.Route.html
     /// [request]: ../../../../hyper/server/struct.Request.html
-    pub fn traverse(&'n self, req_path_segments: &[&str]) -> Option<Vec<&Node<'n>>> {
+    pub fn traverse(&'n self, req_path_segments: &[&str]) -> Option<Vec<&Node<'n, P>>> {
         match self.inner_traverse(req_path_segments, vec![]) {
-            Some((mut path, segment_mapping)) => {
+            Some((mut path, _segment_mapping)) => {
                 path.reverse();
                 Some(path)
             }
@@ -259,7 +260,7 @@ impl<'n> Node<'n> {
     fn inner_traverse(&self,
                       req_path_segments: &[&str],
                       mut consumed_segments: Vec<String>)
-                      -> Option<(Vec<&Node<'n>>, HashMap<&str, Vec<String>>)> {
+                      -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<String>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) => {
                 if self.is_match(x) {
@@ -324,25 +325,25 @@ impl<'n> Node<'n> {
     }
 }
 
-impl<'n> Ord for Node<'n> {
-    fn cmp(&self, other: &Node<'n>) -> Ordering {
+impl<'n, P> Ord for Node<'n, P> {
+    fn cmp(&self, other: &Node<'n, P>) -> Ordering {
         (&self.segment_type, &self.segment).cmp(&(&other.segment_type, &other.segment))
     }
 }
 
-impl<'n> PartialOrd for Node<'n> {
-    fn partial_cmp(&self, other: &Node<'n>) -> Option<Ordering> {
+impl<'n, P> PartialOrd for Node<'n, P> {
+    fn partial_cmp(&self, other: &Node<'n, P>) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<'n> PartialEq for Node<'n> {
-    fn eq(&self, other: &Node<'n>) -> bool {
+impl<'n, P> PartialEq for Node<'n, P> {
+    fn eq(&self, other: &Node<'n, P>) -> bool {
         (&self.segment_type, &self.segment) == (&other.segment_type, &other.segment)
     }
 }
 
-impl<'n> Eq for Node<'n> {}
+impl<'n, P> Eq for Node<'n, P> {}
 
 #[cfg(test)]
 mod tests {
@@ -365,15 +366,15 @@ mod tests {
         (state, Response::new())
     }
 
-    fn get_route() -> Box<Route + Send + Sync> {
+    fn get_route() -> Box<Route<()> + Send + Sync> {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
         Box::new(RouteImpl::new(matcher, dispatcher))
     }
 
-    fn test_structure<'n>() -> Node<'n> {
-        let mut root = Node::new("/", NodeSegmentType::Static);
+    fn test_structure<'n>() -> Node<'n, ()> {
+        let mut root: Node<'n, ()> = Node::new("/", NodeSegmentType::Static);
 
         // Two methods, same path, same handler
         // [Get|Head]: /seg1
@@ -440,12 +441,6 @@ mod tests {
 
         root.sort();
         root
-    }
-
-    #[test]
-    fn assigns_segment() {
-        let node = Node::new("seg1", NodeSegmentType::Static);
-        assert_eq!("seg1", node.segment());
     }
 
     #[test]
