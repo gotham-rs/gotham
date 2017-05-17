@@ -6,9 +6,7 @@
 use handler::{Handler, NewHandler, HandlerFuture};
 use middleware::pipeline::{NewMiddlewareChain, Pipeline};
 use state::State;
-use borrow_bag::BorrowBag;
-use borrow_bag::handle::Handle;
-use borrow_bag::lookup::Lookup;
+use borrow_bag::{BorrowBag, Handle, Lookup};
 use std::marker::PhantomData;
 
 use hyper::server::Request;
