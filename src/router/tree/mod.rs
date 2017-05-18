@@ -1,7 +1,4 @@
-//! Defines an unordered `Tree` holding a collection of recursive `Node` instances.
-//!
-//! Valid paths are located by recursively matching HTTP request path segments, resulting in a `Node`
-//! that has one or more `Route` instances which can be futher considered for dispatch.
+//! Defines a hierarchial `Tree` with subtrees of `Node`.
 
 use router::route::Route;
 use router::tree::node::Node;
@@ -9,15 +6,23 @@ use router::tree::node::NodeSegmentType;
 
 pub mod node;
 
-/// A hierarchical tree structure that provides a root [`Node`][node] and subtrees of linked nodes
-/// that represent valid [`Request`][request] paths.
+/// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
+/// that represent valid `Request` paths.
 ///
-/// Allows the [`Router`][router] to supply a [`Request`][request] path and obtain `[0..n]` valid
-/// [`Route`][route] instances for that path for further evaluation.
+/// Allows the `Router` to supply a `Request` path and obtain `[0..n]` valid
+/// `Route` instances for that path for further evaluation.
 ///
 /// # Examples
 ///
-/// Representing routable the paths `/`, and `/content/identifier`.
+/// Desired tree:
+///
+/// ```text
+///    /
+///    | -- activate
+///         | -- batsignal      (Routable)
+/// ```
+///
+/// Code:
 ///
 /// ```rust
 /// # extern crate gotham;
@@ -40,81 +45,61 @@ pub mod node;
 /// # fn main() {
 ///   let mut tree: Tree<()> = Tree::new();
 ///
-///   let route = {
-///       // Route construction elided
+///   let mut activate_node = Node::new("activate", NodeSegmentType::Static);
+///
+///   let mut batsignal_node = Node::new("batsignal", NodeSegmentType::Static);
+///   let batsignal_route = {
+///       // elided ...
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
 /// #     Box::new(RouteImpl::new(matcher, dispatcher))
 ///   };
-///   tree.add_route(route);
+///   batsignal_node.add_route(batsignal_route);
 ///
-///   let mut content_node = Node::new("content", NodeSegmentType::Static);
+///   activate_node.add_child(batsignal_node);
+///   tree.add_child(activate_node);
 ///
-///   let mut identifier_node = Node::new("identifier", NodeSegmentType::Static);
-///   let route = {
-///       // Route construction elided
-/// #     let methods = vec![Method::Get];
-/// #     let matcher = MethodOnlyRequestMatcher::new(methods);
-/// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #     Box::new(RouteImpl::new(matcher, dispatcher))
-///   };
-///   identifier_node.add_route(route);
+///   assert!(tree.traverse("/activate/batsignal").unwrap().last().unwrap().is_routable());
 ///
-///   content_node.add_child(identifier_node);
-///   tree.add_child(content_node);
-///
-///   assert!(tree.traverse("/").unwrap().last().unwrap().is_routable());
-///   assert!(tree.traverse("/content").is_none()); // This path is not routable
-///   assert!(tree.traverse("/content/identifier").unwrap().last().unwrap().is_routable());
+///   // These paths are not routable but could be if a `Route` was added to them.
+///   assert!(tree.traverse("/").is_none());
+///   assert!(tree.traverse("/activate").is_none());
 /// # }
 /// ```
-///
-/// [node]: node/struct.Node.html
-/// [router]: ../struct.Router.html
-/// [route]: ../route/trait.Route.html
-/// [request]: ../../../hyper/server/struct.Request.html
 pub struct Tree<'n, P> {
     root: Node<'n, P>,
 }
 
 impl<'n, P> Tree<'n, P> {
-    /// Creates a new `Tree` and root [`Node`][node].
-    ///
-    /// [node]: node/struct.Node.html
+    /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
         Tree { root: Node::new("/", NodeSegmentType::Static) }
     }
 
-    /// Adds a child [`Node`][node] to the root of the `Tree`.
-    ///
-    /// [node]: node/struct.Node.html
+    /// Adds a child `Node` to the root of the `Tree`.
     pub fn add_child(&mut self, child: Node<'n, P>) {
         self.root.add_child(child);
     }
 
-    /// Determines if a child [`Node`][node] representing the exact segment provided
+    /// Determines if a child `Node` representing the exact segment provided
     /// exists at the root of the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
-    ///
-    /// [node]: node/struct.Node.html
-    pub fn has_child(&self, segment: &str) -> bool {
+   pub fn has_child(&self, segment: &str) -> bool {
         self.root.has_child(segment)
     }
 
-    /// Adds a `Route` be evaluated by the `Router` when the root of the `Tree` is requested
-    ///
+    /// Adds a `Route` be evaluated by the `Router` when the root of the
+    /// `Tree` is requested.
     pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
         self.root.add_route(route);
     }
 
-    /// Finalizes the Tree for use with [`Requests`][request].
+    /// Finalizes the Tree for use with `Requests`.
     ///
     /// **Must** be called before this Tree is used in traversal and only after all child nodes
     /// have been fully populated.
-    ///
-    /// [request]: ../../../hyper/server/struct.Request.html
     ///
     /// TODO: Move this into a function of a `TreeBuilder` to hide modifcation from the `Router` and
     /// ensure the `Tree` must be finalized before use.
@@ -122,23 +107,15 @@ impl<'n, P> Tree<'n, P> {
         self.root.sort();
     }
 
-    /// Borrow the root [`Node`][node] of the `Tree`.
+    /// Borrow the root `Node` of the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
-    ///
-    /// [node]: node/struct.Node.html
     pub fn borrow_root(&self) -> &Node<'n, P> {
         &self.root
     }
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path
     /// and is routable.
-    ///
-    /// The traversal algorithm has unique properties. Refer to the description of
-    /// [`traverse`][node-traverse] within [`Node`][node] for full details.
-    ///
-    /// [node-traverse]: node/struct.Node.html#method.traverse
-    /// [node]: node/struct.Node.html
     pub fn traverse(&'n self, req_path: &str) -> Option<Vec<&Node<'n, P>>> {
         // TODO: Percent Decode Request Path here.
         self.root.traverse(self.split_request_path(req_path).as_slice())

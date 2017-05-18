@@ -1,4 +1,4 @@
-//! Defines Gotham's `Router` and supporting types.
+//! Defines a `Router` and supporting types.
 
 pub mod tree;
 pub mod route;
@@ -47,8 +47,8 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
     }
 }
 
-/// Responsible for dispatching [`Requests`][request] to a linked [`Route`][route] and
-/// dispatching error states when a valid [`Route`][route] is unable to be determined.
+/// Responsible for dispatching `Requests` to a linked `Route` and
+/// dispatching error states when a valid `Route` is unable to be determined.
 ///
 /// # Examples
 ///
@@ -79,9 +79,6 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
 ///   Router::new(tree, pipelines, not_found, internal_server_error);
 /// # }
 /// ```
-///
-/// [request]: ../../hyper/server/struct.Request.html
-/// [route]: route/trait.Route.html
 pub struct Router<'n, P, NFH, ISEH>
     where P: Sync,
           NFH: NewHandler,
@@ -97,10 +94,8 @@ impl<'n, P, NFH, ISEH> Router<'n, P, NFH, ISEH>
           ISEH: NewHandler,
           ISEH::Instance: 'static
 {
-    /// Creates a new `Router` instance, internal [`Tree`][tree] and establishes global error
+    /// Creates a new `Router` instance, internal `Tree` and establishes global error
     /// handlers for NotFound and InternalServerError responses.
-    ///
-    /// [tree]: tree/struct.Tree.html
     pub fn new(tree: Tree<'n, P>,
                pipelines: BorrowBag<P>,
                not_found_handler: NFH,
@@ -170,26 +165,20 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
           ISEH: NewHandler,
           ISEH::Instance: 'static
 {
-    /// Handles the request by determining the correct [`Route`][route] from the internal
-    /// [`Tree`][tree], storing any path related variables in [`State`][state] and dispatching
-    /// appropriately to the configured [`Handler`][handler].
+    /// Handles the request by determining the correct `Route` from the internal
+    /// `Tree`, storing any path related variables in `State` and dispatching
+    /// appropriately to the configured `Handler`.
     ///
     /// # Errors
     ///
-    /// If no [`Route`][route] is present a 404 `NotFound` response will be returned to the client
+    /// If no `Route` is present a 404 `NotFound` response will be returned to the client
     /// via `not_found_handler`.
     ///
     /// If an unexpected error occurs handling the request a 500 `InternalServerError` response
     /// will be returned to client via `internal_server_error_handler`.
     ///
-    /// For unrecoverable error states [`future::err`][future-err] will be called, dropping the
+    /// For unrecoverable error states `future::err` will be called, dropping the
     /// connection to the client without response.
-    ///
-    /// [route]: route/trait.Route.html
-    /// [state]: ../state/struct.State.html
-    /// [handler]: ../handler/trait.Handler.html
-    /// [tree]: tree/struct.Tree.html
-    /// [future-err]: ../../futures/future/fn.err.html
     fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
         match self.data.tree.traverse(req.path()) {
             Some(tree_path) => {

@@ -1,4 +1,4 @@
-//! Defines components of `Nodes` which live within a `Tree`.
+//! Defines Node and NodeSegmentType for Tree
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -9,29 +9,32 @@ use router::route::Route;
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum NodeSegmentType<'n> {
     /// Is matched exactly to the corresponding segment for incoming request paths. Unlike all
-    /// other `NodeSegmentTypes` this segment is **not** stored within `State`.
+    /// other `NodeSegmentTypes` values determined to be associated with this segment
+    /// within a `Request` path are **not** stored within `State`.
     Static,
+
     /// Uses the supplied regex to determine match against incoming request paths.
     Constrained {
         /// Regex used to match against a single segment of a request path.
         regex: &'n str,
     },
+
     /// Matches any corresponding segment for incoming request paths.
     Dynamic,
+
     /// Matches multiple path segments until the end of the request path or until a child
     /// segment of the above defined types is found.
     Glob,
 }
 
-/// A recursive member of [`Tree`][tree] and represents a segment of a [`Request`][request] path.
+/// A recursive member of `Tree` representative of a segment(s) in a routable path.
 ///
-/// Stores a `segment`, a `segment_matcher` and `0..n` [`Route`][route] instances which
-/// are further evaluated by the [`Router`][router] if the `Node` is determined to be
-/// routable for a single path through the tree.
+/// Ultimately provides `0..n` `Route` instances which are further evaluated by the `Router` if
+/// the `Node` is determined to be the routable end point for a single path through the tree.
 ///
 /// # Examples
 ///
-/// Representing the path `/content/identifier`.
+/// Representing the path `/activate/batsignal`.
 ///
 /// ```rust
 /// # extern crate gotham;
@@ -51,32 +54,26 @@ pub enum NodeSegmentType<'n> {
 /// # }
 /// #
 /// # fn main() {
-/// # let mut root_node:Node<()> = Node::new("/", NodeSegmentType::Static);
-///   let mut content_node = Node::new("content", NodeSegmentType::Static);
+///   let mut root_node:Node<()> = Node::new("/", NodeSegmentType::Static);
+///   let mut activate_node = Node::new("activate", NodeSegmentType::Static);
 ///
-///   let mut identifier_node = Node::new("identifier", NodeSegmentType::Static);
+///   let mut batsignal_node = Node::new("batsignal", NodeSegmentType::Static);
 ///   let route = {
-///       // Route construction elided
+///       // elided ..
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
 /// #     Box::new(RouteImpl::new(matcher, dispatcher))
 ///   };
-///   identifier_node.add_route(route);
+///   batsignal_node.add_route(route);
 ///
-///   content_node.add_child(identifier_node);
-///   root_node.add_child(content_node);
+///   activate_node.add_child(batsignal_node);
+///   root_node.add_child(activate_node);
 ///
-///   let traversal = root_node.traverse(&["/", "content", "identifier"]);
+///   let traversal = root_node.traverse(&["/", "activate", "batsignal"]);
 ///   assert!(traversal.unwrap().last().unwrap().is_routable());
 /// # }
 /// ```
-///
-/// [tree]: ../struct.Tree.html
-/// [router]: ../../struct.Router.html
-/// [route]: ../../route/trait.Route.html
-/// [request]: ../../../../hyper/server/struct.Request.html
-///
 pub struct Node<'n, P> {
     segment: &'n str,
     segment_type: NodeSegmentType<'n>,
@@ -106,30 +103,19 @@ impl<'n, P> Node<'n, P> {
         &self.segment_type
     }
 
-    /// Adds a [`Route`][route] be evaluated by the [`Router`][router] when acting as a leaf in a
-    /// single path through the [`Tree`][tree].
-    ///
-    /// [tree]: ../struct.Tree.html
-    /// [router]: ../../struct.Router.html
-    /// [route]: ../../route/trait.Route.html
+    /// Adds a `Route` be evaluated by the `Router` when acting as a leaf in a
+    /// single path through the `Tree`.
     pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
         self.routes.push(route);
     }
 
-    /// Allow the [`Router`][router] to access the [`Routes`][route] for this `Node` when it is
-    /// selected as the lead in a single path through the [`Tree`][tree].
-    ///
-    /// [tree]: ../struct.Tree.html
-    /// [router]: ../../struct.Router.html
-    /// [route]: ../../route/trait.Route.html
+    /// Allow the `Router` to access the `Routes` for this `Node` when it is
+    /// selected as the lead in a single path through the `Tree`.
     pub fn borrow_routes(&self) -> &Vec<Box<Route<P> + Send + Sync>> {
         &self.routes
     }
 
     /// Adds a child `Node`.
-    ///
-    /// e.g. for `/content/identifier` adding a child representing the segment `identifier` to
-    /// an existing parent `Node` representing `content`.
     pub fn add_child(&mut self, child: Node<'n, P>) {
         self.children.push(child);
     }
@@ -137,9 +123,7 @@ impl<'n, P> Node<'n, P> {
     /// Sorts all children
     ///
     /// Must be called before this Node and it's children are used in traversal, generally once
-    /// the owning [`Tree`][tree] has been fully constructed.
-    ///
-    /// [tree]: ../struct.Tree.html
+    /// the owning `Tree` has been fully constructed.
     pub fn sort(&mut self) {
         self.children.sort();
 
@@ -151,9 +135,7 @@ impl<'n, P> Node<'n, P> {
 
     /// Determines if a child representing the exact segment provided exists.
     ///
-    /// To be used in building a [`Tree`][tree] structure only.
-    ///
-    /// [tree]: ../struct.Tree.html
+    /// To be used in building a `Tree` structure only.
     pub fn has_child(&self, segment: &str) -> bool {
         match self.children.iter().find(|n| n.segment == segment) {
             Some(_) => true,
@@ -163,9 +145,7 @@ impl<'n, P> Node<'n, P> {
 
     /// Borrow a child that represents the exact segment provided here.
     ///
-    /// To be used in building a [`Tree`][tree] structure only.
-    ///
-    /// [tree]: ../struct.Tree.html
+    /// To be used in building a `Tree` structure only.
     pub fn borrow_child(&self, segment: &str) -> Option<&Node<'n, P>> {
         match self.children.iter().find(|n| n.segment == segment) {
             Some(node) => Some(node),
@@ -175,9 +155,7 @@ impl<'n, P> Node<'n, P> {
 
     /// Mutably borrow a child that represents the exact segment provided here.
     ///
-    /// To be used in building a [`Tree`][tree] structure only.
-    ///
-    /// [tree]: ../struct.Tree.html
+    /// To be used in building a `Tree` structure only.
     pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut Node<'n, P>> {
         match self.children.iter_mut().find(|n| n.segment == segment) {
             Some(node) => Some(node),
@@ -190,63 +168,25 @@ impl<'n, P> Node<'n, P> {
         self.children.len() > 0
     }
 
-    /// True is there is a least one [`Route`][route] represented by this `Node`, that is it can act as a
+    /// True is there is a least one `Route` represented by this `Node`, that is it can act as a
     /// leaf in a single path through the tree.
-    ///
-    /// [route]: ../../route/trait.Route.html
     pub fn is_routable(&self) -> bool {
         self.routes.len() > 0
     }
 
     /// Recursively traverses children attempting to locate a path of nodes which indicate they
-    /// match all segments of the [`Request`][request] path and with the final `Node` of the path
-    /// containing `1..n` [`Route`][route] instances for further processing by the
-    /// [`Router`][router].
+    /// match all segments of the `Request` path and with the final `Node` of the path
+    /// containing `1..n` `Route` instances for further processing by the `Router`.
     ///
-    /// **Only the first fully matching path is returned.**
+    /// Only the first fully matching path is returned.
     ///
-    /// # Matching Nuances
+    /// Children are searched in a most to least specific order of contained segment value based on
+    /// the `NodeSegmentType` value held by the `Node`:
     ///
-    /// ```text
-    ///    /
-    ///    |--static1
-    ///       |--dynamic     -> (Route)
-    ///       |--static2     -> (Route)
-    /// ```
-    ///
-    /// For the [`Request`][request] path `/static1/static2` the returned path is
-    /// `[Node("static1"), Node("dynamic")]`, **NOT** `[Node("static1"), Node("static2")]`.
-    ///
-    /// In this case a static matcher for `dynamic` that is restricted by a regular expression or
-    /// a re-ordering of the `Tree` to:
-    ///
-    /// ```text
-    ///    /
-    ///    |--static1
-    ///       |--static2  -> (Route)
-    ///       |--dynamic     -> (Route)
-    /// ```
-    ///
-    /// would ensure the [`Request`][request] path `/static1/static2` is represented by the
-    /// returned path `[Node("static1"), Node("static2")]`.
-    ///
-    /// Finally if the `Tree` structure is:
-    ///
-    /// ```text
-    ///    /
-    ///    |--static1
-    ///       |--dynamic
-    ///          |-- static3 -> (Route)
-    ///       |--static2     -> (Route)
-    /// ```
-    ///
-    /// then for the [`Request`][request] path `/static1/static2` the  match against `dynamic` would be
-    /// discounted as that `Node` itself is not routable. The algorithm then backtracks eventually
-    /// returning the path `[Node("static1"), Node("static2")]`.
-    ///
-    /// [router]: ../../struct.Router.html
-    /// [route]: ../../route/trait.Route.html
-    /// [request]: ../../../../hyper/server/struct.Request.html
+    /// 1. Static
+    /// 2. Constrained
+    /// 3. Dynamic
+    /// 4. Glob
     pub fn traverse(&'n self, req_path_segments: &[&str]) -> Option<Vec<&Node<'n, P>>> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, _segment_mapping)) => {
