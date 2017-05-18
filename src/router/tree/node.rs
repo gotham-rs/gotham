@@ -1,9 +1,11 @@
-//! Defines Node and NodeSegmentType for Tree
+//! Defines `Node` and `NodeSegmentType` for `Tree`
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use router::route::Route;
+use router::tree::SegmentMapping;
+use router::tree::Path;
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -158,13 +160,13 @@ impl<'n, P> Node<'n, P> {
 
     /// True if there is at least one child `Node` present
     pub fn is_parent(&self) -> bool {
-        self.children.len() > 0
+        !self.children.is_empty()
     }
 
     /// True is there is a least one `Route` represented by this `Node`, that is it can act as a
     /// leaf in a single path through the tree.
     pub fn is_routable(&self) -> bool {
-        self.routes.len() > 0
+        !self.routes.is_empty()
     }
 
     /// Recursively traverses children attempting to locate a path of nodes which indicate they
@@ -180,9 +182,9 @@ impl<'n, P> Node<'n, P> {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse(&'n self,
+    pub fn traverse<'a>(&'n self,
                     req_path_segments: &[&str])
-                    -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<String>>)> {
+                    -> Option<(Path<'n, 'a, P>, SegmentMapping<'n>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, segment_mapping)) => {
                 path.reverse();
@@ -192,6 +194,7 @@ impl<'n, P> Node<'n, P> {
         }
     }
 
+    #[allow(type_complexity)]
     fn inner_traverse(&self,
                       req_path_segments: &[&str],
                       mut consumed_segments: Vec<String>)
@@ -254,8 +257,7 @@ impl<'n, P> Node<'n, P> {
         match self.segment_type {
             NodeSegmentType::Static => self.segment == request_path_segment,
             NodeSegmentType::Constrained { regex: _ } => unimplemented!(), // TODO
-            NodeSegmentType::Dynamic => true,
-            NodeSegmentType::Glob => true,
+            NodeSegmentType::Dynamic | NodeSegmentType::Glob => true,
         }
     }
 }

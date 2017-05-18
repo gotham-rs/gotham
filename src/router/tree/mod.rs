@@ -10,6 +10,14 @@ use router::tree::node::NodeSegmentType;
 
 pub mod node;
 
+/// A depth ordered `Vec` of `Node` instances that create a routable path through the `Tree` for the
+/// matched `Request` path.
+pub type Path<'n, 'a, P> = Vec<&'a Node<'n, P>>;
+
+/// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
+/// which have been matched against the `Request` path.
+pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
+
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.
 ///
@@ -129,9 +137,9 @@ impl<'n, P> Tree<'n, P> {
     /// and is routable.
     ///
     /// Internally ensures `Request` path is percent decoded before traversal.
-    pub fn traverse(&'n self,
+    pub fn traverse<'a>(&'n self,
                     req_path: &str)
-                    -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<String>>)> {
+                    -> Option<(Path<'n, 'a, P>, SegmentMapping<'n>)> {
         let pd = url::percent_encoding::percent_decode(req_path.as_bytes());
         match pd.decode_utf8() {
             Ok(ref path) => self.root.traverse(self.split_request_path(path).as_slice()),
