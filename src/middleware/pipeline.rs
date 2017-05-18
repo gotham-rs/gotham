@@ -6,7 +6,6 @@ use handler::HandlerFuture;
 use state::State;
 use hyper::server::Request;
 
-// TODO: Refactor this example when the `Router` API properly integrates with pipelines.
 /// When using middleware, one or more [`Middleware`][Middleware] are combined to form a
 /// `Pipeline`. `Middleware` are invoked strictly in the order they're added to the `Pipeline`.
 ///
