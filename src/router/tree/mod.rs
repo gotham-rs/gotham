@@ -1,5 +1,7 @@
 //! Defines a hierarchial `Tree` with subtrees of `Node`.
 
+use url;
+
 use router::route::Route;
 use router::tree::node::Node;
 use router::tree::node::NodeSegmentType;
@@ -60,7 +62,8 @@ pub mod node;
 ///   activate_node.add_child(batsignal_node);
 ///   tree.add_child(activate_node);
 ///
-///   assert!(tree.traverse("/activate/batsignal").unwrap().last().unwrap().is_routable());
+///   // Here `a` is percent encoded in the request path
+///   assert!(tree.traverse("/%61ctivate/batsignal").unwrap().last().unwrap().is_routable());
 ///
 ///   // These paths are not routable but could be if a `Route` was added to them.
 ///   assert!(tree.traverse("/").is_none());
@@ -116,9 +119,15 @@ impl<'n, P> Tree<'n, P> {
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path
     /// and is routable.
+    ///
+    /// Internally ensures `Request` path is percent decoded before traversal.
     pub fn traverse(&'n self, req_path: &str) -> Option<Vec<&Node<'n, P>>> {
-        // TODO: Percent Decode Request Path here.
-        self.root.traverse(self.split_request_path(req_path).as_slice())
+        let b = req_path.as_bytes();
+        let pd = url::percent_encoding::percent_decode(b);
+        match pd.decode_utf8() {
+            Ok(ref path) => self.root.traverse(self.split_request_path(path).as_slice()),
+            Err(_) => None,
+        }
     }
 
     /// Spilt a Request path into indivdual segments, leading leading "/" to represent

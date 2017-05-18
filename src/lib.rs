@@ -21,6 +21,7 @@ extern crate tokio_core;
 extern crate tokio_io;
 extern crate mio;
 extern crate borrow_bag;
+extern crate url;
 
 pub mod dispatch;
 pub mod handler;
