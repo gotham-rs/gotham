@@ -1,5 +1,7 @@
 //! Defines a hierarchial `Tree` with subtrees of `Node`.
 
+use std::collections::HashMap;
+
 use url;
 
 use router::route::Route;
@@ -49,7 +51,7 @@ pub mod node;
 ///
 ///   let mut activate_node = Node::new("activate", NodeSegmentType::Static);
 ///
-///   let mut batsignal_node = Node::new("batsignal", NodeSegmentType::Static);
+///   let mut variable_node = Node::new("thing", NodeSegmentType::Dynamic);
 ///   let batsignal_route = {
 ///       // elided ...
 /// #     let methods = vec![Method::Get];
@@ -57,15 +59,21 @@ pub mod node;
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
 /// #     Box::new(RouteImpl::new(matcher, dispatcher))
 ///   };
-///   batsignal_node.add_route(batsignal_route);
+///   variable_node.add_route(batsignal_route);
 ///
-///   activate_node.add_child(batsignal_node);
+///   activate_node.add_child(variable_node);
 ///   tree.add_child(activate_node);
 ///
 ///   // Here `a` is percent encoded in the request path
-///   assert!(tree.traverse("/%61ctivate/batsignal").unwrap().last().unwrap().is_routable());
+///   match tree.traverse("/%61ctiv%61te/batsignal") {
+///       Some((path, segment_mapping)) => {
+///         assert!(path.last().unwrap().is_routable());
+///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");
+///       }
+///       None => panic!(),
+///   }
 ///
-///   // These paths are not routable but could be if a `Route` was added to them.
+///   // These paths are not routable but could be if 1 or more `Route` were added.
 ///   assert!(tree.traverse("/").is_none());
 ///   assert!(tree.traverse("/activate").is_none());
 /// # }
@@ -89,7 +97,7 @@ impl<'n, P> Tree<'n, P> {
     /// exists at the root of the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
-   pub fn has_child(&self, segment: &str) -> bool {
+    pub fn has_child(&self, segment: &str) -> bool {
         self.root.has_child(segment)
     }
 
@@ -121,9 +129,10 @@ impl<'n, P> Tree<'n, P> {
     /// and is routable.
     ///
     /// Internally ensures `Request` path is percent decoded before traversal.
-    pub fn traverse(&'n self, req_path: &str) -> Option<Vec<&Node<'n, P>>> {
-        let b = req_path.as_bytes();
-        let pd = url::percent_encoding::percent_decode(b);
+    pub fn traverse(&'n self,
+                    req_path: &str)
+                    -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<String>>)> {
+        let pd = url::percent_encoding::percent_decode(req_path.as_bytes());
         match pd.decode_utf8() {
             Ok(ref path) => self.root.traverse(self.split_request_path(path).as_slice()),
             Err(_) => None,

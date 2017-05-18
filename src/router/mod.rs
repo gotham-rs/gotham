@@ -181,7 +181,7 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     /// connection to the client without response.
     fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
         match self.data.tree.traverse(req.path()) {
-            Some(tree_path) => {
+            Some((tree_path, _segment_mapping)) => {
                 // TODO: populate path variables
 
                 // acquire leaf and routes

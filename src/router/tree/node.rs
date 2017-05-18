@@ -70,8 +70,10 @@ pub enum NodeSegmentType<'n> {
 ///   activate_node.add_child(batsignal_node);
 ///   root_node.add_child(activate_node);
 ///
-///   let traversal = root_node.traverse(&["/", "activate", "batsignal"]);
-///   assert!(traversal.unwrap().last().unwrap().is_routable());
+///    match root_node.traverse(&["/", "activate", "batsignal"]) {
+///        Some((path, _)) => assert!(path.last().unwrap().is_routable()),
+///        None => panic!(),
+///    }
 /// # }
 /// ```
 pub struct Node<'n, P> {
@@ -178,11 +180,13 @@ impl<'n, P> Node<'n, P> {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse(&'n self, req_path_segments: &[&str]) -> Option<Vec<&Node<'n, P>>> {
+    pub fn traverse(&'n self,
+                    req_path_segments: &[&str])
+                    -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<String>>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
-            Some((mut path, _segment_mapping)) => {
+            Some((mut path, segment_mapping)) => {
                 path.reverse();
-                Some(path)
+                Some((path, segment_mapping))
             }
             None => None,
         }
@@ -394,38 +398,30 @@ mod tests {
         let root = test_structure();
 
         // GET /seg3/seg4
-        assert_eq!(root.traverse(&["/", "seg3", "seg4"])
-                       .unwrap()
-                       .last()
-                       .unwrap()
-                       .segment(),
-                   "seg4");
+        match root.traverse(&["/", "seg3", "seg4"]) {
+            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg4"),
+            None => panic!("traversal should have succeeded here"),
+        }
 
         // GET /seg3/seg4/seg5
         assert!(root.traverse(&["/", "seg3", "seg4", "seg5"]).is_none());
 
         // GET /seg5/seg6
-        assert_eq!(root.traverse(&["/", "seg5", "seg6"])
-                       .unwrap()
-                       .last()
-                       .unwrap()
-                       .segment(),
-                   "seg6");
+        match root.traverse(&["/", "seg5", "seg6"]) {
+            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg6"),
+            None => panic!("traversal should have succeeded here"),
+        }
 
         // GET /seg5/someval/seg7
-        assert_eq!(root.traverse(&["/", "seg5", "someval", "seg7"])
-                       .unwrap()
-                       .last()
-                       .unwrap()
-                       .segment(),
-                   "seg7");
+        match root.traverse(&["/", "seg5", "someval", "seg7"]) {
+            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg7"),
+            None => panic!("traversal should have succeeded here"),
+        }
 
         // GET /some/path/seg9/another/path
-        assert_eq!(root.traverse(&["/", "some", "path", "seg9", "some2", "path2"])
-                       .unwrap()
-                       .last()
-                       .unwrap()
-                       .segment(),
-                   "seg10");
+        match root.traverse(&["/", "some", "path", "seg9", "some2", "path2"]) {
+            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg10"),
+            None => panic!("traversal should have succeeded here"),
+        }
     }
 }
