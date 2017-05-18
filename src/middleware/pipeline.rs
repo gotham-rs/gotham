@@ -211,11 +211,10 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #
 /// # use std::io;
 /// # use gotham::state::State;
-/// # use gotham::handler::{Handler, HandlerFuture};
+/// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::{Middleware, NewMiddleware};
-/// # use gotham::middleware::pipeline::{new_pipeline, Pipeline, PipelineBuilder};
-/// # use hyper::server::{Request, Response};
-/// # use hyper::StatusCode;
+/// # use gotham::middleware::pipeline::new_pipeline;
+/// # use hyper::server::Request;
 /// #
 /// # #[derive(Clone)]
 /// # struct MiddlewareOne;
@@ -269,12 +268,8 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #   }
 /// # }
 /// #
-/// # fn handler(state: State, _: Request) -> (State, Response) {
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
-/// # }
-/// #
 /// # fn main() {
-/// let pipeline: Pipeline<_> = new_pipeline()
+/// new_pipeline()
 ///     .add(MiddlewareOne)
 ///     .add(MiddlewareTwo)
 ///     .add(MiddlewareThree)

@@ -21,10 +21,10 @@ pub mod pipeline;
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use gotham::handler::{Handler, HandlerFuture};
+/// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::State;
-/// # use hyper::server::{Request, Response};
+/// # use hyper::server::Request;
 /// #
 /// struct NoopMiddleware;
 ///
@@ -36,7 +36,9 @@ pub mod pipeline;
 ///     }
 /// }
 /// #
-/// # fn main() {}
+/// # fn main() {
+/// #  NoopMiddleware {};
+/// # }
 /// ```
 ///
 /// Recording a piece of state data before passing the request through:
@@ -45,13 +47,14 @@ pub mod pipeline;
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use gotham::handler::{Handler, HandlerFuture};
+/// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::{State, StateData};
-/// # use hyper::server::{Request, Response};
+/// # use hyper::server::Request;
 /// #
 /// struct MiddlewareWithStateData;
 ///
+/// # #[allow(unused)]
 /// struct MiddlewareStateData {
 ///     i: i32,
 /// }
@@ -67,7 +70,9 @@ pub mod pipeline;
 ///     }
 /// }
 /// #
-/// # fn main() {}
+/// # fn main() {
+/// #     MiddlewareWithStateData {};
+/// # }
 /// ```
 ///
 /// Terminating the request early based on some arbitrary condition:
@@ -77,9 +82,9 @@ pub mod pipeline;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
-/// # use gotham::handler::{Handler, HandlerFuture};
+/// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
-/// # use gotham::state::{State, StateData};
+/// # use gotham::state::{State};
 /// # use hyper::server::{Request, Response};
 /// # use hyper::{Method, StatusCode};
 /// # use futures::{future, Future};
@@ -99,7 +104,9 @@ pub mod pipeline;
 ///     }
 /// }
 /// #
-/// # fn main() {}
+/// # fn main() {
+/// #     ConditionalMiddleware {};
+/// # }
 /// ```
 ///
 /// Asynchronous middleware, which continues the request after some action completes:
@@ -109,10 +116,10 @@ pub mod pipeline;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
-/// # use gotham::handler::{Handler, HandlerFuture};
+/// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::State;
-/// # use hyper::server::{Request, Response};
+/// # use hyper::server::Request;
 /// # use futures::{future, Future};
 /// #
 /// struct AsyncMiddleware;
@@ -128,7 +135,9 @@ pub mod pipeline;
 ///     }
 /// }
 /// #
-/// # fn main() {}
+/// # fn main() {
+///     AsyncMiddleware {};
+/// # }
 /// ```
 pub trait Middleware {
     /// Entry point to the middleware. To pass the request on to the application, the middleware

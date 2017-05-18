@@ -38,13 +38,13 @@ impl<T> NewHandlerService<T>
     /// # extern crate hyper;
     /// # extern crate borrow_bag;
     /// #
-    /// # use gotham::handler::{NewHandlerService, NewHandler, Handler};
+    /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
     /// # use hyper::server::{Request, Response};
     /// # use hyper::StatusCode;
     /// #
     /// # fn main() {
-    /// fn handler(state: State, request: Request) -> (State, Response) {
+    /// fn handler(state: State, _req: Request) -> (State, Response) {
     ///     (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
@@ -59,7 +59,7 @@ impl<T> NewHandlerService<T>
     /// # extern crate hyper;
     /// # extern crate borrow_bag;
     /// #
-    /// # use gotham::handler::{NewHandlerService, NewHandler, Handler};
+    /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::tree::Tree;
@@ -70,7 +70,7 @@ impl<T> NewHandlerService<T>
     /// # use hyper::{StatusCode, Method};
     /// #
     /// # fn main() {
-    /// fn handler(state: State, request: Request) -> (State, Response) {
+    /// fn handler(state: State, _req: Request) -> (State, Response) {
     ///     (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
@@ -225,11 +225,10 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::tree::Tree;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
-/// # use gotham::handler::{NewHandler, IntoResponse};
-/// # use futures::{future, Future};
+/// # use gotham::handler::IntoResponse;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
-/// # use hyper::server::{Http, Request, Response};
+/// # use hyper::server::{Request, Response};
 /// #
 /// struct MyStruct {
 ///     value: String
@@ -250,7 +249,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 ///     }
 /// }
 ///
-/// fn handler(state: State, req: Request) -> (State, MyStruct) {
+/// fn handler(state: State, _req: Request) -> (State, MyStruct) {
 ///     (state, MyStruct::new())
 /// }
 ///

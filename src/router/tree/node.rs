@@ -429,7 +429,6 @@ mod tests {
                        .segment(),
                    "seg7");
 
-        println!("~~~");
         // GET /some/path/seg9/another/path
         assert_eq!(root.traverse(&["/", "some", "path", "seg9", "some2", "path2"])
                        .unwrap()
