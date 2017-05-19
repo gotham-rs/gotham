@@ -181,7 +181,7 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     ///
     /// For unrecoverable error states `future::err` will be called, dropping the
     /// connection to the client without response.
-    fn handle(&self, mut state: State, req: Request) -> Box<HandlerFuture> {
+    fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
         let uri = req.uri().clone();
         match request_path::split(uri.path()) {
             Some(rp) => {

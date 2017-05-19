@@ -11,6 +11,7 @@ use hyper::server::Request;
 use futures::{future, Future};
 use state::State;
 use std::io;
+use std::sync::Arc;
 
 /// A type alias for the trait objects returned by `HandlerService`
 pub type HandlerFuture =
@@ -21,7 +22,7 @@ pub type HandlerFuture =
 pub struct NewHandlerService<T>
     where T: NewHandler + 'static
 {
-    t: T,
+    t: Arc<T>,
 }
 
 impl<T> NewHandlerService<T>
@@ -93,7 +94,7 @@ impl<T> NewHandlerService<T>
     /// # }
     /// ```
     pub fn new(t: T) -> NewHandlerService<T> {
-        NewHandlerService { t: t }
+        NewHandlerService { t: Arc::new(t) }
     }
 }
 
@@ -103,10 +104,10 @@ impl<T> server::NewService for NewHandlerService<T>
     type Request = server::Request;
     type Response = server::Response;
     type Error = hyper::Error;
-    type Instance = HandlerService<T::Instance>;
+    type Instance = HandlerService<T>;
 
     fn new_service(&self) -> io::Result<Self::Instance> {
-        self.t.new_handler().map(HandlerService::new)
+        Ok(HandlerService::new(self.t.clone()))
     }
 }
 
@@ -116,22 +117,22 @@ impl<T> server::NewService for NewHandlerService<T>
 ///
 /// [Handler::handle]: trait.Handler.html#tymethod.handle
 pub struct HandlerService<T>
-    where T: Handler
+    where T: NewHandler
 {
-    handler: T,
+    new_handler: Arc<T>,
 }
 
 impl<T> HandlerService<T>
-    where T: Handler
+    where T: NewHandler
 {
     /// Creates a new `HandlerService` for the given `Handler`.
-    pub fn new(t: T) -> HandlerService<T> {
-        HandlerService { handler: t }
+    pub fn new(new_handler: Arc<T>) -> HandlerService<T> {
+        HandlerService { new_handler }
     }
 }
 
 impl<T> server::Service for HandlerService<T>
-    where T: Handler
+    where T: NewHandler
 {
     type Request = server::Request;
     type Response = server::Response;
@@ -139,11 +140,19 @@ impl<T> server::Service for HandlerService<T>
     type Future = Box<Future<Item = server::Response, Error = hyper::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        self.handler
-            .handle(State::new(), req)
-            .and_then(|(_, response)| future::ok(response))
-            .or_else(|(_, error)| future::err(error))
-            .boxed()
+        // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
+        // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
+        // immediately consuming it.
+        match (*self.new_handler).new_handler() {
+            Ok(handler) => {
+                handler
+                    .handle(State::new(), req)
+                    .and_then(|(_, response)| future::ok(response))
+                    .or_else(|(_, error)| future::err(error))
+                    .boxed()
+            }
+            Err(e) => future::err(e.into()).boxed(),
+        }
     }
 }
 
@@ -161,7 +170,7 @@ impl<T> server::Service for HandlerService<T>
 /// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
 pub trait Handler: Send + Sync {
     /// Handles the request, returning a boxed future which resolves to a response.
-    fn handle(&self, State, Request) -> Box<HandlerFuture>;
+    fn handle(self, State, Request) -> Box<HandlerFuture>;
 }
 
 /// Creates new `Handler` values.
@@ -289,10 +298,10 @@ impl IntoResponse for server::Response {
 }
 
 impl<F, R> Handler for F
-    where F: Fn(State, Request) -> R + Send + Sync,
+    where F: FnOnce(State, Request) -> R + Send + Sync,
           R: IntoHandlerFuture
 {
-    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
+    fn handle(self, state: State, req: Request) -> Box<HandlerFuture> {
         self(state, req).into_handler_future()
     }
 }
