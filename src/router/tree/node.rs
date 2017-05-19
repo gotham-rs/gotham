@@ -137,30 +137,21 @@ impl<'n, P> Node<'n, P> {
     ///
     /// To be used in building a `Tree` structure only.
     pub fn has_child(&self, segment: &str) -> bool {
-        match self.children.iter().find(|n| n.segment == segment) {
-            Some(_) => true,
-            None => false,
-        }
+        self.children.iter().find(|n| n.segment == segment).is_some()
     }
 
     /// Borrow a child that represents the exact segment provided here.
     ///
     /// To be used in building a `Tree` structure only.
     pub fn borrow_child(&self, segment: &str) -> Option<&Node<'n, P>> {
-        match self.children.iter().find(|n| n.segment == segment) {
-            Some(node) => Some(node),
-            None => None,
-        }
+        self.children.iter().find(|n| n.segment == segment)
     }
 
     /// Mutably borrow a child that represents the exact segment provided here.
     ///
     /// To be used in building a `Tree` structure only.
     pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut Node<'n, P>> {
-        match self.children.iter_mut().find(|n| n.segment == segment) {
-            Some(node) => Some(node),
-            None => None,
-        }
+        self.children.iter_mut().find(|n| n.segment == segment)
     }
 
     /// True if there is at least one child `Node` present
