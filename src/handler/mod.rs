@@ -66,6 +66,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::router::route::RouteImpl;
     /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
     /// # use gotham::dispatch::Dispatcher;
+    /// # use gotham::http::request_path::noop_request_path_extractor as noop;
     /// # use hyper::server::{Request, Response};
     /// # use hyper::{StatusCode, Method};
     /// #
@@ -81,7 +82,7 @@ impl<T> NewHandlerService<T>
     /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
     ///
     /// let dispatcher = Dispatcher::new(|| Ok(handler), ());
-    /// let route = Box::new(RouteImpl::new(matcher, dispatcher));
+    /// let route = Box::new(RouteImpl::new(matcher, dispatcher, Box::new(noop)));
     ///
     ///  tree.add_route(route);
     ///  let router = Router::new(tree, pipelines, not_found, internal_server_error);
@@ -226,6 +227,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::handler::IntoResponse;
+/// # use gotham::http::request_path::noop_request_path_extractor as noop;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
 /// # use hyper::server::{Request, Response};
@@ -261,7 +263,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 /// #
 ///     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-///     let route = Box::new(RouteImpl::new(matcher, dispatcher));
+///     let route = Box::new(RouteImpl::new(matcher, dispatcher, Box::new(noop)));
 ///
 ///     tree.add_route(route);
 ///     Router::new(tree, pipelines, not_found, internal_server_error);
