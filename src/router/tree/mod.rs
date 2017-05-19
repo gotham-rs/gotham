@@ -2,7 +2,8 @@
 
 use std::collections::HashMap;
 
-use url;
+use hyper::Uri;
+use url::percent_encoding::percent_decode;
 
 use router::route::Route;
 use router::tree::node::Node;
@@ -40,6 +41,9 @@ pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// # use std::str::FromStr;
+/// #
+/// # use hyper::Uri;
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
 /// # use gotham::router::route::RouteImpl;
@@ -74,7 +78,7 @@ pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 ///   tree.add_child(activate_node);
 ///
 ///   // Here `a` is percent encoded in the request path
-///   match tree.traverse("/%61ctiv%61te/batsignal") {
+///   match tree.traverse(&Uri::from_str("/%61ctiv%61te/batsignal").unwrap()) {
 ///       Some((path, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");
@@ -83,8 +87,8 @@ pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 ///   }
 ///
 ///   // These paths are not routable but could be if 1 or more `Route` were added.
-///   assert!(tree.traverse("/").is_none());
-///   assert!(tree.traverse("/activate").is_none());
+///   assert!(tree.traverse(&Uri::from_str("/").unwrap()).is_none());
+///   assert!(tree.traverse(&Uri::from_str("/activate").unwrap()).is_none());
 /// # }
 /// ```
 pub struct Tree<'n, P> {
@@ -138,19 +142,16 @@ impl<'n, P> Tree<'n, P> {
     /// and is routable.
     ///
     /// Internally ensures `Request` path is percent decoded before traversal.
-    pub fn traverse<'a>(&'n self,
-                    req_path: &str)
-                    -> Option<(Path<'n, 'a, P>, SegmentMapping<'n>)> {
-        let pd = url::percent_encoding::percent_decode(req_path.as_bytes());
-        match pd.decode_utf8() {
+    pub fn traverse<'a>(&'n self, uri: &Uri) -> Option<(Path<'n, 'a, P>, SegmentMapping<'n>)> {
+        match percent_decode(uri.path().as_bytes()).decode_utf8() {
             Ok(ref path) => self.root.traverse(self.split_request_path(path).as_slice()),
             Err(_) => None,
         }
     }
 
-    /// Spilt a Request path into indivdual segments, leading leading "/" to represent
-    /// the root of the path.
-    pub fn split_request_path(&self, path: &'n str) -> Vec<&str> {
+    // Spilt a Request path into indivdual segments, leading leading "/" to represent
+    // the root of the path.
+    fn split_request_path(&self, path: &'n str) -> Vec<&str> {
         let mut segments = vec!["/"];
         segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'n str>>());
         segments
