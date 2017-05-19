@@ -183,8 +183,8 @@ impl<'n, P> Node<'n, P> {
     /// 3. Dynamic
     /// 4. Glob
     pub fn traverse<'a>(&'n self,
-                    req_path_segments: &[&str])
-                    -> Option<(Path<'n, 'a, P>, SegmentMapping<'n>)> {
+                        req_path_segments: &[&str])
+                        -> Option<(Path<'n, 'a, P>, SegmentMapping<'n>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, segment_mapping)) => {
                 path.reverse();
@@ -194,7 +194,7 @@ impl<'n, P> Node<'n, P> {
         }
     }
 
-    #[allow(type_complexity)]
+    #[allow(unknown_lints, type_complexity)]
     fn inner_traverse(&self,
                       req_path_segments: &[&str],
                       mut consumed_segments: Vec<String>)
@@ -203,14 +203,20 @@ impl<'n, P> Node<'n, P> {
             Some((x, xs)) => {
                 if self.is_match(x) {
                     if self.is_routable() && req_path_segments.len() == 1 {
-                        // Leaf Node for Route Path, start building result
-                        consumed_segments.push(String::from(*x));
+                        // Leaf Node for path, start building result
+                        match self.segment_type {
+                            NodeSegmentType::Static => Some((vec![self], HashMap::new())),
+                            _ => {
+                                consumed_segments.push(String::from(*x));
 
-                        let mut segment_mapping = HashMap::new();
-                        segment_mapping.insert(self.segment(), consumed_segments);
+                                let mut segment_mapping = HashMap::new();
+                                segment_mapping.insert(self.segment(), consumed_segments);
 
-                        Some((vec![self], segment_mapping))
+                                Some((vec![self], segment_mapping))
+                            }
+                        }
                     } else {
+                        // Recurse through children to continue building complete path
                         match xs.iter().peekable().peek() {
                             Some(y) => {
                                 match self.children.iter().find(|c| c.is_match(y)) {
@@ -218,11 +224,19 @@ impl<'n, P> Node<'n, P> {
                                         // Direct child, continue down tree
                                         match c.inner_traverse(xs, vec![]) {
                                             Some((mut path, mut segment_mapping)) => {
-                                                consumed_segments.push(String::from(*x));
-                                                segment_mapping.insert(self.segment(),
-                                                                       consumed_segments);
-                                                path.push(self);
-                                                Some((path, segment_mapping))
+                                                match self.segment_type {
+                                                    NodeSegmentType::Static => {
+                                                        path.push(self);
+                                                        Some((path, segment_mapping))
+                                                    }
+                                                    _ => {
+                                                        consumed_segments.push(String::from(*x));
+                                                        segment_mapping.insert(self.segment(),
+                                                                               consumed_segments);
+                                                        path.push(self);
+                                                        Some((path, segment_mapping))
+                                                    }
+                                                }
                                             }
                                             None => None,
                                         }
