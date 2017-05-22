@@ -10,6 +10,7 @@
 //! [mio]: https://github.com/carllerche/mio
 
 #![warn(missing_docs)]
+#![doc(test(no_crate_inject, attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 #![deny(private_in_public)]
@@ -19,6 +20,8 @@ extern crate futures;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate mio;
+extern crate borrow_bag;
+extern crate url;
 
 pub mod dispatch;
 pub mod handler;

@@ -8,3 +8,4 @@ gotham = { path = "../.." }
 futures = "*"
 hyper = { git = "https://github.com/hyperium/hyper.git" }
 pretty_env_logger = "*"
+borrow-bag = "*"

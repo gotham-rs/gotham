@@ -6,7 +6,6 @@ use handler::HandlerFuture;
 use state::State;
 use hyper::server::Request;
 
-// TODO: Refactor this example when the `Router` API properly integrates with pipelines.
 /// When using middleware, one or more [`Middleware`][Middleware] are combined to form a
 /// `Pipeline`. `Middleware` are invoked strictly in the order they're added to the `Pipeline`.
 ///
@@ -26,18 +25,22 @@ use hyper::server::Request;
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate futures;
+/// # extern crate borrow_bag;
 /// #
 /// # use std::io;
 /// # use gotham::state::{State, StateData};
-/// # use gotham::handler::{Handler, HandlerFuture, HandlerService, NewHandlerService};
+/// # use gotham::handler::{HandlerFuture, NewHandlerService};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
-/// # use gotham::middleware::pipeline::{new_pipeline, Pipeline, PipelineBuilder};
+/// # use gotham::middleware::pipeline::new_pipeline;
 /// # use gotham::router::Router;
+/// # use gotham::router::tree::Tree;
+/// # use gotham::router::route::RouteImpl;
+/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::dispatch::Dispatcher;
 /// # use gotham::test::TestServer;
 /// # use hyper::server::{Request, Response};
 /// # use hyper::StatusCode;
-/// # use hyper::Method::*;
-/// # use futures::{future, Future};
+/// # use hyper::Method;
 /// #
 /// struct MiddlewareData {
 ///     vec: Vec<i32>
@@ -106,40 +109,40 @@ use hyper::server::Request;
 /// #     }
 /// # }
 ///
-/// fn handler(mut state: State, req: Request) -> (State, Response) {
-///     // Dump the contents of the `Vec<i32>` into the response body.
+/// fn handler(state: State, _req: Request) -> (State, Response) {
 ///     let body = {
-///         let data = state.borrow::<MiddlewareData>().unwrap();
-///         format!("{:?}", data.vec)
+///        let data = state.borrow::<MiddlewareData>().unwrap();
+///        format!("{:?}", data.vec)
 ///     };
 ///
 ///     (state, Response::new().with_status(StatusCode::Ok).with_body(body))
 /// }
 ///
+/// fn not_found(state: State, _req: Request) -> (State, Response) {
+///     (state, Response::new().with_status(StatusCode::NotFound))
+/// }
+///
+/// fn internal_server_error(state: State, _req: Request) -> (State, Response) {
+///     (state, Response::new().with_status(StatusCode::InternalServerError))
+/// }
+///
 /// fn main() {
-///     let new_service = NewHandlerService::new(|| {
-///         // Define a `Router`
-///         let router = Router::build(|routes| {
-///             routes.direct(Get, "/").to(handler);
-///         });
+///     let pipelines = borrow_bag::new_borrow_bag();
+///     let (pipelines, pipeline) = pipelines.add(new_pipeline()
+///         .add(MiddlewareOne)
+///         .add(MiddlewareTwo)
+///         .add(MiddlewareThree)
+///         .build());
 ///
-///         // Build the `Pipeline`
-///         let pipeline = new_pipeline()
-///             .add(MiddlewareOne)
-///             .add(MiddlewareTwo)
-///             .add(MiddlewareThree)
-///             .build();
+///     let mut tree = Tree::new();
 ///
-///         // Return the `Pipeline` as a `Handler`
-///         Ok(move |state, req| {
-///             let r = router.clone();
-///             match pipeline.construct() {
-///                 Ok(p) => p.call(state, req, move |state, req| r.handle(state, req)),
-///                 Err(e) => future::err((state, e.into())).boxed(),
-///             }
-///         })
-///     });
+///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+///     let dispatcher = Dispatcher::new(|| Ok(handler), (pipeline, ()));
+///     tree.add_route(Box::new(RouteImpl::new(matcher, dispatcher)));
 ///
+///     let router = Router::new(tree, pipelines, || Ok(not_found), || Ok(internal_server_error));
+///
+///     let new_service = NewHandlerService::new(router);
 ///     let mut test_server = TestServer::new(new_service).unwrap();
 ///     let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
 ///     let uri = "http://example.com/".parse().unwrap();
@@ -207,11 +210,10 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #
 /// # use std::io;
 /// # use gotham::state::State;
-/// # use gotham::handler::{Handler, HandlerFuture};
+/// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::{Middleware, NewMiddleware};
-/// # use gotham::middleware::pipeline::{new_pipeline, Pipeline, PipelineBuilder};
-/// # use hyper::server::{Request, Response};
-/// # use hyper::StatusCode;
+/// # use gotham::middleware::pipeline::new_pipeline;
+/// # use hyper::server::Request;
 /// #
 /// # #[derive(Clone)]
 /// # struct MiddlewareOne;
@@ -265,12 +267,8 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #   }
 /// # }
 /// #
-/// # fn handler(state: State, _: Request) -> (State, Response) {
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
-/// # }
-/// #
 /// # fn main() {
-/// let pipeline: Pipeline<_> = new_pipeline()
+/// new_pipeline()
 ///     .add(MiddlewareOne)
 ///     .add(MiddlewareTwo)
 ///     .add(MiddlewareThree)

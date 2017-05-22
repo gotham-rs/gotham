@@ -36,14 +36,15 @@ impl<T> NewHandlerService<T>
     /// ```rust,no_run
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate borrow_bag;
     /// #
-    /// # use gotham::handler::{NewHandlerService, NewHandler, Handler};
+    /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
     /// # use hyper::server::{Request, Response};
     /// # use hyper::StatusCode;
     /// #
     /// # fn main() {
-    /// fn handler(state: State, request: Request) -> (State, Response) {
+    /// fn handler(state: State, _req: Request) -> (State, Response) {
     ///     (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
@@ -56,23 +57,36 @@ impl<T> NewHandlerService<T>
     /// ```rust,no_run
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate borrow_bag;
     /// #
-    /// # use gotham::handler::{NewHandlerService, NewHandler, Handler};
+    /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
+    /// # use gotham::router::tree::Tree;
+    /// # use gotham::router::route::RouteImpl;
+    /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+    /// # use gotham::dispatch::Dispatcher;
     /// # use hyper::server::{Request, Response};
     /// # use hyper::{StatusCode, Method};
     /// #
     /// # fn main() {
-    /// fn handler(state: State, request: Request) -> (State, Response) {
+    /// fn handler(state: State, _req: Request) -> (State, Response) {
     ///     (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
-    /// let router = Router::build(|routes| {
-    ///     routes.direct(Method::Get, "/").to(handler);
-    /// });
+    /// let mut tree = Tree::new();
+    /// let pipelines = borrow_bag::new_borrow_bag();
+    /// let not_found = || Ok(handler);
+    /// let internal_server_error = || Ok(handler);
+    /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
     ///
-    /// NewHandlerService::new(router);
+    /// let dispatcher = Dispatcher::new(|| Ok(handler), ());
+    /// let route = Box::new(RouteImpl::new(matcher, dispatcher));
+    ///
+    ///  tree.add_route(route);
+    ///  let router = Router::new(tree, pipelines, not_found, internal_server_error);
+    ///
+    ///  NewHandlerService::new(router);
     /// # }
     /// ```
     pub fn new(t: T) -> NewHandlerService<T> {
@@ -203,14 +217,18 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate futures;
+/// # extern crate borrow_bag;
 /// #
 /// # use gotham::state::State;
-/// # use gotham::router::{Router, RouterBuilder};
+/// # use gotham::router::Router;
+/// # use gotham::router::route::RouteImpl;
+/// # use gotham::router::tree::Tree;
+/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::dispatch::Dispatcher;
 /// # use gotham::handler::IntoResponse;
-/// # use futures::{future, Future};
-/// # use hyper::Method::Get;
+/// # use hyper::Method;
 /// # use hyper::StatusCode;
-/// # use hyper::server::{Http, Request, Response};
+/// # use hyper::server::{Request, Response};
 /// #
 /// struct MyStruct {
 ///     value: String
@@ -231,18 +249,22 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 ///     }
 /// }
 ///
-/// fn handler(state: State, req: Request) -> (State, MyStruct) {
+/// fn handler(state: State, _req: Request) -> (State, MyStruct) {
 ///     (state, MyStruct::new())
 /// }
 ///
-/// fn router() -> Router {
-///     Router::build(|routes| {
-///        routes.direct(Get, "/").to(handler);
-///     })
-/// }
-/// #
 /// # fn main() {
-/// #   router();
+/// #   let mut tree = Tree::new();
+/// #   let pipelines = borrow_bag::new_borrow_bag();
+/// #   let not_found = || Ok(handler);
+/// #   let internal_server_error = || Ok(handler);
+/// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+/// #
+///     let dispatcher = Dispatcher::new(|| Ok(handler), ());
+///     let route = Box::new(RouteImpl::new(matcher, dispatcher));
+///
+///     tree.add_route(route);
+///     Router::new(tree, pipelines, not_found, internal_server_error);
 /// # }
 /// ```
 ///

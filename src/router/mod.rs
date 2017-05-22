@@ -1,292 +1,201 @@
-//! Defines the Gotham `Router`, which dispatches requests to the correct `Handler`
+//! Defines a `Router` and supporting types.
+
+pub mod tree;
+pub mod route;
+pub mod request_matcher;
 
 use std::io;
 use std::sync::Arc;
-use handler::{Handler, HandlerFuture, NewHandler, NewHandlerService};
-use state::State;
-use hyper::Method;
+
+use futures::{future, Future};
 use hyper::server::Request;
+use borrow_bag::BorrowBag;
 
-/// The `Router` type is the main entry point into a Gotham app, and supports being used directly
-/// with hyper via the `Router::into_new_service(self)` function.
-///
-/// To create a `Router`, call `Router::build` with a closure which receives a `RouterBuilder` and
-/// uses it to define routes.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// #
-/// use gotham::state::State;
-/// use gotham::router::Router;
-/// use hyper::server::{Http, Request, Response};
-/// use hyper::Method::Get;
-///
-/// fn router() -> Router {
-///     Router::build(|routes| {
-///         routes.direct(Get, "/").to(MyApp::top);
-///         routes.direct(Get, "/profile").to(MyApp::profile);
-///     })
-/// }
-///
-/// struct MyApp;
-///
-/// impl MyApp {
-///     fn top(state: State, req: Request) -> (State, Response) {
-///         // Handler logic here
-/// #       unimplemented!()
-///     }
-///
-///     fn profile(state: State, req: Request) -> (State, Response) {
-///         // Handler logic here
-/// #       unimplemented!()
-///     }
-/// }
-///
-/// fn main() {
-///     let addr = "127.0.0.1:9000".parse().unwrap();
-///     let server = Http::new().bind(&addr, router().into_new_service()).unwrap();
-///     server.run().unwrap()
-/// }
-/// ```
-#[derive(Clone)]
-pub struct Router {
-    routes: Arc<Vec<Route>>,
+use router::tree::Tree;
+use handler::{NewHandler, Handler, HandlerFuture};
+use state::State;
+
+// Holds data for Router which lives behind single Arc instance
+// so that otherwise non Clone-able structs are able to be used via NewHandler
+struct RouterData<'n, P, NFH, ISEH>
+    where NFH: NewHandler,
+          ISEH: NewHandler
+{
+    tree: Tree<'n, P>,
+    pipelines: BorrowBag<P>,
+    not_found_handler: NFH,
+    internal_server_error_handler: ISEH,
 }
 
-impl Router {
-    /// Calls the provided closure with a `RouterBuilder`, and then compiles the routes into a
-    /// `Router`. See [`RouterBuilder`][RouterBuilder] for the available API.
-    ///
-    /// [RouterBuilder]: struct.RouterBuilder.html
-    pub fn build<F>(f: F) -> Router
-        where F: FnOnce(&mut RouterBuilder) -> ()
-    {
-        let mut builder = RouterBuilder::new();
-        f(&mut builder);
-        builder.into_router()
-    }
-
-    /// Returns a value which implements `hyper::server::NewService`, and can be used directly when
-    /// spawning a new server.
-    pub fn into_new_service(self) -> NewHandlerService<Router> {
-        NewHandlerService::new(self)
-    }
-}
-
-impl NewHandler for Router {
-    type Instance = Router;
-
-    fn new_handler(&self) -> io::Result<Self::Instance> {
-        Ok(self.clone())
-    }
-}
-
-impl Handler for Router {
-    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        // Deliberately obtuse implementation while we hash out the API.
-        match self.routes
-                  .iter()
-                  .filter(|r| r.matcher.matches(&req))
-                  .take(1)
-                  .next() {
-            Some(ref route_box) => route_box.handler.handle(state, req),
-            None => unimplemented!(),
+impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
+    where NFH: NewHandler,
+          NFH::Instance: 'static,
+          ISEH: NewHandler,
+          ISEH::Instance: 'static
+{
+    pub fn new(tree: Tree<'n, P>,
+               pipelines: BorrowBag<P>,
+               not_found_handler: NFH,
+               internal_server_error_handler: ISEH)
+               -> RouterData<'n, P, NFH, ISEH> {
+        RouterData {
+            tree,
+            pipelines,
+            not_found_handler,
+            internal_server_error_handler,
         }
     }
 }
 
-/// `RouterBuilder` provides an API for constructing a `Router`. This is only instantiated by
-/// [`Router::build(_)`][Router::build] and passed to the provided closure.
+/// Responsible for dispatching `Requests` to a linked `Route` and
+/// dispatching error states when a valid `Route` is unable to be determined.
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// # extern crate gotham;
 /// # extern crate hyper;
+/// # extern crate borrow_bag;
 /// #
+/// # use hyper::server::{Request, Response};
+/// # use gotham::router::tree::Tree;
+/// # use gotham::router::Router;
 /// # use gotham::state::State;
-/// # use gotham::router::{Router, RouterBuilder};
-/// # use hyper::Method::Get;
-/// # use hyper::server::{Http, Request, Response};
 /// #
-/// # fn handler(state: State, req: Request) -> (State, Response) {
-/// #     (state, Response::new())
+/// # fn handler(state: State, _req: Request) -> (State, Response) {
+/// #   (state, Response::new())
+/// # }
+/// #
+/// # fn handler2(state: State, _req: Request) -> (State, Response) {
+/// #   (state, Response::new())
 /// # }
 /// #
 /// # fn main() {
-/// Router::build(|routes: &mut RouterBuilder| {
-///     routes.direct(Get, "/").to(handler);
-/// })
-/// # ;()
+///   let tree = Tree::new();
+///   let not_found = || Ok(handler);
+///   let internal_server_error = || Ok(handler2);
+///   let pipelines = borrow_bag::new_borrow_bag();
+///
+///   Router::new(tree, pipelines, not_found, internal_server_error);
 /// # }
 /// ```
-///
-/// [Router::build]: struct.Router.html#method.build
-pub struct RouterBuilder {
-    routes: Vec<Route>,
+pub struct Router<'n, P, NFH, ISEH>
+    where P: Sync,
+          NFH: NewHandler,
+          ISEH: NewHandler
+{
+    data: Arc<RouterData<'n, P, NFH, ISEH>>,
 }
 
-/// Provides an API for a route matcher to be targeted at a `Handler`. This is instantiated by
-/// `RouterBuilder`. See [`RouterBuilder`][RouterBuilder] for a usage example.
-///
-/// [RouterBuilder]: struct.RouterBuilder.html
-pub struct RouterBuilderTo<'a> {
-    builder: &'a mut RouterBuilder,
-    matcher: Box<RouteMatcher>,
+impl<'n, P, NFH, ISEH> Router<'n, P, NFH, ISEH>
+    where P: Sync,
+          NFH: NewHandler,
+          NFH::Instance: 'static,
+          ISEH: NewHandler,
+          ISEH::Instance: 'static
+{
+    /// Creates a new `Router` instance, internal `Tree` and establishes global error
+    /// handlers for NotFound and InternalServerError responses.
+    pub fn new(tree: Tree<'n, P>,
+               pipelines: BorrowBag<P>,
+               not_found_handler: NFH,
+               internal_server_error_handler: ISEH)
+               -> Router<'n, P, NFH, ISEH> {
+
+        let router_data = RouterData::new(tree,
+                                          pipelines,
+                                          not_found_handler,
+                                          internal_server_error_handler);
+        Router { data: Arc::new(router_data) }
+    }
+
+    // Attempt to respond to client with a 404 NotFound response
+    fn not_found(&self, state: State, req: Request) -> Box<HandlerFuture> {
+        match self.data.not_found_handler.new_handler() {
+            Ok(handler) => handler.handle(state, req),
+            Err(_error) => self.internal_server_error(state, req),
+        }
+    }
+
+    // Attempt to respond to client with a 500 InternalServerError response.
+    //
+    // Failing this all we have left is to fall back to generic future error within Tokio as we've
+    // exhausted all options.
+    //
+    // TODO: Ensure all future errors are appropriately logged.
+    fn internal_server_error(&self, state: State, req: Request) -> Box<HandlerFuture> {
+        match self.data.internal_server_error_handler.new_handler() {
+            Ok(handler) => handler.handle(state, req),
+            Err(error) => future::err((state, error.into())).boxed(),
+        }
+    }
 }
 
-impl RouterBuilder {
-    fn new() -> RouterBuilder {
-        RouterBuilder { routes: Vec::default() }
+impl<'n, P, NFH, ISEH> Clone for Router<'n, P, NFH, ISEH>
+    where P: Sync,
+          NFH: NewHandler,
+          NFH::Instance: 'static,
+          ISEH: NewHandler,
+          ISEH::Instance: 'static
+{
+    fn clone(&self) -> Router<'n, P, NFH, ISEH> {
+        Router { data: self.data.clone() }
     }
+}
 
-    fn into_router(mut self) -> Router {
-        Router { routes: Arc::new(self.routes.drain(..).collect()) }
+impl<'n, P, NFH, ISEH> NewHandler for Router<'n, P, NFH, ISEH>
+    where P: Send + Sync,
+          NFH: NewHandler,
+          NFH::Instance: 'static,
+          ISEH: NewHandler,
+          ISEH::Instance: 'static
+{
+    type Instance = Router<'n, P, NFH, ISEH>;
+
+    // Creates a new Router instance to route new HTTP requests
+    fn new_handler(&self) -> io::Result<Self::Instance> {
+        Ok((*self).clone())
     }
+}
 
-    /// Creates a route matching a single HTTP method and a fixed string.
+impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
+    where P: Send + Sync,
+          NFH: NewHandler,
+          NFH::Instance: 'static,
+          ISEH: NewHandler,
+          ISEH::Instance: 'static
+{
+    /// Handles the request by determining the correct `Route` from the internal
+    /// `Tree`, storing any path related variables in `State` and dispatching
+    /// appropriately to the configured `Handler`.
     ///
-    /// The provided `path` must match the complete path of the request. For example, a request for
-    /// `https://example.com/path/to/my/handler?query=params+go+here` would be matched by:
+    /// # Errors
     ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # use gotham::state::State;
-    /// # use gotham::router::Router;
-    /// # use hyper::Method::Get;
-    /// # use hyper::server::{Request, Response};
-    /// #
-    /// #
-    /// fn handler(state: State, req: Request) -> (State, Response) {
-    ///     // Handler implementation here
-    /// #   (state, Response::new())
-    /// }
+    /// If no `Route` is present a 404 `NotFound` response will be returned to the client
+    /// via `not_found_handler`.
     ///
-    /// fn router() -> Router {
-    ///     Router::build(|routes| {
-    ///         routes.direct(Get, "/path/to/my/handler").to(handler);
-    ///     })
-    /// }
-    /// #
-    /// # fn main() {
-    /// #   router();
-    /// # }
-    /// ```
-    pub fn direct<'a>(&'a mut self, method: Method, path: &'static str) -> RouterBuilderTo<'a> {
-        RouterBuilderTo {
-            builder: self,
-            matcher: Box::new(DirectRouteMatcher {
-                                  method: method,
-                                  path: path,
-                              }),
+    /// If an unexpected error occurs handling the request a 500 `InternalServerError` response
+    /// will be returned to client via `internal_server_error_handler`.
+    ///
+    /// For unrecoverable error states `future::err` will be called, dropping the
+    /// connection to the client without response.
+    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
+        match self.data.tree.traverse(req.path()) {
+            Some(tree_path) => {
+                // TODO: populate path variables
+
+                // acquire leaf and routes
+                if let Some(leaf) = tree_path.last() {
+                    // dispatch
+                    match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
+                        Some(route) => route.dispatch(&self.data.pipelines, state, req),
+                        None => self.internal_server_error(state, req),
+                    }
+                } else {
+                    self.internal_server_error(state, req)
+                }
+            }
+            None => self.not_found(state, req),
         }
-    }
-}
-
-impl<'a> RouterBuilderTo<'a> {
-    /// Targets the current route at a specific handler.
-    pub fn to<H>(self, handler: H)
-        where H: Handler + 'static
-    {
-        let route = Route {
-            matcher: self.matcher,
-            handler: Box::new(handler),
-        };
-
-        self.builder.routes.push(route)
-    }
-}
-
-struct Route {
-    matcher: Box<RouteMatcher>,
-    handler: Box<Handler>,
-}
-
-trait RouteMatcher: Send + Sync {
-    fn matches(&self, req: &Request) -> bool;
-
-    fn to<H>(self, h: H) -> Route
-        where H: Handler + 'static,
-              Self: Sized + 'static
-    {
-        Route {
-            matcher: Box::new(self),
-            handler: Box::new(h),
-        }
-    }
-}
-
-struct DirectRouteMatcher {
-    method: Method,
-    path: &'static str,
-}
-
-impl RouteMatcher for DirectRouteMatcher {
-    fn matches(&self, req: &Request) -> bool {
-        *req.method() == self.method && req.path() == self.path
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use hyper::Method::*;
-    use hyper::StatusCode;
-    use hyper::server::Response;
-    use test::TestServer;
-    use futures::{future, Future};
-
-    struct Root {}
-
-    impl Root {
-        fn index(state: State, _req: Request) -> (State, Response) {
-            (state, Response::new().with_status(StatusCode::Ok).with_body("Index"))
-        }
-
-        fn async(state: State, _req: Request) -> Box<HandlerFuture> {
-            let response = Response::new().with_status(StatusCode::Ok).with_body("Async");
-            future::lazy(move || future::ok((state, response))).boxed()
-        }
-
-        fn router() -> Router {
-            Router::build(|route| {
-                              route.direct(Get, "/").to(Root::index);
-                              route.direct(Get, "/async").to(Root::async);
-                          })
-        }
-    }
-
-    #[test]
-    fn route_async_request() {
-        let mut test_server = TestServer::new(Root::router().into_new_service()).unwrap();
-        let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
-        let uri = "http://example.com/async".parse().unwrap();
-        let response = test_server.run_request(client.get(uri)).unwrap();
-        assert_eq!(response.status(), StatusCode::Ok);
-        assert_eq!(test_server.read_body(response).unwrap(), "Async".as_bytes());
-    }
-
-    #[test]
-    fn route_direct_request() {
-        let mut test_server = TestServer::new(Root::router().into_new_service()).unwrap();
-        let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
-        let uri = "http://example.com/".parse().unwrap();
-        let response = test_server.run_request(client.get(uri)).unwrap();
-        assert_eq!(response.status(), StatusCode::Ok);
-        assert_eq!(test_server.read_body(response).unwrap(), "Index".as_bytes());
-    }
-
-    #[test]
-    fn route_direct_request_ignoring_query_params() {
-        let mut test_server = TestServer::new(Root::router().into_new_service()).unwrap();
-        let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
-        let uri = "http://example.com/?x=y".parse().unwrap();
-        let response = test_server.run_request(client.get(uri)).unwrap();
-        assert_eq!(response.status(), StatusCode::Ok);
-        assert_eq!(test_server.read_body(response).unwrap(), "Index".as_bytes());
     }
 }
