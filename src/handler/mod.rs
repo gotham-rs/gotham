@@ -63,7 +63,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::tree::Tree;
-    /// # use gotham::router::route::RouteImpl;
+    /// # use gotham::router::route::{RouteImpl, Extractors};
     /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
     /// # use gotham::dispatch::Dispatcher;
     /// # use gotham::http::request_path::NoopRequestPathExtractor;
@@ -82,13 +82,13 @@ impl<T> NewHandlerService<T>
     ///
     /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
     /// let dispatcher = Dispatcher::new(|| Ok(handler), ());
-    /// let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
-    /// let route = Box::new(route);
+    /// let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+    /// let route = RouteImpl::new(matcher, dispatcher, extractors);
     ///
-    ///  tree.add_route(route);
-    ///  let router = Router::new(tree, pipelines, not_found, internal_server_error);
+    /// tree.add_route(Box::new(route));
+    /// let router = Router::new(tree, pipelines, not_found, internal_server_error);
     ///
-    ///  NewHandlerService::new(router);
+    /// NewHandlerService::new(router);
     /// # }
     /// ```
     pub fn new(t: T) -> NewHandlerService<T> {
@@ -223,7 +223,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
-/// # use gotham::router::route::RouteImpl;
+/// # use gotham::router::route::{RouteImpl, Extractors};
 /// # use gotham::router::tree::Tree;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
@@ -264,7 +264,8 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #
 /// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 /// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #   let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
+/// #   let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+/// #   let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///     tree.add_route(Box::new(route));
 ///     Router::new(tree, pipelines, not_found, internal_server_error);
 /// # }

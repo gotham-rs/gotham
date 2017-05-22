@@ -51,7 +51,7 @@ pub trait Route<P> {
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
-/// # use gotham::router::route::RouteImpl;
+/// # use gotham::router::route::{RouteImpl, Extractors};
 /// #
 ///   fn handler(state: State, _req: Request) -> (State, Response) {
 ///     (state, Response::new())
@@ -60,18 +60,26 @@ pub trait Route<P> {
 ///   let methods = vec![Method::Get];
 ///   let matcher = MethodOnlyRequestMatcher::new(methods);
 ///   let dispatcher: Dispatcher<_, _, ()> = Dispatcher::new(|| Ok(handler), ());
-///   RouteImpl::<_, _, _, _, NoopRequestPathExtractor>::new(matcher, dispatcher);
+///   let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+///   RouteImpl::new(matcher, dispatcher, extractors);
 /// # }
 /// ```
 pub struct RouteImpl<RM, NH, PC, P, RE>
     where RM: RequestMatcher,
           NH: NewHandler,
           PC: PipelineHandleChain<P>,
-          RE: RequestPathExtractor,
+          RE: RequestPathExtractor
 {
     matcher: RM,
     dispatcher: Dispatcher<NH, PC, P>,
+    _extractors: Extractors<RE>,
+}
 
+/// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
+/// for use by custom `Middleware` and `Handler` implementations.
+pub struct Extractors<RE>
+    where RE: RequestPathExtractor
+{
     rpe_phantom: PhantomData<RE>,
 }
 
@@ -79,16 +87,23 @@ impl<RM, NH, PC, P, RE> RouteImpl<RM, NH, PC, P, RE>
     where RM: RequestMatcher,
           NH: NewHandler,
           PC: PipelineHandleChain<P>,
-          RE: RequestPathExtractor,
+          RE: RequestPathExtractor
 {
     /// Creates a new `RouteImpl`
-    pub fn new(matcher: RM,
-               dispatcher: Dispatcher<NH, PC, P>)
-               -> Self {
+    pub fn new(matcher: RM, dispatcher: Dispatcher<NH, PC, P>, _extractors: Extractors<RE>) -> Self {
         RouteImpl {
             matcher,
             dispatcher,
-            rpe_phantom: PhantomData,
+            _extractors,
+        }
+    }
+}
+
+impl<RE> Extractors<RE> where RE: RequestPathExtractor {
+    /// Creates a new set of Extractors for use with a `RouteImpl`
+    pub fn new() -> Self {
+        Extractors {
+            rpe_phantom: PhantomData
         }
     }
 }

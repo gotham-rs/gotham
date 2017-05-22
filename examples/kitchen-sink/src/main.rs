@@ -17,7 +17,7 @@ use hyper::Method;
 use hyper::status::StatusCode;
 
 use gotham::router::Router;
-use gotham::router::route::{Route, RouteImpl};
+use gotham::router::route::{Route, RouteImpl, Extractors};
 use gotham::dispatch::{Dispatcher, PipelineHandleChain};
 use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 use gotham::router::tree::Tree;
@@ -33,7 +33,7 @@ struct Echo;
 
 #[derive(RequestPathExtractor)]
 struct SharedRequestPath {
-    name: f64,
+    name: String,
 
     // Ideally RequestPathExtractors that are implemented by applications won't have any
     // Option fields.
@@ -56,7 +56,8 @@ fn basic_route<NH, P, C>(methods: Vec<Method>,
 {
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = Dispatcher::new(new_handler, pipelines);
-    let route: RouteImpl<_, _, _, _, SharedRequestPath> = RouteImpl::new(matcher, dispatcher);
+    let extractors: Extractors<SharedRequestPath> = Extractors::new();
+    let route = RouteImpl::new(matcher, dispatcher, extractors);
     Box::new(route)
 }
 
@@ -142,7 +143,7 @@ impl Echo {
     fn greeting(state: State, _req: Request) -> (State, Response) {
         let res = {
             let srp = state.borrow::<SharedRequestPath>().unwrap();
-            let name = srp.name;
+            let name = srp.name.as_str();
             let from = match srp.from {
                 Some(ref s) => &s,
                 None => "",

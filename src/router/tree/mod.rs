@@ -46,7 +46,7 @@ pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 /// # use hyper::Uri;
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
-/// # use gotham::router::route::RouteImpl;
+/// # use gotham::router::route::{RouteImpl, Extractors};
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
@@ -70,7 +70,8 @@ pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #     let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
+/// #     let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+/// #     let route = RouteImpl::new(matcher, dispatcher, extractors);
 /// #     Box::new(route)
 ///   };
 ///   variable_node.add_route(batsignal_route);
