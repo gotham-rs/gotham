@@ -38,7 +38,7 @@ use hyper::server::Request;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::test::TestServer;
-/// # use gotham::http::request_path::noop_request_path_extractor as noop;
+/// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use hyper::server::{Request, Response};
 /// # use hyper::StatusCode;
 /// # use hyper::Method;
@@ -139,7 +139,8 @@ use hyper::server::Request;
 ///
 ///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 ///     let dispatcher = Dispatcher::new(|| Ok(handler), (pipeline, ()));
-///     tree.add_route(Box::new(RouteImpl::new(matcher, dispatcher, Box::new(noop))));
+///     let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
+///     tree.add_route(Box::new(route));
 ///
 ///     let router = Router::new(tree, pipelines, || Ok(not_found), || Ok(internal_server_error));
 ///

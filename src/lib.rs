@@ -26,6 +26,7 @@ extern crate url;
 pub mod dispatch;
 pub mod handler;
 pub mod middleware;
+pub mod http;
 pub mod router;
 pub mod state;
 pub mod test;

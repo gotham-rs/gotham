@@ -3,6 +3,8 @@ extern crate futures;
 extern crate hyper;
 extern crate pretty_env_logger;
 extern crate gotham;
+#[macro_use]
+extern crate gotham_derive;
 extern crate borrow_bag;
 
 mod middleware;
@@ -29,9 +31,20 @@ use self::middleware::{KitchenSinkData, KitchenSinkMiddleware};
 
 struct Echo;
 
+#[derive(RequestPathExtractor)]
+struct SharedRequestPath {
+    name: f64,
+
+    // Ideally RequestPathExtractors that are implemented by applications won't have any
+    // Option fields.
+    //
+    // Instead have a fully specified Struct to represent every route with different segments
+    // or meanings to ensure type safety.
+    from: Option<String>,
+}
+
 static INDEX: &'static [u8] = b"Try POST /echo";
 static ASYNC: &'static [u8] = b"Got async response";
-static HELLO: &'static [u8] = b"Hello world!!";
 
 fn basic_route<NH, P, C>(methods: Vec<Method>,
                          new_handler: NH,
@@ -43,7 +56,8 @@ fn basic_route<NH, P, C>(methods: Vec<Method>,
 {
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = Dispatcher::new(new_handler, pipelines);
-    Box::new(RouteImpl::new(matcher, dispatcher))
+    let route: RouteImpl<_, _, _, _, SharedRequestPath> = RouteImpl::new(matcher, dispatcher);
+    Box::new(route)
 }
 
 // Builds a tree that looks like:
@@ -53,7 +67,7 @@ fn basic_route<NH, P, C>(methods: Vec<Method>,
 // | - async             --> (Get Route)
 // | - header_value      --> (Get Route)
 // | - hello
-//     | - world         --> (Get Route)
+//     | - :var          --> (Get Route)
 fn add_routes<P, C>(tree: &mut Tree<P>, pipelines: C)
     where C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
           P: Send + Sync + 'static
@@ -74,9 +88,15 @@ fn add_routes<P, C>(tree: &mut Tree<P>, pipelines: C)
     tree.add_child(header_value);
 
     let mut hello = Node::new("hello", NodeSegmentType::Static);
-    let mut world = Node::new("world", NodeSegmentType::Static);
-    world.add_route(basic_route(vec![Method::Get], || Ok(Echo::world), pipelines));
-    hello.add_child(world);
+
+    let mut var = Node::new("name", NodeSegmentType::Dynamic);
+    var.add_route(basic_route(vec![Method::Get], || Ok(Echo::hello), pipelines));
+
+    let mut var2 = Node::new("from", NodeSegmentType::Dynamic);
+    var2.add_route(basic_route(vec![Method::Get], || Ok(Echo::greeting), pipelines));
+
+    var.add_child(var2);
+    hello.add_child(var);
     tree.add_child(hello);
 }
 
@@ -112,8 +132,26 @@ impl Echo {
         (state, Response::new().with_header(ContentLength(INDEX.len() as u64)).with_body(INDEX))
     }
 
-    fn world(state: State, _req: Request) -> (State, Response) {
-        (state, Response::new().with_header(ContentLength(HELLO.len() as u64)).with_body(HELLO))
+    fn hello(state: State, _req: Request) -> (State, Response) {
+        let hello = format!("Hello, {}\n",
+                            state.borrow::<SharedRequestPath>().unwrap().name);
+
+        (state, Response::new().with_header(ContentLength(hello.len() as u64)).with_body(hello))
+    }
+
+    fn greeting(state: State, _req: Request) -> (State, Response) {
+        let res = {
+            let srp = state.borrow::<SharedRequestPath>().unwrap();
+            let name = srp.name;
+            let from = match srp.from {
+                Some(ref s) => &s,
+                None => "",
+            };
+
+            let g = format!("Greetings, {} from {}\n", name, from);
+            Response::new().with_header(ContentLength(g.len() as u64)).with_body(g)
+        };
+        (state, res)
     }
 }
 

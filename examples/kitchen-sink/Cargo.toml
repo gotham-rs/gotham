@@ -6,6 +6,7 @@ authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
 
 [dependencies]
 gotham = { path = "../.." }
+gotham_derive = { path = "../../gotham_derive" }
 futures = "*"
 hyper = { git = "https://github.com/hyperium/hyper.git" }
 pretty_env_logger = "*"

@@ -45,7 +45,7 @@ pub enum NodeSegmentType<'n> {
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
 /// #
-/// # use gotham::http::request_path::noop_request_path_extractor as noop;
+/// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::router::route::RouteImpl;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
@@ -67,7 +67,8 @@ pub enum NodeSegmentType<'n> {
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #     Box::new(RouteImpl::new(matcher, dispatcher, Box::new(noop)))
+///       let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
+///       Box::new(route)
 ///   };
 ///   batsignal_node.add_route(route);
 ///
@@ -308,7 +309,7 @@ mod tests {
     use dispatch::Dispatcher;
     use router::request_matcher::MethodOnlyRequestMatcher;
     use router::route::{Route, RouteImpl};
-    use http::request_path::noop_request_path_extractor as noop;
+    use http::request_path::NoopRequestPathExtractor;
     use state::State;
 
     fn handler(state: State, _req: Request) -> (State, Response) {
@@ -323,7 +324,8 @@ mod tests {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
-        Box::new(RouteImpl::new(matcher, dispatcher, Box::new(noop)))
+        let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
+        Box::new(route)
     }
 
     fn test_structure<'n>() -> Node<'n, ()> {
@@ -335,7 +337,7 @@ mod tests {
         let methods = vec![Method::Get, Method::Head];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
-        let route = RouteImpl::new(matcher, dispatcher, Box::new(noop));
+        let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
         seg1.add_route(Box::new(route));
         root.add_child(seg1);
 
@@ -345,14 +347,14 @@ mod tests {
         let methods = vec![Method::Post];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
-        let route = RouteImpl::new(matcher, dispatcher, Box::new(noop));
+        let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
         seg2.add_route(Box::new(route));
 
         // Patch: /seg2
         let methods = vec![Method::Patch];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler2), ());
-        let route = RouteImpl::new(matcher, dispatcher, Box::new(noop));
+        let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
         seg2.add_route(Box::new(route));
         root.add_child(seg2);
 

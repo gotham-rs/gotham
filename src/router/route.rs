@@ -4,6 +4,9 @@
 //! request via route `Tree` traversal will attempt to identify a matching `Route` and
 //! dispatch to it when it does so.
 
+use std::any::Any;
+use std::marker::PhantomData;
+
 use hyper::server::Request;
 use borrow_bag::BorrowBag;
 
@@ -21,7 +24,10 @@ pub trait Route<P> {
     fn is_match(&self, req: &Request) -> bool;
 
     /// Extracts the `Request` path into a Struct for use by Middleware and Handlers
-    fn extract_request_path(&self, state: &mut State, segment_mapping: SegmentMapping);
+    fn extract_request_path(&self,
+                            state: &mut State,
+                            segment_mapping: SegmentMapping)
+                            -> Result<(), Box<Any + Send>>;
 
     /// Final call made by the `Router` to the matched `Route` allowing
     /// application specific logic to respond to the request.
@@ -41,7 +47,7 @@ pub trait Route<P> {
 /// # fn main() {
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
-/// # use gotham::http::request_path::noop_request_path_extractor as noop;
+/// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
@@ -54,43 +60,45 @@ pub trait Route<P> {
 ///   let methods = vec![Method::Get];
 ///   let matcher = MethodOnlyRequestMatcher::new(methods);
 ///   let dispatcher: Dispatcher<_, _, ()> = Dispatcher::new(|| Ok(handler), ());
-///   RouteImpl::new(matcher, dispatcher, Box::new(noop));
+///   RouteImpl::<_, _, _, _, NoopRequestPathExtractor>::new(matcher, dispatcher);
 /// # }
 /// ```
-pub struct RouteImpl<RM, NH, PC, P>
+pub struct RouteImpl<RM, NH, PC, P, RE>
     where RM: RequestMatcher,
           NH: NewHandler,
-          PC: PipelineHandleChain<P>
+          PC: PipelineHandleChain<P>,
+          RE: RequestPathExtractor,
 {
     matcher: RM,
     dispatcher: Dispatcher<NH, PC, P>,
 
-    request_path_extractor: RequestPathExtractor,
+    rpe_phantom: PhantomData<RE>,
 }
 
-impl<RM, NH, PC, P> RouteImpl<RM, NH, PC, P>
+impl<RM, NH, PC, P, RE> RouteImpl<RM, NH, PC, P, RE>
     where RM: RequestMatcher,
           NH: NewHandler,
-          PC: PipelineHandleChain<P>
+          PC: PipelineHandleChain<P>,
+          RE: RequestPathExtractor,
 {
     /// Creates a new `RouteImpl`
     pub fn new(matcher: RM,
-               dispatcher: Dispatcher<NH, PC, P>,
-               request_path_extractor: RequestPathExtractor)
+               dispatcher: Dispatcher<NH, PC, P>)
                -> Self {
         RouteImpl {
             matcher,
             dispatcher,
-            request_path_extractor,
+            rpe_phantom: PhantomData,
         }
     }
 }
 
-impl<RM, NH, PC, P> Route<P> for RouteImpl<RM, NH, PC, P>
+impl<RM, NH, PC, P, RE> Route<P> for RouteImpl<RM, NH, PC, P, RE>
     where RM: RequestMatcher,
           NH: NewHandler,
           NH::Instance: 'static,
-          PC: PipelineHandleChain<P>
+          PC: PipelineHandleChain<P>,
+          RE: RequestPathExtractor
 {
     fn is_match(&self, req: &Request) -> bool {
         self.matcher.is_match(req)
@@ -100,7 +108,10 @@ impl<RM, NH, PC, P> Route<P> for RouteImpl<RM, NH, PC, P>
         self.dispatcher.dispatch(pipelines, state, req)
     }
 
-    fn extract_request_path(&self, state: &mut State, segment_mapping: SegmentMapping) {
-        (self.request_path_extractor)(state, segment_mapping);
+    fn extract_request_path(&self,
+                            state: &mut State,
+                            segment_mapping: SegmentMapping)
+                            -> Result<(), Box<Any + Send>> {
+        RE::extract(state, segment_mapping)
     }
 }

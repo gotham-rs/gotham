@@ -53,7 +53,7 @@ pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 /// # use gotham::router::tree::Tree;
 /// # use gotham::router::tree::node::Node;
 /// # use gotham::router::tree::node::NodeSegmentType;
-/// # use gotham::http::request_path::noop_request_path_extractor as noop;
+/// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -70,7 +70,8 @@ pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #     Box::new(RouteImpl::new(matcher, dispatcher, Box::new(noop)))
+/// #     let route: RouteImpl<_, _, _, _, NoopRequestPathExtractor> = RouteImpl::new(matcher, dispatcher);
+/// #     Box::new(route)
 ///   };
 ///   variable_node.add_route(batsignal_route);
 ///
