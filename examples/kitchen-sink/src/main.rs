@@ -68,7 +68,8 @@ fn basic_route<NH, P, C>(methods: Vec<Method>,
 // | - async             --> (Get Route)
 // | - header_value      --> (Get Route)
 // | - hello
-//     | - :var          --> (Get Route)
+//     | - :name         --> (Get Route)
+//         | :from       --> (Get Route)
 fn add_routes<P, C>(tree: &mut Tree<P>, pipelines: C)
     where C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
           P: Send + Sync + 'static
@@ -90,14 +91,14 @@ fn add_routes<P, C>(tree: &mut Tree<P>, pipelines: C)
 
     let mut hello = Node::new("hello", NodeSegmentType::Static);
 
-    let mut var = Node::new("name", NodeSegmentType::Dynamic);
-    var.add_route(basic_route(vec![Method::Get], || Ok(Echo::hello), pipelines));
+    let mut name = Node::new("name", NodeSegmentType::Dynamic);
+    name.add_route(basic_route(vec![Method::Get], || Ok(Echo::hello), pipelines));
 
-    let mut var2 = Node::new("from", NodeSegmentType::Dynamic);
-    var2.add_route(basic_route(vec![Method::Get], || Ok(Echo::greeting), pipelines));
+    let mut from = Node::new("from", NodeSegmentType::Dynamic);
+    from.add_route(basic_route(vec![Method::Get], || Ok(Echo::greeting), pipelines));
 
-    var.add_child(var2);
-    hello.add_child(var);
+    name.add_child(from);
+    hello.add_child(name);
     tree.add_child(hello);
 }
 
