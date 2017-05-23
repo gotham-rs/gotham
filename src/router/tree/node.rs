@@ -207,69 +207,49 @@ impl<'n, P> Node<'n, P> {
                       mut consumed_segments: Vec<String>)
                       -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<String>>)> {
         match req_path_segments.split_first() {
-            Some((x, xs)) => {
-                if self.is_match(x) {
-                    if self.is_routable() && req_path_segments.len() == 1 {
-                        // Leaf Node for path, start building result
-                        match self.segment_type {
-                            NodeSegmentType::Static => Some((vec![self], HashMap::new())),
-                            _ => {
-                                consumed_segments.push(String::from(*x));
+            Some((x, xs)) if self.is_leaf(x, xs) => {
+                // Leaf Node for Route Path, start building result
+                match self.segment_type {
+                    NodeSegmentType::Static => Some((vec![self], HashMap::new())),
+                    _ => {
+                         consumed_segments.push(String::from(*x));
 
-                                let mut segment_mapping = HashMap::new();
-                                segment_mapping.insert(self.segment(), consumed_segments);
-
-                                Some((vec![self], segment_mapping))
-                            }
-                        }
-                    } else {
-                        // Recurse through children to continue building complete path
-                        match xs.iter().peekable().peek() {
-                            Some(y) => {
-                                match self.children.iter().find(|c| c.is_match(y)) {
-                                    Some(c) => {
-                                        // Direct child, continue down tree
-                                        match c.inner_traverse(xs, vec![]) {
-                                            Some((mut path, mut segment_mapping)) => {
-                                                match self.segment_type {
-                                                    NodeSegmentType::Static => {
-                                                        path.push(self);
-                                                        Some((path, segment_mapping))
-                                                    }
-                                                    _ => {
-                                                        consumed_segments.push(String::from(*x));
-                                                        segment_mapping.insert(self.segment(),
-                                                                               consumed_segments);
-                                                        path.push(self);
-                                                        Some((path, segment_mapping))
-                                                    }
-                                                }
-                                            }
-                                            None => None,
-                                        }
-                                    }
-                                    None => {
-                                        match self.segment_type {
-                                            // If we're in a Glob consume segment and continue
-                                            // otherwise we've failed to find a suitable way
-                                            // forward.
-                                            NodeSegmentType::Glob => {
-                                                // Prepare for use within State
-                                                consumed_segments.push(String::from(*x));
-                                                self.inner_traverse(xs, consumed_segments)
-                                            }
-                                            _ => None,
-                                        }
-                                    }
-                                }
-                            }
-                            None => None,
-                        }
+                        let mut segment_mapping = HashMap::new();
+                        segment_mapping.insert(self.segment(), consumed_segments);
+                        Some((vec![self], segment_mapping))
                     }
-                } else {
-                    None
                 }
             }
+            Some((x, xs)) if self.is_match(x) => {
+                let child = self.children
+                    .iter()
+                    .filter_map(|c| c.inner_traverse(xs, vec![]))
+                    .next();
+
+                match child {
+                    Some((mut path, mut segment_mapping)) => {
+                        path.push(self);
+                        match self.segment_type {
+                            NodeSegmentType::Static => Some((path, segment_mapping)),
+                            _ => {
+                                consumed_segments.push(String::from(*x));
+                                segment_mapping.insert(self.segment(), consumed_segments);
+                                path.push(self);
+                                Some((path, segment_mapping))
+                            }
+                        }
+                    }
+                    // If we're in a Glob consume segment and continue
+                    // otherwise we've failed to find a suitable way
+                    // forward.
+                    None if self.segment_type == NodeSegmentType::Glob => {
+                        consumed_segments.push(String::from(*x));
+                        self.inner_traverse(xs, consumed_segments)
+                    }
+                    None => None,
+                }
+            }
+            Some(_) => None,
             None => None,
         }
     }
@@ -281,6 +261,11 @@ impl<'n, P> Node<'n, P> {
             NodeSegmentType::Dynamic | NodeSegmentType::Glob => true,
         }
     }
+
+    fn is_leaf(&self, s: &str, rs: &[&str]) -> bool {
+        rs.is_empty() && self.is_match(s) && self.is_routable()
+    }
+
 }
 
 impl<'n, P> Ord for Node<'n, P> {
