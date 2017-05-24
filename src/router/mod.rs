@@ -10,11 +10,11 @@ use std::sync::Arc;
 use borrow_bag::BorrowBag;
 use futures::{future, Future};
 use hyper::server::Request;
-use url::percent_encoding::percent_decode;
 
 use handler::{NewHandler, Handler, HandlerFuture};
 use router::tree::Tree;
 use state::State;
+use http::PercentDecoded;
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
@@ -182,9 +182,9 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     /// connection to the client without response.
     fn handle(&self, mut state: State, req: Request) -> Box<HandlerFuture> {
         let uri = req.uri().clone();
-        let decoded_path = match percent_decode(uri.path().as_bytes()).decode_utf8() {
-            Ok(path) => path,
-            Err(_) => return self.internal_server_error(state, req),
+        let decoded_path = match PercentDecoded::new(uri.path()) {
+            Some(p) => p,
+            None => return self.internal_server_error(state, req),
         };
 
         match self.data.tree.traverse(&decoded_path) {

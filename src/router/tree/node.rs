@@ -203,16 +203,16 @@ impl<'n, P> Node<'n, P> {
 
     #[allow(unknown_lints, type_complexity)]
     fn inner_traverse<'r>(&self,
-                      req_path_segments: &[&'r str],
-                      mut consumed_segments: Vec<&'r str>)
-                      -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r str>>)> {
+                          req_path_segments: &[&'r str],
+                          mut consumed_segments: Vec<&'r str>)
+                          -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r str>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 // Leaf Node for Route Path, start building result
                 match self.segment_type {
                     NodeSegmentType::Static => Some((vec![self], HashMap::new())),
                     _ => {
-                         consumed_segments.push(x);
+                        consumed_segments.push(x);
 
                         let mut segment_mapping = HashMap::new();
                         segment_mapping.insert(self.segment(), consumed_segments);
@@ -265,7 +265,6 @@ impl<'n, P> Node<'n, P> {
     fn is_leaf(&self, s: &str, rs: &[&str]) -> bool {
         rs.is_empty() && self.is_match(s) && self.is_routable()
     }
-
 }
 
 impl<'n, P> Ord for Node<'n, P> {

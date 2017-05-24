@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use http::PercentDecoded;
 use router::route::Route;
 use router::tree::node::Node;
 use router::tree::node::NodeSegmentType;
@@ -48,6 +49,7 @@ pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 /// # use gotham::router::tree::node::Node;
 /// # use gotham::router::tree::node::NodeSegmentType;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::PercentDecoded;
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -73,7 +75,7 @@ pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 ///   activate_node.add_child(variable_node);
 ///   tree.add_child(activate_node);
 ///
-///   match tree.traverse("/activate/batsignal") {
+///   match tree.traverse(&PercentDecoded::new("/%61ctiv%61te/batsignal").unwrap()) {
 ///       Some((path, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(*segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");
@@ -82,8 +84,8 @@ pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 ///   }
 ///
 ///   // These paths are not routable but could be if 1 or more `Route` were added.
-///   assert!(tree.traverse("/").is_none());
-///   assert!(tree.traverse("/activate").is_none());
+///   assert!(tree.traverse(&PercentDecoded::new("/").unwrap()).is_none());
+///   assert!(tree.traverse(&PercentDecoded::new("/activate").unwrap()).is_none());
 /// # }
 /// ```
 pub struct Tree<'n, P> {
@@ -133,16 +135,14 @@ impl<'n, P> Tree<'n, P> {
         &self.root
     }
 
-    /// Attempt to acquire a path from the `Tree` which matches the `Request` path
-    /// and is routable.
-    ///
-    /// req_path must be percent decoded prior to being passed to traverse.
-    pub fn traverse<'r>(&'n self, req_path: &'r str) -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
-        self.root.traverse(self.split_request_path(req_path).as_slice())
+    /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
+    pub fn traverse<'r>(&'n self,
+                        req_path: &'r PercentDecoded)
+                        -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
+        self.root.traverse(self.split_request_path(req_path.val()).as_slice())
     }
 
-    // Spilt a Request path into indivdual segments, leading leading "/" to represent
-    // the root of the path.
+    // Spilt a Request path into indivdual segments with leading "/" to represent the root.
     fn split_request_path<'r>(&self, path: &'r str) -> Vec<&'r str> {
         let mut segments = vec!["/"];
         segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'r str>>());
