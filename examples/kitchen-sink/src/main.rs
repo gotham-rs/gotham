@@ -20,9 +20,8 @@ use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors};
 use gotham::dispatch::{Dispatcher, PipelineHandleChain};
 use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-use gotham::router::tree::Tree;
-use gotham::router::tree::node::Node;
-use gotham::router::tree::node::NodeSegmentType;
+use gotham::router::tree::TreeBuilder;
+use gotham::router::tree::node::{NodeBuilder, NodeSegmentType};
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::state::State;
@@ -70,36 +69,36 @@ fn basic_route<NH, P, C>(methods: Vec<Method>,
 // | - hello
 //     | - :name         --> (Get Route)
 //         | :from       --> (Get Route)
-fn add_routes<P, C>(tree: &mut Tree<P>, pipelines: C)
+fn add_routes<P, C>(tree_builder: &mut TreeBuilder<P>, pipelines: C)
     where C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
           P: Send + Sync + 'static
 {
-    tree.add_route(basic_route(vec![Method::Get], || Ok(Echo::get), pipelines));
+    tree_builder.add_route(basic_route(vec![Method::Get], || Ok(Echo::get), pipelines));
 
-    let mut echo = Node::new("echo", NodeSegmentType::Static);
+    let mut echo = NodeBuilder::new("echo", NodeSegmentType::Static);
     echo.add_route(basic_route(vec![Method::Get], || Ok(Echo::get), pipelines));
     echo.add_route(basic_route(vec![Method::Post], || Ok(Echo::post), pipelines));
-    tree.add_child(echo);
+    tree_builder.add_child(echo);
 
-    let mut async = Node::new("async", NodeSegmentType::Static);
+    let mut async = NodeBuilder::new("async", NodeSegmentType::Static);
     async.add_route(basic_route(vec![Method::Get], || Ok(Echo::async), pipelines));
-    tree.add_child(async);
+    tree_builder.add_child(async);
 
-    let mut header_value = Node::new("header_value", NodeSegmentType::Static);
+    let mut header_value = NodeBuilder::new("header_value", NodeSegmentType::Static);
     header_value.add_route(basic_route(vec![Method::Get], || Ok(Echo::header_value), pipelines));
-    tree.add_child(header_value);
+    tree_builder.add_child(header_value);
 
-    let mut hello = Node::new("hello", NodeSegmentType::Static);
+    let mut hello = NodeBuilder::new("hello", NodeSegmentType::Static);
 
-    let mut name = Node::new("name", NodeSegmentType::Dynamic);
+    let mut name = NodeBuilder::new("name", NodeSegmentType::Dynamic);
     name.add_route(basic_route(vec![Method::Get], || Ok(Echo::hello), pipelines));
 
-    let mut from = Node::new("from", NodeSegmentType::Dynamic);
+    let mut from = NodeBuilder::new("from", NodeSegmentType::Dynamic);
     from.add_route(basic_route(vec![Method::Get], || Ok(Echo::greeting), pipelines));
 
     name.add_child(from);
     hello.add_child(name);
-    tree.add_child(hello);
+    tree_builder.add_child(hello);
 }
 
 impl Echo {
@@ -161,15 +160,15 @@ fn main() {
     pretty_env_logger::init().unwrap();
     let addr = "127.0.0.1:1337".parse().unwrap();
 
-    let mut tree = Tree::new();
+    let mut tree_builder = TreeBuilder::new();
     let pipelines = borrow_bag::new_borrow_bag();
     let (pipelines, pipeline) =
         pipelines.add(new_pipeline()
                           .add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" })
                           .build());
 
-    add_routes(&mut tree, (pipeline, ()));
-    tree.finalize();
+    add_routes(&mut tree_builder, (pipeline, ()));
+    let tree = tree_builder.finalize();
 
     let not_found = || Ok(Echo::not_found);
     let internal_server_error = || Ok(Echo::internal_server_error);
