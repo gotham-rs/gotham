@@ -4,8 +4,7 @@ use std::collections::HashMap;
 
 use http::PercentDecoded;
 use router::route::Route;
-use router::tree::node::Node;
-use router::tree::node::NodeSegmentType;
+use router::tree::node::{Node,NodeBuilder,NodeSegmentType};
 
 pub mod node;
 
@@ -46,7 +45,7 @@ pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::tree::node::Node;
+/// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::NodeSegmentType;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::PercentDecoded;
@@ -58,9 +57,9 @@ pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 /// # fn main() {
 ///   let mut tree_builder: TreeBuilder<()> = TreeBuilder::new();
 ///
-///   let mut activate_node = Node::new("activate", NodeSegmentType::Static);
+///   let mut activate_node_builder = NodeBuilder::new("activate", NodeSegmentType::Static);
 ///
-///   let mut variable_node = Node::new("thing", NodeSegmentType::Dynamic);
+///   let mut thing_node_builder = NodeBuilder::new("thing", NodeSegmentType::Dynamic);
 ///   let batsignal_route = {
 ///       // elided ...
 /// #     let methods = vec![Method::Get];
@@ -70,10 +69,10 @@ pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 /// #     let route = RouteImpl::new(matcher, dispatcher, extractors);
 /// #     Box::new(route)
 ///   };
-///   variable_node.add_route(batsignal_route);
+///   thing_node_builder.add_route(batsignal_route);
 ///
-///   activate_node.add_child(variable_node);
-///   tree_builder.add_child(activate_node);
+///   activate_node_builder.add_child(thing_node_builder);
+///   tree_builder.add_child(activate_node_builder);
 ///
 ///   let tree = tree_builder.finalize();
 ///
@@ -118,19 +117,19 @@ impl <'n, P> Tree<'n, P> {
 }
 
 
-/// Used to construct instances of `Tree` that are assured to be both sorted and immutable.
+/// Constructs a `Tree` which is sorted and immutable.
 pub struct TreeBuilder<'n, P> {
-    root: Node<'n, P>,
+    root: NodeBuilder<'n, P>,
 }
 
 impl<'n, P> TreeBuilder<'n, P> {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
-        TreeBuilder { root: Node::new("/", NodeSegmentType::Static) }
+        TreeBuilder { root: NodeBuilder::new("/", NodeSegmentType::Static) }
     }
 
-    /// Adds a child `Node` to the root of the `Tree`.
-    pub fn add_child(&mut self, child: Node<'n, P>) {
+    /// Adds a direct child to the root of the `TreeBuilder`.
+    pub fn add_child(&mut self, child: NodeBuilder<'n, P>) {
         self.root.add_child(child);
     }
 
@@ -149,8 +148,7 @@ impl<'n, P> TreeBuilder<'n, P> {
     }
 
     /// Finalizes and sorts all internal data and creates a Tree for use with a `Router`.
-    pub fn finalize(mut self) -> Tree<'n, P> {
-        self.root.sort();
-        Tree { root: self.root }
+    pub fn finalize(self) -> Tree<'n, P> {
+        Tree { root: self.root.finalize() }
     }
 }
