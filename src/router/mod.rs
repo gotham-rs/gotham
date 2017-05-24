@@ -59,7 +59,7 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
 /// # extern crate borrow_bag;
 /// #
 /// # use hyper::server::{Request, Response};
-/// # use gotham::router::tree::Tree;
+/// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::Router;
 /// # use gotham::state::State;
 /// #
@@ -72,7 +72,8 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
 /// # }
 /// #
 /// # fn main() {
-///   let tree = Tree::new();
+///   let tree_builder = TreeBuilder::new();
+///   let tree = tree_builder.finalize();
 ///   let not_found = || Ok(handler);
 ///   let internal_server_error = || Ok(handler2);
 ///   let pipelines = borrow_bag::new_borrow_bag();

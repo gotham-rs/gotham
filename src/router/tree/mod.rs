@@ -45,7 +45,7 @@ pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::router::tree::Tree;
+/// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::tree::node::Node;
 /// # use gotham::router::tree::node::NodeSegmentType;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
@@ -56,7 +56,7 @@ pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 /// # }
 /// #
 /// # fn main() {
-///   let mut tree: Tree<()> = Tree::new();
+///   let mut tree_builder: TreeBuilder<()> = TreeBuilder::new();
 ///
 ///   let mut activate_node = Node::new("activate", NodeSegmentType::Static);
 ///
@@ -73,7 +73,9 @@ pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 ///   variable_node.add_route(batsignal_route);
 ///
 ///   activate_node.add_child(variable_node);
-///   tree.add_child(activate_node);
+///   tree_builder.add_child(activate_node);
+///
+///   let tree = tree_builder.finalize();
 ///
 ///   match tree.traverse(&PercentDecoded::new("/%61ctiv%61te/batsignal").unwrap()) {
 ///       Some((path, segment_mapping)) => {
@@ -92,10 +94,39 @@ pub struct Tree<'n, P> {
     root: Node<'n, P>,
 }
 
-impl<'n, P> Tree<'n, P> {
+impl <'n, P> Tree<'n, P> {
+    /// Borrow the root `Node` of the `Tree`.
+    ///
+    /// To be used in building a `Tree` structure only.
+    pub fn borrow_root(&self) -> &Node<'n, P> {
+        &self.root
+    }
+
+    /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
+    pub fn traverse<'r>(&'n self,
+                        req_path: &'r PercentDecoded)
+                        -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
+        self.root.traverse(self.split_request_path(req_path.val()).as_slice())
+    }
+
+    // Spilt a Request path into indivdual segments with leading "/" to represent the root.
+    fn split_request_path<'r>(&self, path: &'r str) -> Vec<&'r str> {
+        let mut segments = vec!["/"];
+        segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'r str>>());
+        segments
+    }
+}
+
+
+/// Used to construct instances of `Tree` that are assured to be both sorted and immutable.
+pub struct TreeBuilder<'n, P> {
+    root: Node<'n, P>,
+}
+
+impl<'n, P> TreeBuilder<'n, P> {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
-        Tree { root: Node::new("/", NodeSegmentType::Static) }
+        TreeBuilder { root: Node::new("/", NodeSegmentType::Static) }
     }
 
     /// Adds a child `Node` to the root of the `Tree`.
@@ -117,35 +148,9 @@ impl<'n, P> Tree<'n, P> {
         self.root.add_route(route);
     }
 
-    /// Finalizes the Tree for use with `Requests`.
-    ///
-    /// **Must** be called before this Tree is used in traversal and only after all child nodes
-    /// have been fully populated.
-    ///
-    /// TODO: Move this into a function of a `TreeBuilder` to hide modifcation from the `Router` and
-    /// ensure the `Tree` must be finalized before use.
-    pub fn finalize(&mut self) {
+    /// Finalizes and sorts all internal data and creates a Tree for use with a `Router`.
+    pub fn finalize(mut self) -> Tree<'n, P> {
         self.root.sort();
-    }
-
-    /// Borrow the root `Node` of the `Tree`.
-    ///
-    /// To be used in building a `Tree` structure only.
-    pub fn borrow_root(&self) -> &Node<'n, P> {
-        &self.root
-    }
-
-    /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
-    pub fn traverse<'r>(&'n self,
-                        req_path: &'r PercentDecoded)
-                        -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
-        self.root.traverse(self.split_request_path(req_path.val()).as_slice())
-    }
-
-    // Spilt a Request path into indivdual segments with leading "/" to represent the root.
-    fn split_request_path<'r>(&self, path: &'r str) -> Vec<&'r str> {
-        let mut segments = vec!["/"];
-        segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'r str>>());
-        segments
+        Tree { root: self.root }
     }
 }
