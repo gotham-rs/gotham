@@ -3,6 +3,7 @@
 use std::str::FromStr;
 use std::error::Error;
 use std::fmt;
+use std::string::ParseError;
 use std::str::ParseBoolError;
 use std::num::{ParseIntError, ParseFloatError};
 
@@ -57,13 +58,13 @@ pub trait FromRequestPath {
     ///
     /// e.g. Multiple segments due to usage of a Glob are provided for a value that should
     /// only be generated from a single segment, such as a `u8`.
-    fn from_request_path(&Vec<String>) -> Result<Self, FromRequestPathError> where Self: Sized;
+    fn from_request_path(&[&str]) -> Result<Self, FromRequestPathError> where Self: Sized;
 }
 
 impl<T> FromRequestPath for Option<T>
     where T: FromRequestPath
 {
-    fn from_request_path(segments: &Vec<String>) -> Result<Self, FromRequestPathError> {
+    fn from_request_path(segments: &[&str]) -> Result<Self, FromRequestPathError> {
         if segments.len() == 0 {
             Ok(None)
         } else {
@@ -93,12 +94,18 @@ impl From<ParseBoolError> for FromRequestPathError {
     }
 }
 
-macro_rules! frp {
+impl From<ParseError> for FromRequestPathError {
+    fn from(err: ParseError) -> FromRequestPathError {
+        FromRequestPathError { description: err.description().to_string() }
+    }
+}
+
+macro_rules! fstr {
     ($($t:ident),*) => { $(
         impl FromRequestPath for $t {
-            fn from_request_path(segments: &Vec<String>) -> Result<Self, FromRequestPathError> {
+            fn from_request_path(segments: &[&str]) -> Result<Self, FromRequestPathError> {
                 if segments.len() == 1 {
-                    Ok($t::from_str(segments[0].as_str())?)
+                    Ok($t::from_str(segments[0])?)
                 } else {
                     Err(FromRequestPathError {
                         description: String::from("Invalid number of segments")
@@ -109,26 +116,17 @@ macro_rules! frp {
     )+ }
 }
 
-frp!(bool,
-     f32,
-     f64,
-     isize,
-     i8,
-     i16,
-     i32,
-     i64,
-     usize,
-     u8,
-     u16,
-     u32,
-     u64);
-
-impl FromRequestPath for String {
-    fn from_request_path(segments: &Vec<String>) -> Result<Self, FromRequestPathError> {
-        if segments.len() == 1 {
-            Ok(segments[0].clone())
-        } else {
-            Err(FromRequestPathError { description: String::from("Invalid number of segments") })
-        }
-    }
-}
+fstr!(String,
+      bool,
+      f32,
+      f64,
+      isize,
+      i8,
+      i16,
+      i32,
+      i64,
+      usize,
+      u8,
+      u16,
+      u32,
+      u64);

@@ -2,9 +2,6 @@
 
 use std::collections::HashMap;
 
-use hyper::Uri;
-use url::percent_encoding::percent_decode;
-
 use router::route::Route;
 use router::tree::node::Node;
 use router::tree::node::NodeSegmentType;
@@ -17,7 +14,7 @@ pub type Path<'n, 'a, P> = Vec<&'a Node<'n, P>>;
 
 /// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
 /// which have been matched against the `Request` path.
-pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
+pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
 
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.
@@ -41,9 +38,6 @@ pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use std::str::FromStr;
-/// #
-/// # use hyper::Uri;
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
 /// # use gotham::router::route::{RouteImpl, Extractors};
@@ -79,18 +73,17 @@ pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 ///   activate_node.add_child(variable_node);
 ///   tree.add_child(activate_node);
 ///
-///   // Here `a` is percent encoded in the request path
-///   match tree.traverse(&Uri::from_str("/%61ctiv%61te/batsignal").unwrap()) {
+///   match tree.traverse("/activate/batsignal") {
 ///       Some((path, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
-///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");
+///         assert_eq!(*segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");
 ///       }
 ///       None => panic!(),
 ///   }
 ///
 ///   // These paths are not routable but could be if 1 or more `Route` were added.
-///   assert!(tree.traverse(&Uri::from_str("/").unwrap()).is_none());
-///   assert!(tree.traverse(&Uri::from_str("/activate").unwrap()).is_none());
+///   assert!(tree.traverse("/").is_none());
+///   assert!(tree.traverse("/activate").is_none());
 /// # }
 /// ```
 pub struct Tree<'n, P> {
@@ -143,19 +136,16 @@ impl<'n, P> Tree<'n, P> {
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path
     /// and is routable.
     ///
-    /// Internally ensures `Request` path is percent decoded before traversal.
-    pub fn traverse<'a>(&'n self, uri: &Uri) -> Option<(Path<'n, 'a, P>, SegmentMapping<'n>)> {
-        match percent_decode(uri.path().as_bytes()).decode_utf8() {
-            Ok(ref path) => self.root.traverse(self.split_request_path(path).as_slice()),
-            Err(_) => None,
-        }
+    /// req_path must be percent decoded prior to being passed to traverse.
+    pub fn traverse<'r>(&'n self, req_path: &'r str) -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
+        self.root.traverse(self.split_request_path(req_path).as_slice())
     }
 
     // Spilt a Request path into indivdual segments, leading leading "/" to represent
     // the root of the path.
-    fn split_request_path(&self, path: &'n str) -> Vec<&str> {
+    fn split_request_path<'r>(&self, path: &'r str) -> Vec<&'r str> {
         let mut segments = vec!["/"];
-        segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'n str>>());
+        segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'r str>>());
         segments
     }
 }

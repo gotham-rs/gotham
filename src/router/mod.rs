@@ -10,6 +10,7 @@ use std::sync::Arc;
 use borrow_bag::BorrowBag;
 use futures::{future, Future};
 use hyper::server::Request;
+use url::percent_encoding::percent_decode;
 
 use handler::{NewHandler, Handler, HandlerFuture};
 use router::tree::Tree;
@@ -180,7 +181,13 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     /// For unrecoverable error states `future::err` will be called, dropping the
     /// connection to the client without response.
     fn handle(&self, mut state: State, req: Request) -> Box<HandlerFuture> {
-        match self.data.tree.traverse(req.uri()) {
+        let uri = req.uri().clone();
+        let decoded_path = match percent_decode(uri.path().as_bytes()).decode_utf8() {
+            Ok(path) => path,
+            Err(_) => return self.internal_server_error(state, req),
+        };
+
+        match self.data.tree.traverse(&decoded_path) {
             Some((tree_path, segment_mapping)) => {
                 if let Some(leaf) = tree_path.last() {
                     match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {

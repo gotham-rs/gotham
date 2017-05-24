@@ -189,9 +189,9 @@ impl<'n, P> Node<'n, P> {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'a>(&'n self,
-                        req_path_segments: &[&str])
-                        -> Option<(Path<'n, 'a, P>, SegmentMapping<'n>)> {
+    pub fn traverse<'r>(&'n self,
+                        req_path_segments: &[&'r str])
+                        -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, segment_mapping)) => {
                 path.reverse();
@@ -202,17 +202,17 @@ impl<'n, P> Node<'n, P> {
     }
 
     #[allow(unknown_lints, type_complexity)]
-    fn inner_traverse(&self,
-                      req_path_segments: &[&str],
-                      mut consumed_segments: Vec<String>)
-                      -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<String>>)> {
+    fn inner_traverse<'r>(&self,
+                      req_path_segments: &[&'r str],
+                      mut consumed_segments: Vec<&'r str>)
+                      -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r str>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 // Leaf Node for Route Path, start building result
                 match self.segment_type {
                     NodeSegmentType::Static => Some((vec![self], HashMap::new())),
                     _ => {
-                         consumed_segments.push(String::from(*x));
+                         consumed_segments.push(x);
 
                         let mut segment_mapping = HashMap::new();
                         segment_mapping.insert(self.segment(), consumed_segments);
@@ -232,7 +232,7 @@ impl<'n, P> Node<'n, P> {
                         match self.segment_type {
                             NodeSegmentType::Static => Some((path, segment_mapping)),
                             _ => {
-                                consumed_segments.push(String::from(*x));
+                                consumed_segments.push(x);
                                 segment_mapping.insert(self.segment(), consumed_segments);
                                 path.push(self);
                                 Some((path, segment_mapping))
@@ -243,7 +243,7 @@ impl<'n, P> Node<'n, P> {
                     // otherwise we've failed to find a suitable way
                     // forward.
                     None if self.segment_type == NodeSegmentType::Glob => {
-                        consumed_segments.push(String::from(*x));
+                        consumed_segments.push(x);
                         self.inner_traverse(xs, consumed_segments)
                     }
                     None => None,
