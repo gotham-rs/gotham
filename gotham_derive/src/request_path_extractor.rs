@@ -101,7 +101,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 let optional_field_labels = [#(#optional_field_labels),*];
                 for label in optional_field_labels.iter() {
                     if !sm.contains_key(label) {
-                        sm.insert(label, Vec::new());
+                        sm.add_unmapped_segment(label);
                     }
                 }
 

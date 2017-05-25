@@ -7,7 +7,7 @@ use url::percent_encoding::percent_decode;
 
 /// Transport data that has been successfully percent decoded and is valid utf8
 pub struct PercentDecoded<'a> {
-    val: Cow<'a, str>
+    val: Cow<'a, str>,
 }
 
 impl<'a> PercentDecoded<'a> {

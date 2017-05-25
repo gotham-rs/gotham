@@ -135,8 +135,9 @@ impl<'n, P> Node<'n, P> {
                         req_path_segments: &[&'r str])
                         -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
-            Some((mut path, segment_mapping)) => {
+            Some((mut path, sm)) => {
                 path.reverse();
+                let segment_mapping = SegmentMapping { data: sm };
                 Some((path, segment_mapping))
             }
             None => None,
@@ -156,9 +157,9 @@ impl<'n, P> Node<'n, P> {
                     _ => {
                         consumed_segments.push(x);
 
-                        let mut segment_mapping = HashMap::new();
-                        segment_mapping.insert(self.segment(), consumed_segments);
-                        Some((vec![self], segment_mapping))
+                        let mut sm = HashMap::new();
+                        sm.insert(self.segment(), consumed_segments);
+                        Some((vec![self], sm))
                     }
                 }
             }
@@ -169,15 +170,15 @@ impl<'n, P> Node<'n, P> {
                     .next();
 
                 match child {
-                    Some((mut path, mut segment_mapping)) => {
+                    Some((mut path, mut sm)) => {
                         path.push(self);
                         match self.segment_type {
-                            NodeSegmentType::Static => Some((path, segment_mapping)),
+                            NodeSegmentType::Static => Some((path, sm)),
                             _ => {
                                 consumed_segments.push(x);
-                                segment_mapping.insert(self.segment(), consumed_segments);
+                                sm.insert(self.segment(), consumed_segments);
                                 path.push(self);
-                                Some((path, segment_mapping))
+                                Some((path, sm))
                             }
                         }
                     }

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use http::PercentDecoded;
 use router::route::Route;
-use router::tree::node::{Node,NodeBuilder,NodeSegmentType};
+use router::tree::node::{Node, NodeBuilder, NodeSegmentType};
 
 pub mod node;
 
@@ -14,7 +14,31 @@ pub type Path<'n, 'a, P> = Vec<&'a Node<'n, P>>;
 
 /// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
 /// which have been matched against the `Request` path.
-pub type SegmentMapping<'a, 'b> = HashMap<&'a str, Vec<&'b str>>;
+///
+/// Data is percent and utf8 decoded.
+pub struct SegmentMapping<'a, 'b> {
+    data: HashMap<&'a str, Vec<&'b str>>,
+}
+
+impl<'a, 'b> SegmentMapping<'a, 'b> {
+    /// Returns a reference for `Request` path segments mapped to the segment key.
+    pub fn get(&self, key: &'a str) -> Option<&Vec<&'b str>> {
+        self.data.get(key)
+    }
+
+    /// Determines if `Request` path segments are mapped to the segment key.
+    pub fn contains_key(&self, key: &'a str) -> bool {
+        self.data.contains_key(key)
+    }
+
+    /// Adds an empty value for a segment key, useful for segments that are considered
+    /// optional and haven't been explicitly provided as part of a `Request` path
+    pub fn add_unmapped_segment(&mut self, key: &'a str) {
+        if !self.data.contains_key(key) {
+            self.data.insert(key, Vec::new());
+        }
+    }
+}
 
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.
@@ -93,7 +117,7 @@ pub struct Tree<'n, P> {
     root: Node<'n, P>,
 }
 
-impl <'n, P> Tree<'n, P> {
+impl<'n, P> Tree<'n, P> {
     /// Borrow the root `Node` of the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
