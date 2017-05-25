@@ -1,12 +1,23 @@
 //! Defines a hierarchial `Tree` with subtrees of `Node`.
 
-use url;
+use std::collections::HashMap;
+
+use hyper::Uri;
+use url::percent_encoding::percent_decode;
 
 use router::route::Route;
 use router::tree::node::Node;
 use router::tree::node::NodeSegmentType;
 
 pub mod node;
+
+/// A depth ordered `Vec` of `Node` instances that create a routable path through the `Tree` for the
+/// matched `Request` path.
+pub type Path<'n, 'a, P> = Vec<&'a Node<'n, P>>;
+
+/// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
+/// which have been matched against the `Request` path.
+pub type SegmentMapping<'a> = HashMap<&'a str, Vec<String>>;
 
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.
@@ -30,15 +41,19 @@ pub mod node;
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// # use std::str::FromStr;
+/// #
+/// # use hyper::Uri;
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
-/// # use gotham::router::route::RouteImpl;
+/// # use gotham::router::route::{RouteImpl, Extractors};
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::Tree;
 /// # use gotham::router::tree::node::Node;
 /// # use gotham::router::tree::node::NodeSegmentType;
+/// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -49,25 +64,33 @@ pub mod node;
 ///
 ///   let mut activate_node = Node::new("activate", NodeSegmentType::Static);
 ///
-///   let mut batsignal_node = Node::new("batsignal", NodeSegmentType::Static);
+///   let mut variable_node = Node::new("thing", NodeSegmentType::Dynamic);
 ///   let batsignal_route = {
 ///       // elided ...
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #     Box::new(RouteImpl::new(matcher, dispatcher))
+/// #     let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+/// #     let route = RouteImpl::new(matcher, dispatcher, extractors);
+/// #     Box::new(route)
 ///   };
-///   batsignal_node.add_route(batsignal_route);
+///   variable_node.add_route(batsignal_route);
 ///
-///   activate_node.add_child(batsignal_node);
+///   activate_node.add_child(variable_node);
 ///   tree.add_child(activate_node);
 ///
 ///   // Here `a` is percent encoded in the request path
-///   assert!(tree.traverse("/%61ctivate/batsignal").unwrap().last().unwrap().is_routable());
+///   match tree.traverse(&Uri::from_str("/%61ctiv%61te/batsignal").unwrap()) {
+///       Some((path, segment_mapping)) => {
+///         assert!(path.last().unwrap().is_routable());
+///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");
+///       }
+///       None => panic!(),
+///   }
 ///
-///   // These paths are not routable but could be if a `Route` was added to them.
-///   assert!(tree.traverse("/").is_none());
-///   assert!(tree.traverse("/activate").is_none());
+///   // These paths are not routable but could be if 1 or more `Route` were added.
+///   assert!(tree.traverse(&Uri::from_str("/").unwrap()).is_none());
+///   assert!(tree.traverse(&Uri::from_str("/activate").unwrap()).is_none());
 /// # }
 /// ```
 pub struct Tree<'n, P> {
@@ -89,7 +112,7 @@ impl<'n, P> Tree<'n, P> {
     /// exists at the root of the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
-   pub fn has_child(&self, segment: &str) -> bool {
+    pub fn has_child(&self, segment: &str) -> bool {
         self.root.has_child(segment)
     }
 
@@ -121,18 +144,16 @@ impl<'n, P> Tree<'n, P> {
     /// and is routable.
     ///
     /// Internally ensures `Request` path is percent decoded before traversal.
-    pub fn traverse(&'n self, req_path: &str) -> Option<Vec<&Node<'n, P>>> {
-        let b = req_path.as_bytes();
-        let pd = url::percent_encoding::percent_decode(b);
-        match pd.decode_utf8() {
+    pub fn traverse<'a>(&'n self, uri: &Uri) -> Option<(Path<'n, 'a, P>, SegmentMapping<'n>)> {
+        match percent_decode(uri.path().as_bytes()).decode_utf8() {
             Ok(ref path) => self.root.traverse(self.split_request_path(path).as_slice()),
             Err(_) => None,
         }
     }
 
-    /// Spilt a Request path into indivdual segments, leading leading "/" to represent
-    /// the root of the path.
-    pub fn split_request_path(&self, path: &'n str) -> Vec<&str> {
+    // Spilt a Request path into indivdual segments, leading leading "/" to represent
+    // the root of the path.
+    fn split_request_path(&self, path: &'n str) -> Vec<&str> {
         let mut segments = vec!["/"];
         segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'n str>>());
         segments

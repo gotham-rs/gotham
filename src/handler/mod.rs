@@ -63,9 +63,10 @@ impl<T> NewHandlerService<T>
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::tree::Tree;
-    /// # use gotham::router::route::RouteImpl;
+    /// # use gotham::router::route::{RouteImpl, Extractors};
     /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
     /// # use gotham::dispatch::Dispatcher;
+    /// # use gotham::http::request_path::NoopRequestPathExtractor;
     /// # use hyper::server::{Request, Response};
     /// # use hyper::{StatusCode, Method};
     /// #
@@ -78,15 +79,16 @@ impl<T> NewHandlerService<T>
     /// let pipelines = borrow_bag::new_borrow_bag();
     /// let not_found = || Ok(handler);
     /// let internal_server_error = || Ok(handler);
+    ///
     /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
-    ///
     /// let dispatcher = Dispatcher::new(|| Ok(handler), ());
-    /// let route = Box::new(RouteImpl::new(matcher, dispatcher));
+    /// let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+    /// let route = RouteImpl::new(matcher, dispatcher, extractors);
     ///
-    ///  tree.add_route(route);
-    ///  let router = Router::new(tree, pipelines, not_found, internal_server_error);
+    /// tree.add_route(Box::new(route));
+    /// let router = Router::new(tree, pipelines, not_found, internal_server_error);
     ///
-    ///  NewHandlerService::new(router);
+    /// NewHandlerService::new(router);
     /// # }
     /// ```
     pub fn new(t: T) -> NewHandlerService<T> {
@@ -221,11 +223,12 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
-/// # use gotham::router::route::RouteImpl;
+/// # use gotham::router::route::{RouteImpl, Extractors};
 /// # use gotham::router::tree::Tree;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::handler::IntoResponse;
+/// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
 /// # use hyper::server::{Request, Response};
@@ -258,12 +261,12 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let pipelines = borrow_bag::new_borrow_bag();
 /// #   let not_found = || Ok(handler);
 /// #   let internal_server_error = || Ok(handler);
-/// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 /// #
-///     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-///     let route = Box::new(RouteImpl::new(matcher, dispatcher));
-///
-///     tree.add_route(route);
+/// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+/// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
+/// #   let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+/// #   let route = RouteImpl::new(matcher, dispatcher, extractors);
+///     tree.add_route(Box::new(route));
 ///     Router::new(tree, pipelines, not_found, internal_server_error);
 /// # }
 /// ```

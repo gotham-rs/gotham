@@ -7,12 +7,12 @@ pub mod request_matcher;
 use std::io;
 use std::sync::Arc;
 
+use borrow_bag::BorrowBag;
 use futures::{future, Future};
 use hyper::server::Request;
-use borrow_bag::BorrowBag;
 
-use router::tree::Tree;
 use handler::{NewHandler, Handler, HandlerFuture};
+use router::tree::Tree;
 use state::State;
 
 // Holds data for Router which lives behind single Arc instance
@@ -179,16 +179,21 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     ///
     /// For unrecoverable error states `future::err` will be called, dropping the
     /// connection to the client without response.
-    fn handle(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        match self.data.tree.traverse(req.path()) {
-            Some(tree_path) => {
-                // TODO: populate path variables
-
-                // acquire leaf and routes
+    fn handle(&self, mut state: State, req: Request) -> Box<HandlerFuture> {
+        match self.data.tree.traverse(req.uri()) {
+            Some((tree_path, segment_mapping)) => {
                 if let Some(leaf) = tree_path.last() {
-                    // dispatch
                     match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
-                        Some(route) => route.dispatch(&self.data.pipelines, state, req),
+                        Some(route) => {
+                            match route.extract_request_path(&mut state, segment_mapping) {
+                                Ok(()) => {
+                                    // TODO Extract Query Params
+                                    // TODO Extract Body
+                                    route.dispatch(&self.data.pipelines, state, req)
+                                }
+                                Err(_) => self.internal_server_error(state, req),
+                            }
+                        }
                         None => self.internal_server_error(state, req),
                     }
                 } else {

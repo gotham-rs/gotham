@@ -1,10 +1,12 @@
 [package]
 name = "kitchen-sink"
 version = "0.1.0"
-authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
+authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
+           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 
 [dependencies]
 gotham = { path = "../.." }
+gotham_derive = { path = "../../gotham_derive" }
 futures = "*"
 hyper = { git = "https://github.com/hyperium/hyper.git" }
 pretty_env_logger = "*"

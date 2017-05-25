@@ -1,9 +1,10 @@
 [package]
-authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
+authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
+           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 description = "Work in progress library with no initial release yet"
 license = "MIT"
 name = "gotham"
-version = "0.0.1"
+version = "0.1.0"
 
 [dependencies]
 hyper = { git = "https://github.com/hyperium/hyper.git" }
