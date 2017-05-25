@@ -8,20 +8,33 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // https://github.com/asajeffrey/deep-clone/blob/master/deep-clone-derive/lib.rs
     // which was instrumental in helping me undertand how to plug this all together.
     let name = &ast.ident;
-    let borrowed_lifetime_params = ast.generics.lifetimes.iter().map(|alpha| quote! { #alpha });
-    let borrowed_type_params = ast.generics.ty_params.iter().map(|ty| quote! { #ty });
+    let borrowed_lifetime_params = ast.generics
+        .lifetimes
+        .iter()
+        .map(|alpha| quote! { #alpha });
+    let borrowed_type_params = ast.generics
+        .ty_params
+        .iter()
+        .map(|ty| quote! { #ty });
     let borrowed_params = borrowed_lifetime_params.chain(borrowed_type_params).collect::<Vec<_>>();
     let borrowed = if borrowed_params.is_empty() {
-        quote! { }
+        quote!{}
     } else {
         quote! { < #(#borrowed_params),* > }
     };
 
-    let type_constraints = ast.generics.ty_params.iter().map(|ty| quote! { #ty: RequestPathExtractor });
-    let where_clause_predicates = ast.generics.where_clause.predicates.iter().map(|pred| quote! { #pred });
+    let type_constraints = ast.generics
+        .ty_params
+        .iter()
+        .map(|ty| quote! { #ty: RequestPathExtractor });
+    let where_clause_predicates = ast.generics
+        .where_clause
+        .predicates
+        .iter()
+        .map(|pred| quote! { #pred });
     let where_clause_items = type_constraints.chain(where_clause_predicates).collect::<Vec<_>>();
     let where_clause = if where_clause_items.is_empty() {
-        quote! { }
+        quote!{}
     } else {
         quote! { where #(#where_clause_items),* }
     };
@@ -59,10 +72,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let gen = quote! {
         impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
-        impl #borrowed gotham::http::request_path::RequestPathExtractor for #name #borrowed #where_clause {
+        impl #borrowed gotham::http::request_path::RequestPathExtractor for #name #borrowed
+             #where_clause {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
                 -> Result<(), Box<std::any::Any + Send>> {
-                fn parse<T>(segments: &Vec<String>) -> T where T: gotham::http::request_path::FromRequestPath {
+                fn parse<T>(segments: &Vec<String>) -> T
+                    where T: gotham::http::request_path::FromRequestPath {
                     match T::from_request_path(segments) {
                         Ok(val) => val,
                         Err(_) => panic!(format!("Error converting segments {:?}", segments)),

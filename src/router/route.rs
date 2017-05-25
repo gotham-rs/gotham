@@ -90,7 +90,10 @@ impl<RM, NH, PC, P, RE> RouteImpl<RM, NH, PC, P, RE>
           RE: RequestPathExtractor
 {
     /// Creates a new `RouteImpl`
-    pub fn new(matcher: RM, dispatcher: Dispatcher<NH, PC, P>, _extractors: Extractors<RE>) -> Self {
+    pub fn new(matcher: RM,
+               dispatcher: Dispatcher<NH, PC, P>,
+               _extractors: Extractors<RE>)
+               -> Self {
         RouteImpl {
             matcher,
             dispatcher,
@@ -99,12 +102,12 @@ impl<RM, NH, PC, P, RE> RouteImpl<RM, NH, PC, P, RE>
     }
 }
 
-impl<RE> Extractors<RE> where RE: RequestPathExtractor {
+impl<RE> Extractors<RE>
+    where RE: RequestPathExtractor
+{
     /// Creates a new set of Extractors for use with a `RouteImpl`
     pub fn new() -> Self {
-        Extractors {
-            rpe_phantom: PhantomData
-        }
+        Extractors { rpe_phantom: PhantomData }
     }
 }
 

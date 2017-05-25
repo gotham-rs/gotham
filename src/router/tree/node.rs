@@ -145,7 +145,10 @@ impl<'n, P> Node<'n, P> {
     ///
     /// To be used in building a `Tree` structure only.
     pub fn has_child(&self, segment: &str) -> bool {
-        self.children.iter().find(|n| n.segment == segment).is_some()
+        self.children
+            .iter()
+            .find(|n| n.segment == segment)
+            .is_some()
     }
 
     /// Borrow a child that represents the exact segment provided here.
