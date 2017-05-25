@@ -1,7 +1,10 @@
 //! Defines functionality for operating on `Request` path values
 
 use std::str::FromStr;
-use std::any::Any;
+use std::error::Error;
+use std::fmt;
+use std::str::ParseBoolError;
+use std::num::{ParseIntError, ParseFloatError};
 
 use state::State;
 use router::tree::SegmentMapping;
@@ -10,7 +13,7 @@ use router::tree::SegmentMapping;
 /// Structs that will pass `Request` path data to custom `Middleware` and `Handler` implementations.
 pub trait RequestPathExtractor {
     /// Populates the struct with data from the `Request` path and adds it to `State`
-    fn extract(state: &mut State, segment_mapping: SegmentMapping) -> Result<(), Box<Any + Send>>;
+    fn extract(state: &mut State, segment_mapping: SegmentMapping) -> Result<(), String>;
 }
 
 /// A `RequestPathExtractor` that does not extract/store any data from the `Request` path.
@@ -18,21 +21,35 @@ pub trait RequestPathExtractor {
 /// Useful in purely static routes and within documentation.
 pub struct NoopRequestPathExtractor;
 impl RequestPathExtractor for NoopRequestPathExtractor {
-    fn extract(_state: &mut State,
-               _segment_mapping: SegmentMapping)
-               -> Result<(), Box<Any + Send>> {
+    fn extract(_state: &mut State, _segment_mapping: SegmentMapping) -> Result<(), String> {
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+/// Represents an error in coverting a segment(s) from a `Request` path into a type safe
+/// value.
+///
+/// Deliberately kept generic as implementations of FromRequestPath cannot be known in advance.
+pub struct FromRequestPathError {
+    description: String,
+}
+
+impl fmt::Display for FromRequestPathError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Error decoding request path value: {}", self.description)
+    }
+}
+
+impl Error for FromRequestPathError {
+    fn description(&self) -> &str {
+        &self.description
     }
 }
 
 /// Converts string data received as part of a `Request` path to type safe values for usage by
 /// `Middleware` and `Handlers`.
 pub trait FromRequestPath {
-    /// The associated error which can be returned from parsing.
-    ///
-    /// In many cases this is passed from the corresponding implementation of FromStr for Self.
-    type Err;
-
     /// Converts a `1..n` `Request` path segments into type safe values.
     ///
     /// # Panic
@@ -40,15 +57,13 @@ pub trait FromRequestPath {
     ///
     /// e.g. Multiple segments due to usage of a Glob are provided for a value that should
     /// only be generated from a single segment, such as a `u8`.
-    fn from_request_path(&Vec<String>) -> Result<Self, Self::Err> where Self: Sized;
+    fn from_request_path(&Vec<String>) -> Result<Self, FromRequestPathError> where Self: Sized;
 }
 
 impl<T> FromRequestPath for Option<T>
     where T: FromRequestPath
 {
-    type Err = T::Err;
-
-    fn from_request_path(segments: &Vec<String>) -> Result<Self, Self::Err> {
+    fn from_request_path(segments: &Vec<String>) -> Result<Self, FromRequestPathError> {
         if segments.len() == 0 {
             Ok(None)
         } else {
@@ -60,16 +75,34 @@ impl<T> FromRequestPath for Option<T>
     }
 }
 
+impl From<ParseIntError> for FromRequestPathError {
+    fn from(err: ParseIntError) -> FromRequestPathError {
+        FromRequestPathError { description: err.description().to_string() }
+    }
+}
+
+impl From<ParseFloatError> for FromRequestPathError {
+    fn from(err: ParseFloatError) -> FromRequestPathError {
+        FromRequestPathError { description: err.description().to_string() }
+    }
+}
+
+impl From<ParseBoolError> for FromRequestPathError {
+    fn from(err: ParseBoolError) -> FromRequestPathError {
+        FromRequestPathError { description: err.description().to_string() }
+    }
+}
+
 macro_rules! frp {
     ($($t:ident),*) => { $(
         impl FromRequestPath for $t {
-            type Err = <$t as FromStr>::Err;
-
-            fn from_request_path(segments: &Vec<String>) -> Result<Self, Self::Err> {
+            fn from_request_path(segments: &Vec<String>) -> Result<Self, FromRequestPathError> {
                 if segments.len() == 1 {
-                    $t::from_str(segments[0].as_str())
+                    Ok($t::from_str(segments[0].as_str())?)
                 } else {
-                    panic!(format!("Invalid data for request path segment translation"));
+                    Err(FromRequestPathError {
+                        description: String::from("Invalid number of segments")
+                    })
                 }
             }
         }
@@ -91,13 +124,11 @@ frp!(bool,
      u64);
 
 impl FromRequestPath for String {
-    type Err = <String as FromStr>::Err;
-
-    fn from_request_path(segments: &Vec<String>) -> Result<Self, Self::Err> {
+    fn from_request_path(segments: &Vec<String>) -> Result<Self, FromRequestPathError> {
         if segments.len() == 1 {
             Ok(segments[0].clone())
         } else {
-            panic!("Invalid data for request path segment to String conversion");
+            Err(FromRequestPathError { description: String::from("Invalid number of segments") })
         }
     }
 }

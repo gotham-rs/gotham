@@ -73,14 +73,19 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let gen = quote! {
         impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
         impl #borrowed gotham::http::request_path::RequestPathExtractor for #name #borrowed
-             #where_clause {
+             #where_clause
+        {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
-                -> Result<(), Box<std::any::Any + Send>> {
-                fn parse<T>(segments: &Vec<String>) -> T
-                    where T: gotham::http::request_path::FromRequestPath {
-                    match T::from_request_path(segments) {
-                        Ok(val) => val,
-                        Err(_) => panic!(format!("Error converting segments {:?}", segments)),
+                -> Result<(), String> {
+                fn parse<T>(segments: Option<&Vec<String>>) -> Result<T, String> where T: gotham::http::request_path::FromRequestPath {
+                    match segments {
+                        Some(segments) => {
+                            match T::from_request_path(segments) {
+                                Ok(val) => Ok(val),
+                                Err(_) => Err(format!("Error converting segments {:?}", segments)),
+                            }
+                        }
+                        None => Err(format!("Error converting segments, none were available")),
                     }
                 }
 
@@ -100,21 +105,14 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     }
                 }
 
-                let rp = std::panic::catch_unwind(|| {
-                    #name {
-                        #(
-                            #fields: parse(sm.get(#keys).unwrap()),
-                         )*
-                    }
-                });
+                let rp = #name {
+                    #(
+                        #fields: parse(sm.get(#keys))?,
+                     )*
+                };
 
-                match rp {
-                    Ok(rp) => {
-                        s.put(rp);
-                        Ok(())
-                    }
-                    Err(e) => Err(e)
-                }
+                s.put(rp);
+                Ok(())
             }
         }
     };

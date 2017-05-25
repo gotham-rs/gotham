@@ -4,7 +4,6 @@
 //! request via route `Tree` traversal will attempt to identify a matching `Route` and
 //! dispatch to it when it does so.
 
-use std::any::Any;
 use std::marker::PhantomData;
 
 use hyper::server::Request;
@@ -27,7 +26,7 @@ pub trait Route<P> {
     fn extract_request_path(&self,
                             state: &mut State,
                             segment_mapping: SegmentMapping)
-                            -> Result<(), Box<Any + Send>>;
+                            -> Result<(), String>;
 
     /// Final call made by the `Router` to the matched `Route` allowing
     /// application specific logic to respond to the request.
@@ -129,7 +128,7 @@ impl<RM, NH, PC, P, RE> Route<P> for RouteImpl<RM, NH, PC, P, RE>
     fn extract_request_path(&self,
                             state: &mut State,
                             segment_mapping: SegmentMapping)
-                            -> Result<(), Box<Any + Send>> {
+                            -> Result<(), String> {
         RE::extract(state, segment_mapping)
     }
 }
