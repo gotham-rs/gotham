@@ -14,7 +14,7 @@ use hyper::server::Request;
 use handler::{NewHandler, Handler, HandlerFuture};
 use router::tree::Tree;
 use state::State;
-use http::split_request_path;
+use http::request_path;
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
@@ -183,7 +183,7 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     /// connection to the client without response.
     fn handle(&self, mut state: State, req: Request) -> Box<HandlerFuture> {
         let uri = req.uri().clone();
-        match split_request_path(uri.path()) {
+        match request_path::split(uri.path()) {
             Some(rp) => {
                 match self.data.tree.traverse(rp.as_slice()) {
                     Some((tree_path, segment_mapping)) => {
