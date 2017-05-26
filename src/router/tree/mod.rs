@@ -72,7 +72,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::NodeSegmentType;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
-/// # use gotham::http::PercentDecoded;
+/// # use gotham::http::{split_request_path, PercentDecoded};
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -100,7 +100,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///
 ///   let tree = tree_builder.finalize();
 ///
-///   match tree.traverse(&PercentDecoded::new("/%61ctiv%61te/batsignal").unwrap()) {
+///   match tree.traverse(split_request_path("/%61ctiv%61te/batsignal").unwrap().as_slice()) {
 ///       Some((path, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(*segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");
@@ -109,8 +109,8 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///   }
 ///
 ///   // These paths are not routable but could be if 1 or more `Route` were added.
-///   assert!(tree.traverse(&PercentDecoded::new("/").unwrap()).is_none());
-///   assert!(tree.traverse(&PercentDecoded::new("/activate").unwrap()).is_none());
+///   assert!(tree.traverse(&[PercentDecoded::new("/").unwrap()]).is_none());
+///   assert!(tree.traverse(&[PercentDecoded::new("/activate").unwrap()]).is_none());
 /// # }
 /// ```
 pub struct Tree<'n, P> {
@@ -127,16 +127,9 @@ impl<'n, P> Tree<'n, P> {
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
     pub fn traverse<'r>(&'n self,
-                        req_path: &'r PercentDecoded)
+                        req_path_segments: &'r [PercentDecoded])
                         -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
-        self.root.traverse(self.split_request_path(req_path.val()).as_slice())
-    }
-
-    // Spilt a Request path into indivdual segments with leading "/" to represent the root.
-    fn split_request_path<'r>(&self, path: &'r str) -> Vec<&'r str> {
-        let mut segments = vec!["/"];
-        segments.extend(path.split('/').filter(|s| *s != "").collect::<Vec<&'r str>>());
-        segments
+        self.root.traverse(req_path_segments)
     }
 }
 

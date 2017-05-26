@@ -3,6 +3,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+use http::PercentDecoded;
 use router::route::Route;
 use router::tree::SegmentMapping;
 use router::tree::Path;
@@ -45,6 +46,7 @@ pub enum NodeSegmentType<'n> {
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
 /// #
+/// # use gotham::http::PercentDecoded;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::router::route::{RouteImpl, Extractors};
 /// # use gotham::dispatch::Dispatcher;
@@ -76,7 +78,10 @@ pub enum NodeSegmentType<'n> {
 ///   root_node_builder.add_child(activate_node_builder);
 ///
 ///   let root_node = root_node_builder.finalize();
-///   match root_node.traverse(&["/", "activate", "batsignal"]) {
+///   match root_node.traverse(&[PercentDecoded::new("/").unwrap(),
+///                              PercentDecoded::new("activate").unwrap(),
+///                              PercentDecoded::new("batsignal").unwrap()])
+///   {
 ///       Some((path, _)) => assert!(path.last().unwrap().is_routable()),
 ///       None => panic!(),
 ///   }
@@ -132,7 +137,7 @@ impl<'n, P> Node<'n, P> {
     /// 3. Dynamic
     /// 4. Glob
     pub fn traverse<'r>(&'n self,
-                        req_path_segments: &[&'r str])
+                        req_path_segments: &'r [PercentDecoded])
                         -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, sm)) => {
@@ -146,7 +151,7 @@ impl<'n, P> Node<'n, P> {
 
     #[allow(unknown_lints, type_complexity)]
     fn inner_traverse<'r>(&self,
-                          req_path_segments: &[&'r str],
+                          req_path_segments: &'r [PercentDecoded],
                           mut consumed_segments: Vec<&'r str>)
                           -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r str>>)> {
         match req_path_segments.split_first() {
@@ -155,7 +160,7 @@ impl<'n, P> Node<'n, P> {
                 match self.segment_type {
                     NodeSegmentType::Static => Some((vec![self], HashMap::new())),
                     _ => {
-                        consumed_segments.push(x);
+                        consumed_segments.push(x.val());
 
                         let mut sm = HashMap::new();
                         sm.insert(self.segment(), consumed_segments);
@@ -175,7 +180,7 @@ impl<'n, P> Node<'n, P> {
                         match self.segment_type {
                             NodeSegmentType::Static => Some((path, sm)),
                             _ => {
-                                consumed_segments.push(x);
+                                consumed_segments.push(x.val());
                                 sm.insert(self.segment(), consumed_segments);
                                 path.push(self);
                                 Some((path, sm))
@@ -186,7 +191,7 @@ impl<'n, P> Node<'n, P> {
                     // otherwise we've failed to find a suitable way
                     // forward.
                     None if self.segment_type == NodeSegmentType::Glob => {
-                        consumed_segments.push(x);
+                        consumed_segments.push(x.val());
                         self.inner_traverse(xs, consumed_segments)
                     }
                     None => None,
@@ -197,15 +202,15 @@ impl<'n, P> Node<'n, P> {
         }
     }
 
-    fn is_match(&self, request_path_segment: &str) -> bool {
+    fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
         match self.segment_type {
-            NodeSegmentType::Static => self.segment == request_path_segment,
+            NodeSegmentType::Static => self.segment == req_path_segment.val(),
             NodeSegmentType::Constrained { regex: _ } => unimplemented!(), // TODO
             NodeSegmentType::Dynamic | NodeSegmentType::Glob => true,
         }
     }
 
-    fn is_leaf(&self, s: &str, rs: &[&str]) -> bool {
+    fn is_leaf(&self, s: &PercentDecoded, rs: &[PercentDecoded]) -> bool {
         rs.is_empty() && self.is_match(s) && self.is_routable()
     }
 }
@@ -418,6 +423,10 @@ mod tests {
         root
     }
 
+    fn rs<'a>(segments: &'a [&str]) -> Vec<PercentDecoded<'a>> {
+        segments.iter().map(|s| PercentDecoded::new(s).unwrap()).collect::<Vec<PercentDecoded>>()
+    }
+
     #[test]
     fn manages_children() {
         let root_node_builder = test_structure();
@@ -432,28 +441,28 @@ mod tests {
         let root = test_structure().finalize();
 
         // GET /seg3/seg4
-        match root.traverse(&["/", "seg3", "seg4"]) {
+        match root.traverse(rs(&["/", "seg3", "seg4"]).as_slice()) {
             Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg4"),
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /seg3/seg4/seg5
-        assert!(root.traverse(&["/", "seg3", "seg4", "seg5"]).is_none());
+        assert!(root.traverse(rs(&["/", "seg3", "seg4", "seg5"]).as_slice()).is_none());
 
         // GET /seg5/seg6
-        match root.traverse(&["/", "seg5", "seg6"]) {
+        match root.traverse(rs(&["/", "seg5", "seg6"]).as_slice()) {
             Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg6"),
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /seg5/someval/seg7
-        match root.traverse(&["/", "seg5", "someval", "seg7"]) {
+        match root.traverse(rs(&["/", "seg5", "someval", "seg7"]).as_slice()) {
             Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg7"),
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /some/path/seg9/another/path
-        match root.traverse(&["/", "some", "path", "seg9", "some2", "path2"]) {
+        match root.traverse(rs(&["/", "some", "path", "seg9", "some2", "path2"]).as_slice()) {
             Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg10"),
             None => panic!("traversal should have succeeded here"),
         }

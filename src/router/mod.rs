@@ -14,7 +14,7 @@ use hyper::server::Request;
 use handler::{NewHandler, Handler, HandlerFuture};
 use router::tree::Tree;
 use state::State;
-use http::PercentDecoded;
+use http::split_request_path;
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
@@ -183,32 +183,32 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     /// connection to the client without response.
     fn handle(&self, mut state: State, req: Request) -> Box<HandlerFuture> {
         let uri = req.uri().clone();
-        let decoded_path = match PercentDecoded::new(uri.path()) {
-            Some(p) => p,
-            None => return self.internal_server_error(state, req),
-        };
-
-        match self.data.tree.traverse(&decoded_path) {
-            Some((tree_path, segment_mapping)) => {
-                if let Some(leaf) = tree_path.last() {
-                    match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
-                        Some(route) => {
-                            match route.extract_request_path(&mut state, segment_mapping) {
-                                Ok(()) => {
+        match split_request_path(uri.path()) {
+            Some(rp) => {
+                match self.data.tree.traverse(rp.as_slice()) {
+                    Some((tree_path, segment_mapping)) => {
+                        if let Some(leaf) = tree_path.last() {
+                            match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
+                                Some(route) => {
+                                    match route.extract_request_path(&mut state, segment_mapping) {
+                                        Ok(()) => {
                                     // TODO Extract Query Params
                                     // TODO Extract Body
                                     route.dispatch(&self.data.pipelines, state, req)
                                 }
-                                Err(_) => self.internal_server_error(state, req),
+                                        Err(_) => self.internal_server_error(state, req),
+                                    }
+                                }
+                                None => self.internal_server_error(state, req),
                             }
+                        } else {
+                            self.internal_server_error(state, req)
                         }
-                        None => self.internal_server_error(state, req),
                     }
-                } else {
-                    self.internal_server_error(state, req)
+                    None => self.not_found(state, req),
                 }
             }
-            None => self.not_found(state, req),
+            None => self.internal_server_error(state, req),
         }
     }
 }
