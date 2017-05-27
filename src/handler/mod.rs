@@ -25,6 +25,14 @@ pub struct NewHandlerService<T>
     t: Arc<T>,
 }
 
+impl<T> Clone for NewHandlerService<T>
+    where T: NewHandler + 'static
+{
+    fn clone(&self) -> Self {
+        NewHandlerService { t: self.t.clone() }
+    }
+}
+
 impl<T> NewHandlerService<T>
     where T: NewHandler + 'static
 {
@@ -104,34 +112,14 @@ impl<T> server::NewService for NewHandlerService<T>
     type Request = server::Request;
     type Response = server::Response;
     type Error = hyper::Error;
-    type Instance = HandlerService<T>;
+    type Instance = Self;
 
     fn new_service(&self) -> io::Result<Self::Instance> {
-        Ok(HandlerService::new(self.t.clone()))
+        Ok(self.clone())
     }
 }
 
-/// `HandlerService` wraps a Gotham `Handler` and exposes a hyper `Service`.
-///
-/// The request is served by invoking [`Handler::handle(hyper::server::Request)`][Handler::handle].
-///
-/// [Handler::handle]: trait.Handler.html#tymethod.handle
-pub struct HandlerService<T>
-    where T: NewHandler
-{
-    new_handler: Arc<T>,
-}
-
-impl<T> HandlerService<T>
-    where T: NewHandler
-{
-    /// Creates a new `HandlerService` for the given `Handler`.
-    pub fn new(new_handler: Arc<T>) -> HandlerService<T> {
-        HandlerService { new_handler }
-    }
-}
-
-impl<T> server::Service for HandlerService<T>
+impl<T> server::Service for NewHandlerService<T>
     where T: NewHandler
 {
     type Request = server::Request;
@@ -143,7 +131,7 @@ impl<T> server::Service for HandlerService<T>
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
         // immediately consuming it.
-        match (*self.new_handler).new_handler() {
+        match self.t.new_handler() {
             Ok(handler) => {
                 handler
                     .handle(State::new(), req)
