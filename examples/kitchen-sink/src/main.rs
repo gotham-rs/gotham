@@ -16,6 +16,7 @@ use hyper::server::{Http, Request, Response};
 use hyper::Method;
 use hyper::status::StatusCode;
 
+use gotham::http::request_path::NoopRequestPathExtractor;
 use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors};
 use gotham::dispatch::{Dispatcher, PipelineHandleChain};
@@ -45,10 +46,25 @@ struct SharedRequestPath {
 static INDEX: &'static [u8] = b"Try POST /echo";
 static ASYNC: &'static [u8] = b"Got async response";
 
-fn basic_route<NH, P, C>(methods: Vec<Method>,
-                         new_handler: NH,
-                         pipelines: C)
-                         -> Box<Route<P> + Send + Sync>
+fn static_route<NH, P, C>(methods: Vec<Method>,
+                          new_handler: NH,
+                          pipelines: C)
+                          -> Box<Route<P> + Send + Sync>
+    where NH: NewHandler + 'static,
+          C: PipelineHandleChain<P> + Send + Sync + 'static,
+          P: Send + Sync + 'static
+{
+    let matcher = MethodOnlyRequestMatcher::new(methods);
+    let dispatcher = Dispatcher::new(new_handler, pipelines);
+    let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+    let route = RouteImpl::new(matcher, dispatcher, extractors);
+    Box::new(route)
+}
+
+fn dynamic_route<NH, P, C>(methods: Vec<Method>,
+                           new_handler: NH,
+                           pipelines: C)
+                           -> Box<Route<P> + Send + Sync>
     where NH: NewHandler + 'static,
           C: PipelineHandleChain<P> + Send + Sync + 'static,
           P: Send + Sync + 'static
@@ -73,28 +89,28 @@ fn add_routes<P, C>(tree_builder: &mut TreeBuilder<P>, pipelines: C)
     where C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
           P: Send + Sync + 'static
 {
-    tree_builder.add_route(basic_route(vec![Method::Get], || Ok(Echo::get), pipelines));
+    tree_builder.add_route(dynamic_route(vec![Method::Get], || Ok(Echo::get), pipelines));
 
     let mut echo = NodeBuilder::new("echo", NodeSegmentType::Static);
-    echo.add_route(basic_route(vec![Method::Get], || Ok(Echo::get), pipelines));
-    echo.add_route(basic_route(vec![Method::Post], || Ok(Echo::post), pipelines));
+    echo.add_route(static_route(vec![Method::Get], || Ok(Echo::get), pipelines));
+    echo.add_route(static_route(vec![Method::Post], || Ok(Echo::post), pipelines));
     tree_builder.add_child(echo);
 
     let mut async = NodeBuilder::new("async", NodeSegmentType::Static);
-    async.add_route(basic_route(vec![Method::Get], || Ok(Echo::async), pipelines));
+    async.add_route(static_route(vec![Method::Get], || Ok(Echo::async), pipelines));
     tree_builder.add_child(async);
 
     let mut header_value = NodeBuilder::new("header_value", NodeSegmentType::Static);
-    header_value.add_route(basic_route(vec![Method::Get], || Ok(Echo::header_value), pipelines));
+    header_value.add_route(static_route(vec![Method::Get], || Ok(Echo::header_value), pipelines));
     tree_builder.add_child(header_value);
 
     let mut hello = NodeBuilder::new("hello", NodeSegmentType::Static);
 
     let mut name = NodeBuilder::new("name", NodeSegmentType::Dynamic);
-    name.add_route(basic_route(vec![Method::Get], || Ok(Echo::hello), pipelines));
+    name.add_route(dynamic_route(vec![Method::Get], || Ok(Echo::hello), pipelines));
 
     let mut from = NodeBuilder::new("from", NodeSegmentType::Dynamic);
-    from.add_route(basic_route(vec![Method::Get], || Ok(Echo::greeting), pipelines));
+    from.add_route(dynamic_route(vec![Method::Get], || Ok(Echo::greeting), pipelines));
 
     name.add_child(from);
     hello.add_child(name);
