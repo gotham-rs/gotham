@@ -14,6 +14,7 @@ use hyper::server::Request;
 use handler::{NewHandler, Handler, HandlerFuture};
 use router::tree::Tree;
 use state::State;
+use http::request_path;
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
@@ -58,7 +59,7 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
 /// # extern crate borrow_bag;
 /// #
 /// # use hyper::server::{Request, Response};
-/// # use gotham::router::tree::Tree;
+/// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::Router;
 /// # use gotham::state::State;
 /// #
@@ -71,7 +72,8 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
 /// # }
 /// #
 /// # fn main() {
-///   let tree = Tree::new();
+///   let tree_builder = TreeBuilder::new();
+///   let tree = tree_builder.finalize();
 ///   let not_found = || Ok(handler);
 ///   let internal_server_error = || Ok(handler2);
 ///   let pipelines = borrow_bag::new_borrow_bag();
@@ -180,27 +182,33 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     /// For unrecoverable error states `future::err` will be called, dropping the
     /// connection to the client without response.
     fn handle(&self, mut state: State, req: Request) -> Box<HandlerFuture> {
-        match self.data.tree.traverse(req.uri()) {
-            Some((tree_path, segment_mapping)) => {
-                if let Some(leaf) = tree_path.last() {
-                    match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
-                        Some(route) => {
-                            match route.extract_request_path(&mut state, segment_mapping) {
-                                Ok(()) => {
+        let uri = req.uri().clone();
+        match request_path::split(uri.path()) {
+            Some(rp) => {
+                match self.data.tree.traverse(rp.as_slice()) {
+                    Some((tree_path, segment_mapping)) => {
+                        if let Some(leaf) = tree_path.last() {
+                            match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
+                                Some(route) => {
+                                    match route.extract_request_path(&mut state, segment_mapping) {
+                                        Ok(()) => {
                                     // TODO Extract Query Params
                                     // TODO Extract Body
                                     route.dispatch(&self.data.pipelines, state, req)
                                 }
-                                Err(_) => self.internal_server_error(state, req),
+                                        Err(_) => self.internal_server_error(state, req),
+                                    }
+                                }
+                                None => self.internal_server_error(state, req),
                             }
+                        } else {
+                            self.internal_server_error(state, req)
                         }
-                        None => self.internal_server_error(state, req),
                     }
-                } else {
-                    self.internal_server_error(state, req)
+                    None => self.not_found(state, req),
                 }
             }
-            None => self.not_found(state, req),
+            None => self.internal_server_error(state, req),
         }
     }
 }

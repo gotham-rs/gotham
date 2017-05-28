@@ -62,7 +62,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
-    /// # use gotham::router::tree::Tree;
+    /// # use gotham::router::tree::TreeBuilder;
     /// # use gotham::router::route::{RouteImpl, Extractors};
     /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
     /// # use gotham::dispatch::Dispatcher;
@@ -75,7 +75,7 @@ impl<T> NewHandlerService<T>
     ///     (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
-    /// let mut tree = Tree::new();
+    /// let mut tree_builder = TreeBuilder::new();
     /// let pipelines = borrow_bag::new_borrow_bag();
     /// let not_found = || Ok(handler);
     /// let internal_server_error = || Ok(handler);
@@ -85,7 +85,8 @@ impl<T> NewHandlerService<T>
     /// let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
     /// let route = RouteImpl::new(matcher, dispatcher, extractors);
     ///
-    /// tree.add_route(Box::new(route));
+    /// tree_builder.add_route(Box::new(route));
+    /// let tree = tree_builder.finalize();
     /// let router = Router::new(tree, pipelines, not_found, internal_server_error);
     ///
     /// NewHandlerService::new(router);
@@ -224,7 +225,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors};
-/// # use gotham::router::tree::Tree;
+/// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::handler::IntoResponse;
@@ -257,7 +258,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// }
 ///
 /// # fn main() {
-/// #   let mut tree = Tree::new();
+/// #   let mut tree_builder = TreeBuilder::new();
 /// #   let pipelines = borrow_bag::new_borrow_bag();
 /// #   let not_found = || Ok(handler);
 /// #   let internal_server_error = || Ok(handler);
@@ -266,7 +267,8 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
 /// #   let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, dispatcher, extractors);
-///     tree.add_route(Box::new(route));
+///     tree_builder.add_route(Box::new(route));
+///     let tree = tree_builder.finalize();
 ///     Router::new(tree, pipelines, not_found, internal_server_error);
 /// # }
 /// ```

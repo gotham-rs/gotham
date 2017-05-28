@@ -77,10 +77,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
                 -> Result<(), String> {
-                fn parse<T>(segments: Option<&Vec<String>>) -> Result<T, String> where T: gotham::http::request_path::FromRequestPath {
+                fn parse<T>(segments: Option<&Vec<&str>>) -> Result<T, String> where T: gotham::http::request_path::FromRequestPath {
                     match segments {
                         Some(segments) => {
-                            match T::from_request_path(segments) {
+                            match T::from_request_path(segments.as_slice()) {
                                 Ok(val) => Ok(val),
                                 Err(_) => Err(format!("Error converting segments {:?}", segments)),
                             }
@@ -101,7 +101,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 let optional_field_labels = [#(#optional_field_labels),*];
                 for label in optional_field_labels.iter() {
                     if !sm.contains_key(label) {
-                        sm.insert(label, Vec::new());
+                        sm.add_unmapped_segment(label);
                     }
                 }
 
