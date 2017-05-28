@@ -174,7 +174,7 @@ impl Echo {
 
 fn main() {
     pretty_env_logger::init().unwrap();
-    let addr = "127.0.0.1:1337".parse().unwrap();
+    let addr = "127.0.0.1:8080".parse().unwrap();
 
     let mut tree_builder = TreeBuilder::new();
     let pipelines = borrow_bag::new_borrow_bag();
