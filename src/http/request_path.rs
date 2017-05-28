@@ -11,7 +11,7 @@ use http::PercentDecoded;
 use state::State;
 use router::tree::SegmentMapping;
 
-const EXCLUDED_SEGMENTS: [&str; 3] = ["", ".", ".."];
+const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 
 /// Spilt a `Request` path into indivdual segments with leading "/" to represent the root.
 ///
@@ -25,7 +25,7 @@ const EXCLUDED_SEGMENTS: [&str; 3] = ["", ".", ".."];
 /// # use gotham::http::request_path;
 /// #
 /// # pub fn main() {
-///     let srp = request_path::split("/%61ctiv%61te/../batsignal").unwrap();
+///     let srp = request_path::split("/%61ctiv%61te//batsignal").unwrap();
 ///     assert_eq!("/", srp[0].val());
 ///     assert_eq!("activate", srp[1].val());
 ///     assert_eq!("batsignal", srp[2].val());
