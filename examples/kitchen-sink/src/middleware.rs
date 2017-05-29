@@ -32,10 +32,13 @@ impl Middleware for KitchenSinkMiddleware {
         let result = chain(state, request);
         let header_name = self.header_name;
 
-        result.and_then(move |(state, mut response)| {
+        result
+            .and_then(move |(state, mut response)| {
                 {
                     let data = state.borrow::<KitchenSinkData>().unwrap();
-                    response.headers_mut().set_raw(header_name, data.header_value.to_owned());
+                    response
+                        .headers_mut()
+                        .set_raw(header_name, data.header_value.to_owned());
                 }
 
                 future::ok((state, response))

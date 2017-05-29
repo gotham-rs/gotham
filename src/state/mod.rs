@@ -172,7 +172,9 @@ impl State {
         where T: StateData
     {
         let type_id = TypeId::of::<T>();
-        self.data.get_mut(&type_id).and_then(|b| b.downcast_mut::<T>())
+        self.data
+            .get_mut(&type_id)
+            .and_then(|b| b.downcast_mut::<T>())
     }
 
     /// Moves a value out of the `State` storage, and returns ownership.

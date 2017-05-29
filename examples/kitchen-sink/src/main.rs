@@ -127,7 +127,10 @@ impl Echo {
     }
 
     fn get(state: State, _req: Request) -> (State, Response) {
-        (state, Response::new().with_header(ContentLength(INDEX.len() as u64)).with_body(INDEX))
+        (state,
+         Response::new()
+             .with_header(ContentLength(INDEX.len() as u64))
+             .with_body(INDEX))
     }
 
     fn post(state: State, req: Request) -> (State, Response) {
@@ -140,20 +143,27 @@ impl Echo {
 
     fn async(state: State, _req: Request) -> Box<HandlerFuture> {
         let mut res = Response::new();
-        res = res.with_header(ContentLength(ASYNC.len() as u64)).with_body(ASYNC);
+        res = res.with_header(ContentLength(ASYNC.len() as u64))
+            .with_body(ASYNC);
         future::lazy(move || future::ok((state, res))).boxed()
     }
 
     fn header_value(mut state: State, _req: Request) -> (State, Response) {
         state.borrow_mut::<KitchenSinkData>().unwrap().header_value = "different value!".to_owned();
-        (state, Response::new().with_header(ContentLength(INDEX.len() as u64)).with_body(INDEX))
+        (state,
+         Response::new()
+             .with_header(ContentLength(INDEX.len() as u64))
+             .with_body(INDEX))
     }
 
     fn hello(state: State, _req: Request) -> (State, Response) {
         let hello = format!("Hello, {}\n",
                             state.borrow::<SharedRequestPath>().unwrap().name);
 
-        (state, Response::new().with_header(ContentLength(hello.len() as u64)).with_body(hello))
+        (state,
+         Response::new()
+             .with_header(ContentLength(hello.len() as u64))
+             .with_body(hello))
     }
 
     fn greeting(state: State, _req: Request) -> (State, Response) {
@@ -166,7 +176,9 @@ impl Echo {
             };
 
             let g = format!("Greetings, {} from {}\n", name, from);
-            Response::new().with_header(ContentLength(g.len() as u64)).with_body(g)
+            Response::new()
+                .with_header(ContentLength(g.len() as u64))
+                .with_body(g)
         };
         (state, res)
     }
@@ -190,7 +202,9 @@ fn main() {
     let internal_server_error = || Ok(Echo::internal_server_error);
     let router = Router::new(tree, pipelines, not_found, internal_server_error);
 
-    let server = Http::new().bind(&addr, NewHandlerService::new(router)).unwrap();
+    let server = Http::new()
+        .bind(&addr, NewHandlerService::new(router))
+        .unwrap();
 
     println!("Listening on http://{} with 1 thread.",
              server.local_addr().unwrap());

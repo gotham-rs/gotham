@@ -91,13 +91,13 @@ impl<S> TestServer<S>
     /// for each connection.
     pub fn new(new_service: S) -> Result<TestServer<S>, io::Error> {
         reactor::Core::new().map(|core| {
-            TestServer {
-                core: core,
-                http: server::Http::new(),
-                timeout: 10,
-                new_service: new_service,
-            }
-        })
+                                     TestServer {
+                                         core: core,
+                                         http: server::Http::new(),
+                                         timeout: 10,
+                                         new_service: new_service,
+                                     }
+                                 })
     }
 
     /// Sets the request timeout to `t` seconds and returns a new `TestServer`. The default timeout
@@ -244,7 +244,9 @@ impl io::Write for AsyncUnixStream {
 
 impl AsyncWrite for AsyncUnixStream {
     fn shutdown(&mut self) -> Result<Async<()>, io::Error> {
-        self.stream.shutdown(net::Shutdown::Both).map(|_| Async::Ready(()))
+        self.stream
+            .shutdown(net::Shutdown::Both)
+            .map(|_| Async::Ready(()))
     }
 }
 
@@ -313,12 +315,18 @@ mod tests {
 
     #[test]
     fn serves_requests() {
-        let ticks = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let ticks = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
         let uri = "http://localhost/".parse().unwrap();
 
         let mut test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client("127.0.0.1:0".parse().unwrap()).unwrap().get(uri);
+        let response = test_server
+            .client("127.0.0.1:0".parse().unwrap())
+            .unwrap()
+            .get(uri);
         let response = test_server.run_request(response).unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
@@ -331,7 +339,10 @@ mod tests {
         let new_service = || Ok(TestService { response: "".to_owned() });
         let mut test_server = TestServer::new(new_service).unwrap().timeout(1);
         let uri = "http://localhost/timeout".parse().unwrap();
-        let response = test_server.client("127.0.0.1:0".parse().unwrap()).unwrap().get(uri);
+        let response = test_server
+            .client("127.0.0.1:0".parse().unwrap())
+            .unwrap()
+            .get(uri);
 
         match test_server.run_request(response) {
             Err(TestRequestError::TimedOut) => (),
@@ -344,7 +355,10 @@ mod tests {
 
     #[test]
     fn sets_client_addr() {
-        let ticks = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let ticks = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
         let client_addr = "9.8.7.6:58901".parse().unwrap();
         let uri = "http://localhost/myaddr".parse().unwrap();

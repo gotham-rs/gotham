@@ -36,8 +36,10 @@ pub fn split<'r>(path: &'r str) -> Option<Vec<PercentDecoded>> {
     segments.extend(path.split('/')
                         .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
                         .collect::<Vec<&'r str>>());
-    let decoded_segments =
-        segments.iter().filter_map(|s| PercentDecoded::new(s)).collect::<Vec<PercentDecoded>>();
+    let decoded_segments = segments
+        .iter()
+        .filter_map(|s| PercentDecoded::new(s))
+        .collect::<Vec<PercentDecoded>>();
 
     // Ensure that no segment failed to be encoded
     if decoded_segments.len() == segments.len() {
