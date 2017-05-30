@@ -25,28 +25,18 @@ const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 /// # use gotham::http::request_path;
 /// #
 /// # pub fn main() {
-///     let srp = request_path::split("/%61ctiv%61te//batsignal").unwrap();
+///     let srp = request_path::split("/%61ctiv%61te//batsignal");
 ///     assert_eq!("/", srp[0].val());
 ///     assert_eq!("activate", srp[1].val());
 ///     assert_eq!("batsignal", srp[2].val());
 /// # }
 /// ```
-pub fn split<'r>(path: &'r str) -> Option<Vec<PercentDecoded>> {
+pub fn split<'r>(path: &'r str) -> Vec<PercentDecoded> {
     let mut segments = vec!["/"];
     segments.extend(path.split('/')
                         .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
                         .collect::<Vec<&'r str>>());
-    let decoded_segments = segments
-        .iter()
-        .filter_map(|s| PercentDecoded::new(s))
-        .collect::<Vec<PercentDecoded>>();
-
-    // Ensure that no segment failed to be encoded
-    if decoded_segments.len() == segments.len() {
-        Some(decoded_segments)
-    } else {
-        None
-    }
+    segments.iter().filter_map(|s| PercentDecoded::new(s)).collect::<Vec<PercentDecoded>>()
 }
 
 /// Derived through the macro of the same name supplied by `gotham-derive` for application defined
