@@ -11,9 +11,10 @@ use borrow_bag::BorrowBag;
 
 use dispatch::{PipelineHandleChain, Dispatcher};
 use handler::{HandlerFuture, NewHandler};
-use http::request_path::RequestPathExtractor;
 use router::request_matcher::RequestMatcher;
 use router::tree::SegmentMapping;
+use http::request_path::RequestPathExtractor;
+use http::query_string::{QueryStringExtractor, QueryStringMapping};
 use state::State;
 
 /// A type that determines if its associated logic can be exposed by the `Router`
@@ -22,10 +23,18 @@ pub trait Route<P> {
     /// Determines if this `Route` can be invoked, based on the `Request`.
     fn is_match(&self, req: &Request) -> bool;
 
-    /// Extracts the `Request` path into a Struct for use by Middleware and Handlers
+    /// Extracts the `Request` path into a Struct and stores it in `State`  for use
+    /// by Middleware and Handlers
     fn extract_request_path(&self,
                             state: &mut State,
                             segment_mapping: SegmentMapping)
+                            -> Result<(), String>;
+
+    /// Extracts the `Request` query string into a Struct and stores it in `State`  for use
+    /// by Middleware and Handlers
+    fn extract_query_string(&self,
+                            state: &mut State,
+                            query_string_mapping: QueryStringMapping)
                             -> Result<(), String>;
 
     /// Final call made by the `Router` to the matched `Route` allowing
@@ -47,6 +56,7 @@ pub trait Route<P> {
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
@@ -59,39 +69,43 @@ pub trait Route<P> {
 ///   let methods = vec![Method::Get];
 ///   let matcher = MethodOnlyRequestMatcher::new(methods);
 ///   let dispatcher: Dispatcher<_, _, ()> = Dispatcher::new(|| Ok(handler), ());
-///   let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///   RouteImpl::new(matcher, dispatcher, extractors);
 /// # }
 /// ```
-pub struct RouteImpl<RM, NH, PC, P, RE>
+pub struct RouteImpl<RM, NH, PC, P, RE, QE>
     where RM: RequestMatcher,
           NH: NewHandler,
           PC: PipelineHandleChain<P>,
-          RE: RequestPathExtractor
+          RE: RequestPathExtractor,
+          QE: QueryStringExtractor
 {
     matcher: RM,
     dispatcher: Dispatcher<NH, PC, P>,
-    _extractors: Extractors<RE>,
+    _extractors: Extractors<RE, QE>,
 }
 
 /// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
 /// for use by custom `Middleware` and `Handler` implementations.
-pub struct Extractors<RE>
-    where RE: RequestPathExtractor
+pub struct Extractors<RE, QE>
+    where RE: RequestPathExtractor,
+          QE: QueryStringExtractor
 {
     rpe_phantom: PhantomData<RE>,
+    qse_phantom: PhantomData<QE>,
 }
 
-impl<RM, NH, PC, P, RE> RouteImpl<RM, NH, PC, P, RE>
+impl<RM, NH, PC, P, RE, QE> RouteImpl<RM, NH, PC, P, RE, QE>
     where RM: RequestMatcher,
           NH: NewHandler,
           PC: PipelineHandleChain<P>,
-          RE: RequestPathExtractor
+          RE: RequestPathExtractor,
+          QE: QueryStringExtractor
 {
     /// Creates a new `RouteImpl`
     pub fn new(matcher: RM,
                dispatcher: Dispatcher<NH, PC, P>,
-               _extractors: Extractors<RE>)
+               _extractors: Extractors<RE, QE>)
                -> Self {
         RouteImpl {
             matcher,
@@ -101,21 +115,26 @@ impl<RM, NH, PC, P, RE> RouteImpl<RM, NH, PC, P, RE>
     }
 }
 
-impl<RE> Extractors<RE>
-    where RE: RequestPathExtractor
+impl<RE, QE> Extractors<RE, QE>
+    where RE: RequestPathExtractor,
+          QE: QueryStringExtractor
 {
     /// Creates a new set of Extractors for use with a `RouteImpl`
     pub fn new() -> Self {
-        Extractors { rpe_phantom: PhantomData }
+        Extractors {
+            rpe_phantom: PhantomData,
+            qse_phantom: PhantomData,
+        }
     }
 }
 
-impl<RM, NH, PC, P, RE> Route<P> for RouteImpl<RM, NH, PC, P, RE>
+impl<RM, NH, PC, P, RE, QE> Route<P> for RouteImpl<RM, NH, PC, P, RE, QE>
     where RM: RequestMatcher,
           NH: NewHandler,
           NH::Instance: 'static,
           PC: PipelineHandleChain<P>,
-          RE: RequestPathExtractor
+          RE: RequestPathExtractor,
+          QE: QueryStringExtractor
 {
     fn is_match(&self, req: &Request) -> bool {
         self.matcher.is_match(req)
@@ -130,5 +149,12 @@ impl<RM, NH, PC, P, RE> Route<P> for RouteImpl<RM, NH, PC, P, RE>
                             segment_mapping: SegmentMapping)
                             -> Result<(), String> {
         RE::extract(state, segment_mapping)
+    }
+
+    fn extract_query_string(&self,
+                            state: &mut State,
+                            query_string_mapping: QueryStringMapping)
+                            -> Result<(), String> {
+        QE::extract(state, query_string_mapping)
     }
 }

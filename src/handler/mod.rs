@@ -76,6 +76,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
     /// # use gotham::dispatch::Dispatcher;
     /// # use gotham::http::request_path::NoopRequestPathExtractor;
+    /// # use gotham::http::query_string::NoopQueryStringExtractor;
     /// # use hyper::server::{Request, Response};
     /// # use hyper::{StatusCode, Method};
     /// #
@@ -91,7 +92,7 @@ impl<T> NewHandlerService<T>
     ///
     /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
     /// let dispatcher = Dispatcher::new(|| Ok(handler), ());
-    /// let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+    /// let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
     /// let route = RouteImpl::new(matcher, dispatcher, extractors);
     ///
     /// tree_builder.add_route(Box::new(route));
@@ -227,6 +228,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::handler::IntoResponse;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
 /// # use hyper::server::{Request, Response};
@@ -262,7 +264,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #
 /// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 /// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #   let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+/// #   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();

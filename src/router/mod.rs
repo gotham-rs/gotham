@@ -15,6 +15,7 @@ use handler::{NewHandler, Handler, HandlerFuture};
 use router::tree::Tree;
 use state::State;
 use http::request_path;
+use http::query_string;
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
@@ -133,6 +134,8 @@ impl<'n, P, NFH, ISEH> Router<'n, P, NFH, ISEH>
     }
 }
 
+
+
 impl<'n, P, NFH, ISEH> Clone for Router<'n, P, NFH, ISEH>
     where P: Sync,
           NFH: NewHandler,
@@ -183,32 +186,28 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     /// connection to the client without response.
     fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
         let uri = req.uri().clone();
-        match request_path::split(uri.path()) {
-            Some(rp) => {
-                match self.data.tree.traverse(rp.as_slice()) {
-                    Some((tree_path, segment_mapping)) => {
-                        if let Some(leaf) = tree_path.last() {
-                            match leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
-                                Some(route) => {
-                                    match route.extract_request_path(&mut state, segment_mapping) {
-                                        Ok(()) => {
-                                    // TODO Extract Query Params
-                                    // TODO Extract Body
-                                    route.dispatch(&self.data.pipelines, state, req)
+        let rp = request_path::split(uri.path());
+        if let Some((tree_path, segment_mapping)) = self.data.tree.traverse(rp.as_slice()) {
+            if let Some(leaf) = tree_path.last() {
+                if let Some(route) = leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
+                    match route.extract_request_path(&mut state, segment_mapping) {
+                        Ok(()) => {
+                            if let Some(q) = uri.query() {
+                                match route.extract_query_string(&mut state, query_string::split(q)) {
+                                    Ok(()) => return route.dispatch(&self.data.pipelines, state, req),
+                                    Err(_) => (),
                                 }
-                                        Err(_) => self.internal_server_error(state, req),
-                                    }
-                                }
-                                None => self.internal_server_error(state, req),
+                            } else {return route.dispatch(&self.data.pipelines, state, req);
                             }
-                        } else {
-                            self.internal_server_error(state, req)
                         }
+                        Err(_) => (),
                     }
-                    None => self.not_found(state, req),
                 }
             }
-            None => self.internal_server_error(state, req),
+        } else {
+            return self.not_found(state, req);
         }
+
+        self.internal_server_error(state, req)
     }
 }

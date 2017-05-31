@@ -17,6 +17,7 @@ use hyper::Method;
 use hyper::status::StatusCode;
 
 use gotham::http::request_path::NoopRequestPathExtractor;
+use gotham::http::query_string::NoopQueryStringExtractor;
 use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors};
 use gotham::dispatch::{Dispatcher, PipelineHandleChain};
@@ -56,7 +57,8 @@ fn static_route<NH, P, C>(methods: Vec<Method>,
 {
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = Dispatcher::new(new_handler, pipelines);
-    let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+    let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
+        Extractors::new();
     let route = RouteImpl::new(matcher, dispatcher, extractors);
     Box::new(route)
 }
@@ -71,7 +73,7 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
 {
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = Dispatcher::new(new_handler, pipelines);
-    let extractors: Extractors<SharedRequestPath> = Extractors::new();
+    let extractors: Extractors<SharedRequestPath, NoopQueryStringExtractor> = Extractors::new();
     let route = RouteImpl::new(matcher, dispatcher, extractors);
     Box::new(route)
 }

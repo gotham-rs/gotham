@@ -16,6 +16,8 @@ pub type Path<'n, 'a, P> = Vec<&'a Node<'n, P>>;
 /// which have been matched against the `Request` path.
 ///
 /// Data is percent and utf8 decoded.
+///
+/// TODO: Mapping should be to Vec of PercentDecoded not str
 pub struct SegmentMapping<'a, 'b> {
     data: HashMap<&'a str, Vec<&'b str>>,
 }
@@ -72,6 +74,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::NodeSegmentType;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::http::PercentDecoded;
 /// # use gotham::http::request_path;
 /// #
@@ -90,7 +93,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #     let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+/// #     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #     let route = RouteImpl::new(matcher, dispatcher, extractors);
 /// #     Box::new(route)
 ///   };
@@ -101,7 +104,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///
 ///   let tree = tree_builder.finalize();
 ///
-///   match tree.traverse(request_path::split("/%61ctiv%61te/batsignal").unwrap().as_slice()) {
+///   match tree.traverse(request_path::split("/%61ctiv%61te/batsignal").as_slice()) {
 ///       Some((path, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(*segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");

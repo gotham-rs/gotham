@@ -1,9 +1,117 @@
 use proc_macro;
 use syn;
+use quote;
 
-pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+    let (name, borrowed, where_clause) = ty_params(&ast);
+    let (fields, optional_fields) = ty_fields(&ast);
+    let ofl = optional_field_labels(optional_fields);
+    let keys = field_names(&fields);
 
+    let gen = quote! {
+        impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
+        impl #borrowed gotham::http::request_path::RequestPathExtractor for #name #borrowed
+             #where_clause
+        {
+            fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
+                -> Result<(), String> {
+                fn parse<T>(segments: Option<&Vec<&str>>) -> Result<T, String> where T: gotham::http::request_path::FromRequestPath {
+                    match segments {
+                        Some(segments) => {
+                            match T::from_request_path(segments.as_slice()) {
+                                Ok(val) => Ok(val),
+                                Err(_) => Err(format!("Error converting segments {:?}", segments)),
+                            }
+                        }
+                        None => Err(format!("Error converting segments, none were available")),
+                    }
+                }
+
+                // Add an empty Vec for Optional segments that have not been provided.
+                //
+                // This essentially indicates that a single Struct is being used for multiple
+                // Request paths and ending at different Handlers.
+                //
+                // Not a best practice approach but worth supporting.
+                //
+                // Ideally `optional_fields` would be a const but this doesn't yet seem to be
+                // possible when using the `quote` crate as we are here.
+                let ofl = [#(#ofl),*];
+                for label in ofl.iter() {
+                    if !sm.contains_key(label) {
+                        sm.add_unmapped_segment(label);
+                    }
+                }
+
+                let rp = #name {
+                    #(
+                        #fields: parse(sm.get(#keys))?,
+                     )*
+                };
+
+                s.put(rp);
+                Ok(())
+            }
+        }
+    };
+
+    gen.parse().unwrap()
+}
+
+pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+    let (name, borrowed, where_clause) = ty_params(&ast);
+    let (fields, optional_fields) = ty_fields(&ast);
+    let ofl = optional_field_labels(optional_fields);
+    let keys = field_names(&fields);
+    let keys2 = keys.clone();
+
+    let gen = quote! {
+        impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
+        impl #borrowed gotham::http::query_string::QueryStringExtractor for #name #borrowed
+             #where_clause
+        {
+            fn extract(s: &mut gotham::state::State, mut qsm: gotham::http::query_string::QueryStringMapping) -> Result<(), String> {
+                fn parse<T>(key: &str, values: Option<&Vec<gotham::http::FormUrlDecoded>>) -> Result<T, String> where T: gotham::http::query_string::FromQueryString {
+                    match values {
+                        Some(values) => {
+                            match T::from_query_string(key, values.as_slice()) {
+                                Ok(val) => Ok(val),
+                                Err(_) => Err(String::from("Unrecoverable error converting Query string")),
+                            }
+                        }
+                        None => Err(String::from("Error converting query string values, none were available")),
+                    }
+                }
+
+                // Add an empty Vec for Optional segments that have not been provided.
+                //
+                // Ideally `optional_fields` would be a const but this doesn't yet seem to be
+                // possible when using the `quote` crate as we are here.
+                let ofl = [#(#ofl),*];
+                for label in ofl.iter() {
+                    if !qsm.contains_key(label) {
+                        qsm.add_unmapped_segment(label);
+                    }
+                }
+
+                let rp = #name {
+                    #(
+                        #fields: parse(#keys, qsm.get(#keys2))?,
+                     )*
+                };
+
+                s.put(rp);
+                Ok(())
+            }
+        }
+    };
+
+    gen.parse().unwrap()
+}
+
+fn ty_params<'a>(ast: &'a syn::DeriveInput) -> (&'a syn::Ident, quote::Tokens, quote::Tokens) {
     // This was directly borrowed from the DeepClone example at
     // https://github.com/asajeffrey/deep-clone/blob/master/deep-clone-derive/lib.rs
     // which was instrumental in helping me undertand how to plug this all together.
@@ -40,6 +148,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
     // End of DeepClone borrow, thanks again @asajeffrey.
 
+    (name, borrowed, where_clause)
+}
+
+fn ty_fields<'a>(ast: &'a syn::DeriveInput) -> (Vec<&syn::Ident>, Vec<&syn::Ident>) {
     let fields = match ast.body {
         syn::Body::Struct(syn::VariantData::Struct(ref body)) => {
             body.iter().filter_map(|field| field.ident.as_ref()).collect::<Vec<_>>()
@@ -60,67 +172,26 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         _ => panic!("Not implemented for tuple or unit like structs"),
     };
 
+    (fields, optional_fields)
+}
+
+fn optional_field_labels<'a>(optional_fields: Vec<&'a syn::Ident>) -> Vec<&'a str> {
+    let mut ofl = Vec::new();
+    for ident in optional_fields {
+        ofl.push(ident.as_ref())
+    }
+    ofl
+}
+
+fn field_names<'a>(fields: &'a Vec<&'a syn::Ident>) -> Vec<String> {
     let mut keys = Vec::new();
     for ident in fields.iter() {
         keys.push(String::from(ident.as_ref()));
     }
-
-    let mut optional_field_labels = Vec::new();
-    for ident in optional_fields {
-        optional_field_labels.push(String::from(ident.as_ref()))
-    }
-
-    let gen = quote! {
-        impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
-        impl #borrowed gotham::http::request_path::RequestPathExtractor for #name #borrowed
-             #where_clause
-        {
-            fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
-                -> Result<(), String> {
-                fn parse<T>(segments: Option<&Vec<&str>>) -> Result<T, String> where T: gotham::http::request_path::FromRequestPath {
-                    match segments {
-                        Some(segments) => {
-                            match T::from_request_path(segments.as_slice()) {
-                                Ok(val) => Ok(val),
-                                Err(_) => Err(format!("Error converting segments {:?}", segments)),
-                            }
-                        }
-                        None => Err(format!("Error converting segments, none were available")),
-                    }
-                }
-
-                // Add an empty Vec for Optional segments that have not been provided.
-                //
-                // This essentially indicates that a single Struct is being used for multiple
-                // Request paths and ending at different Handlers.
-                //
-                // Not a best practice approach but worth supporting.
-                //
-                // Ideally `optional_fields` would be a const but this doesn't yet seem to be
-                // possible when using the `quote` crate as we are here.
-                let optional_field_labels = [#(#optional_field_labels),*];
-                for label in optional_field_labels.iter() {
-                    if !sm.contains_key(label) {
-                        sm.add_unmapped_segment(label);
-                    }
-                }
-
-                let rp = #name {
-                    #(
-                        #fields: parse(sm.get(#keys))?,
-                     )*
-                };
-
-                s.put(rp);
-                Ok(())
-            }
-        }
-    };
-
-    gen.parse().unwrap()
+    keys
 }
 
-pub fn is_option(ty: &syn::Ty) -> bool {
+fn is_option(ty: &syn::Ty) -> bool {
     match *ty {
         syn::Ty::Path(_, ref p) => {
             match p.segments.first() {
