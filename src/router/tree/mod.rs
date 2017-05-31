@@ -16,15 +16,13 @@ pub type Path<'n, 'a, P> = Vec<&'a Node<'n, P>>;
 /// which have been matched against the `Request` path.
 ///
 /// Data is percent and utf8 decoded.
-///
-/// TODO: Mapping should be to Vec of PercentDecoded not str
 pub struct SegmentMapping<'a, 'b> {
-    data: HashMap<&'a str, Vec<&'b str>>,
+    data: HashMap<&'a str, Vec<&'b PercentDecoded<'b>>>,
 }
 
 impl<'a, 'b> SegmentMapping<'a, 'b> {
     /// Returns a reference for `Request` path segments mapped to the segment key.
-    pub fn get(&self, key: &'a str) -> Option<&Vec<&'b str>> {
+    pub fn get(&self, key: &'a str) -> Option<&Vec<&'b PercentDecoded>> {
         self.data.get(key)
     }
 
@@ -107,7 +105,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///   match tree.traverse(request_path::split("/%61ctiv%61te/batsignal").as_slice()) {
 ///       Some((path, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
-///         assert_eq!(*segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");
+///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap().val(), "batsignal");
 ///       }
 ///       None => panic!(),
 ///   }

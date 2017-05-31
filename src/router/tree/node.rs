@@ -151,17 +151,18 @@ impl<'n, P> Node<'n, P> {
     }
 
     #[allow(unknown_lints, type_complexity)]
-    fn inner_traverse<'r>(&self,
-                          req_path_segments: &'r [PercentDecoded],
-                          mut consumed_segments: Vec<&'r str>)
-                          -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r str>>)> {
+    fn inner_traverse<'r>
+        (&self,
+         req_path_segments: &'r [PercentDecoded],
+         mut consumed_segments: Vec<&'r PercentDecoded<'r>>)
+         -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r PercentDecoded<'r>>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 // Leaf Node for Route Path, start building result
                 match self.segment_type {
                     NodeSegmentType::Static => Some((vec![self], HashMap::new())),
                     _ => {
-                        consumed_segments.push(x.val());
+                        consumed_segments.push(x);
 
                         let mut sm = HashMap::new();
                         sm.insert(self.segment(), consumed_segments);
@@ -181,7 +182,7 @@ impl<'n, P> Node<'n, P> {
                         match self.segment_type {
                             NodeSegmentType::Static => Some((path, sm)),
                             _ => {
-                                consumed_segments.push(x.val());
+                                consumed_segments.push(x);
                                 sm.insert(self.segment(), consumed_segments);
                                 path.push(self);
                                 Some((path, sm))
@@ -192,7 +193,7 @@ impl<'n, P> Node<'n, P> {
                     // otherwise we've failed to find a suitable way
                     // forward.
                     None if self.segment_type == NodeSegmentType::Glob => {
-                        consumed_segments.push(x.val());
+                        consumed_segments.push(x);
                         self.inner_traverse(xs, consumed_segments)
                     }
                     None => None,

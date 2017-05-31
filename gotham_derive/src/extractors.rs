@@ -16,15 +16,15 @@ pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
                 -> Result<(), String> {
-                fn parse<T>(segments: Option<&Vec<&str>>) -> Result<T, String> where T: gotham::http::request_path::FromRequestPath {
+                fn parse<T>(segments: Option<&Vec<&gotham::http::PercentDecoded>>) -> Result<T, String> where T: gotham::http::request_path::FromRequestPath {
                     match segments {
                         Some(segments) => {
                             match T::from_request_path(segments.as_slice()) {
                                 Ok(val) => Ok(val),
-                                Err(_) => Err(format!("Error converting segments {:?}", segments)),
+                                Err(_) => Err(String::from("Unrecoverable error converting Request path")),
                             }
                         }
-                        None => Err(format!("Error converting segments, none were available")),
+                        None => Err(String::from("Error converting Request path values")),
                     }
                 }
 
@@ -78,10 +78,10 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         Some(values) => {
                             match T::from_query_string(key, values.as_slice()) {
                                 Ok(val) => Ok(val),
-                                Err(_) => Err(String::from("Unrecoverable error converting Query string")),
+                                Err(_) => Err(String::from("Unrecoverable error converting query string")),
                             }
                         }
-                        None => Err(String::from("Error converting query string values, none were available")),
+                        None => Err(String::from("Error converting query string values")),
                     }
                 }
 
