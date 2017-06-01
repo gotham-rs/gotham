@@ -149,6 +149,16 @@ impl<T> FromQueryString for Option<T>
     }
 }
 
+impl<T> FromQueryString for Vec<T>
+    where T: FromQueryString
+{
+    fn from_query_string(key: &str,
+                         values: &[FormUrlDecoded])
+                         -> Result<Self, FromQueryStringError> {
+        values.windows(1).map(|value| T::from_query_string(key, value)).collect()
+    }
+}
+
 impl From<ParseIntError> for FromQueryStringError {
     fn from(err: ParseIntError) -> FromQueryStringError {
         FromQueryStringError { description: err.description().to_string() }
