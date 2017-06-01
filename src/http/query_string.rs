@@ -138,9 +138,13 @@ impl<T> FromQueryString for Option<T>
     fn from_query_string(key: &str,
                          values: &[FormUrlDecoded])
                          -> Result<Self, FromQueryStringError> {
-        match T::from_query_string(key, values) {
-            Ok(v) => Ok(Some(v)),
-            Err(v) => Err(v),
+        if values.len() == 0 {
+            Ok(None)
+        } else {
+            match T::from_query_string(key, values) {
+                Ok(v) => Ok(Some(v)),
+                Err(v) => Err(v),
+            }
         }
     }
 }
