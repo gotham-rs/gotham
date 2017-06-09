@@ -44,6 +44,12 @@ struct SharedRequestPath {
     from: Option<String>,
 }
 
+#[derive(QueryStringExtractor)]
+struct SharedQueryString {
+    i: u8,
+    q: Option<Vec<String>>,
+}
+
 static INDEX: &'static [u8] = b"Try POST /echo";
 static ASYNC: &'static [u8] = b"Got async response";
 
@@ -73,7 +79,7 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
 {
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = Dispatcher::new(new_handler, pipelines);
-    let extractors: Extractors<SharedRequestPath, NoopQueryStringExtractor> = Extractors::new();
+    let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
     let route = RouteImpl::new(matcher, dispatcher, extractors);
     Box::new(route)
 }
@@ -177,10 +183,17 @@ impl Echo {
                 None => "",
             };
 
-            let g = format!("Greetings, {} from {}\n", name, from);
-            Response::new()
-                .with_header(ContentLength(g.len() as u64))
-                .with_body(g)
+            if let Some(srq) = state.borrow::<SharedQueryString>() {
+                let g = format!("Greetings, {} from {}. [i: {}, q: {:?}]\n",
+                                name,
+                                from,
+                                srq.i,
+                                srq.q);
+                Response::new().with_header(ContentLength(g.len() as u64)).with_body(g)
+            } else {
+                let g = format!("Greetings, {} from {}.\n", name, from);
+                Response::new().with_header(ContentLength(g.len() as u64)).with_body(g)
+            }
         };
         (state, res)
     }
