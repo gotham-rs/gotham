@@ -43,9 +43,13 @@ impl<'a> FormUrlDecoded<'a> {
     /// On success encapulate resultant data for use by components that expect this transformation
     /// has already occured.
     pub fn new(raw: &'a str) -> Option<Self> {
-        // TODO: chance `+` to space
         match percent_decode(raw.as_bytes()).decode_utf8() {
-            Ok(val) => Some(FormUrlDecoded { val }),
+            Ok(mut val) => {
+                if val.contains('+') {
+                    val = Cow::Owned(val.to_mut().replace("+", " "));
+                }
+                Some(FormUrlDecoded { val })
+            }
             Err(_) => None,
         }
     }
