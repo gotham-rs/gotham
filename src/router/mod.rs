@@ -9,10 +9,12 @@ use std::sync::Arc;
 
 use borrow_bag::BorrowBag;
 use futures::{future, Future};
+use hyper::Uri;
 use hyper::server::Request;
 
 use handler::{NewHandler, Handler, HandlerFuture};
-use router::tree::Tree;
+use router::route::Route;
+use router::tree::{SegmentMapping, Tree};
 use state::State;
 use http::request_path;
 use http::query_string;
@@ -90,52 +92,6 @@ pub struct Router<'n, P, NFH, ISEH>
     data: Arc<RouterData<'n, P, NFH, ISEH>>,
 }
 
-impl<'n, P, NFH, ISEH> Router<'n, P, NFH, ISEH>
-    where P: Sync,
-          NFH: NewHandler,
-          NFH::Instance: 'static,
-          ISEH: NewHandler,
-          ISEH::Instance: 'static
-{
-    /// Creates a new `Router` instance, internal `Tree` and establishes global error
-    /// handlers for NotFound and InternalServerError responses.
-    pub fn new(tree: Tree<'n, P>,
-               pipelines: BorrowBag<P>,
-               not_found_handler: NFH,
-               internal_server_error_handler: ISEH)
-               -> Router<'n, P, NFH, ISEH> {
-
-        let router_data = RouterData::new(tree,
-                                          pipelines,
-                                          not_found_handler,
-                                          internal_server_error_handler);
-        Router { data: Arc::new(router_data) }
-    }
-
-    // Attempt to respond to client with a 404 NotFound response
-    fn not_found(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        match self.data.not_found_handler.new_handler() {
-            Ok(handler) => handler.handle(state, req),
-            Err(_error) => self.internal_server_error(state, req),
-        }
-    }
-
-    // Attempt to respond to client with a 500 InternalServerError response.
-    //
-    // Failing this all we have left is to fall back to generic future error within Tokio as we've
-    // exhausted all options.
-    //
-    // TODO: Ensure all future errors are appropriately logged.
-    fn internal_server_error(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        match self.data.internal_server_error_handler.new_handler() {
-            Ok(handler) => handler.handle(state, req),
-            Err(error) => future::err((state, error.into())).boxed(),
-        }
-    }
-}
-
-
-
 impl<'n, P, NFH, ISEH> Clone for Router<'n, P, NFH, ISEH>
     where P: Sync,
           NFH: NewHandler,
@@ -184,24 +140,13 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
     ///
     /// For unrecoverable error states `future::err` will be called, dropping the
     /// connection to the client without response.
-    fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
+    fn handle(self, state: State, req: Request) -> Box<HandlerFuture> {
         let uri = req.uri().clone();
         let rp = request_path::split(uri.path());
         if let Some((tree_path, segment_mapping)) = self.data.tree.traverse(rp.as_slice()) {
             if let Some(leaf) = tree_path.last() {
                 if let Some(route) = leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
-                    match route.extract_request_path(&mut state, segment_mapping) {
-                        Ok(()) => {
-                            if let Some(q) = uri.query() {
-                                match route.extract_query_string(&mut state, query_string::split(q)) {
-                                    Ok(()) => return route.dispatch(&self.data.pipelines, state, req),
-                                    Err(_) => (),
-                                }
-                            } else {return route.dispatch(&self.data.pipelines, state, req);
-                            }
-                        }
-                        Err(_) => (),
-                    }
+                    return self.ok(state, req, &uri, segment_mapping, route);
                 }
             }
         } else {
@@ -209,5 +154,73 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
         }
 
         self.internal_server_error(state, req)
+    }
+}
+
+impl<'n, P, NFH, ISEH> Router<'n, P, NFH, ISEH>
+    where P: Sync,
+          NFH: NewHandler,
+          NFH::Instance: 'static,
+          ISEH: NewHandler,
+          ISEH::Instance: 'static
+{
+    /// Creates a new `Router` instance, internal `Tree` and establishes global error
+    /// handlers for NotFound and InternalServerError responses.
+    pub fn new(tree: Tree<'n, P>,
+               pipelines: BorrowBag<P>,
+               not_found_handler: NFH,
+               internal_server_error_handler: ISEH)
+               -> Router<'n, P, NFH, ISEH> {
+
+        let router_data = RouterData::new(tree,
+                                          pipelines,
+                                          not_found_handler,
+                                          internal_server_error_handler);
+        Router { data: Arc::new(router_data) }
+    }
+
+    fn ok(&self,
+          mut state: State,
+          req: Request,
+          uri: &Uri,
+          segment_mapping: SegmentMapping,
+          route: &Box<Route<P> + Send + Sync>)
+          -> Box<HandlerFuture> {
+        match route.extract_request_path(&mut state, segment_mapping) {
+            Ok(()) => {
+                if let Some(q) = uri.query() {
+                    match route.extract_query_string(&mut state, query_string::split(q)) {
+                        Ok(()) => return route.dispatch(&self.data.pipelines, state, req),
+                        Err(_) => (),
+                    }
+                } else {
+                    return route.dispatch(&self.data.pipelines, state, req);
+                }
+            }
+            Err(_) => (),
+        };
+
+        self.internal_server_error(state, req)
+    }
+
+    // Attempt to respond to client with a 404 NotFound response
+    fn not_found(&self, state: State, req: Request) -> Box<HandlerFuture> {
+        match self.data.not_found_handler.new_handler() {
+            Ok(handler) => handler.handle(state, req),
+            Err(_error) => self.internal_server_error(state, req),
+        }
+    }
+
+    // Attempt to respond to client with a 500 InternalServerError response.
+    //
+    // Failing this all we have left is to fall back to generic future error within Tokio as we've
+    // exhausted all options.
+    //
+    // TODO: Ensure all future errors are appropriately logged.
+    fn internal_server_error(&self, state: State, req: Request) -> Box<HandlerFuture> {
+        match self.data.internal_server_error_handler.new_handler() {
+            Ok(handler) => handler.handle(state, req),
+            Err(error) => future::err((state, error.into())).boxed(),
+        }
     }
 }
