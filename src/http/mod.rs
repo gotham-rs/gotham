@@ -32,6 +32,7 @@ impl<'a> PercentDecoded<'a> {
 
 /// Represents data that has been successfully decoded from a form-urlencoded source and is
 /// valid utf8
+#[derive(PartialEq, Eq, Hash)]
 pub struct FormUrlDecoded<'a> {
     val: Cow<'a, str>,
 }

@@ -13,26 +13,33 @@ use http::FormUrlDecoded;
 
 /// Provides a mapping of keys from `Request` query string to their supplied values
 pub struct QueryStringMapping<'r> {
-    data: HashMap<&'r str, Vec<FormUrlDecoded<'r>>>,
+    data: HashMap<FormUrlDecoded<'r>, Vec<FormUrlDecoded<'r>>>,
 }
 
 impl<'r> QueryStringMapping<'r> {
     /// Returns a reference for `Request` query string values mapped to the key.
-    pub fn get(&self, key: &str) -> Option<&Vec<FormUrlDecoded<'r>>> {
-        self.data.get(key)
+    pub fn get(&self, key: &'r str) -> Option<&Vec<FormUrlDecoded<'r>>> {
+        match FormUrlDecoded::new(key) {
+            Some(key) => self.data.get(&key),
+            None => None,
+        }
     }
 
     /// Determines if `Request` query string values exist for the key.
     pub fn contains_key(&self, key: &'r str) -> bool {
-        self.data.contains_key(key)
+        match FormUrlDecoded::new(key) {
+            Some(key) => self.data.contains_key(&key),
+            None => false,
+        }
     }
 
     /// Adds an empty value for a key, useful for keys that are considered
     /// optional and haven't been explicitly provided as part of a `Request` query string.
     pub fn add_unmapped_segment(&mut self, key: &'r str) {
-        if !self.data.contains_key(key) {
-            self.data.insert(key, Vec::new());
-        }
+        match FormUrlDecoded::new(key) {
+            Some(key) => self.data.insert(key, Vec::new()),
+            None => None,
+        };
     }
 }
 
@@ -55,9 +62,9 @@ impl<'r> QueryStringMapping<'r> {
 ///       assert_eq!("val", res.get("key").unwrap().first().unwrap().val());
 ///       assert_eq!("val", res.get("key2").unwrap().first().unwrap().val());
 ///
-///       let res = split("key=val&key=val2");
+///       let res = split("k%65y=val&key=%76al+2");
 ///       assert_eq!("val", res.get("key").unwrap().first().unwrap().val());
-///       assert_eq!("val2", res.get("key").unwrap().last().unwrap().val());
+///       assert_eq!("val 2", res.get("key").unwrap().last().unwrap().val());
 ///
 ///       let res = split("key=val&key2=");
 ///       assert_eq!("val", res.get("key").unwrap().first().unwrap().val());
@@ -67,15 +74,18 @@ impl<'r> QueryStringMapping<'r> {
 pub fn split<'r>(query_string: &'r str) -> QueryStringMapping {
     let pairs = query_string.split("&").filter(|pair| pair.contains("="));
     let data = pairs.fold(HashMap::new(), |mut acc, p| {
-        {
-            let mut sp = p.split("=");
-            let (f, v) = (sp.next().unwrap(), sp.next().unwrap());
-            let vec = acc.entry(f).or_insert(Vec::new());
-            match FormUrlDecoded::new(v) {
-                Some(dv) => vec.push(dv),
-                None => (),
+        let mut sp = p.split("=");
+        let (f, v) = (sp.next().unwrap(), sp.next().unwrap());
+        match FormUrlDecoded::new(f) {
+            Some(key) => {
+                let vec = acc.entry(key).or_insert(Vec::new());
+                match FormUrlDecoded::new(v) {
+                    Some(dv) => vec.push(dv),
+                    None => (),
+                }
             }
-        }
+            None => (),
+        };
         acc
     });
 
