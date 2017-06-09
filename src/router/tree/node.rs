@@ -424,7 +424,10 @@ mod tests {
     }
 
     fn rs<'a>(segments: &'a [&str]) -> Vec<PercentDecoded<'a>> {
-        segments.iter().map(|s| PercentDecoded::new(s).unwrap()).collect::<Vec<PercentDecoded>>()
+        segments
+            .iter()
+            .map(|s| PercentDecoded::new(s).unwrap())
+            .collect::<Vec<PercentDecoded>>()
     }
 
     #[test]
@@ -447,7 +450,8 @@ mod tests {
         }
 
         // GET /seg3/seg4/seg5
-        assert!(root.traverse(rs(&["/", "seg3", "seg4", "seg5"]).as_slice()).is_none());
+        assert!(root.traverse(rs(&["/", "seg3", "seg4", "seg5"]).as_slice())
+                    .is_none());
 
         // GET /seg5/seg6
         match root.traverse(rs(&["/", "seg5", "seg6"]).as_slice()) {

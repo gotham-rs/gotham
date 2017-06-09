@@ -428,7 +428,10 @@ mod tests {
 
     fn handler(state: State, _req: Request) -> (State, Response) {
         let number = state.borrow::<Number>().unwrap().value;
-        (state, Response::new().with_status(StatusCode::Ok).with_body(format!("{}", number)))
+        (state,
+         Response::new()
+             .with_status(StatusCode::Ok)
+             .with_body(format!("{}", number)))
     }
 
     #[derive(Clone)]
@@ -522,7 +525,10 @@ mod tests {
         let uri = "http://localhost/".parse().unwrap();
 
         let mut test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client("127.0.0.1:0".parse().unwrap()).unwrap().get(uri);
+        let response = test_server
+            .client("127.0.0.1:0".parse().unwrap())
+            .unwrap()
+            .get(uri);
         let response = test_server.run_request(response).unwrap();
 
         let buf = test_server.read_body(response).unwrap();
