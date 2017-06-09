@@ -116,15 +116,11 @@ fn ty_params<'a>(ast: &'a syn::DeriveInput) -> (&'a syn::Ident, quote::Tokens, q
     // https://github.com/asajeffrey/deep-clone/blob/master/deep-clone-derive/lib.rs
     // which was instrumental in helping me undertand how to plug this all together.
     let name = &ast.ident;
-    let borrowed_lifetime_params = ast.generics
-        .lifetimes
-        .iter()
-        .map(|alpha| quote! { #alpha });
-    let borrowed_type_params = ast.generics
-        .ty_params
-        .iter()
-        .map(|ty| quote! { #ty });
-    let borrowed_params = borrowed_lifetime_params.chain(borrowed_type_params).collect::<Vec<_>>();
+    let borrowed_lifetime_params = ast.generics.lifetimes.iter().map(|alpha| quote! { #alpha });
+    let borrowed_type_params = ast.generics.ty_params.iter().map(|ty| quote! { #ty });
+    let borrowed_params = borrowed_lifetime_params
+        .chain(borrowed_type_params)
+        .collect::<Vec<_>>();
     let borrowed = if borrowed_params.is_empty() {
         quote!{}
     } else {
@@ -140,7 +136,9 @@ fn ty_params<'a>(ast: &'a syn::DeriveInput) -> (&'a syn::Ident, quote::Tokens, q
         .predicates
         .iter()
         .map(|pred| quote! { #pred });
-    let where_clause_items = type_constraints.chain(where_clause_predicates).collect::<Vec<_>>();
+    let where_clause_items = type_constraints
+        .chain(where_clause_predicates)
+        .collect::<Vec<_>>();
     let where_clause = if where_clause_items.is_empty() {
         quote!{}
     } else {
@@ -154,7 +152,9 @@ fn ty_params<'a>(ast: &'a syn::DeriveInput) -> (&'a syn::Ident, quote::Tokens, q
 fn ty_fields<'a>(ast: &'a syn::DeriveInput) -> (Vec<&syn::Ident>, Vec<&syn::Ident>) {
     let fields = match ast.body {
         syn::Body::Struct(syn::VariantData::Struct(ref body)) => {
-            body.iter().filter_map(|field| field.ident.as_ref()).collect::<Vec<_>>()
+            body.iter()
+                .filter_map(|field| field.ident.as_ref())
+                .collect::<Vec<_>>()
         }
         _ => panic!("Not implemented for tuple or unit like structs"),
     };

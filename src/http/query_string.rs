@@ -165,7 +165,10 @@ impl<T> FromQueryString for Vec<T>
     fn from_query_string(key: &str,
                          values: &[FormUrlDecoded])
                          -> Result<Self, FromQueryStringError> {
-        values.windows(1).map(|value| T::from_query_string(key, value)).collect()
+        values
+            .windows(1)
+            .map(|value| T::from_query_string(key, value))
+            .collect()
     }
 }
 

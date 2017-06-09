@@ -189,10 +189,14 @@ impl Echo {
                                 from,
                                 srq.i,
                                 srq.q);
-                Response::new().with_header(ContentLength(g.len() as u64)).with_body(g)
+                Response::new()
+                    .with_header(ContentLength(g.len() as u64))
+                    .with_body(g)
             } else {
                 let g = format!("Greetings, {} from {}.\n", name, from);
-                Response::new().with_header(ContentLength(g.len() as u64)).with_body(g)
+                Response::new()
+                    .with_header(ContentLength(g.len() as u64))
+                    .with_body(g)
             }
         };
         (state, res)

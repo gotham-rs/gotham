@@ -36,7 +36,10 @@ pub fn split<'r>(path: &'r str) -> Vec<PercentDecoded> {
     segments.extend(path.split('/')
                         .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
                         .collect::<Vec<&'r str>>());
-    segments.iter().filter_map(|s| PercentDecoded::new(s)).collect::<Vec<PercentDecoded>>()
+    segments
+        .iter()
+        .filter_map(|s| PercentDecoded::new(s))
+        .collect::<Vec<PercentDecoded>>()
 }
 
 /// Derived through the macro of the same name supplied by `gotham-derive` for application defined
