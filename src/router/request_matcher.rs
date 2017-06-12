@@ -2,11 +2,12 @@
 
 use hyper::server::Request;
 use hyper::Method;
+use hyper::status::StatusCode;
 
 /// A type that determines if a `Request` meets pre-defined conditions.
 pub trait RequestMatcher {
     /// Determines if the `Request` meets pre-defined conditions.
-    fn is_match(&self, req: &Request) -> bool;
+    fn is_match(&self, req: &Request) -> Result<(), StatusCode>;
 }
 
 /// A `RequestMatcher` that succeeds when the external request has been made with one
@@ -37,7 +38,11 @@ impl MethodOnlyRequestMatcher {
 
 impl RequestMatcher for MethodOnlyRequestMatcher {
     /// Determines if the `Request` was made using a `Method` the instance contains.
-    fn is_match(&self, req: &Request) -> bool {
-        self.methods.iter().any(|m| m == req.method())
+    fn is_match(&self, req: &Request) -> Result<(), StatusCode> {
+        if self.methods.iter().any(|m| m == req.method()) {
+            Ok(())
+        } else {
+            Err(StatusCode::MethodNotAllowed)
+        }
     }
 }

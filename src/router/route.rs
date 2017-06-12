@@ -7,6 +7,7 @@
 use std::marker::PhantomData;
 
 use hyper::server::Request;
+use hyper::StatusCode;
 use borrow_bag::BorrowBag;
 
 use dispatch::{PipelineHandleChain, Dispatcher};
@@ -21,7 +22,7 @@ use state::State;
 /// in response to an external request.
 pub trait Route<P> {
     /// Determines if this `Route` can be invoked, based on the `Request`.
-    fn is_match(&self, req: &Request) -> bool;
+    fn is_match(&self, req: &Request) -> Result<(), StatusCode>;
 
     /// Extracts the `Request` path into a Struct and stores it in `State`  for use
     /// by Middleware and Handlers
@@ -136,7 +137,7 @@ impl<RM, NH, PC, P, RE, QE> Route<P> for RouteImpl<RM, NH, PC, P, RE, QE>
           RE: RequestPathExtractor,
           QE: QueryStringExtractor
 {
-    fn is_match(&self, req: &Request) -> bool {
+    fn is_match(&self, req: &Request) -> Result<(), StatusCode> {
         self.matcher.is_match(req)
     }
 

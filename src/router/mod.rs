@@ -145,8 +145,12 @@ impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
         let rp = request_path::split(uri.path());
         if let Some((tree_path, segment_mapping)) = self.data.tree.traverse(rp.as_slice()) {
             if let Some(leaf) = tree_path.last() {
-                if let Some(route) = leaf.borrow_routes().iter().find(|r| r.is_match(&req)) {
+                if let Some(route) = leaf.borrow_routes()
+                       .iter()
+                       .find(|r| r.is_match(&req).is_ok()) {
                     return self.ok(state, req, &uri, segment_mapping, route);
+                } else {
+                    // TODO: Integrate into Router error handling
                 }
             }
         } else {
