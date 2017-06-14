@@ -187,3 +187,54 @@ impl StateData for Method {}
 impl StateData for Uri {}
 impl StateData for HttpVersion {}
 impl StateData for Headers {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+    use hyper::{Request, Method, Uri, Body};
+    use hyper::header::ContentType;
+
+    use borrow_bag;
+
+    use router::tree::TreeBuilder;
+    use router::response_extender::ResponseExtenderBuilder;
+
+    fn basic_router<'a>() -> Router<'a, ()> {
+        let tree_builder = TreeBuilder::new();
+        let tree = tree_builder.finalize();
+        let pipelines = borrow_bag::new_borrow_bag();
+        let response_extender = ResponseExtenderBuilder::new().finalize();
+
+        Router::new(tree, pipelines, response_extender)
+    }
+
+    #[test]
+    fn populates_core_request_data_into_state() {
+        let router = basic_router();
+        let method = Method::Get;
+        let uri = Uri::from_str("https://test.gotham.rs").unwrap();
+        let version = HttpVersion::H2;
+        let mut request: Request<Body> = Request::new(method.clone(), uri.clone());
+        request.set_version(version.clone());
+        request.headers_mut().set(ContentType::json());
+
+        let state = State::new();
+        let result = router.handle(state, request).wait();
+
+        match result {
+            Ok((state, _res)) => {
+                assert_eq!(*state.borrow::<Method>().unwrap(), method);
+                assert_eq!(*state.borrow::<Uri>().unwrap(), uri);
+                assert_eq!(*state.borrow::<HttpVersion>().unwrap(), version);
+                assert_eq!(*state
+                                .borrow::<Headers>()
+                                .unwrap()
+                                .get::<ContentType>()
+                                .unwrap(),
+                           ContentType::json());
+            }
+            Err(_) => panic!("Router should have correctly handled this request"),
+        };
+    }
+}
