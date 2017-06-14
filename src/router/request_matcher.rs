@@ -2,7 +2,7 @@
 
 use hyper::server::Request;
 use hyper::Method;
-use hyper::status::StatusCode;
+use hyper::StatusCode;
 
 /// A type that determines if a `Request` meets pre-defined conditions.
 pub trait RequestMatcher {

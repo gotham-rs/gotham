@@ -5,7 +5,7 @@ use futures::{future, Future};
 use std::sync::Arc;
 use std::collections::HashMap;
 use hyper::server::Response;
-use hyper::status::StatusCode;
+use hyper::StatusCode;
 
 use handler::HandlerFuture;
 use state::State;
