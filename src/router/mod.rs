@@ -3,6 +3,7 @@
 pub mod tree;
 pub mod route;
 pub mod request_matcher;
+pub mod response_extender;
 
 use std::io;
 use std::sync::Arc;
@@ -10,43 +11,33 @@ use std::sync::Arc;
 use borrow_bag::BorrowBag;
 use futures::{future, Future};
 use hyper::Uri;
-use hyper::server::Request;
+use hyper::server::{Request, Response};
+use hyper::StatusCode;
 
 use handler::{NewHandler, Handler, HandlerFuture};
+use router::response_extender::ResponseExtender;
 use router::route::Route;
 use router::tree::{SegmentMapping, Tree};
 use state::State;
-use http::request_path;
-use http::query_string;
+use http::{request_path, query_string};
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
-struct RouterData<'n, P, NFH, ISEH>
-    where NFH: NewHandler,
-          ISEH: NewHandler
-{
+struct RouterData<'n, P> {
     tree: Tree<'n, P>,
     pipelines: BorrowBag<P>,
-    not_found_handler: NFH,
-    internal_server_error_handler: ISEH,
+    response_extender: ResponseExtender,
 }
 
-impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
-    where NFH: NewHandler,
-          NFH::Instance: 'static,
-          ISEH: NewHandler,
-          ISEH::Instance: 'static
-{
+impl<'n, P> RouterData<'n, P> {
     pub fn new(tree: Tree<'n, P>,
                pipelines: BorrowBag<P>,
-               not_found_handler: NFH,
-               internal_server_error_handler: ISEH)
-               -> RouterData<'n, P, NFH, ISEH> {
+               response_extender: ResponseExtender)
+               -> RouterData<'n, P> {
         RouterData {
             tree,
             pipelines,
-            not_found_handler,
-            internal_server_error_handler,
+            response_extender,
         }
     }
 }
@@ -61,57 +52,37 @@ impl<'n, P, NFH, ISEH> RouterData<'n, P, NFH, ISEH>
 /// # extern crate hyper;
 /// # extern crate borrow_bag;
 /// #
-/// # use hyper::server::{Request, Response};
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::Router;
-/// # use gotham::state::State;
-/// #
-/// # fn handler(state: State, _req: Request) -> (State, Response) {
-/// #   (state, Response::new())
-/// # }
-/// #
-/// # fn handler2(state: State, _req: Request) -> (State, Response) {
-/// #   (state, Response::new())
-/// # }
+/// # use gotham::http::response_extender::ResponseExtenderBuilder;
 /// #
 /// # fn main() {
 ///   let tree_builder = TreeBuilder::new();
 ///   let tree = tree_builder.finalize();
-///   let not_found = || Ok(handler);
-///   let internal_server_error = || Ok(handler2);
 ///   let pipelines = borrow_bag::new_borrow_bag();
+///   let response_extender = ResponseExtenderBuilder::new().finalize();
 ///
-///   Router::new(tree, pipelines, not_found, internal_server_error);
+///   Router::new(tree, pipelines, response_extender);
 /// # }
 /// ```
-pub struct Router<'n, P, NFH, ISEH>
-    where P: Sync,
-          NFH: NewHandler,
-          ISEH: NewHandler
+pub struct Router<'n, P>
+    where P: Sync
 {
-    data: Arc<RouterData<'n, P, NFH, ISEH>>,
+    data: Arc<RouterData<'n, P>>,
 }
 
-impl<'n, P, NFH, ISEH> Clone for Router<'n, P, NFH, ISEH>
-    where P: Sync,
-          NFH: NewHandler,
-          NFH::Instance: 'static,
-          ISEH: NewHandler,
-          ISEH::Instance: 'static
+impl<'n, P> Clone for Router<'n, P>
+    where P: Sync
 {
-    fn clone(&self) -> Router<'n, P, NFH, ISEH> {
+    fn clone(&self) -> Router<'n, P> {
         Router { data: self.data.clone() }
     }
 }
 
-impl<'n, P, NFH, ISEH> NewHandler for Router<'n, P, NFH, ISEH>
-    where P: Send + Sync,
-          NFH: NewHandler,
-          NFH::Instance: 'static,
-          ISEH: NewHandler,
-          ISEH::Instance: 'static
+impl<'n, P> NewHandler for Router<'n, P>
+    where P: Send + Sync
 {
-    type Instance = Router<'n, P, NFH, ISEH>;
+    type Instance = Router<'n, P>;
 
     // Creates a new Router instance to route new HTTP requests
     fn new_handler(&self) -> io::Result<Self::Instance> {
@@ -119,77 +90,59 @@ impl<'n, P, NFH, ISEH> NewHandler for Router<'n, P, NFH, ISEH>
     }
 }
 
-impl<'n, P, NFH, ISEH> Handler for Router<'n, P, NFH, ISEH>
-    where P: Send + Sync,
-          NFH: NewHandler,
-          NFH::Instance: 'static,
-          ISEH: NewHandler,
-          ISEH::Instance: 'static
+impl<'n, P> Handler for Router<'n, P>
+    where P: Send + Sync
 {
     /// Handles the request by determining the correct `Route` from the internal
     /// `Tree`, storing any path related variables in `State` and dispatching
     /// appropriately to the configured `Handler`.
-    ///
-    /// # Errors
-    ///
-    /// If no `Route` is present a 404 `NotFound` response will be returned to the client
-    /// via `not_found_handler`.
-    ///
-    /// If an unexpected error occurs handling the request a 500 `InternalServerError` response
-    /// will be returned to client via `internal_server_error_handler`.
-    ///
-    /// For unrecoverable error states `future::err` will be called, dropping the
-    /// connection to the client without response.
     fn handle(self, state: State, req: Request) -> Box<HandlerFuture> {
         let uri = req.uri().clone();
-        let rp = request_path::split(uri.path());
-        if let Some((tree_path, segment_mapping)) = self.data.tree.traverse(rp.as_slice()) {
-            if let Some(leaf) = tree_path.last() {
-                if let Some(route) = leaf.borrow_routes()
-                       .iter()
-                       .find(|r| r.is_match(&req).is_ok()) {
-                    return self.ok(state, req, &uri, segment_mapping, route);
-                } else {
-                    // TODO: Integrate into Router error handling
-                }
-            }
-        } else {
-            return self.not_found(state, req);
-        }
-
-        self.internal_server_error(state, req)
+        let response = self.route(uri, state, req);
+        self.finalize_response(response)
     }
 }
 
-impl<'n, P, NFH, ISEH> Router<'n, P, NFH, ISEH>
-    where P: Sync,
-          NFH: NewHandler,
-          NFH::Instance: 'static,
-          ISEH: NewHandler,
-          ISEH::Instance: 'static
+impl<'n, P> Router<'n, P>
+    where P: Sync
 {
-    /// Creates a new `Router` instance, internal `Tree` and establishes global error
-    /// handlers for NotFound and InternalServerError responses.
+    /// Creates a `Router` instance.
     pub fn new(tree: Tree<'n, P>,
                pipelines: BorrowBag<P>,
-               not_found_handler: NFH,
-               internal_server_error_handler: ISEH)
-               -> Router<'n, P, NFH, ISEH> {
+               response_extender: ResponseExtender)
+               -> Router<'n, P> {
 
-        let router_data = RouterData::new(tree,
-                                          pipelines,
-                                          not_found_handler,
-                                          internal_server_error_handler);
+        let router_data = RouterData::new(tree, pipelines, response_extender);
         Router { data: Arc::new(router_data) }
     }
 
-    fn ok(&self,
-          mut state: State,
-          req: Request,
-          uri: &Uri,
-          segment_mapping: SegmentMapping,
-          route: &Box<Route<P> + Send + Sync>)
-          -> Box<HandlerFuture> {
+    fn route(&self, uri: Uri, state: State, req: Request) -> Box<HandlerFuture> {
+        let rp = request_path::split(uri.path());
+        if let Some((_, leaf, segment_mapping)) = self.data.tree.traverse(rp.as_slice()) {
+            // Valid path for the application, determine if any configured
+            // routes will accept the request
+            if let Some(route) = leaf.borrow_routes()
+                   .iter()
+                   .find(|r| r.is_match(&req).is_ok()) {
+                self.dispatch(state, req, &uri, segment_mapping, route)
+            } else {
+                // No routes accepted the request, the error status associated with the first route
+                // is then chosen as the status code for the response.
+                let status = leaf.borrow_routes().first().unwrap().is_match(&req);
+                self.generate_response(status.unwrap_err(), state)
+            }
+        } else {
+            self.generate_response(StatusCode::NotFound, state)
+        }
+    }
+
+    fn dispatch(&self,
+                mut state: State,
+                req: Request,
+                uri: &Uri,
+                segment_mapping: SegmentMapping,
+                route: &Box<Route<P> + Send + Sync>)
+                -> Box<HandlerFuture> {
         match route.extract_request_path(&mut state, segment_mapping) {
             Ok(()) => {
                 if let Some(q) = uri.query() {
@@ -204,27 +157,21 @@ impl<'n, P, NFH, ISEH> Router<'n, P, NFH, ISEH>
             Err(_) => (),
         };
 
-        self.internal_server_error(state, req)
+        let mut res = Response::new();
+        res.set_status(StatusCode::InternalServerError);
+        future::ok((state, res)).boxed()
     }
 
-    // Attempt to respond to client with a 404 NotFound response
-    fn not_found(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        match self.data.not_found_handler.new_handler() {
-            Ok(handler) => handler.handle(state, req),
-            Err(_error) => self.internal_server_error(state, req),
-        }
+    fn generate_response(&self, status: StatusCode, state: State) -> Box<HandlerFuture> {
+        let mut res = Response::new();
+        res.set_status(status);
+        future::ok((state, res)).boxed()
     }
 
-    // Attempt to respond to client with a 500 InternalServerError response.
-    //
-    // Failing this all we have left is to fall back to generic future error within Tokio as we've
-    // exhausted all options.
-    //
-    // TODO: Ensure all future errors are appropriately logged.
-    fn internal_server_error(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        match self.data.internal_server_error_handler.new_handler() {
-            Ok(handler) => handler.handle(state, req),
-            Err(error) => future::err((state, error.into())).boxed(),
-        }
+    fn finalize_response(&self, result: Box<HandlerFuture>) -> Box<HandlerFuture> {
+        let response_extender = self.data.response_extender.clone();
+        result
+            .and_then(move |(state, res)| response_extender.extend(state, res))
+            .boxed()
     }
 }

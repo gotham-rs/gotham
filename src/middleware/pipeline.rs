@@ -40,6 +40,7 @@ use hyper::server::Request;
 /// # use gotham::test::TestServer;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
+/// # use gotham::router::response_extender::ResponseExtenderBuilder;
 /// # use hyper::server::{Request, Response};
 /// # use hyper::StatusCode;
 /// # use hyper::Method;
@@ -120,14 +121,6 @@ use hyper::server::Request;
 ///     (state, Response::new().with_status(StatusCode::Ok).with_body(body))
 /// }
 ///
-/// fn not_found(state: State, _req: Request) -> (State, Response) {
-///     (state, Response::new().with_status(StatusCode::NotFound))
-/// }
-///
-/// fn internal_server_error(state: State, _req: Request) -> (State, Response) {
-///     (state, Response::new().with_status(StatusCode::InternalServerError))
-/// }
-///
 /// fn main() {
 ///     let pipelines = borrow_bag::new_borrow_bag();
 ///     let (pipelines, pipeline) = pipelines.add(new_pipeline()
@@ -145,7 +138,9 @@ use hyper::server::Request;
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();
 ///
-///     let router = Router::new(tree, pipelines, || Ok(not_found), || Ok(internal_server_error));
+///
+///     let response_extender = ResponseExtenderBuilder::new().finalize();
+///     let router = Router::new(tree, pipelines, response_extender);
 ///
 ///     let new_service = NewHandlerService::new(router);
 ///     let mut test_server = TestServer::new(new_service).unwrap();

@@ -14,10 +14,10 @@ use futures::{future, Future};
 use hyper::header::ContentLength;
 use hyper::server::{Http, Request, Response};
 use hyper::Method;
-use hyper::status::StatusCode;
 
 use gotham::http::request_path::NoopRequestPathExtractor;
 use gotham::http::query_string::NoopQueryStringExtractor;
+use gotham::router::response_extender::ResponseExtenderBuilder;
 use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors};
 use gotham::dispatch::{Dispatcher, PipelineHandleChain};
@@ -126,14 +126,6 @@ fn add_routes<P, C>(tree_builder: &mut TreeBuilder<P>, pipelines: C)
 }
 
 impl Echo {
-    fn not_found(state: State, _req: Request) -> (State, Response) {
-        (state, Response::new().with_status(StatusCode::NotFound))
-    }
-
-    fn internal_server_error(state: State, _req: Request) -> (State, Response) {
-        (state, Response::new().with_status(StatusCode::InternalServerError))
-    }
-
     fn get(state: State, _req: Request) -> (State, Response) {
         (state,
          Response::new()
@@ -217,9 +209,10 @@ fn main() {
     add_routes(&mut tree_builder, (pipeline, ()));
     let tree = tree_builder.finalize();
 
-    let not_found = || Ok(Echo::not_found);
-    let internal_server_error = || Ok(Echo::internal_server_error);
-    let router = Router::new(tree, pipelines, not_found, internal_server_error);
+    let response_extender_builder = ResponseExtenderBuilder::new();
+    let response_extender = response_extender_builder.finalize();
+
+    let router = Router::new(tree, pipelines, response_extender);
 
     let server = Http::new()
         .bind(&addr, NewHandlerService::new(router))

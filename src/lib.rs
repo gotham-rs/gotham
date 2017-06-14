@@ -9,7 +9,7 @@
 //! [futures]: https://github.com/alexcrichton/futures-rs
 //! [mio]: https://github.com/carllerche/mio
 
-#![warn(missing_docs)]
+#![warn(missing_docs, deprecated)]
 #![doc(test(no_crate_inject, attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
