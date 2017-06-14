@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use hyper::server::Response;
 use hyper::StatusCode;
 
-use handler::HandlerFuture;
+use handler::{IntoHandlerFuture, HandlerFuture};
 use state::State;
 
 /// Application specific response extenders.
@@ -36,6 +36,15 @@ impl NoopExtender {
     /// Creates a new NoopExtender instance.
     pub fn new() -> Self {
         NoopExtender {}
+    }
+}
+
+impl<F, R> Extender for F
+    where F: Fn(State, Response) -> R + Send + Sync,
+          R: IntoHandlerFuture
+{
+    fn extend(&self, state: State, res: Response) -> Box<HandlerFuture> {
+        self(state, res).into_handler_future()
     }
 }
 
