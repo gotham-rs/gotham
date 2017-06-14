@@ -83,7 +83,7 @@ pub enum NodeSegmentType<'n> {
 ///                              PercentDecoded::new("activate").unwrap(),
 ///                              PercentDecoded::new("batsignal").unwrap()])
 ///   {
-///       Some((path, _)) => assert!(path.last().unwrap().is_routable()),
+///       Some((path, _leaf, _segment_mapping)) => assert!(path.last().unwrap().is_routable()),
 ///       None => panic!(),
 ///   }
 /// # }
@@ -139,12 +139,12 @@ impl<'n, P> Node<'n, P> {
     /// 4. Glob
     pub fn traverse<'r>(&'n self,
                         req_path_segments: &'r [PercentDecoded])
-                        -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
+                        -> Option<(Path<'n, 'r, P>, &Node<'n, P>, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
-            Some((mut path, sm)) => {
+            Some((mut path, leaf, sm)) => {
                 path.reverse();
                 let segment_mapping = SegmentMapping { data: sm };
-                Some((path, segment_mapping))
+                Some((path, leaf, segment_mapping))
             }
             None => None,
         }
@@ -155,18 +155,18 @@ impl<'n, P> Node<'n, P> {
         (&self,
          req_path_segments: &'r [PercentDecoded],
          mut consumed_segments: Vec<&'r PercentDecoded>)
-         -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r PercentDecoded>>)> {
+         -> Option<(Vec<&Node<'n, P>>, &Node<'n, P>, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 // Leaf Node for Route Path, start building result
                 match self.segment_type {
-                    NodeSegmentType::Static => Some((vec![self], HashMap::new())),
+                    NodeSegmentType::Static => Some((vec![self], self, HashMap::new())),
                     _ => {
                         consumed_segments.push(x);
 
                         let mut sm = HashMap::new();
                         sm.insert(self.segment(), consumed_segments);
-                        Some((vec![self], sm))
+                        Some((vec![self], self, sm))
                     }
                 }
             }
@@ -177,15 +177,15 @@ impl<'n, P> Node<'n, P> {
                     .next();
 
                 match child {
-                    Some((mut path, mut sm)) => {
+                    Some((mut path, leaf, mut sm)) => {
                         path.push(self);
                         match self.segment_type {
-                            NodeSegmentType::Static => Some((path, sm)),
+                            NodeSegmentType::Static => Some((path, leaf, sm)),
                             _ => {
                                 consumed_segments.push(x);
                                 sm.insert(self.segment(), consumed_segments);
                                 path.push(self);
-                                Some((path, sm))
+                                Some((path, leaf, sm))
                             }
                         }
                     }
@@ -452,7 +452,10 @@ mod tests {
 
         // GET /seg3/seg4
         match root.traverse(rs(&["/", "seg3", "seg4"]).as_slice()) {
-            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg4"),
+            Some((path, leaf, _)) => {
+                assert_eq!(path.last().unwrap().segment(), "seg4");
+                assert_eq!(path.last().unwrap().segment(), leaf.segment());
+            }
             None => panic!("traversal should have succeeded here"),
         }
 
@@ -462,19 +465,19 @@ mod tests {
 
         // GET /seg5/seg6
         match root.traverse(rs(&["/", "seg5", "seg6"]).as_slice()) {
-            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg6"),
+            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg6"),
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /seg5/someval/seg7
         match root.traverse(rs(&["/", "seg5", "someval", "seg7"]).as_slice()) {
-            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg7"),
+            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg7"),
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /some/path/seg9/another/path
         match root.traverse(rs(&["/", "some", "path", "seg9", "some2", "path2"]).as_slice()) {
-            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg10"),
+            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg10"),
             None => panic!("traversal should have succeeded here"),
         }
     }

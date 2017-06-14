@@ -103,8 +103,9 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///   let tree = tree_builder.finalize();
 ///
 ///   match tree.traverse(request_path::split("/%61ctiv%61te/batsignal").as_slice()) {
-///       Some((path, segment_mapping)) => {
+///       Some((path, leaf, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
+///         assert_eq!(path.last().unwrap().segment(), leaf.segment());
 ///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap().val(), "batsignal");
 ///       }
 ///       None => panic!(),
@@ -130,7 +131,7 @@ impl<'n, P> Tree<'n, P> {
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
     pub fn traverse<'r>(&'n self,
                         req_path_segments: &'r [PercentDecoded])
-                        -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
+                        -> Option<(Path<'n, 'r, P>, &Node<'n, P>, SegmentMapping<'n, 'r>)> {
         self.root.traverse(req_path_segments)
     }
 }
