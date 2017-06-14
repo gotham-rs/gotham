@@ -193,25 +193,52 @@ mod tests {
     use super::*;
     use std::str::FromStr;
     use hyper::{Request, Method, Uri, Body};
-    use hyper::header::ContentType;
+    use hyper::header::{ContentType, ContentLength};
 
     use borrow_bag;
 
     use router::tree::TreeBuilder;
     use router::response_extender::ResponseExtenderBuilder;
 
-    fn basic_router<'a>() -> Router<'a, ()> {
+    #[test]
+    fn executes_response_extender_when_present() {
+        let tree_builder = TreeBuilder::new();
+        let tree = tree_builder.finalize();
+        let pipelines = borrow_bag::new_borrow_bag();
+
+        let mut response_extender_builder = ResponseExtenderBuilder::new();
+        let not_found_extender = |s, mut r: Response| {
+            r.headers_mut().set(ContentLength(3u64));
+            future::ok((s, r)).boxed()
+        };
+        response_extender_builder.add(StatusCode::NotFound, Box::new(not_found_extender));
+        let response_extender = response_extender_builder.finalize();
+
+        let router = Router::new(tree, pipelines, response_extender);
+        let method = Method::Get;
+        let uri = Uri::from_str("https://test.gotham.rs").unwrap();
+        let request: Request<Body> = Request::new(method, uri);
+
+        let state = State::new();
+        let result = router.handle(state, request).wait();
+
+        match result {
+            Ok((_state, res)) => {
+                assert_eq!(*res.headers().get::<ContentLength>().unwrap(),
+                           ContentLength(3u64));
+            }
+            Err(_) => panic!("Router should have correctly handled request"),
+        };
+    }
+
+    #[test]
+    fn populates_core_request_data_into_state() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
         let pipelines = borrow_bag::new_borrow_bag();
         let response_extender = ResponseExtenderBuilder::new().finalize();
 
-        Router::new(tree, pipelines, response_extender)
-    }
-
-    #[test]
-    fn populates_core_request_data_into_state() {
-        let router = basic_router();
+        let router = Router::new(tree, pipelines, response_extender);
         let method = Method::Get;
         let uri = Uri::from_str("https://test.gotham.rs").unwrap();
         let version = HttpVersion::H2;
@@ -234,7 +261,7 @@ mod tests {
                                 .unwrap(),
                            ContentType::json());
             }
-            Err(_) => panic!("Router should have correctly handled this request"),
+            Err(_) => panic!("Router should have correctly handled request"),
         };
     }
 }
