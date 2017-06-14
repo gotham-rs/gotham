@@ -6,7 +6,6 @@ use std::sync::Arc;
 use std::collections::HashMap;
 use hyper::server::Response;
 use hyper::status::StatusCode;
-use hyper::Uri;
 
 use handler::HandlerFuture;
 use state::State;

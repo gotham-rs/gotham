@@ -53,7 +53,7 @@ impl<'n, P> RouterData<'n, P> {
 /// #
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::Router;
-/// # use gotham::http::response_extender::ResponseExtenderBuilder;
+/// # use gotham::router::response_extender::ResponseExtenderBuilder;
 /// #
 /// # fn main() {
 ///   let tree_builder = TreeBuilder::new();
