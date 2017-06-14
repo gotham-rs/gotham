@@ -10,15 +10,14 @@ use std::sync::Arc;
 
 use borrow_bag::BorrowBag;
 use futures::{future, Future};
-use hyper::Uri;
+use hyper::{Headers, StatusCode, Uri, HttpVersion, Method};
 use hyper::server::{Request, Response};
-use hyper::StatusCode;
 
 use handler::{NewHandler, Handler, HandlerFuture};
 use router::response_extender::ResponseExtender;
 use router::route::Route;
 use router::tree::{SegmentMapping, Tree};
-use state::State;
+use state::{State, StateData};
 use http::{request_path, query_string};
 
 // Holds data for Router which lives behind single Arc instance
@@ -96,8 +95,9 @@ impl<'n, P> Handler for Router<'n, P>
     /// Handles the request by determining the correct `Route` from the internal
     /// `Tree`, storing any path related variables in `State` and dispatching
     /// appropriately to the configured `Handler`.
-    fn handle(self, state: State, req: Request) -> Box<HandlerFuture> {
+    fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
         let uri = req.uri().clone();
+        self.populate_state(&mut state, &req);
         let response = self.route(uri, state, req);
         self.finalize_response(response)
     }
@@ -114,6 +114,13 @@ impl<'n, P> Router<'n, P>
 
         let router_data = RouterData::new(tree, pipelines, response_extender);
         Router { data: Arc::new(router_data) }
+    }
+
+    fn populate_state(&self, state: &mut State, req: &Request) {
+        state.put(req.method().clone());
+        state.put(req.uri().clone());
+        state.put(req.version().clone());
+        state.put(req.headers().clone());
     }
 
     fn route(&self, uri: Uri, state: State, req: Request) -> Box<HandlerFuture> {
@@ -175,3 +182,8 @@ impl<'n, P> Router<'n, P>
             .boxed()
     }
 }
+
+impl StateData for Method {}
+impl StateData for Uri {}
+impl StateData for HttpVersion {}
+impl StateData for Headers {}

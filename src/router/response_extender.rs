@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::collections::HashMap;
 use hyper::server::Response;
 use hyper::status::StatusCode;
+use hyper::Uri;
 
 use handler::HandlerFuture;
 use state::State;
@@ -27,6 +28,7 @@ impl Extender for NoopExtender {
         // mechanism to signal that the response is 'committed'. If so, bail.
         //
         // https://github.com/hyperium/hyper/issues/1216
+
         future::ok((state, res)).boxed()
     }
 }
