@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::any::{Any, TypeId};
 
 pub use self::request_id::request_id;
+pub use self::request_id::set_request_id;
 
 /// Provides storage for request state, and stores one item of each type. The types used for
 /// storage must implement the `gotham::state::StateData` trait to allow its storage.

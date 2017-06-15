@@ -9,7 +9,7 @@ use hyper;
 use hyper::server;
 use hyper::server::Request;
 use futures::{future, Future};
-use state::State;
+use state::{State, set_request_id};
 use std::io;
 use std::sync::Arc;
 
@@ -129,13 +129,16 @@ impl<T> server::Service for NewHandlerService<T>
     type Future = Box<Future<Item = server::Response, Error = hyper::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
+        let mut state = State::new();
+        set_request_id(&mut state, &req);
+
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
         // immediately consuming it.
         match self.t.new_handler() {
             Ok(handler) => {
                 handler
-                    .handle(State::new(), req)
+                    .handle(state, req)
                     .and_then(|(_, response)| future::ok(response))
                     .or_else(|(_, error)| future::err(error))
                     .boxed()

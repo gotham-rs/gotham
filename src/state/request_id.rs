@@ -26,7 +26,7 @@ header! {
 /// 1. If the header X-Request-ID is provided this value is used as is;
 /// 2. Alternatively creates and stores a UUID v4 value.
 ///
-/// This method MUST be invoked by Gotham, specifically by the `Router`, before handing control to
+/// This method MUST be invoked by Gotham, before handing control to
 /// pipelines or Handlers to ensure that a value for `RequestId` is always available.
 pub fn set_request_id<'a>(state: &'a mut State, req: &Request) -> &'a str {
     if !state.has::<RequestId>() {
