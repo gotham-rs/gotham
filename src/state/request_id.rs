@@ -11,15 +11,33 @@ struct RequestId {
 
 impl StateData for RequestId {}
 
-/// Creates and stores a UUID v4 value that uniquely* identifies every request entering the system.
+header! {
+    /// Defines the X-Request-ID header for use with Hyper functions.
+    ///
+    /// If present in a request this value will be assigned into to the requests unique id. Formats
+    /// are not dicated when upstream systems provide this value however they must be unique.
+    (XRequestId, "X-Request-ID") => [String]
+}
+
+/// Sets a unique identifier for the request if it has not already been stored.
+///
+/// The unique identifier chosen depends on the the request environment:
+///
+/// 1. If the header X-Request-ID is provided this value is used as is;
+/// 2. Alternatively creates and stores a UUID v4 value.
 ///
 /// This method MUST be invoked by Gotham, specifically by the `Router`, before handing control to
 /// pipelines or Handlers to ensure that a value for `RequestId` is always available.
-pub fn set_request_id<'a>(state: &'a mut State, _req: &Request) -> &'a str {
+pub fn set_request_id<'a>(state: &'a mut State, req: &Request) -> &'a str {
     if !state.has::<RequestId>() {
-        let val = Uuid::new_v4().hyphenated().to_string();
-        let request_id = RequestId { val };
-        state.put(request_id);
+        match req.headers().get::<XRequestId>() {
+            Some(ex_req_id) => state.put(RequestId { val: ex_req_id.0.clone() }),
+            None => {
+                let val = Uuid::new_v4().hyphenated().to_string();
+                let request_id = RequestId { val };
+                state.put(request_id);
+            }
+        }
     };
     request_id(state)
 }
@@ -54,6 +72,20 @@ mod tests {
     }
 
     #[test]
+    fn uses_an_external_request_id() {
+        let mut state = State::new();
+        let mut req = Request::new(Method::Get,
+                                   Uri::from_str("https://test.gotham.rs").unwrap());
+        req.headers_mut().set(XRequestId("1-2-3-4".to_string()));
+
+        {
+            let r = set_request_id(&mut state, &req);
+            assert_eq!("1-2-3-4", r);
+        };
+        assert_eq!("1-2-3-4", request_id(&state));
+    }
+
+    #[test]
     fn sets_a_unique_request_id() {
         let mut state = State::new();
         let req = Request::new(Method::Get,
@@ -67,5 +99,19 @@ mod tests {
                    Uuid::parse_str(request_id(&state))
                        .unwrap()
                        .get_version_num());
+    }
+
+    #[test]
+    fn does_not_overwrite_existant_request_id() {
+        let mut state = State::new();
+        state.put(RequestId { val: "1-2-3-4".to_string() });
+
+        let req = Request::new(Method::Get,
+                               Uri::from_str("https://test.gotham.rs").unwrap());
+
+        {
+            set_request_id(&mut state, &req);
+        }
+        assert_eq!("1-2-3-4", request_id(&state));
     }
 }

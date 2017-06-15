@@ -15,6 +15,7 @@
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 #![deny(private_in_public)]
 
+#[macro_use]
 extern crate hyper;
 extern crate futures;
 extern crate tokio_core;
