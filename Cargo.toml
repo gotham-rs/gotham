@@ -14,3 +14,4 @@ tokio-io = "*"
 mio = "*"
 borrow-bag = "0.3"
 url = "1.4.0"
+uuid = { version = "0.5", features = ["v4"] }

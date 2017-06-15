@@ -5,6 +5,8 @@ use gotham::middleware::{Middleware, NewMiddleware};
 use hyper::server::Request;
 use futures::{future, Future};
 
+use gotham::state::request_id;
+
 pub struct KitchenSinkData {
     pub header_value: String,
 }
@@ -36,9 +38,9 @@ impl Middleware for KitchenSinkMiddleware {
             .and_then(move |(state, mut response)| {
                 {
                     let data = state.borrow::<KitchenSinkData>().unwrap();
-                    response
-                        .headers_mut()
-                        .set_raw(header_name, data.header_value.to_owned());
+                    let headers = response.headers_mut();
+                    headers.set_raw(header_name, data.header_value.to_owned());
+                    headers.set_raw("X-Request-ID", request_id(&state));
                 }
 
                 future::ok((state, response))

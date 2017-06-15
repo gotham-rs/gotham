@@ -12,11 +12,11 @@ use borrow_bag::BorrowBag;
 use futures::{future, Future};
 use hyper::{Headers, StatusCode, Uri, HttpVersion, Method};
 use hyper::server::{Request, Response};
-
 use handler::{NewHandler, Handler, HandlerFuture};
 use router::response_extender::ResponseExtender;
 use router::route::Route;
 use router::tree::{SegmentMapping, Tree};
+use state::request_id::set_request_id;
 use state::{State, StateData};
 use http::{request_path, query_string};
 
@@ -96,6 +96,8 @@ impl<'n, P> Handler for Router<'n, P>
     /// `Tree`, storing any path related variables in `State` and dispatching
     /// appropriately to the configured `Handler`.
     fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
+        set_request_id(&mut state, &req);
+
         let uri = req.uri().clone();
         self.populate_state(&mut state, &req);
         let response = self.route(uri, state, req);
@@ -194,11 +196,13 @@ mod tests {
     use std::str::FromStr;
     use hyper::{Request, Method, Uri, Body};
     use hyper::header::{ContentType, ContentLength};
+    use uuid::Uuid;
 
     use borrow_bag;
 
     use router::tree::TreeBuilder;
     use router::response_extender::ResponseExtenderBuilder;
+    use state::request_id;
 
     #[test]
     fn executes_response_extender_when_present() {
@@ -263,5 +267,31 @@ mod tests {
             }
             Err(_) => panic!("Router should have correctly handled request"),
         };
+    }
+
+    #[test]
+    fn populates_request_id() {
+        let tree_builder = TreeBuilder::new();
+        let tree = tree_builder.finalize();
+        let pipelines = borrow_bag::new_borrow_bag();
+        let response_extender = ResponseExtenderBuilder::new().finalize();
+
+        let router = Router::new(tree, pipelines, response_extender);
+        let method = Method::Get;
+        let uri = Uri::from_str("https://test.gotham.rs").unwrap();
+        let request: Request<Body> = Request::new(method, uri);
+
+        let state = State::new();
+        let result = router.handle(state, request).wait();
+
+        match result {
+            Ok((state, _res)) => {
+                assert_eq!(4,
+                           Uuid::parse_str(request_id(&state))
+                               .unwrap()
+                               .get_version_num())
+            }
+            Err(_) => panic!("Router should have correctly handled request"),
+        }
     }
 }
