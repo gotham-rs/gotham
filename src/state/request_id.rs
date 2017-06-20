@@ -31,9 +31,14 @@ header! {
 pub fn set_request_id<'a>(state: &'a mut State, req: &Request) -> &'a str {
     if !state.has::<RequestId>() {
         match req.headers().get::<XRequestId>() {
-            Some(ex_req_id) => state.put(RequestId { val: ex_req_id.0.clone() }),
+            Some(ex_req_id) => {
+                trace!("[{}] RequestId set from external source via X-Request-ID header",
+                       ex_req_id.0.clone());
+                state.put(RequestId { val: ex_req_id.0.clone() })
+            }
             None => {
                 let val = Uuid::new_v4().hyphenated().to_string();
+                trace!("[{}] RequestId generated internally", val);
                 let request_id = RequestId { val };
                 state.put(request_id);
             }

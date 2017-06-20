@@ -1,11 +1,13 @@
 #![deny(warnings)]
 extern crate futures;
 extern crate hyper;
-extern crate pretty_env_logger;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
 extern crate borrow_bag;
+extern crate chrono;
+extern crate log;
+extern crate fern;
 
 mod middleware;
 
@@ -14,6 +16,8 @@ use futures::{future, Future};
 use hyper::header::ContentLength;
 use hyper::server::{Http, Request, Response};
 use hyper::Method;
+
+use log::LogLevelFilter;
 
 use gotham::http::request_path::NoopRequestPathExtractor;
 use gotham::http::query_string::NoopQueryStringExtractor;
@@ -196,7 +200,20 @@ impl Echo {
 }
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+                    out.finish(format_args!("{}[{}][{}]{}",
+                                            chrono::UTC::now().format("[%Y-%m-%d %H:%M:%S%.9f]"),
+                                            record.target(),
+                                            record.level(),
+                                            message))
+                })
+        .level(LogLevelFilter::Error)
+        .level_for("gotham", log::LogLevelFilter::Trace)
+        .chain(std::io::stdout())
+        .apply()
+        .unwrap();
+
     let addr = "127.0.0.1:7878".parse().unwrap();
 
     let mut tree_builder = TreeBuilder::new();

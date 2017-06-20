@@ -24,6 +24,9 @@ extern crate mio;
 extern crate borrow_bag;
 extern crate url;
 extern crate uuid;
+#[macro_use]
+extern crate log;
+extern crate chrono;
 
 pub mod dispatch;
 pub mod handler;
@@ -32,9 +35,3 @@ pub mod http;
 pub mod router;
 pub mod state;
 pub mod test;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {}
-}

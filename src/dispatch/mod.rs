@@ -3,14 +3,15 @@
 //! These types are intended to be used internally by Gotham's `Router` and supporting code. Gotham
 //! applications should not need to consume these types directly.
 
-use handler::{Handler, NewHandler, HandlerFuture};
-use middleware::pipeline::{NewMiddlewareChain, Pipeline};
-use state::State;
-use borrow_bag::{BorrowBag, Handle, Lookup};
 use std::marker::PhantomData;
 
+use borrow_bag::{BorrowBag, Handle, Lookup};
 use hyper::server::Request;
 use futures::{future, Future};
+
+use handler::{Handler, NewHandler, HandlerFuture};
+use middleware::pipeline::{NewMiddlewareChain, Pipeline};
+use state::{State, request_id};
 
 /// Internal type used by `Router` to dispatch requests via the configured `Pipeline`(s) and to the
 /// correct `Handler`.
@@ -45,13 +46,17 @@ impl<H, C, P> Dispatcher<H, C, P>
                     -> Box<HandlerFuture> {
         match self.new_handler.new_handler() {
             Ok(h) => {
+                trace!("[{}] cloning handler", request_id(&state));
                 self.pipeline_chain
                     .call(pipelines,
                           state,
                           req,
                           move |state, req| h.handle(state, req))
             }
-            Err(e) => future::err((state, e.into())).boxed(),
+            Err(e) => {
+                trace!("[{}] error cloning handler", request_id(&state));
+                future::err((state, e.into())).boxed()
+            }
         }
     }
 }
@@ -104,7 +109,10 @@ impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
                            req,
                            move |state, req| p.call(state, req, f))
             }
-            Err(e) => future::err((state, e.into())).boxed(),
+            Err(e) => {
+                trace!("[{}] error borrowing pipeline", request_id(&state));
+                future::err((state, e.into())).boxed()
+            }
         }
     }
 }
@@ -114,6 +122,7 @@ impl<P> PipelineHandleChain<P> for () {
     fn call<F>(&self, _: &BorrowBag<P>, state: State, req: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
+        trace!("[{}] start pipeline", request_id(&state));
         f(state, req)
     }
 }

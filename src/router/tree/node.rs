@@ -110,6 +110,7 @@ impl<'n, P> Node<'n, P> {
     /// Allow the `Router` to access the `Routes` for this `Node` when it is
     /// selected as the lead in a single path through the `Tree`.
     pub fn borrow_routes(&self) -> &Vec<Box<Route<P> + Send + Sync>> {
+        trace!(" borrowing routes for `{}`", self.segment);
         &self.routes
     }
 
@@ -158,6 +159,8 @@ impl<'n, P> Node<'n, P> {
          -> Option<(Vec<&Node<'n, P>>, &Node<'n, P>, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_leaf(x, xs) => {
+                trace!(" found leaf node `{}`", self.segment);
+
                 // Leaf Node for Route Path, start building result
                 match self.segment_type {
                     NodeSegmentType::Static => Some((vec![self], self, HashMap::new())),
@@ -171,6 +174,8 @@ impl<'n, P> Node<'n, P> {
                 }
             }
             Some((x, xs)) if self.is_match(x) => {
+                trace!(" found node `{}`", self.segment);
+
                 let child = self.children
                     .iter()
                     .filter_map(|c| c.inner_traverse(xs, vec![]))
@@ -193,6 +198,7 @@ impl<'n, P> Node<'n, P> {
                     // otherwise we've failed to find a suitable way
                     // forward.
                     None if self.segment_type == NodeSegmentType::Glob => {
+                        trace!(" continuing with glob match for segment `{}`", self.segment);
                         consumed_segments.push(x);
                         self.inner_traverse(xs, consumed_segments)
                     }
@@ -237,14 +243,23 @@ impl<'n, P> NodeBuilder<'n, P> {
         }
     }
 
+    /// Access the segment name of the `Node` under construction
+    pub fn segment(&self) -> &'n str {
+        self.segment
+    }
+
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
     pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
+        trace!(" adding route to `{}`", self.segment());
         self.routes.push(route);
     }
 
     /// Adds a new child to this sub-tree structure
     pub fn add_child(&mut self, child: NodeBuilder<'n, P>) {
+        trace!(" adding child `{}` to `{}`",
+               child.segment(),
+               self.segment());
         self.children.push(child);
     }
 

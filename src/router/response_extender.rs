@@ -1,14 +1,15 @@
 //! Defines functionality for extending a Response after it has been dispatched by the Router
 //! but before providing it to the requesting client.
 
-use futures::{future, Future};
 use std::sync::Arc;
 use std::collections::HashMap;
+
+use futures::{future, Future};
 use hyper::server::Response;
 use hyper::StatusCode;
 
 use handler::{IntoHandlerFuture, HandlerFuture};
-use state::State;
+use state::{State, request_id};
 
 /// Application specific response extenders.
 pub trait Extender {
@@ -28,6 +29,9 @@ impl Extender for NoopExtender {
         //
         // https://github.com/hyperium/hyper/issues/1216
 
+        trace!("[{}] found {} response extender",
+               request_id(&state),
+               res.status());
         future::ok((state, res)).boxed()
     }
 }
@@ -44,6 +48,8 @@ impl<F, R> Extender for F
           R: IntoHandlerFuture
 {
     fn extend(&self, state: State, res: Response) -> Box<HandlerFuture> {
+        trace!("[{}] running closure based response extender",
+               request_id(&state));
         self(state, res).into_handler_future()
     }
 }
@@ -69,6 +75,7 @@ impl ResponseExtenderBuilder {
 
     /// Add an Extender for responses that have been assigned this status_code.
     pub fn add(&mut self, status_code: StatusCode, responder: Box<Extender + Send + Sync>) {
+        trace!(" adding response extender for {}", status_code);
         self.data.insert(status_code, responder);
     }
 
@@ -83,8 +90,18 @@ impl ResponseExtender {
     /// status code assigned to the `Response`.
     pub fn extend(&self, state: State, res: Response) -> Box<HandlerFuture> {
         match self.data.get(&res.status()) {
-            Some(responder) => responder.extend(state, res),
-            None => future::ok((state, res)).boxed(),
+            Some(responder) => {
+                trace!("[{}] invoking {} response extender",
+                       request_id(&state),
+                       res.status());
+                responder.extend(state, res)
+            }
+            None => {
+                trace!("[{}] no response extender for {}",
+                       request_id(&state),
+                       res.status());
+                future::ok((state, res)).boxed()
+            }
         }
     }
 }

@@ -62,6 +62,7 @@ impl State {
         where T: StateData
     {
         let type_id = TypeId::of::<T>();
+        trace!(" inserting record to state for type_id `{:?}`", type_id);
         self.data.insert(type_id, Box::new(t));
     }
 
@@ -136,6 +137,7 @@ impl State {
         where T: StateData
     {
         let type_id = TypeId::of::<T>();
+        trace!(" borrowing state data for type_id `{:?}`", type_id);
         self.data.get(&type_id).and_then(|b| b.downcast_ref::<T>())
     }
 
@@ -177,6 +179,7 @@ impl State {
         where T: StateData
     {
         let type_id = TypeId::of::<T>();
+        trace!(" mutably borrowing state data for type_id `{:?}`", type_id);
         self.data
             .get_mut(&type_id)
             .and_then(|b| b.downcast_mut::<T>())
@@ -219,6 +222,8 @@ impl State {
         where T: StateData
     {
         let type_id = TypeId::of::<T>();
+        trace!(" taking ownership from state data for type_id `{:?}`",
+               type_id);
         self.data
             .remove(&type_id)
             .and_then(|b| b.downcast::<T>().ok())

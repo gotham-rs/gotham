@@ -12,12 +12,13 @@ use borrow_bag::BorrowBag;
 use futures::{future, Future};
 use hyper::{Headers, StatusCode, Uri, HttpVersion, Method};
 use hyper::server::{Request, Response};
+
 use handler::{NewHandler, Handler, HandlerFuture};
+use http::{request_path, query_string};
 use router::response_extender::ResponseExtender;
 use router::route::Route;
 use router::tree::{SegmentMapping, Tree};
-use state::{State, StateData};
-use http::{request_path, query_string};
+use state::{State, StateData, request_id};
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
@@ -84,6 +85,7 @@ impl<'n, P> NewHandler for Router<'n, P>
 
     // Creates a new Router instance to route new HTTP requests
     fn new_handler(&self) -> io::Result<Self::Instance> {
+        trace!(" cloning instance");
         Ok((*self).clone())
     }
 }
@@ -95,8 +97,11 @@ impl<'n, P> Handler for Router<'n, P>
     /// `Tree`, storing any path related variables in `State` and dispatching
     /// appropriately to the configured `Handler`.
     fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
+        trace!("[{}] starting", request_id(&state));
+
         let uri = req.uri().clone();
         self.populate_state(&mut state, &req);
+
         let response = self.route(uri, state, req);
         self.finalize_response(response)
     }
@@ -116,6 +121,8 @@ impl<'n, P> Router<'n, P>
     }
 
     fn populate_state(&self, state: &mut State, req: &Request) {
+        trace!("[{}] populating immutable request data into state",
+               request_id(&state));
         state.put(req.method().clone());
         state.put(req.uri().clone());
         state.put(req.version().clone());
@@ -123,21 +130,28 @@ impl<'n, P> Router<'n, P>
     }
 
     fn route(&self, uri: Uri, state: State, req: Request) -> Box<HandlerFuture> {
+        trace!("[{}] attempting to route: {}",
+               request_id(&state),
+               uri.path());
         let rp = request_path::split(uri.path());
         if let Some((_, leaf, segment_mapping)) = self.data.tree.traverse(rp.as_slice()) {
             // Valid path for the application, determine if any configured
             // routes will accept the request
             if let Some(route) = leaf.borrow_routes()
                    .iter()
-                   .find(|r| r.is_match(&req).is_ok()) {
+                   .find(|r| r.is_match(&state, &req).is_ok()) {
+                trace!("[{}] starting dispatch for matched route",
+                       request_id(&state));
                 self.dispatch(state, req, &uri, segment_mapping, route)
             } else {
                 // No routes accepted the request, the error status associated with the first route
                 // is then chosen as the status code for the response.
-                let status = leaf.borrow_routes().first().unwrap().is_match(&req);
+                trace!("[{}] no routes accepted the request", request_id(&state));
+                let status = leaf.borrow_routes().first().unwrap().is_match(&state, &req);
                 self.generate_response(status.unwrap_err(), state)
             }
         } else {
+            trace!("[{}] did not find routable leaf node", request_id(&state));
             self.generate_response(StatusCode::NotFound, state)
         }
     }
@@ -151,12 +165,18 @@ impl<'n, P> Router<'n, P>
                 -> Box<HandlerFuture> {
         match route.extract_request_path(&mut state, segment_mapping) {
             Ok(()) => {
+                trace!("[{}] extracted request path", request_id(&state));
                 if let Some(q) = uri.query() {
                     match route.extract_query_string(&mut state, query_string::split(q)) {
-                        Ok(()) => return route.dispatch(&self.data.pipelines, state, req),
+                        Ok(()) => {
+                            trace!("[{}] extracted query string", request_id(&state));
+                            trace!("[{}] dispatching", request_id(&state));
+                            return route.dispatch(&self.data.pipelines, state, req)
+                        }
                         Err(_) => (),
                     }
                 } else {
+                    trace!("[{}] dispatching", request_id(&state));
                     return route.dispatch(&self.data.pipelines, state, req);
                 }
             }
@@ -165,10 +185,13 @@ impl<'n, P> Router<'n, P>
 
         let mut res = Response::new();
         res.set_status(StatusCode::InternalServerError);
+        error!("[{}] internal server error, failed to dispatch",
+               request_id(&state));
         future::ok((state, res)).boxed()
     }
 
     fn generate_response(&self, status: StatusCode, state: State) -> Box<HandlerFuture> {
+        trace!("[{}][{}] generating response", request_id(&state), status);
         let mut res = Response::new();
         res.set_status(status);
         future::ok((state, res)).boxed()
@@ -177,7 +200,10 @@ impl<'n, P> Router<'n, P>
     fn finalize_response(&self, result: Box<HandlerFuture>) -> Box<HandlerFuture> {
         let response_extender = self.data.response_extender.clone();
         result
-            .and_then(move |(state, res)| response_extender.extend(state, res))
+            .and_then(move |(state, res)| {
+                          trace!("[{}] handler complete", request_id(&state));
+                          response_extender.extend(state, res)
+                      })
             .boxed()
     }
 }

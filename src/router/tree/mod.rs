@@ -132,6 +132,7 @@ impl<'n, P> Tree<'n, P> {
     pub fn traverse<'r>(&'n self,
                         req_path_segments: &'r [PercentDecoded])
                         -> Option<(Path<'n, 'r, P>, &Node<'n, P>, SegmentMapping<'n, 'r>)> {
+        trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
 }
@@ -145,6 +146,7 @@ pub struct TreeBuilder<'n, P> {
 impl<'n, P> TreeBuilder<'n, P> {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
+        trace!(" creating new tree");
         TreeBuilder { root: NodeBuilder::new("/", NodeSegmentType::Static) }
     }
 

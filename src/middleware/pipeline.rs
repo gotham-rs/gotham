@@ -1,10 +1,12 @@
 //! Defines types for a middleware pipeline
 
 use std::io;
-use middleware::{Middleware, NewMiddleware};
-use handler::HandlerFuture;
-use state::State;
+
 use hyper::server::Request;
+
+use handler::HandlerFuture;
+use middleware::{Middleware, NewMiddleware};
+use state::{State, request_id};
 
 /// When using middleware, one or more [`Middleware`][Middleware] are combined to form a
 /// `Pipeline`. `Middleware` are invoked strictly in the order they're added to the `Pipeline`.
@@ -185,6 +187,7 @@ impl<T> PipelineInstance<T>
     pub fn call<F>(self, state: State, req: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
+        trace!("[{}] calling middleware", request_id(&state));
         self.chain.call(state, req, f)
     }
 }
@@ -195,6 +198,7 @@ impl<T> PipelineInstance<T>
 ///
 /// [PipelineBuilder]: struct.PipelineBuilder.html
 pub fn new_pipeline() -> PipelineBuilder<()> {
+    trace!(" starting pipeline construction");
     // See: `impl NewMiddlewareChain for ()`
     PipelineBuilder { t: () }
 }
@@ -317,6 +321,7 @@ impl<T> PipelineBuilder<T>
         // An empty `PipelineBuilder` is represented as:
         //
         //     PipelineBuilder { t: () }
+        trace!(" adding middleware to pipeline");
         PipelineBuilder { t: (m, self.t) }
     }
 }
@@ -345,6 +350,7 @@ unsafe impl<T, U> NewMiddlewareChain for (T, U)
         // creating the `Middleware` instances for serving a single request.
         //
         // The reversed order is preserved in the return value.
+        trace!(" adding middleware instance to pipeline");
         let (ref nm, ref tail) = *self;
         Ok((nm.new_middleware()?, tail.construct()?))
     }
@@ -355,6 +361,7 @@ unsafe impl NewMiddlewareChain for () {
 
     fn construct(&self) -> io::Result<Self::Instance> {
         // () marks the end of the list, so is returned as-is.
+        trace!(" completed middleware pipeline construction");
         Ok(())
     }
 }
@@ -381,6 +388,7 @@ unsafe impl MiddlewareChain for () {
         //
         // In the case of 0 middleware, `f` is the function created in `MiddlewareChain::call`
         // which invokes the `Handler` directly.
+        trace!("pipeline complete, invoking handler");
         f(state, request)
     }
 }
@@ -408,6 +416,7 @@ unsafe impl<T, U> MiddlewareChain for (T, U)
         //  }
         //
         // The resulting function is called by `<() as MiddlewareChain>::call`
+        trace!("[{}] executing middleware", request_id(&state));
         p.call(state, request, move |state, req| m.call(state, req, f))
     }
 }
