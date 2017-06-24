@@ -12,13 +12,13 @@ use state::State;
 use http::FormUrlDecoded;
 
 /// Provides a mapping of keys from `Request` query string to their supplied values
-pub struct QueryStringMapping<'r> {
-    data: HashMap<FormUrlDecoded<'r>, Vec<FormUrlDecoded<'r>>>,
+pub struct QueryStringMapping {
+    data: HashMap<FormUrlDecoded, Vec<FormUrlDecoded>>,
 }
 
-impl<'r> QueryStringMapping<'r> {
+impl QueryStringMapping {
     /// Returns a reference for `Request` query string values mapped to the key.
-    pub fn get(&self, key: &'r str) -> Option<&Vec<FormUrlDecoded<'r>>> {
+    pub fn get(&self, key: &str) -> Option<&Vec<FormUrlDecoded>> {
         match FormUrlDecoded::new(key) {
             Some(key) => self.data.get(&key),
             None => None,
@@ -26,7 +26,7 @@ impl<'r> QueryStringMapping<'r> {
     }
 
     /// Determines if `Request` query string values exist for the key.
-    pub fn contains_key(&self, key: &'r str) -> bool {
+    pub fn contains_key(&self, key: &str) -> bool {
         match FormUrlDecoded::new(key) {
             Some(key) => self.data.contains_key(&key),
             None => false,
@@ -35,7 +35,7 @@ impl<'r> QueryStringMapping<'r> {
 
     /// Adds an empty value for a key, useful for keys that are considered
     /// optional and haven't been explicitly provided as part of a `Request` query string.
-    pub fn add_unmapped_segment(&mut self, key: &'r str) {
+    pub fn add_unmapped_segment(&mut self, key: &str) {
         match FormUrlDecoded::new(key) {
             Some(key) => self.data.insert(key, Vec::new()),
             None => None,

@@ -33,24 +33,19 @@ impl<'a> PercentDecoded<'a> {
 /// Represents data that has been successfully decoded from a form-urlencoded source and is
 /// valid utf8
 #[derive(PartialEq, Eq, Hash)]
-pub struct FormUrlDecoded<'a> {
-    val: Cow<'a, str>,
+pub struct FormUrlDecoded {
+    val: String,
 }
 
-impl<'a> FormUrlDecoded<'a> {
+impl FormUrlDecoded {
     /// Attempt to decode data that has been provided in www-form-urlencoded format and ensure that
     /// the result is valid utf8.
     ///
     /// On success encapulate resultant data for use by components that expect this transformation
     /// has already occured.
-    pub fn new(raw: &'a str) -> Option<Self> {
-        match percent_decode(raw.as_bytes()).decode_utf8() {
-            Ok(mut val) => {
-                if val.contains('+') {
-                    val = Cow::Owned(val.to_mut().replace("+", " "));
-                }
-                Some(FormUrlDecoded { val })
-            }
+    pub fn new(raw: &str) -> Option<Self> {
+        match percent_decode(raw.replace("+", " ").as_bytes()).decode_utf8() {
+            Ok(pd) => Some(FormUrlDecoded { val: pd.into_owned() }),
             Err(_) => None,
         }
     }
@@ -58,5 +53,16 @@ impl<'a> FormUrlDecoded<'a> {
     /// Provide the decoded data this type encapsulates
     pub fn val(&self) -> &str {
         &self.val
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_valid_www_form_url_encoded_value() {
+        let f = FormUrlDecoded::new("%41+%42%2B%63%20%64").unwrap();
+        assert_eq!("A B+c d", f.val());
     }
 }
