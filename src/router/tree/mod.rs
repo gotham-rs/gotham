@@ -17,7 +17,7 @@ pub type Path<'n, 'a, P> = Vec<&'a Node<'n, P>>;
 ///
 /// Data is percent and utf8 decoded.
 pub struct SegmentMapping<'a, 'b> {
-    data: HashMap<&'a str, Vec<&'b PercentDecoded<'b>>>,
+    data: HashMap<&'a str, Vec<&'b PercentDecoded>>,
 }
 
 impl<'a, 'b> SegmentMapping<'a, 'b> {

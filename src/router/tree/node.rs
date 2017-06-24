@@ -154,8 +154,8 @@ impl<'n, P> Node<'n, P> {
     fn inner_traverse<'r>
         (&self,
          req_path_segments: &'r [PercentDecoded],
-         mut consumed_segments: Vec<&'r PercentDecoded<'r>>)
-         -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r PercentDecoded<'r>>>)> {
+         mut consumed_segments: Vec<&'r PercentDecoded>)
+         -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 // Leaf Node for Route Path, start building result
@@ -430,7 +430,7 @@ mod tests {
         root
     }
 
-    fn rs<'a>(segments: &'a [&str]) -> Vec<PercentDecoded<'a>> {
+    fn rs<'a>(segments: &'a [&str]) -> Vec<PercentDecoded> {
         segments
             .iter()
             .map(|s| PercentDecoded::new(s).unwrap())
