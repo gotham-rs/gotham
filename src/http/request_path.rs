@@ -25,28 +25,21 @@ const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 /// # use gotham::http::request_path;
 /// #
 /// # pub fn main() {
-///     let srp = request_path::split("/%61ctiv%61te//batsignal").unwrap();
+///     let srp = request_path::split("/%61ctiv%61te//batsignal");
 ///     assert_eq!("/", srp[0].val());
 ///     assert_eq!("activate", srp[1].val());
 ///     assert_eq!("batsignal", srp[2].val());
 /// # }
 /// ```
-pub fn split<'r>(path: &'r str) -> Option<Vec<PercentDecoded>> {
+pub fn split<'r>(path: &'r str) -> Vec<PercentDecoded> {
     let mut segments = vec!["/"];
     segments.extend(path.split('/')
                         .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
                         .collect::<Vec<&'r str>>());
-    let decoded_segments = segments
+    segments
         .iter()
         .filter_map(|s| PercentDecoded::new(s))
-        .collect::<Vec<PercentDecoded>>();
-
-    // Ensure that no segment failed to be encoded
-    if decoded_segments.len() == segments.len() {
-        Some(decoded_segments)
-    } else {
-        None
-    }
+        .collect::<Vec<PercentDecoded>>()
 }
 
 /// Derived through the macro of the same name supplied by `gotham-derive` for application defined
@@ -97,13 +90,13 @@ pub trait FromRequestPath {
     ///
     /// e.g. Multiple segments due to usage of a Glob are provided for a value that should
     /// only be generated from a single segment, such as a `u8`.
-    fn from_request_path(&[&str]) -> Result<Self, FromRequestPathError> where Self: Sized;
+    fn from_request_path(&[&PercentDecoded]) -> Result<Self, FromRequestPathError> where Self: Sized;
 }
 
 impl<T> FromRequestPath for Option<T>
     where T: FromRequestPath
 {
-    fn from_request_path(segments: &[&str]) -> Result<Self, FromRequestPathError> {
+    fn from_request_path(segments: &[&PercentDecoded]) -> Result<Self, FromRequestPathError> {
         if segments.len() == 0 {
             Ok(None)
         } else {
@@ -142,9 +135,9 @@ impl From<ParseError> for FromRequestPathError {
 macro_rules! fstr {
     ($($t:ident),*) => { $(
         impl FromRequestPath for $t {
-            fn from_request_path(segments: &[&str]) -> Result<Self, FromRequestPathError> {
+            fn from_request_path(segments: &[&PercentDecoded]) -> Result<Self, FromRequestPathError> {
                 if segments.len() == 1 {
-                    Ok($t::from_str(segments[0])?)
+                    Ok($t::from_str(segments[0].val())?)
                 } else {
                     Err(FromRequestPathError {
                         description: String::from("Invalid number of segments")

@@ -9,12 +9,13 @@
 //! [futures]: https://github.com/alexcrichton/futures-rs
 //! [mio]: https://github.com/carllerche/mio
 
-#![warn(missing_docs)]
+#![warn(missing_docs, deprecated)]
 #![doc(test(no_crate_inject, attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 #![deny(private_in_public)]
 
+#[macro_use]
 extern crate hyper;
 extern crate futures;
 extern crate tokio_core;
@@ -22,6 +23,10 @@ extern crate tokio_io;
 extern crate mio;
 extern crate borrow_bag;
 extern crate url;
+extern crate uuid;
+#[macro_use]
+extern crate log;
+extern crate chrono;
 
 pub mod dispatch;
 pub mod handler;
@@ -30,9 +35,3 @@ pub mod http;
 pub mod router;
 pub mod state;
 pub mod test;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {}
-}

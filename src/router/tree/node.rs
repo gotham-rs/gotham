@@ -48,6 +48,7 @@ pub enum NodeSegmentType<'n> {
 /// #
 /// # use gotham::http::PercentDecoded;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::{RouteImpl, Extractors};
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::state::State;
@@ -68,7 +69,7 @@ pub enum NodeSegmentType<'n> {
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-///       let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+///       let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///       let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///       Box::new(route)
 ///   };
@@ -82,7 +83,7 @@ pub enum NodeSegmentType<'n> {
 ///                              PercentDecoded::new("activate").unwrap(),
 ///                              PercentDecoded::new("batsignal").unwrap()])
 ///   {
-///       Some((path, _)) => assert!(path.last().unwrap().is_routable()),
+///       Some((path, _leaf, _segment_mapping)) => assert!(path.last().unwrap().is_routable()),
 ///       None => panic!(),
 ///   }
 /// # }
@@ -109,6 +110,7 @@ impl<'n, P> Node<'n, P> {
     /// Allow the `Router` to access the `Routes` for this `Node` when it is
     /// selected as the lead in a single path through the `Tree`.
     pub fn borrow_routes(&self) -> &Vec<Box<Route<P> + Send + Sync>> {
+        trace!(" borrowing routes for `{}`", self.segment);
         &self.routes
     }
 
@@ -138,52 +140,57 @@ impl<'n, P> Node<'n, P> {
     /// 4. Glob
     pub fn traverse<'r>(&'n self,
                         req_path_segments: &'r [PercentDecoded])
-                        -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
+                        -> Option<(Path<'n, 'r, P>, &Node<'n, P>, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
-            Some((mut path, sm)) => {
+            Some((mut path, leaf, sm)) => {
                 path.reverse();
                 let segment_mapping = SegmentMapping { data: sm };
-                Some((path, segment_mapping))
+                Some((path, leaf, segment_mapping))
             }
             None => None,
         }
     }
 
     #[allow(unknown_lints, type_complexity)]
-    fn inner_traverse<'r>(&self,
-                          req_path_segments: &'r [PercentDecoded],
-                          mut consumed_segments: Vec<&'r str>)
-                          -> Option<(Vec<&Node<'n, P>>, HashMap<&str, Vec<&'r str>>)> {
+    fn inner_traverse<'r>
+        (&self,
+         req_path_segments: &'r [PercentDecoded],
+         mut consumed_segments: Vec<&'r PercentDecoded>)
+         -> Option<(Vec<&Node<'n, P>>, &Node<'n, P>, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_leaf(x, xs) => {
+                trace!(" found leaf node `{}`", self.segment);
+
                 // Leaf Node for Route Path, start building result
                 match self.segment_type {
-                    NodeSegmentType::Static => Some((vec![self], HashMap::new())),
+                    NodeSegmentType::Static => Some((vec![self], self, HashMap::new())),
                     _ => {
-                        consumed_segments.push(x.val());
+                        consumed_segments.push(x);
 
                         let mut sm = HashMap::new();
                         sm.insert(self.segment(), consumed_segments);
-                        Some((vec![self], sm))
+                        Some((vec![self], self, sm))
                     }
                 }
             }
             Some((x, xs)) if self.is_match(x) => {
+                trace!(" found node `{}`", self.segment);
+
                 let child = self.children
                     .iter()
                     .filter_map(|c| c.inner_traverse(xs, vec![]))
                     .next();
 
                 match child {
-                    Some((mut path, mut sm)) => {
+                    Some((mut path, leaf, mut sm)) => {
                         path.push(self);
                         match self.segment_type {
-                            NodeSegmentType::Static => Some((path, sm)),
+                            NodeSegmentType::Static => Some((path, leaf, sm)),
                             _ => {
-                                consumed_segments.push(x.val());
+                                consumed_segments.push(x);
                                 sm.insert(self.segment(), consumed_segments);
                                 path.push(self);
-                                Some((path, sm))
+                                Some((path, leaf, sm))
                             }
                         }
                     }
@@ -191,7 +198,8 @@ impl<'n, P> Node<'n, P> {
                     // otherwise we've failed to find a suitable way
                     // forward.
                     None if self.segment_type == NodeSegmentType::Glob => {
-                        consumed_segments.push(x.val());
+                        trace!(" continuing with glob match for segment `{}`", self.segment);
+                        consumed_segments.push(x);
                         self.inner_traverse(xs, consumed_segments)
                     }
                     None => None,
@@ -235,14 +243,23 @@ impl<'n, P> NodeBuilder<'n, P> {
         }
     }
 
+    /// Access the segment name of the `Node` under construction
+    pub fn segment(&self) -> &'n str {
+        self.segment
+    }
+
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
     pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
+        trace!(" adding route to `{}`", self.segment());
         self.routes.push(route);
     }
 
     /// Adds a new child to this sub-tree structure
     pub fn add_child(&mut self, child: NodeBuilder<'n, P>) {
+        trace!(" adding child `{}` to `{}`",
+               child.segment(),
+               self.segment());
         self.children.push(child);
     }
 
@@ -332,6 +349,7 @@ mod tests {
     use router::request_matcher::MethodOnlyRequestMatcher;
     use router::route::{Route, RouteImpl, Extractors};
     use http::request_path::NoopRequestPathExtractor;
+    use http::query_string::NoopQueryStringExtractor;
     use state::State;
 
     fn handler(state: State, _req: Request) -> (State, Response) {
@@ -346,7 +364,8 @@ mod tests {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
-        let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+        let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
+            Extractors::new();
         let route = RouteImpl::new(matcher, dispatcher, extractors);
         Box::new(route)
     }
@@ -360,7 +379,8 @@ mod tests {
         let methods = vec![Method::Get, Method::Head];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
-        let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+        let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
+            Extractors::new();
         let route = RouteImpl::new(matcher, dispatcher, extractors);
         seg1.add_route(Box::new(route));
         root.add_child(seg1);
@@ -371,7 +391,8 @@ mod tests {
         let methods = vec![Method::Post];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler), ());
-        let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+        let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
+            Extractors::new();
         let route = RouteImpl::new(matcher, dispatcher, extractors);
         seg2.add_route(Box::new(route));
 
@@ -379,7 +400,8 @@ mod tests {
         let methods = vec![Method::Patch];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = Dispatcher::new(|| Ok(handler2), ());
-        let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+        let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
+            Extractors::new();
         let route = RouteImpl::new(matcher, dispatcher, extractors);
         seg2.add_route(Box::new(route));
         root.add_child(seg2);
@@ -423,7 +445,7 @@ mod tests {
         root
     }
 
-    fn rs<'a>(segments: &'a [&str]) -> Vec<PercentDecoded<'a>> {
+    fn rs<'a>(segments: &'a [&str]) -> Vec<PercentDecoded> {
         segments
             .iter()
             .map(|s| PercentDecoded::new(s).unwrap())
@@ -445,7 +467,10 @@ mod tests {
 
         // GET /seg3/seg4
         match root.traverse(rs(&["/", "seg3", "seg4"]).as_slice()) {
-            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg4"),
+            Some((path, leaf, _)) => {
+                assert_eq!(path.last().unwrap().segment(), "seg4");
+                assert_eq!(path.last().unwrap().segment(), leaf.segment());
+            }
             None => panic!("traversal should have succeeded here"),
         }
 
@@ -455,19 +480,19 @@ mod tests {
 
         // GET /seg5/seg6
         match root.traverse(rs(&["/", "seg5", "seg6"]).as_slice()) {
-            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg6"),
+            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg6"),
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /seg5/someval/seg7
         match root.traverse(rs(&["/", "seg5", "someval", "seg7"]).as_slice()) {
-            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg7"),
+            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg7"),
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /some/path/seg9/another/path
         match root.traverse(rs(&["/", "some", "path", "seg9", "some2", "path2"]).as_slice()) {
-            Some((path, _)) => assert_eq!(path.last().unwrap().segment(), "seg10"),
+            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg10"),
             None => panic!("traversal should have succeeded here"),
         }
     }

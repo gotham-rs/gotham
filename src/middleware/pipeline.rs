@@ -1,10 +1,12 @@
 //! Defines types for a middleware pipeline
 
 use std::io;
-use middleware::{Middleware, NewMiddleware};
-use handler::HandlerFuture;
-use state::State;
+
 use hyper::server::Request;
+
+use handler::HandlerFuture;
+use middleware::{Middleware, NewMiddleware};
+use state::{State, request_id};
 
 /// When using middleware, one or more [`Middleware`][Middleware] are combined to form a
 /// `Pipeline`. `Middleware` are invoked strictly in the order they're added to the `Pipeline`.
@@ -39,6 +41,8 @@ use hyper::server::Request;
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::test::TestServer;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::query_string::NoopQueryStringExtractor;
+/// # use gotham::router::response_extender::ResponseExtenderBuilder;
 /// # use hyper::server::{Request, Response};
 /// # use hyper::StatusCode;
 /// # use hyper::Method;
@@ -119,14 +123,6 @@ use hyper::server::Request;
 ///     (state, Response::new().with_status(StatusCode::Ok).with_body(body))
 /// }
 ///
-/// fn not_found(state: State, _req: Request) -> (State, Response) {
-///     (state, Response::new().with_status(StatusCode::NotFound))
-/// }
-///
-/// fn internal_server_error(state: State, _req: Request) -> (State, Response) {
-///     (state, Response::new().with_status(StatusCode::InternalServerError))
-/// }
-///
 /// fn main() {
 ///     let pipelines = borrow_bag::new_borrow_bag();
 ///     let (pipelines, pipeline) = pipelines.add(new_pipeline()
@@ -139,12 +135,14 @@ use hyper::server::Request;
 ///
 ///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 ///     let dispatcher = Dispatcher::new(|| Ok(handler), (pipeline, ()));
-///     let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+///     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///     let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();
 ///
-///     let router = Router::new(tree, pipelines, || Ok(not_found), || Ok(internal_server_error));
+///
+///     let response_extender = ResponseExtenderBuilder::new().finalize();
+///     let router = Router::new(tree, pipelines, response_extender);
 ///
 ///     let new_service = NewHandlerService::new(router);
 ///     let mut test_server = TestServer::new(new_service).unwrap();
@@ -189,6 +187,7 @@ impl<T> PipelineInstance<T>
     pub fn call<F>(self, state: State, req: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
+        trace!("[{}] calling middleware", request_id(&state));
         self.chain.call(state, req, f)
     }
 }
@@ -199,6 +198,7 @@ impl<T> PipelineInstance<T>
 ///
 /// [PipelineBuilder]: struct.PipelineBuilder.html
 pub fn new_pipeline() -> PipelineBuilder<()> {
+    trace!(" starting pipeline construction");
     // See: `impl NewMiddlewareChain for ()`
     PipelineBuilder { t: () }
 }
@@ -321,6 +321,7 @@ impl<T> PipelineBuilder<T>
         // An empty `PipelineBuilder` is represented as:
         //
         //     PipelineBuilder { t: () }
+        trace!(" adding middleware to pipeline");
         PipelineBuilder { t: (m, self.t) }
     }
 }
@@ -349,6 +350,7 @@ unsafe impl<T, U> NewMiddlewareChain for (T, U)
         // creating the `Middleware` instances for serving a single request.
         //
         // The reversed order is preserved in the return value.
+        trace!(" adding middleware instance to pipeline");
         let (ref nm, ref tail) = *self;
         Ok((nm.new_middleware()?, tail.construct()?))
     }
@@ -359,6 +361,7 @@ unsafe impl NewMiddlewareChain for () {
 
     fn construct(&self) -> io::Result<Self::Instance> {
         // () marks the end of the list, so is returned as-is.
+        trace!(" completed middleware pipeline construction");
         Ok(())
     }
 }
@@ -385,6 +388,7 @@ unsafe impl MiddlewareChain for () {
         //
         // In the case of 0 middleware, `f` is the function created in `MiddlewareChain::call`
         // which invokes the `Handler` directly.
+        trace!("pipeline complete, invoking handler");
         f(state, request)
     }
 }
@@ -412,6 +416,7 @@ unsafe impl<T, U> MiddlewareChain for (T, U)
         //  }
         //
         // The resulting function is called by `<() as MiddlewareChain>::call`
+        trace!("[{}] executing middleware", request_id(&state));
         p.call(state, request, move |state, req| m.call(state, req, f))
     }
 }

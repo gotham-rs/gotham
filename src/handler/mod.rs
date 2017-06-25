@@ -5,13 +5,17 @@
 //!
 //! [handler-impl]: trait.Handler.html#implementors
 
+use std::io;
+use std::sync::Arc;
+use std::error::Error;
+
+use chrono;
 use hyper;
 use hyper::server;
 use hyper::server::Request;
 use futures::{future, Future};
-use state::State;
-use std::io;
-use std::sync::Arc;
+
+use state::{State, set_request_id, request_id};
 
 /// A type alias for the trait objects returned by `HandlerService`
 pub type HandlerFuture =
@@ -76,6 +80,8 @@ impl<T> NewHandlerService<T>
     /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
     /// # use gotham::dispatch::Dispatcher;
     /// # use gotham::http::request_path::NoopRequestPathExtractor;
+    /// # use gotham::http::query_string::NoopQueryStringExtractor;
+    /// # use gotham::router::response_extender::ResponseExtenderBuilder;
     /// # use hyper::server::{Request, Response};
     /// # use hyper::{StatusCode, Method};
     /// #
@@ -86,17 +92,16 @@ impl<T> NewHandlerService<T>
     ///
     /// let mut tree_builder = TreeBuilder::new();
     /// let pipelines = borrow_bag::new_borrow_bag();
-    /// let not_found = || Ok(handler);
-    /// let internal_server_error = || Ok(handler);
+    /// let response_extender = ResponseExtenderBuilder::new().finalize();
     ///
     /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
     /// let dispatcher = Dispatcher::new(|| Ok(handler), ());
-    /// let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+    /// let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
     /// let route = RouteImpl::new(matcher, dispatcher, extractors);
     ///
     /// tree_builder.add_route(Box::new(route));
     /// let tree = tree_builder.finalize();
-    /// let router = Router::new(tree, pipelines, not_found, internal_server_error);
+    /// let router = Router::new(tree, pipelines, response_extender);
     ///
     /// NewHandlerService::new(router);
     /// # }
@@ -128,15 +133,59 @@ impl<T> server::Service for NewHandlerService<T>
     type Future = Box<Future<Item = server::Response, Error = hyper::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
+        let s = chrono::UTC::now();
+
+        let mut state = State::new();
+        set_request_id(&mut state, &req);
+
+        info!("[REQUEST][{}][{}][{}]",
+              request_id(&state),
+              req.method(),
+              req.path());
+
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
         // immediately consuming it.
         match self.t.new_handler() {
             Ok(handler) => {
                 handler
-                    .handle(State::new(), req)
-                    .and_then(|(_, response)| future::ok(response))
-                    .or_else(|(_, error)| future::err(error))
+                    .handle(state, req)
+                    .and_then(move |(state, res)| {
+                        let f = chrono::UTC::now();
+                        match f.signed_duration_since(s).num_microseconds() {
+                            Some(dur) => {
+                                info!("[RESPONSE][{}][{}][{}][{}µs]",
+                                      request_id(&state),
+                                      res.version(),
+                                      res.status(),
+                                      dur);
+                            }
+                            None => {
+                                info!("[RESPONSE][{}][{}][{}][invalid]",
+                                      request_id(&state),
+                                      res.version(),
+                                      res.status());
+                            }
+                        }
+                        future::ok(res)
+                    })
+                    .or_else(move |(state, err)| {
+                        let f = chrono::UTC::now();
+                        match f.signed_duration_since(s).num_microseconds() {
+                            Some(dur) => {
+                                error!("[ERROR][{}][Error: {}][{}]",
+                                       request_id(&state),
+                                       err.description(),
+                                       dur);
+                            }
+                            None => {
+                                error!("[ERROR][{}][Error: {}][invalid]",
+                                       request_id(&state),
+                                       err.description());
+                            }
+                        }
+                        future::err(err)
+                    })
                     .boxed()
             }
             Err(e) => future::err(e.into()).boxed(),
@@ -144,7 +193,6 @@ impl<T> server::Service for NewHandlerService<T>
     }
 }
 
-// TODO: Ensure this is actually true in the new implementation of `Router`
 /// A `Handler` receives some subset of requests to the application, and returns a future which
 /// resolves to a response. This represents the common entry point for the parts of a Gotham
 /// application, implemented by `Router` and `Pipeline`.
@@ -227,6 +275,8 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::dispatch::Dispatcher;
 /// # use gotham::handler::IntoResponse;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::query_string::NoopQueryStringExtractor;
+/// # use gotham::router::response_extender::ResponseExtenderBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
 /// # use hyper::server::{Request, Response};
@@ -257,16 +307,14 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # fn main() {
 /// #   let mut tree_builder = TreeBuilder::new();
 /// #   let pipelines = borrow_bag::new_borrow_bag();
-/// #   let not_found = || Ok(handler);
-/// #   let internal_server_error = || Ok(handler);
-/// #
+/// #   let response_extender = ResponseExtenderBuilder::new().finalize();
 /// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 /// #   let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #   let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+/// #   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();
-///     Router::new(tree, pipelines, not_found, internal_server_error);
+///     Router::new(tree, pipelines, response_extender);
 /// # }
 /// ```
 ///

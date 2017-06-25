@@ -1,11 +1,13 @@
 #![deny(warnings)]
 extern crate futures;
 extern crate hyper;
-extern crate pretty_env_logger;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
 extern crate borrow_bag;
+extern crate chrono;
+extern crate log;
+extern crate fern;
 
 mod middleware;
 
@@ -14,9 +16,12 @@ use futures::{future, Future};
 use hyper::header::ContentLength;
 use hyper::server::{Http, Request, Response};
 use hyper::Method;
-use hyper::status::StatusCode;
+
+use log::LogLevelFilter;
 
 use gotham::http::request_path::NoopRequestPathExtractor;
+use gotham::http::query_string::NoopQueryStringExtractor;
+use gotham::router::response_extender::ResponseExtenderBuilder;
 use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors};
 use gotham::dispatch::{Dispatcher, PipelineHandleChain};
@@ -43,6 +48,12 @@ struct SharedRequestPath {
     from: Option<String>,
 }
 
+#[derive(QueryStringExtractor)]
+struct SharedQueryString {
+    i: u8,
+    q: Option<Vec<String>>,
+}
+
 static INDEX: &'static [u8] = b"Try POST /echo";
 static ASYNC: &'static [u8] = b"Got async response";
 
@@ -56,7 +67,8 @@ fn static_route<NH, P, C>(methods: Vec<Method>,
 {
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = Dispatcher::new(new_handler, pipelines);
-    let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+    let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
+        Extractors::new();
     let route = RouteImpl::new(matcher, dispatcher, extractors);
     Box::new(route)
 }
@@ -71,7 +83,7 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
 {
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = Dispatcher::new(new_handler, pipelines);
-    let extractors: Extractors<SharedRequestPath> = Extractors::new();
+    let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
     let route = RouteImpl::new(matcher, dispatcher, extractors);
     Box::new(route)
 }
@@ -118,14 +130,6 @@ fn add_routes<P, C>(tree_builder: &mut TreeBuilder<P>, pipelines: C)
 }
 
 impl Echo {
-    fn not_found(state: State, _req: Request) -> (State, Response) {
-        (state, Response::new().with_status(StatusCode::NotFound))
-    }
-
-    fn internal_server_error(state: State, _req: Request) -> (State, Response) {
-        (state, Response::new().with_status(StatusCode::InternalServerError))
-    }
-
     fn get(state: State, _req: Request) -> (State, Response) {
         (state,
          Response::new()
@@ -175,17 +179,41 @@ impl Echo {
                 None => "",
             };
 
-            let g = format!("Greetings, {} from {}\n", name, from);
-            Response::new()
-                .with_header(ContentLength(g.len() as u64))
-                .with_body(g)
+            if let Some(srq) = state.borrow::<SharedQueryString>() {
+                let g = format!("Greetings, {} from {}. [i: {}, q: {:?}]\n",
+                                name,
+                                from,
+                                srq.i,
+                                srq.q);
+                Response::new()
+                    .with_header(ContentLength(g.len() as u64))
+                    .with_body(g)
+            } else {
+                let g = format!("Greetings, {} from {}.\n", name, from);
+                Response::new()
+                    .with_header(ContentLength(g.len() as u64))
+                    .with_body(g)
+            }
         };
         (state, res)
     }
 }
 
 fn main() {
-    pretty_env_logger::init().unwrap();
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+                    out.finish(format_args!("{}[{}][{}]{}",
+                                            chrono::UTC::now().format("[%Y-%m-%d %H:%M:%S%.9f]"),
+                                            record.target(),
+                                            record.level(),
+                                            message))
+                })
+        .level(LogLevelFilter::Error)
+        .level_for("gotham", log::LogLevelFilter::Trace)
+        .chain(std::io::stdout())
+        .apply()
+        .unwrap();
+
     let addr = "127.0.0.1:7878".parse().unwrap();
 
     let mut tree_builder = TreeBuilder::new();
@@ -198,9 +226,10 @@ fn main() {
     add_routes(&mut tree_builder, (pipeline, ()));
     let tree = tree_builder.finalize();
 
-    let not_found = || Ok(Echo::not_found);
-    let internal_server_error = || Ok(Echo::internal_server_error);
-    let router = Router::new(tree, pipelines, not_found, internal_server_error);
+    let response_extender_builder = ResponseExtenderBuilder::new();
+    let response_extender = response_extender_builder.finalize();
+
+    let router = Router::new(tree, pipelines, response_extender);
 
     let server = Http::new()
         .bind(&addr, NewHandlerService::new(router))

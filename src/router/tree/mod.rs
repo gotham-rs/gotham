@@ -17,12 +17,12 @@ pub type Path<'n, 'a, P> = Vec<&'a Node<'n, P>>;
 ///
 /// Data is percent and utf8 decoded.
 pub struct SegmentMapping<'a, 'b> {
-    data: HashMap<&'a str, Vec<&'b str>>,
+    data: HashMap<&'a str, Vec<&'b PercentDecoded>>,
 }
 
 impl<'a, 'b> SegmentMapping<'a, 'b> {
     /// Returns a reference for `Request` path segments mapped to the segment key.
-    pub fn get(&self, key: &'a str) -> Option<&Vec<&'b str>> {
+    pub fn get(&self, key: &'a str) -> Option<&Vec<&'b PercentDecoded>> {
         self.data.get(key)
     }
 
@@ -72,6 +72,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::NodeSegmentType;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::http::PercentDecoded;
 /// # use gotham::http::request_path;
 /// #
@@ -90,7 +91,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
-/// #     let extractors: Extractors<NoopRequestPathExtractor> = Extractors::new();
+/// #     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #     let route = RouteImpl::new(matcher, dispatcher, extractors);
 /// #     Box::new(route)
 ///   };
@@ -101,10 +102,11 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///
 ///   let tree = tree_builder.finalize();
 ///
-///   match tree.traverse(request_path::split("/%61ctiv%61te/batsignal").unwrap().as_slice()) {
-///       Some((path, segment_mapping)) => {
+///   match tree.traverse(request_path::split("/%61ctiv%61te/batsignal").as_slice()) {
+///       Some((path, leaf, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
-///         assert_eq!(*segment_mapping.get("thing").unwrap().last().unwrap(), "batsignal");
+///         assert_eq!(path.last().unwrap().segment(), leaf.segment());
+///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap().val(), "batsignal");
 ///       }
 ///       None => panic!(),
 ///   }
@@ -129,7 +131,8 @@ impl<'n, P> Tree<'n, P> {
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
     pub fn traverse<'r>(&'n self,
                         req_path_segments: &'r [PercentDecoded])
-                        -> Option<(Path<'n, 'r, P>, SegmentMapping<'n, 'r>)> {
+                        -> Option<(Path<'n, 'r, P>, &Node<'n, P>, SegmentMapping<'n, 'r>)> {
+        trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
 }
@@ -143,6 +146,7 @@ pub struct TreeBuilder<'n, P> {
 impl<'n, P> TreeBuilder<'n, P> {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
+        trace!(" creating new tree");
         TreeBuilder { root: NodeBuilder::new("/", NodeSegmentType::Static) }
     }
 

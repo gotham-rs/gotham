@@ -1,9 +1,11 @@
 //! Defines types for Gotham middleware
 
 use std::io;
+
+use hyper::server::Request;
+
 use handler::HandlerFuture;
 use state::State;
-use hyper::server::Request;
 
 pub mod pipeline;
 

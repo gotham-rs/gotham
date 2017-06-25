@@ -9,5 +9,7 @@ gotham = { path = "../.." }
 gotham_derive = { path = "../../gotham_derive" }
 futures = "*"
 hyper = { git = "https://github.com/hyperium/hyper.git" }
-pretty_env_logger = "*"
 borrow-bag = "*"
+log = "0.3"
+fern = "0.4"
+chrono = "0.3"
