@@ -12,4 +12,4 @@ hyper = { git = "https://github.com/hyperium/hyper.git" }
 borrow-bag = "*"
 log = "0.3"
 fern = "0.4"
-chrono = "0.3.1"
+chrono = "0.3"
