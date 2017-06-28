@@ -30,6 +30,7 @@ use state::{State, request_id};
 /// # extern crate borrow_bag;
 /// #
 /// # use std::io;
+/// # use std::sync::Arc;
 /// # use gotham::state::{State, StateData};
 /// # use gotham::handler::{HandlerFuture, NewHandlerService};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
@@ -38,7 +39,7 @@ use state::{State, request_id};
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::{RouteImpl, Extractors};
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::Dispatcher;
+/// # use gotham::dispatch::DispatcherImpl;
 /// # use gotham::test::TestServer;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
@@ -131,10 +132,11 @@ use state::{State, request_id};
 ///         .add(MiddlewareThree)
 ///         .build());
 ///
+///     let pipelines = Arc::new(pipelines);
 ///     let mut tree_builder = TreeBuilder::new();
 ///
 ///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
-///     let dispatcher = Dispatcher::new(|| Ok(handler), (pipeline, ()));
+///     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipelines));
 ///     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///     let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///     tree_builder.add_route(Box::new(route));
@@ -142,7 +144,7 @@ use state::{State, request_id};
 ///
 ///
 ///     let response_extender = ResponseExtenderBuilder::new().finalize();
-///     let router = Router::new(tree, pipelines, response_extender);
+///     let router = Router::new(tree, response_extender);
 ///
 ///     let new_service = NewHandlerService::new(router);
 ///     let mut test_server = TestServer::new(new_service).unwrap();

@@ -3,7 +3,7 @@
 //! These types are intended to be used internally by Gotham's `Router` and supporting code. Gotham
 //! applications should not need to consume these types directly.
 
-use std::marker::PhantomData;
+use std::sync::Arc;
 
 use borrow_bag::{BorrowBag, Handle, Lookup};
 use hyper::server::Request;
@@ -13,42 +13,49 @@ use handler::{Handler, NewHandler, HandlerFuture};
 use middleware::pipeline::{NewMiddlewareChain, Pipeline};
 use state::{State, request_id};
 
-/// Internal type used by `Router` to dispatch requests via the configured `Pipeline`(s) and to the
+/// Used by `Router` to dispatch requests via the configured `Pipeline`(s) and to the
 /// correct `Handler`.
-pub struct Dispatcher<H, C, P>
+pub trait Dispatcher {
+    /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
+    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture>;
+}
+
+/// Default implementation of the Dispatcher trait
+pub struct DispatcherImpl<H, C, P>
     where H: NewHandler,
           C: PipelineHandleChain<P>
 {
     new_handler: H,
     pipeline_chain: C,
-    phantom: PhantomData<P>,
+    pipelines: Arc<BorrowBag<P>>,
 }
 
-impl<H, C, P> Dispatcher<H, C, P>
+impl<H, C, P> DispatcherImpl<H, C, P>
     where H: NewHandler,
           H::Instance: 'static,
           C: PipelineHandleChain<P>
 {
     /// Creates a new `Dispatcher` value.
-    pub fn new(new_handler: H, pipeline_chain: C) -> Dispatcher<H, C, P> {
-        Dispatcher {
+    pub fn new(new_handler: H, pipeline_chain: C, pipelines: Arc<BorrowBag<P>>) -> Self {
+        DispatcherImpl {
             new_handler,
             pipeline_chain,
-            phantom: PhantomData,
+            pipelines,
         }
     }
+}
 
-    /// Dispatches a request via this `Dispatcher`.
-    pub fn dispatch(&self,
-                    pipelines: &BorrowBag<P>,
-                    state: State,
-                    req: Request)
-                    -> Box<HandlerFuture> {
+impl<H, C, P> Dispatcher for DispatcherImpl<H, C, P>
+    where H: NewHandler,
+          H::Instance: 'static,
+          C: PipelineHandleChain<P>
+{
+    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture> {
         match self.new_handler.new_handler() {
             Ok(h) => {
                 trace!("[{}] cloning handler", request_id(&state));
                 self.pipeline_chain
-                    .call(pipelines,
+                    .call(&self.pipelines,
                           state,
                           req,
                           move |state, req| h.handle(state, req))
@@ -239,11 +246,13 @@ mod tests {
                     .add(Multiplication { value: 3 }) // 24
                     .build());
 
+                let pipelines = Arc::new(pipelines);
+
                 let new_handler = || Ok(handler);
 
                 let pipeline_chain = (p3, (p2, (p1, ())));
-                let dispatcher = Dispatcher::new(new_handler, pipeline_chain);
-                dispatcher.dispatch(&pipelines, state, req)
+                let dispatcher = DispatcherImpl::new(new_handler, pipeline_chain, pipelines);
+                dispatcher.dispatch(state, req)
             })
         });
 

@@ -8,10 +8,9 @@ use std::marker::PhantomData;
 
 use hyper::server::Request;
 use hyper::StatusCode;
-use borrow_bag::BorrowBag;
 
-use dispatch::{PipelineHandleChain, Dispatcher};
-use handler::{HandlerFuture, NewHandler};
+use dispatch::Dispatcher;
+use handler::HandlerFuture;
 use router::request_matcher::RequestMatcher;
 use router::tree::SegmentMapping;
 use http::request_path::RequestPathExtractor;
@@ -20,7 +19,7 @@ use state::State;
 
 /// A type that determines if its associated logic can be exposed by the `Router`
 /// in response to an external request.
-pub trait Route<P> {
+pub trait Route {
     /// Determines if this `Route` can be invoked, based on the `Request`.
     fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode>;
 
@@ -40,7 +39,7 @@ pub trait Route<P> {
 
     /// Final call made by the `Router` to the matched `Route` allowing
     /// application specific logic to respond to the request.
-    fn dispatch(&self, pipelines: &BorrowBag<P>, state: State, req: Request) -> Box<HandlerFuture>;
+    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture>;
 }
 
 /// Default implementation for `Route`.
@@ -53,36 +52,40 @@ pub trait Route<P> {
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # fn main() {
+/// # extern crate borrow_bag;
+/// #
+/// # use std::sync::Arc;
+/// #
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
+/// #
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::Dispatcher;
+/// # use gotham::dispatch::DispatcherImpl;
 /// # use gotham::state::State;
 /// # use gotham::router::route::{RouteImpl, Extractors};
 /// #
+/// # fn main() {
 ///   fn handler(state: State, _req: Request) -> (State, Response) {
 ///     (state, Response::new())
 ///   }
 ///
+///   let all_pipelines = Arc::new(borrow_bag::new_borrow_bag());
 ///   let methods = vec![Method::Get];
 ///   let matcher = MethodOnlyRequestMatcher::new(methods);
-///   let dispatcher: Dispatcher<_, _, ()> = Dispatcher::new(|| Ok(handler), ());
+///   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), all_pipelines));
 ///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///   RouteImpl::new(matcher, dispatcher, extractors);
 /// # }
 /// ```
-pub struct RouteImpl<RM, NH, PC, P, RE, QE>
+pub struct RouteImpl<RM, RE, QE>
     where RM: RequestMatcher,
-          NH: NewHandler,
-          PC: PipelineHandleChain<P>,
           RE: RequestPathExtractor,
           QE: QueryStringExtractor
 {
     matcher: RM,
-    dispatcher: Dispatcher<NH, PC, P>,
+    dispatcher: Box<Dispatcher + Send + Sync>,
     _extractors: Extractors<RE, QE>,
 }
 
@@ -96,16 +99,14 @@ pub struct Extractors<RE, QE>
     qse_phantom: PhantomData<QE>,
 }
 
-impl<RM, NH, PC, P, RE, QE> RouteImpl<RM, NH, PC, P, RE, QE>
+impl<RM, RE, QE> RouteImpl<RM, RE, QE>
     where RM: RequestMatcher,
-          NH: NewHandler,
-          PC: PipelineHandleChain<P>,
           RE: RequestPathExtractor,
           QE: QueryStringExtractor
 {
     /// Creates a new `RouteImpl`
     pub fn new(matcher: RM,
-               dispatcher: Dispatcher<NH, PC, P>,
+               dispatcher: Box<Dispatcher + Send + Sync>,
                _extractors: Extractors<RE, QE>)
                -> Self {
         RouteImpl {
@@ -129,11 +130,8 @@ impl<RE, QE> Extractors<RE, QE>
     }
 }
 
-impl<RM, NH, PC, P, RE, QE> Route<P> for RouteImpl<RM, NH, PC, P, RE, QE>
+impl<RM, RE, QE> Route for RouteImpl<RM, RE, QE>
     where RM: RequestMatcher,
-          NH: NewHandler,
-          NH::Instance: 'static,
-          PC: PipelineHandleChain<P>,
           RE: RequestPathExtractor,
           QE: QueryStringExtractor
 {
@@ -141,8 +139,8 @@ impl<RM, NH, PC, P, RE, QE> Route<P> for RouteImpl<RM, NH, PC, P, RE, QE>
         self.matcher.is_match(state, req)
     }
 
-    fn dispatch(&self, pipelines: &BorrowBag<P>, state: State, req: Request) -> Box<HandlerFuture> {
-        self.dispatcher.dispatch(pipelines, state, req)
+    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture> {
+        self.dispatcher.dispatch(state, req)
     }
 
     fn extract_request_path(&self,

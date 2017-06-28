@@ -42,7 +42,9 @@ pub enum NodeSegmentType<'n> {
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
+/// # extern crate borrow_bag;
 /// #
+/// # use std::sync::Arc;
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
 /// #
@@ -50,7 +52,7 @@ pub enum NodeSegmentType<'n> {
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::{RouteImpl, Extractors};
-/// # use gotham::dispatch::Dispatcher;
+/// # use gotham::dispatch::DispatcherImpl;
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::node::{NodeBuilder, NodeSegmentType};
@@ -60,15 +62,16 @@ pub enum NodeSegmentType<'n> {
 /// # }
 /// #
 /// # fn main() {
-///   let mut root_node_builder:NodeBuilder<()> = NodeBuilder::new("/", NodeSegmentType::Static);
+///   let mut root_node_builder = NodeBuilder::new("/", NodeSegmentType::Static);
 ///   let mut activate_node_builder = NodeBuilder::new("activate", NodeSegmentType::Static);
 ///
 ///   let mut batsignal_node = NodeBuilder::new("batsignal", NodeSegmentType::Static);
 ///   let route = {
 ///       // elided ..
+/// #     let pipelines = Arc::new(borrow_bag::new_borrow_bag());
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
-/// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
+/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipelines));
 ///       let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///       let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///       Box::new(route)
@@ -88,15 +91,15 @@ pub enum NodeSegmentType<'n> {
 ///   }
 /// # }
 /// ```
-pub struct Node<'n, P> {
+pub struct Node<'n> {
     segment: &'n str,
     segment_type: NodeSegmentType<'n>,
-    routes: Vec<Box<Route<P> + Send + Sync>>,
+    routes: Vec<Box<Route + Send + Sync>>,
 
-    children: Vec<Node<'n, P>>,
+    children: Vec<Node<'n>>,
 }
 
-impl<'n, P> Node<'n, P> {
+impl<'n> Node<'n> {
     /// Provides the segment this `Node` represents.
     pub fn segment(&self) -> &str {
         self.segment
@@ -109,7 +112,7 @@ impl<'n, P> Node<'n, P> {
 
     /// Allow the `Router` to access the `Routes` for this `Node` when it is
     /// selected as the lead in a single path through the `Tree`.
-    pub fn borrow_routes(&self) -> &Vec<Box<Route<P> + Send + Sync>> {
+    pub fn borrow_routes(&self) -> &Vec<Box<Route + Send + Sync>> {
         trace!(" borrowing routes for `{}`", self.segment);
         &self.routes
     }
@@ -140,7 +143,7 @@ impl<'n, P> Node<'n, P> {
     /// 4. Glob
     pub fn traverse<'r>(&'n self,
                         req_path_segments: &'r [PercentDecoded])
-                        -> Option<(Path<'n, 'r, P>, &Node<'n, P>, SegmentMapping<'n, 'r>)> {
+                        -> Option<(Path<'n, 'r>, &Node<'n>, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, leaf, sm)) => {
                 path.reverse();
@@ -156,7 +159,7 @@ impl<'n, P> Node<'n, P> {
         (&self,
          req_path_segments: &'r [PercentDecoded],
          mut consumed_segments: Vec<&'r PercentDecoded>)
-         -> Option<(Vec<&Node<'n, P>>, &Node<'n, P>, HashMap<&str, Vec<&'r PercentDecoded>>)> {
+         -> Option<(Vec<&Node<'n>>, &Node<'n>, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 trace!(" found leaf node `{}`", self.segment);
@@ -224,15 +227,15 @@ impl<'n, P> Node<'n, P> {
 }
 
 /// Constructs a `Node` which is sorted and immutable.
-pub struct NodeBuilder<'n, P> {
+pub struct NodeBuilder<'n> {
     segment: &'n str,
     segment_type: NodeSegmentType<'n>,
-    routes: Vec<Box<Route<P> + Send + Sync>>,
+    routes: Vec<Box<Route + Send + Sync>>,
 
-    children: Vec<NodeBuilder<'n, P>>,
+    children: Vec<NodeBuilder<'n>>,
 }
 
-impl<'n, P> NodeBuilder<'n, P> {
+impl<'n> NodeBuilder<'n> {
     /// Creates new `NodeBuilder` for the given segment.
     pub fn new(segment: &'n str, segment_type: NodeSegmentType<'n>) -> Self {
         NodeBuilder {
@@ -250,13 +253,13 @@ impl<'n, P> NodeBuilder<'n, P> {
 
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
-    pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
         trace!(" adding route to `{}`", self.segment());
         self.routes.push(route);
     }
 
     /// Adds a new child to this sub-tree structure
-    pub fn add_child(&mut self, child: NodeBuilder<'n, P>) {
+    pub fn add_child(&mut self, child: NodeBuilder<'n>) {
         trace!(" adding child `{}` to `{}`",
                child.segment(),
                self.segment());
@@ -272,23 +275,23 @@ impl<'n, P> NodeBuilder<'n, P> {
     }
 
     /// Borrow a child that represents the exact segment provided here.
-    pub fn borrow_child(&self, segment: &str) -> Option<&NodeBuilder<'n, P>> {
+    pub fn borrow_child(&self, segment: &str) -> Option<&NodeBuilder<'n>> {
         self.children.iter().find(|n| n.segment == segment)
     }
 
     /// Mutably borrow a child that represents the exact segment provided here.
-    pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut NodeBuilder<'n, P>> {
+    pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut NodeBuilder<'n>> {
         self.children.iter_mut().find(|n| n.segment == segment)
     }
 
     /// Finalizes and sorts all internal data, including all children.
-    pub fn finalize(mut self) -> Node<'n, P> {
+    pub fn finalize(mut self) -> Node<'n> {
         self.sort();
 
         let mut children = self.children
             .drain(..)
             .map(|c| c.finalize())
-            .collect::<Vec<Node<'n, P>>>();
+            .collect::<Vec<Node<'n>>>();
 
         children.shrink_to_fit();
         self.routes.shrink_to_fit();
@@ -318,34 +321,37 @@ impl<'n, P> NodeBuilder<'n, P> {
     }
 }
 
-impl<'n, P> Ord for NodeBuilder<'n, P> {
-    fn cmp(&self, other: &NodeBuilder<'n, P>) -> Ordering {
+impl<'n> Ord for NodeBuilder<'n> {
+    fn cmp(&self, other: &NodeBuilder<'n>) -> Ordering {
         (&self.segment_type, &self.segment).cmp(&(&other.segment_type, &other.segment))
     }
 }
 
-impl<'n, P> PartialOrd for NodeBuilder<'n, P> {
-    fn partial_cmp(&self, other: &NodeBuilder<'n, P>) -> Option<Ordering> {
+impl<'n> PartialOrd for NodeBuilder<'n> {
+    fn partial_cmp(&self, other: &NodeBuilder<'n>) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<'n, P> PartialEq for NodeBuilder<'n, P> {
-    fn eq(&self, other: &NodeBuilder<'n, P>) -> bool {
+impl<'n> PartialEq for NodeBuilder<'n> {
+    fn eq(&self, other: &NodeBuilder<'n>) -> bool {
         (&self.segment_type, &self.segment) == (&other.segment_type, &other.segment)
     }
 }
 
-impl<'n, P> Eq for NodeBuilder<'n, P> {}
+impl<'n> Eq for NodeBuilder<'n> {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    use std::sync::Arc;
+
     use hyper::Method;
     use hyper::server::{Request, Response};
+    use borrow_bag::{BorrowBag, new_borrow_bag};
 
-    use dispatch::Dispatcher;
+    use dispatch::DispatcherImpl;
     use router::request_matcher::MethodOnlyRequestMatcher;
     use router::route::{Route, RouteImpl, Extractors};
     use http::request_path::NoopRequestPathExtractor;
@@ -356,32 +362,31 @@ mod tests {
         (state, Response::new())
     }
 
-    fn handler2(state: State, _req: Request) -> (State, Response) {
-        (state, Response::new())
-    }
-
-    fn get_route() -> Box<Route<()> + Send + Sync> {
+    fn get_route<P>(pipelines: Arc<BorrowBag<P>>) -> Box<Route + Send + Sync>
+        where P: Send + Sync + 'static
+    {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRequestMatcher::new(methods);
-        let dispatcher = Dispatcher::new(|| Ok(handler), ());
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipelines.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, dispatcher, extractors);
+        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
         Box::new(route)
     }
 
-    fn test_structure<'n>() -> NodeBuilder<'n, ()> {
-        let mut root: NodeBuilder<'n, ()> = NodeBuilder::new("/", NodeSegmentType::Static);
+    fn test_structure<'n>() -> NodeBuilder<'n> {
+        let mut root: NodeBuilder<'n> = NodeBuilder::new("/", NodeSegmentType::Static);
+        let pipelines = Arc::new(new_borrow_bag());
 
         // Two methods, same path, same handler
         // [Get|Head]: /seg1
         let mut seg1 = NodeBuilder::new("seg1", NodeSegmentType::Static);
         let methods = vec![Method::Get, Method::Head];
         let matcher = MethodOnlyRequestMatcher::new(methods);
-        let dispatcher = Dispatcher::new(|| Ok(handler), ());
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipelines.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, dispatcher, extractors);
+        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
         seg1.add_route(Box::new(route));
         root.add_child(seg1);
 
@@ -390,19 +395,19 @@ mod tests {
         let mut seg2 = NodeBuilder::new("seg2", NodeSegmentType::Static);
         let methods = vec![Method::Post];
         let matcher = MethodOnlyRequestMatcher::new(methods);
-        let dispatcher = Dispatcher::new(|| Ok(handler), ());
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipelines.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, dispatcher, extractors);
+        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
         seg2.add_route(Box::new(route));
 
         // Patch: /seg2
         let methods = vec![Method::Patch];
         let matcher = MethodOnlyRequestMatcher::new(methods);
-        let dispatcher = Dispatcher::new(|| Ok(handler2), ());
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipelines.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, dispatcher, extractors);
+        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
         seg2.add_route(Box::new(route));
         root.add_child(seg2);
 
@@ -410,7 +415,7 @@ mod tests {
         // Get: /seg3/seg4
         let mut seg3 = NodeBuilder::new("seg3", NodeSegmentType::Static);
         let mut seg4 = NodeBuilder::new("seg4", NodeSegmentType::Static);
-        seg4.add_route(get_route());
+        seg4.add_route(get_route(pipelines.clone()));
         seg3.add_child(seg4);
         root.add_child(seg3);
 
@@ -422,17 +427,17 @@ mod tests {
         // Get /seg5/seg6
         let mut seg5 = NodeBuilder::new("seg5", NodeSegmentType::Static);
         let mut seg6 = NodeBuilder::new("seg6", NodeSegmentType::Static);
-        seg6.add_route(get_route());
+        seg6.add_route(get_route(pipelines.clone()));
 
         let mut segdyn1 = NodeBuilder::new(":segdyn1", NodeSegmentType::Dynamic);
         let mut seg7 = NodeBuilder::new("seg7", NodeSegmentType::Static);
-        seg7.add_route(get_route());
+        seg7.add_route(get_route(pipelines.clone()));
 
         // Ensure traversal will respect Globs
         let mut seg8 = NodeBuilder::new("seg8", NodeSegmentType::Glob);
         let mut seg9 = NodeBuilder::new("seg9", NodeSegmentType::Static);
         let mut seg10 = NodeBuilder::new("seg10", NodeSegmentType::Glob);
-        seg10.add_route(get_route());
+        seg10.add_route(get_route(pipelines.clone()));
         seg9.add_child(seg10);
         seg8.add_child(seg9);
         root.add_child(seg8);

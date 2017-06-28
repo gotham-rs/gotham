@@ -10,7 +10,7 @@ pub mod node;
 
 /// A depth ordered `Vec` of `Node` instances that create a routable path through the `Tree` for the
 /// matched `Request` path.
-pub type Path<'n, 'a, P> = Vec<&'a Node<'n, P>>;
+pub type Path<'n, 'a> = Vec<&'a Node<'n>>;
 
 /// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
 /// which have been matched against the `Request` path.
@@ -61,11 +61,13 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
+/// # extern crate borrow_bag;
 /// #
+/// # use std::sync::Arc;
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
 /// # use gotham::router::route::{RouteImpl, Extractors};
-/// # use gotham::dispatch::Dispatcher;
+/// # use gotham::dispatch::DispatcherImpl;
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::TreeBuilder;
@@ -81,16 +83,17 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # }
 /// #
 /// # fn main() {
-///   let mut tree_builder: TreeBuilder<()> = TreeBuilder::new();
+///   let mut tree_builder: TreeBuilder = TreeBuilder::new();
 ///
 ///   let mut activate_node_builder = NodeBuilder::new("activate", NodeSegmentType::Static);
 ///
 ///   let mut thing_node_builder = NodeBuilder::new("thing", NodeSegmentType::Dynamic);
 ///   let batsignal_route = {
 ///       // elided ...
+/// #     let pipelines = Arc::new(borrow_bag::new_borrow_bag());
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
-/// #     let dispatcher = Dispatcher::new(|| Ok(handler), ());
+/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipelines));
 /// #     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #     let route = RouteImpl::new(matcher, dispatcher, extractors);
 /// #     Box::new(route)
@@ -116,22 +119,22 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///   assert!(tree.traverse(&[PercentDecoded::new("/activate").unwrap()]).is_none());
 /// # }
 /// ```
-pub struct Tree<'n, P> {
-    root: Node<'n, P>,
+pub struct Tree<'n> {
+    root: Node<'n>,
 }
 
-impl<'n, P> Tree<'n, P> {
+impl<'n> Tree<'n> {
     /// Borrow the root `Node` of the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
-    pub fn borrow_root(&self) -> &Node<'n, P> {
+    pub fn borrow_root(&self) -> &Node<'n> {
         &self.root
     }
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
     pub fn traverse<'r>(&'n self,
                         req_path_segments: &'r [PercentDecoded])
-                        -> Option<(Path<'n, 'r, P>, &Node<'n, P>, SegmentMapping<'n, 'r>)> {
+                        -> Option<(Path<'n, 'r>, &Node<'n>, SegmentMapping<'n, 'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
@@ -139,11 +142,11 @@ impl<'n, P> Tree<'n, P> {
 
 
 /// Constructs a `Tree` which is sorted and immutable.
-pub struct TreeBuilder<'n, P> {
-    root: NodeBuilder<'n, P>,
+pub struct TreeBuilder<'n> {
+    root: NodeBuilder<'n>,
 }
 
-impl<'n, P> TreeBuilder<'n, P> {
+impl<'n> TreeBuilder<'n> {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
         trace!(" creating new tree");
@@ -151,7 +154,7 @@ impl<'n, P> TreeBuilder<'n, P> {
     }
 
     /// Adds a direct child to the root of the `TreeBuilder`.
-    pub fn add_child(&mut self, child: NodeBuilder<'n, P>) {
+    pub fn add_child(&mut self, child: NodeBuilder<'n>) {
         self.root.add_child(child);
     }
 
@@ -165,12 +168,12 @@ impl<'n, P> TreeBuilder<'n, P> {
 
     /// Adds a `Route` be evaluated by the `Router` when the root of the
     /// `Tree` is requested.
-    pub fn add_route(&mut self, route: Box<Route<P> + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
         self.root.add_route(route);
     }
 
     /// Finalizes and sorts all internal data and creates a Tree for use with a `Router`.
-    pub fn finalize(self) -> Tree<'n, P> {
+    pub fn finalize(self) -> Tree<'n> {
         Tree { root: self.root.finalize() }
     }
 }
