@@ -2,7 +2,7 @@
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use std::borrow::Cow;
+use std::borrow::Borrow;
 
 use http::PercentDecoded;
 use router::route::Route;
@@ -236,10 +236,10 @@ pub struct NodeBuilder {
 
 impl NodeBuilder {
     /// Creates new `NodeBuilder` for the given segment.
-    pub fn new<'a, S>(segment: S, segment_type: NodeSegmentType) -> Self
-        where S: Into<Cow<'a, str>>
+    pub fn new<S>(segment: S, segment_type: NodeSegmentType) -> Self
+        where S: Borrow<str>
     {
-        let segment = segment.into().into_owned();
+        let segment = segment.borrow().to_owned();
         NodeBuilder {
             segment,
             segment_type,
