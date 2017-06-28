@@ -10,7 +10,7 @@ use router::tree::Path;
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum NodeSegmentType<'n> {
+pub enum NodeSegmentType {
     /// Is matched exactly to the corresponding segment for incoming request paths. Unlike all
     /// other `NodeSegmentTypes` values determined to be associated with this segment
     /// within a `Request` path are **not** stored within `State`.
@@ -19,7 +19,7 @@ pub enum NodeSegmentType<'n> {
     /// Uses the supplied regex to determine match against incoming request paths.
     Constrained {
         /// Regex used to match against a single segment of a request path.
-        regex: &'n str,
+        regex: String,
     },
 
     /// Matches any corresponding segment for incoming request paths.
@@ -91,7 +91,7 @@ pub enum NodeSegmentType<'n> {
 /// ```
 pub struct Node<'n> {
     segment: &'n str,
-    segment_type: NodeSegmentType<'n>,
+    segment_type: NodeSegmentType,
     routes: Vec<Box<Route + Send + Sync>>,
 
     children: Vec<Node<'n>>,
@@ -227,7 +227,7 @@ impl<'n> Node<'n> {
 /// Constructs a `Node` which is sorted and immutable.
 pub struct NodeBuilder<'n> {
     segment: &'n str,
-    segment_type: NodeSegmentType<'n>,
+    segment_type: NodeSegmentType,
     routes: Vec<Box<Route + Send + Sync>>,
 
     children: Vec<NodeBuilder<'n>>,
@@ -235,7 +235,7 @@ pub struct NodeBuilder<'n> {
 
 impl<'n> NodeBuilder<'n> {
     /// Creates new `NodeBuilder` for the given segment.
-    pub fn new(segment: &'n str, segment_type: NodeSegmentType<'n>) -> Self {
+    pub fn new(segment: &'n str, segment_type: NodeSegmentType) -> Self {
         NodeBuilder {
             segment,
             segment_type,
