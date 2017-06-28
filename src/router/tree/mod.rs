@@ -61,13 +61,11 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # extern crate borrow_bag;
 /// #
-/// # use std::sync::Arc;
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
 /// # use gotham::router::route::{RouteImpl, Extractors};
-/// # use gotham::dispatch::DispatcherImpl;
+/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::TreeBuilder;
@@ -83,6 +81,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # }
 /// #
 /// # fn main() {
+/// # let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 ///   let mut tree_builder: TreeBuilder = TreeBuilder::new();
 ///
 ///   let mut activate_node_builder = NodeBuilder::new("activate", NodeSegmentType::Static);
@@ -90,10 +89,9 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///   let mut thing_node_builder = NodeBuilder::new("thing", NodeSegmentType::Dynamic);
 ///   let batsignal_route = {
 ///       // elided ...
-/// #     let pipelines = Arc::new(borrow_bag::new_borrow_bag());
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
-/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipelines));
+/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 /// #     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #     let route = RouteImpl::new(matcher, dispatcher, extractors);
 /// #     Box::new(route)

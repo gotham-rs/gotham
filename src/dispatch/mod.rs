@@ -1,11 +1,8 @@
 //! Defines Gotham's `Dispatcher` and supporting types.
-//!
-//! These types are intended to be used internally by Gotham's `Router` and supporting code. Gotham
-//! applications should not need to consume these types directly.
 
 use std::sync::Arc;
 
-use borrow_bag::{BorrowBag, Handle, Lookup};
+use borrow_bag::{new_borrow_bag, BorrowBag, Handle, Lookup};
 use hyper::server::Request;
 use futures::{future, Future};
 
@@ -13,21 +10,39 @@ use handler::{Handler, NewHandler, HandlerFuture};
 use middleware::pipeline::{NewMiddlewareChain, Pipeline};
 use state::{State, request_id};
 
-/// Used by `Router` to dispatch requests via the configured `Pipeline`(s) and to the
-/// correct `Handler`.
+/// Represents the set of all `Pipeline` instances that are available for use with `Routes`.
+pub type PipelineSet<P> = Arc<BorrowBag<P>>;
+
+/// A set of `Pipeline` instances that may continue to grow
+pub type EditablePipelineSet<P> = BorrowBag<P>;
+
+/// Create an empty set of `Pipeline` instances.
+///
+/// See BorrowBag#add to insert new `Pipeline` instances.
+pub fn new_pipeline_set() -> EditablePipelineSet<()> {
+    new_borrow_bag()
+}
+
+/// Wraps the current set of `Pipeline` instances into a thread-safe reference counting pointer for
+/// use with `DispatcherImpl` instances.
+pub fn finalize_pipeline_set<P>(eps: EditablePipelineSet<P>) -> PipelineSet<P> {
+    Arc::new(eps)
+}
+
+/// Used by `Router` to dispatch requests via `Pipeline`(s) and into the correct `Handler`.
 pub trait Dispatcher {
     /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
     fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture>;
 }
 
-/// Default implementation of the Dispatcher trait
+/// Default implementation of the `Dispatcher` trait.
 pub struct DispatcherImpl<H, C, P>
     where H: NewHandler,
           C: PipelineHandleChain<P>
 {
     new_handler: H,
     pipeline_chain: C,
-    pipelines: Arc<BorrowBag<P>>,
+    pipelines: PipelineSet<P>,
 }
 
 impl<H, C, P> DispatcherImpl<H, C, P>
@@ -35,8 +50,13 @@ impl<H, C, P> DispatcherImpl<H, C, P>
           H::Instance: 'static,
           C: PipelineHandleChain<P>
 {
-    /// Creates a new `Dispatcher` value.
-    pub fn new(new_handler: H, pipeline_chain: C, pipelines: Arc<BorrowBag<P>>) -> Self {
+    /// Creates a new `DispatcherImpl`.
+    ///
+    /// * `new_handler` - The `Handler` that will be called once the `pipeline_chain` is complete.
+    /// * `pipeline_chain` - A chain of `Pipeline` instance handles that indicate which `Pipelines` will be invoked.
+    /// * `pipelines` - All `Pipeline` instances, accessible by the handles provided in `pipeline_chain`.
+    ///
+    pub fn new(new_handler: H, pipeline_chain: C, pipelines: PipelineSet<P>) -> Self {
         DispatcherImpl {
             new_handler,
             pipeline_chain,
@@ -85,7 +105,7 @@ pub trait PipelineHandleChain<P> {
     /// Invokes this part of the `PipelineHandleChain`, with requests being passed through to `f`
     /// once all `Middleware` in the `Pipeline` have passed the request through.
     fn call<F>(&self,
-               pipelines: &BorrowBag<P>,
+               pipelines: &PipelineSet<P>,
                state: State,
                req: Request,
                f: F)
@@ -101,7 +121,7 @@ impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
           P: Lookup<Pipeline<T>, N>
 {
     fn call<F>(&self,
-               pipelines: &BorrowBag<P>,
+               pipelines: &PipelineSet<P>,
                state: State,
                req: Request,
                f: F)
@@ -126,7 +146,7 @@ impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
 
 /// The marker for the end of a `PipelineHandleChain`.
 impl<P> PipelineHandleChain<P> for () {
-    fn call<F>(&self, _: &BorrowBag<P>, state: State, req: Request, f: F) -> Box<HandlerFuture>
+    fn call<F>(&self, _: &PipelineSet<P>, state: State, req: Request, f: F) -> Box<HandlerFuture>
         where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
     {
         trace!("[{}] start pipeline", request_id(&state));
@@ -145,7 +165,6 @@ mod tests {
     use state::StateData;
     use hyper::server::Response;
     use hyper::StatusCode;
-    use borrow_bag;
 
     fn handler(state: State, _req: Request) -> (State, Response) {
         let number = state.borrow::<Number>().unwrap().value;
@@ -228,7 +247,7 @@ mod tests {
     fn pipeline_chain_ordering_test() {
         let new_service = NewHandlerService::new(|| {
             Ok(move |state, req| {
-                let pipelines = borrow_bag::new_borrow_bag();
+                let pipelines = new_pipeline_set();
 
                 let (pipelines, p1) = pipelines.add(new_pipeline()
                     .add(Number { value: 0 }) // 0

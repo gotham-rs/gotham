@@ -42,9 +42,7 @@ pub enum NodeSegmentType<'n> {
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # extern crate borrow_bag;
 /// #
-/// # use std::sync::Arc;
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
 /// #
@@ -52,7 +50,7 @@ pub enum NodeSegmentType<'n> {
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::{RouteImpl, Extractors};
-/// # use gotham::dispatch::DispatcherImpl;
+/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::node::{NodeBuilder, NodeSegmentType};
@@ -62,16 +60,16 @@ pub enum NodeSegmentType<'n> {
 /// # }
 /// #
 /// # fn main() {
+/// #  let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 ///   let mut root_node_builder = NodeBuilder::new("/", NodeSegmentType::Static);
 ///   let mut activate_node_builder = NodeBuilder::new("activate", NodeSegmentType::Static);
 ///
 ///   let mut batsignal_node = NodeBuilder::new("batsignal", NodeSegmentType::Static);
 ///   let route = {
 ///       // elided ..
-/// #     let pipelines = Arc::new(borrow_bag::new_borrow_bag());
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
-/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipelines));
+/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///       let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///       let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///       Box::new(route)
@@ -345,13 +343,10 @@ impl<'n> Eq for NodeBuilder<'n> {}
 mod tests {
     use super::*;
 
-    use std::sync::Arc;
-
     use hyper::Method;
     use hyper::server::{Request, Response};
-    use borrow_bag::{BorrowBag, new_borrow_bag};
 
-    use dispatch::DispatcherImpl;
+    use dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl};
     use router::request_matcher::MethodOnlyRequestMatcher;
     use router::route::{Route, RouteImpl, Extractors};
     use http::request_path::NoopRequestPathExtractor;
@@ -362,12 +357,12 @@ mod tests {
         (state, Response::new())
     }
 
-    fn get_route<P>(pipelines: Arc<BorrowBag<P>>) -> Box<Route + Send + Sync>
+    fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
         where P: Send + Sync + 'static
     {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRequestMatcher::new(methods);
-        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipelines.clone());
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
         let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
@@ -376,14 +371,14 @@ mod tests {
 
     fn test_structure<'n>() -> NodeBuilder<'n> {
         let mut root: NodeBuilder<'n> = NodeBuilder::new("/", NodeSegmentType::Static);
-        let pipelines = Arc::new(new_borrow_bag());
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 
         // Two methods, same path, same handler
         // [Get|Head]: /seg1
         let mut seg1 = NodeBuilder::new("seg1", NodeSegmentType::Static);
         let methods = vec![Method::Get, Method::Head];
         let matcher = MethodOnlyRequestMatcher::new(methods);
-        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipelines.clone());
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
         let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
@@ -395,7 +390,7 @@ mod tests {
         let mut seg2 = NodeBuilder::new("seg2", NodeSegmentType::Static);
         let methods = vec![Method::Post];
         let matcher = MethodOnlyRequestMatcher::new(methods);
-        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipelines.clone());
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
         let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
@@ -404,7 +399,7 @@ mod tests {
         // Patch: /seg2
         let methods = vec![Method::Patch];
         let matcher = MethodOnlyRequestMatcher::new(methods);
-        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipelines.clone());
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
         let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
@@ -415,7 +410,7 @@ mod tests {
         // Get: /seg3/seg4
         let mut seg3 = NodeBuilder::new("seg3", NodeSegmentType::Static);
         let mut seg4 = NodeBuilder::new("seg4", NodeSegmentType::Static);
-        seg4.add_route(get_route(pipelines.clone()));
+        seg4.add_route(get_route(pipeline_set.clone()));
         seg3.add_child(seg4);
         root.add_child(seg3);
 
@@ -427,17 +422,17 @@ mod tests {
         // Get /seg5/seg6
         let mut seg5 = NodeBuilder::new("seg5", NodeSegmentType::Static);
         let mut seg6 = NodeBuilder::new("seg6", NodeSegmentType::Static);
-        seg6.add_route(get_route(pipelines.clone()));
+        seg6.add_route(get_route(pipeline_set.clone()));
 
         let mut segdyn1 = NodeBuilder::new(":segdyn1", NodeSegmentType::Dynamic);
         let mut seg7 = NodeBuilder::new("seg7", NodeSegmentType::Static);
-        seg7.add_route(get_route(pipelines.clone()));
+        seg7.add_route(get_route(pipeline_set.clone()));
 
         // Ensure traversal will respect Globs
         let mut seg8 = NodeBuilder::new("seg8", NodeSegmentType::Glob);
         let mut seg9 = NodeBuilder::new("seg9", NodeSegmentType::Static);
         let mut seg10 = NodeBuilder::new("seg10", NodeSegmentType::Glob);
-        seg10.add_route(get_route(pipelines.clone()));
+        seg10.add_route(get_route(pipeline_set.clone()));
         seg9.add_child(seg10);
         seg8.add_child(seg9);
         root.add_child(seg8);

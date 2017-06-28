@@ -52,9 +52,6 @@ pub trait Route {
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # extern crate borrow_bag;
-/// #
-/// # use std::sync::Arc;
 /// #
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
@@ -62,7 +59,7 @@ pub trait Route {
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::DispatcherImpl;
+/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::route::{RouteImpl, Extractors};
 /// #
@@ -71,10 +68,10 @@ pub trait Route {
 ///     (state, Response::new())
 ///   }
 ///
-///   let all_pipelines = Arc::new(borrow_bag::new_borrow_bag());
+///   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 ///   let methods = vec![Method::Get];
 ///   let matcher = MethodOnlyRequestMatcher::new(methods);
-///   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), all_pipelines));
+///   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///   RouteImpl::new(matcher, dispatcher, extractors);
 /// # }

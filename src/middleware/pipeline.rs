@@ -27,10 +27,8 @@ use state::{State, request_id};
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate futures;
-/// # extern crate borrow_bag;
 /// #
 /// # use std::io;
-/// # use std::sync::Arc;
 /// # use gotham::state::{State, StateData};
 /// # use gotham::handler::{HandlerFuture, NewHandlerService};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
@@ -39,7 +37,7 @@ use state::{State, request_id};
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::{RouteImpl, Extractors};
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::DispatcherImpl;
+/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::test::TestServer;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
@@ -125,18 +123,18 @@ use state::{State, request_id};
 /// }
 ///
 /// fn main() {
-///     let pipelines = borrow_bag::new_borrow_bag();
-///     let (pipelines, pipeline) = pipelines.add(new_pipeline()
+///     let editable_pipeline_set = new_pipeline_set();
+///     let (editable_pipeline_set, pipeline) = editable_pipeline_set.add(new_pipeline()
 ///         .add(MiddlewareOne)
 ///         .add(MiddlewareTwo)
 ///         .add(MiddlewareThree)
 ///         .build());
+///     let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
 ///
-///     let pipelines = Arc::new(pipelines);
 ///     let mut tree_builder = TreeBuilder::new();
 ///
 ///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
-///     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipelines));
+///     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
 ///     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///     let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///     tree_builder.add_route(Box::new(route));
