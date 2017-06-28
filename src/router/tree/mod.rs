@@ -10,7 +10,7 @@ pub mod node;
 
 /// A depth ordered `Vec` of `Node` instances that create a routable path through the `Tree` for the
 /// matched `Request` path.
-pub type Path<'n, 'a> = Vec<&'a Node<'n>>;
+pub type Path<'a> = Vec<&'a Node>;
 
 /// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
 /// which have been matched against the `Request` path.
@@ -117,22 +117,22 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///   assert!(tree.traverse(&[PercentDecoded::new("/activate").unwrap()]).is_none());
 /// # }
 /// ```
-pub struct Tree<'n> {
-    root: Node<'n>,
+pub struct Tree {
+    root: Node,
 }
 
-impl<'n> Tree<'n> {
+impl Tree {
     /// Borrow the root `Node` of the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
-    pub fn borrow_root(&self) -> &Node<'n> {
+    pub fn borrow_root(&self) -> &Node {
         &self.root
     }
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
-    pub fn traverse<'r>(&'n self,
-                        req_path_segments: &'r [PercentDecoded])
-                        -> Option<(Path<'n, 'r>, &Node<'n>, SegmentMapping<'n, 'r>)> {
+    pub fn traverse<'r, 'n>(&'n self,
+                            req_path_segments: &'r [PercentDecoded])
+                            -> Option<(Path<'n>, &Node, SegmentMapping<'n, 'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
@@ -140,11 +140,11 @@ impl<'n> Tree<'n> {
 
 
 /// Constructs a `Tree` which is sorted and immutable.
-pub struct TreeBuilder<'n> {
-    root: NodeBuilder<'n>,
+pub struct TreeBuilder {
+    root: NodeBuilder,
 }
 
-impl<'n> TreeBuilder<'n> {
+impl TreeBuilder {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
         trace!(" creating new tree");
@@ -152,7 +152,7 @@ impl<'n> TreeBuilder<'n> {
     }
 
     /// Adds a direct child to the root of the `TreeBuilder`.
-    pub fn add_child(&mut self, child: NodeBuilder<'n>) {
+    pub fn add_child(&mut self, child: NodeBuilder) {
         self.root.add_child(child);
     }
 
@@ -171,7 +171,7 @@ impl<'n> TreeBuilder<'n> {
     }
 
     /// Finalizes and sorts all internal data and creates a Tree for use with a `Router`.
-    pub fn finalize(self) -> Tree<'n> {
+    pub fn finalize(self) -> Tree {
         Tree { root: self.root.finalize() }
     }
 }
