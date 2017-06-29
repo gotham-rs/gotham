@@ -99,7 +99,7 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
 // | - hello
 //     | - :name         --> (Get Route)
 //         | :from       --> (Get Route)
-fn build_router() -> Router<'static> {
+fn build_router() -> Router {
     let mut tree_builder = TreeBuilder::new();
 
     let editable_pipeline_set = new_pipeline_set();
@@ -110,10 +110,10 @@ fn build_router() -> Router<'static> {
 
     let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
 
-    tree_builder.add_route(dynamic_route(vec![Method::Get],
-                                         || Ok(Echo::get),
-                                         (global, ()),
-                                         pipeline_set.clone()));
+    tree_builder.add_route(static_route(vec![Method::Get],
+                                        || Ok(Echo::get),
+                                        (global, ()),
+                                        pipeline_set.clone()));
 
     let mut echo = NodeBuilder::new("echo", NodeSegmentType::Static);
     echo.add_route(static_route(vec![Method::Get],
@@ -239,7 +239,7 @@ impl Echo {
 fn main() {
     fern::Dispatch::new()
         .level(LogLevelFilter::Error)
-        .level_for("gotham", log::LogLevelFilter::Warn)
+        .level_for("gotham", log::LogLevelFilter::Debug)
         .chain(std::io::stdout())
         .format(|out, message, record| {
                     out.finish(format_args!("{}[{}][{}]{}",

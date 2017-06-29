@@ -21,13 +21,13 @@ use state::{State, StateData, request_id};
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
-struct RouterData<'n> {
-    tree: Tree<'n>,
+struct RouterData {
+    tree: Tree,
     response_extender: ResponseExtender,
 }
 
-impl<'n> RouterData<'n> {
-    pub fn new(tree: Tree<'n>, response_extender: ResponseExtender) -> RouterData<'n> {
+impl RouterData {
+    pub fn new(tree: Tree, response_extender: ResponseExtender) -> RouterData {
         RouterData {
             tree,
             response_extender,
@@ -57,18 +57,13 @@ impl<'n> RouterData<'n> {
 ///   Router::new(tree, response_extender);
 /// # }
 /// ```
-pub struct Router<'n> {
-    data: Arc<RouterData<'n>>,
+#[derive(Clone)]
+pub struct Router {
+    data: Arc<RouterData>,
 }
 
-impl<'n> Clone for Router<'n> {
-    fn clone(&self) -> Router<'n> {
-        Router { data: self.data.clone() }
-    }
-}
-
-impl<'n> NewHandler for Router<'n> {
-    type Instance = Router<'n>;
+impl NewHandler for Router {
+    type Instance = Router;
 
     // Creates a new Router instance to route new HTTP requests
     fn new_handler(&self) -> io::Result<Self::Instance> {
@@ -77,7 +72,7 @@ impl<'n> NewHandler for Router<'n> {
     }
 }
 
-impl<'n> Handler for Router<'n> {
+impl Handler for Router {
     /// Handles the request by determining the correct `Route` from the internal
     /// `Tree`, storing any path related variables in `State` and dispatching
     /// appropriately to the configured `Handler`.
@@ -92,9 +87,9 @@ impl<'n> Handler for Router<'n> {
     }
 }
 
-impl<'n> Router<'n> {
+impl Router {
     /// Creates a `Router` instance.
-    pub fn new(tree: Tree<'n>, response_extender: ResponseExtender) -> Router<'n> {
+    pub fn new(tree: Tree, response_extender: ResponseExtender) -> Router {
 
         let router_data = RouterData::new(tree, response_extender);
         Router { data: Arc::new(router_data) }

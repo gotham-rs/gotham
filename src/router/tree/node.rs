@@ -2,6 +2,7 @@
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::borrow::Borrow;
 
 use http::PercentDecoded;
 use router::route::Route;
@@ -10,7 +11,7 @@ use router::tree::Path;
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum NodeSegmentType<'n> {
+pub enum NodeSegmentType {
     /// Is matched exactly to the corresponding segment for incoming request paths. Unlike all
     /// other `NodeSegmentTypes` values determined to be associated with this segment
     /// within a `Request` path are **not** stored within `State`.
@@ -19,7 +20,7 @@ pub enum NodeSegmentType<'n> {
     /// Uses the supplied regex to determine match against incoming request paths.
     Constrained {
         /// Regex used to match against a single segment of a request path.
-        regex: &'n str,
+        regex: String,
     },
 
     /// Matches any corresponding segment for incoming request paths.
@@ -89,18 +90,18 @@ pub enum NodeSegmentType<'n> {
 ///   }
 /// # }
 /// ```
-pub struct Node<'n> {
-    segment: &'n str,
-    segment_type: NodeSegmentType<'n>,
+pub struct Node {
+    segment: String,
+    segment_type: NodeSegmentType,
     routes: Vec<Box<Route + Send + Sync>>,
 
-    children: Vec<Node<'n>>,
+    children: Vec<Node>,
 }
 
-impl<'n> Node<'n> {
+impl Node {
     /// Provides the segment this `Node` represents.
     pub fn segment(&self) -> &str {
-        self.segment
+        &self.segment
     }
 
     /// Provides the type of segment this `Node` represents.
@@ -139,9 +140,9 @@ impl<'n> Node<'n> {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'r>(&'n self,
-                        req_path_segments: &'r [PercentDecoded])
-                        -> Option<(Path<'n, 'r>, &Node<'n>, SegmentMapping<'n, 'r>)> {
+    pub fn traverse<'r, 'n>(&'n self,
+                            req_path_segments: &'r [PercentDecoded])
+                            -> Option<(Path<'n>, &Node, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, leaf, sm)) => {
                 path.reverse();
@@ -157,7 +158,7 @@ impl<'n> Node<'n> {
         (&self,
          req_path_segments: &'r [PercentDecoded],
          mut consumed_segments: Vec<&'r PercentDecoded>)
-         -> Option<(Vec<&Node<'n>>, &Node<'n>, HashMap<&str, Vec<&'r PercentDecoded>>)> {
+         -> Option<(Vec<&Node>, &Node, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 trace!(" found leaf node `{}`", self.segment);
@@ -225,17 +226,20 @@ impl<'n> Node<'n> {
 }
 
 /// Constructs a `Node` which is sorted and immutable.
-pub struct NodeBuilder<'n> {
-    segment: &'n str,
-    segment_type: NodeSegmentType<'n>,
+pub struct NodeBuilder {
+    segment: String,
+    segment_type: NodeSegmentType,
     routes: Vec<Box<Route + Send + Sync>>,
 
-    children: Vec<NodeBuilder<'n>>,
+    children: Vec<NodeBuilder>,
 }
 
-impl<'n> NodeBuilder<'n> {
+impl NodeBuilder {
     /// Creates new `NodeBuilder` for the given segment.
-    pub fn new(segment: &'n str, segment_type: NodeSegmentType<'n>) -> Self {
+    pub fn new<S>(segment: S, segment_type: NodeSegmentType) -> Self
+        where S: Borrow<str>
+    {
+        let segment = segment.borrow().to_owned();
         NodeBuilder {
             segment,
             segment_type,
@@ -245,8 +249,8 @@ impl<'n> NodeBuilder<'n> {
     }
 
     /// Access the segment name of the `Node` under construction
-    pub fn segment(&self) -> &'n str {
-        self.segment
+    pub fn segment(&self) -> &str {
+        &self.segment
     }
 
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
@@ -257,7 +261,7 @@ impl<'n> NodeBuilder<'n> {
     }
 
     /// Adds a new child to this sub-tree structure
-    pub fn add_child(&mut self, child: NodeBuilder<'n>) {
+    pub fn add_child(&mut self, child: NodeBuilder) {
         trace!(" adding child `{}` to `{}`",
                child.segment(),
                self.segment());
@@ -273,23 +277,23 @@ impl<'n> NodeBuilder<'n> {
     }
 
     /// Borrow a child that represents the exact segment provided here.
-    pub fn borrow_child(&self, segment: &str) -> Option<&NodeBuilder<'n>> {
+    pub fn borrow_child(&self, segment: &str) -> Option<&NodeBuilder> {
         self.children.iter().find(|n| n.segment == segment)
     }
 
     /// Mutably borrow a child that represents the exact segment provided here.
-    pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut NodeBuilder<'n>> {
+    pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut NodeBuilder> {
         self.children.iter_mut().find(|n| n.segment == segment)
     }
 
     /// Finalizes and sorts all internal data, including all children.
-    pub fn finalize(mut self) -> Node<'n> {
+    pub fn finalize(mut self) -> Node {
         self.sort();
 
         let mut children = self.children
             .drain(..)
             .map(|c| c.finalize())
-            .collect::<Vec<Node<'n>>>();
+            .collect::<Vec<Node>>();
 
         children.shrink_to_fit();
         self.routes.shrink_to_fit();
@@ -319,25 +323,25 @@ impl<'n> NodeBuilder<'n> {
     }
 }
 
-impl<'n> Ord for NodeBuilder<'n> {
-    fn cmp(&self, other: &NodeBuilder<'n>) -> Ordering {
+impl Ord for NodeBuilder {
+    fn cmp(&self, other: &NodeBuilder) -> Ordering {
         (&self.segment_type, &self.segment).cmp(&(&other.segment_type, &other.segment))
     }
 }
 
-impl<'n> PartialOrd for NodeBuilder<'n> {
-    fn partial_cmp(&self, other: &NodeBuilder<'n>) -> Option<Ordering> {
+impl PartialOrd for NodeBuilder {
+    fn partial_cmp(&self, other: &NodeBuilder) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<'n> PartialEq for NodeBuilder<'n> {
-    fn eq(&self, other: &NodeBuilder<'n>) -> bool {
+impl PartialEq for NodeBuilder {
+    fn eq(&self, other: &NodeBuilder) -> bool {
         (&self.segment_type, &self.segment) == (&other.segment_type, &other.segment)
     }
 }
 
-impl<'n> Eq for NodeBuilder<'n> {}
+impl Eq for NodeBuilder {}
 
 #[cfg(test)]
 mod tests {
@@ -369,8 +373,8 @@ mod tests {
         Box::new(route)
     }
 
-    fn test_structure<'n>() -> NodeBuilder<'n> {
-        let mut root: NodeBuilder<'n> = NodeBuilder::new("/", NodeSegmentType::Static);
+    fn test_structure() -> NodeBuilder {
+        let mut root: NodeBuilder = NodeBuilder::new("/", NodeSegmentType::Static);
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 
         // Two methods, same path, same handler
@@ -431,8 +435,10 @@ mod tests {
         // Ensure traversal will respect Globs
         let mut seg8 = NodeBuilder::new("seg8", NodeSegmentType::Glob);
         let mut seg9 = NodeBuilder::new("seg9", NodeSegmentType::Static);
-        let mut seg10 = NodeBuilder::new("seg10", NodeSegmentType::Glob);
+
+        let mut seg10 = NodeBuilder::new(String::from("seg10"), NodeSegmentType::Glob);
         seg10.add_route(get_route(pipeline_set.clone()));
+
         seg9.add_child(seg10);
         seg8.add_child(seg9);
         root.add_child(seg8);
