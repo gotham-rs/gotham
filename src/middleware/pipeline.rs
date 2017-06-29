@@ -27,7 +27,6 @@ use state::{State, request_id};
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate futures;
-/// # extern crate borrow_bag;
 /// #
 /// # use std::io;
 /// # use gotham::state::{State, StateData};
@@ -38,7 +37,7 @@ use state::{State, request_id};
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::{RouteImpl, Extractors};
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::Dispatcher;
+/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::test::TestServer;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
@@ -124,17 +123,18 @@ use state::{State, request_id};
 /// }
 ///
 /// fn main() {
-///     let pipelines = borrow_bag::new_borrow_bag();
-///     let (pipelines, pipeline) = pipelines.add(new_pipeline()
+///     let editable_pipeline_set = new_pipeline_set();
+///     let (editable_pipeline_set, pipeline) = editable_pipeline_set.add(new_pipeline()
 ///         .add(MiddlewareOne)
 ///         .add(MiddlewareTwo)
 ///         .add(MiddlewareThree)
 ///         .build());
+///     let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
 ///
 ///     let mut tree_builder = TreeBuilder::new();
 ///
 ///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
-///     let dispatcher = Dispatcher::new(|| Ok(handler), (pipeline, ()));
+///     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
 ///     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///     let route = RouteImpl::new(matcher, dispatcher, extractors);
 ///     tree_builder.add_route(Box::new(route));
@@ -142,7 +142,7 @@ use state::{State, request_id};
 ///
 ///
 ///     let response_extender = ResponseExtenderBuilder::new().finalize();
-///     let router = Router::new(tree, pipelines, response_extender);
+///     let router = Router::new(tree, response_extender);
 ///
 ///     let new_service = NewHandlerService::new(router);
 ///     let mut test_server = TestServer::new(new_service).unwrap();

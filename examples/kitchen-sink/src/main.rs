@@ -4,7 +4,6 @@ extern crate hyper;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate borrow_bag;
 extern crate chrono;
 extern crate log;
 extern crate fern;
@@ -24,7 +23,8 @@ use gotham::http::query_string::NoopQueryStringExtractor;
 use gotham::router::response_extender::ResponseExtenderBuilder;
 use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors};
-use gotham::dispatch::{Dispatcher, PipelineHandleChain};
+use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
+                       PipelineHandleChain};
 use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 use gotham::router::tree::TreeBuilder;
 use gotham::router::tree::node::{NodeBuilder, NodeSegmentType};
@@ -59,32 +59,34 @@ static ASYNC: &'static [u8] = b"Got async response";
 
 fn static_route<NH, P, C>(methods: Vec<Method>,
                           new_handler: NH,
-                          pipelines: C)
-                          -> Box<Route<P> + Send + Sync>
+                          active_pipelines: C,
+                          pipeline_set: PipelineSet<P>)
+                          -> Box<Route + Send + Sync>
     where NH: NewHandler + 'static,
           C: PipelineHandleChain<P> + Send + Sync + 'static,
           P: Send + Sync + 'static
 {
     let matcher = MethodOnlyRequestMatcher::new(methods);
-    let dispatcher = Dispatcher::new(new_handler, pipelines);
+    let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
         Extractors::new();
-    let route = RouteImpl::new(matcher, dispatcher, extractors);
+    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
     Box::new(route)
 }
 
 fn dynamic_route<NH, P, C>(methods: Vec<Method>,
                            new_handler: NH,
-                           pipelines: C)
-                           -> Box<Route<P> + Send + Sync>
+                           active_pipelines: C,
+                           pipeline_set: PipelineSet<P>)
+                           -> Box<Route + Send + Sync>
     where NH: NewHandler + 'static,
           C: PipelineHandleChain<P> + Send + Sync + 'static,
           P: Send + Sync + 'static
 {
     let matcher = MethodOnlyRequestMatcher::new(methods);
-    let dispatcher = Dispatcher::new(new_handler, pipelines);
+    let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
-    let route = RouteImpl::new(matcher, dispatcher, extractors);
+    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
     Box::new(route)
 }
 
@@ -97,36 +99,71 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
 // | - hello
 //     | - :name         --> (Get Route)
 //         | :from       --> (Get Route)
-fn add_routes<P, C>(tree_builder: &mut TreeBuilder<P>, pipelines: C)
-    where C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
-          P: Send + Sync + 'static
-{
-    tree_builder.add_route(dynamic_route(vec![Method::Get], || Ok(Echo::get), pipelines));
+fn build_router() -> Router<'static> {
+    let mut tree_builder = TreeBuilder::new();
+
+    let editable_pipeline_set = new_pipeline_set();
+    let (editable_pipeline_set, global) = editable_pipeline_set
+        .add(new_pipeline()
+                 .add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" })
+                 .build());
+
+    let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
+
+    tree_builder.add_route(dynamic_route(vec![Method::Get],
+                                         || Ok(Echo::get),
+                                         (global, ()),
+                                         pipeline_set.clone()));
 
     let mut echo = NodeBuilder::new("echo", NodeSegmentType::Static);
-    echo.add_route(static_route(vec![Method::Get], || Ok(Echo::get), pipelines));
-    echo.add_route(static_route(vec![Method::Post], || Ok(Echo::post), pipelines));
+    echo.add_route(static_route(vec![Method::Get],
+                                || Ok(Echo::get),
+                                (global, ()),
+                                pipeline_set.clone()));
+    echo.add_route(static_route(vec![Method::Post],
+                                || Ok(Echo::post),
+                                (global, ()),
+                                pipeline_set.clone()));
     tree_builder.add_child(echo);
 
     let mut async = NodeBuilder::new("async", NodeSegmentType::Static);
-    async.add_route(static_route(vec![Method::Get], || Ok(Echo::async), pipelines));
+    async.add_route(static_route(vec![Method::Get],
+                                 || Ok(Echo::async),
+                                 (global, ()),
+                                 pipeline_set.clone()));
     tree_builder.add_child(async);
 
     let mut header_value = NodeBuilder::new("header_value", NodeSegmentType::Static);
-    header_value.add_route(static_route(vec![Method::Get], || Ok(Echo::header_value), pipelines));
+    header_value.add_route(static_route(vec![Method::Get],
+                                        || Ok(Echo::header_value),
+                                        (global, ()),
+                                        pipeline_set.clone()));
     tree_builder.add_child(header_value);
 
     let mut hello = NodeBuilder::new("hello", NodeSegmentType::Static);
 
     let mut name = NodeBuilder::new("name", NodeSegmentType::Dynamic);
-    name.add_route(dynamic_route(vec![Method::Get], || Ok(Echo::hello), pipelines));
+    name.add_route(dynamic_route(vec![Method::Get],
+                                 || Ok(Echo::hello),
+                                 (global, ()),
+                                 pipeline_set.clone()));
 
     let mut from = NodeBuilder::new("from", NodeSegmentType::Dynamic);
-    from.add_route(dynamic_route(vec![Method::Get], || Ok(Echo::greeting), pipelines));
+    from.add_route(dynamic_route(vec![Method::Get],
+                                 || Ok(Echo::greeting),
+                                 (global, ()),
+                                 pipeline_set.clone()));
 
     name.add_child(from);
     hello.add_child(name);
     tree_builder.add_child(hello);
+
+    let tree = tree_builder.finalize();
+
+    let response_extender_builder = ResponseExtenderBuilder::new();
+    let response_extender = response_extender_builder.finalize();
+
+    Router::new(tree, response_extender)
 }
 
 impl Echo {
@@ -201,6 +238,9 @@ impl Echo {
 
 fn main() {
     fern::Dispatch::new()
+        .level(LogLevelFilter::Error)
+        .level_for("gotham", log::LogLevelFilter::Warn)
+        .chain(std::io::stdout())
         .format(|out, message, record| {
                     out.finish(format_args!("{}[{}][{}]{}",
                                             chrono::UTC::now().format("[%Y-%m-%d %H:%M:%S%.9f]"),
@@ -208,31 +248,13 @@ fn main() {
                                             record.level(),
                                             message))
                 })
-        .level(LogLevelFilter::Error)
-        .level_for("gotham", log::LogLevelFilter::Trace)
-        .chain(std::io::stdout())
         .apply()
         .unwrap();
 
     let addr = "127.0.0.1:7878".parse().unwrap();
 
-    let mut tree_builder = TreeBuilder::new();
-    let pipelines = borrow_bag::new_borrow_bag();
-    let (pipelines, pipeline) =
-        pipelines.add(new_pipeline()
-                          .add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" })
-                          .build());
-
-    add_routes(&mut tree_builder, (pipeline, ()));
-    let tree = tree_builder.finalize();
-
-    let response_extender_builder = ResponseExtenderBuilder::new();
-    let response_extender = response_extender_builder.finalize();
-
-    let router = Router::new(tree, pipelines, response_extender);
-
     let server = Http::new()
-        .bind(&addr, NewHandlerService::new(router))
+        .bind(&addr, NewHandlerService::new(build_router()))
         .unwrap();
 
     println!("Listening on http://{} with 1 thread.",

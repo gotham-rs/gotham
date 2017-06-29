@@ -8,7 +8,6 @@ pub mod response_extender;
 use std::io;
 use std::sync::Arc;
 
-use borrow_bag::BorrowBag;
 use futures::{future, Future};
 use hyper::{Headers, StatusCode, Uri, HttpVersion, Method};
 use hyper::server::{Request, Response};
@@ -22,20 +21,15 @@ use state::{State, StateData, request_id};
 
 // Holds data for Router which lives behind single Arc instance
 // so that otherwise non Clone-able structs are able to be used via NewHandler
-struct RouterData<'n, P> {
-    tree: Tree<'n, P>,
-    pipelines: BorrowBag<P>,
+struct RouterData<'n> {
+    tree: Tree<'n>,
     response_extender: ResponseExtender,
 }
 
-impl<'n, P> RouterData<'n, P> {
-    pub fn new(tree: Tree<'n, P>,
-               pipelines: BorrowBag<P>,
-               response_extender: ResponseExtender)
-               -> RouterData<'n, P> {
+impl<'n> RouterData<'n> {
+    pub fn new(tree: Tree<'n>, response_extender: ResponseExtender) -> RouterData<'n> {
         RouterData {
             tree,
-            pipelines,
             response_extender,
         }
     }
@@ -58,30 +52,23 @@ impl<'n, P> RouterData<'n, P> {
 /// # fn main() {
 ///   let tree_builder = TreeBuilder::new();
 ///   let tree = tree_builder.finalize();
-///   let pipelines = borrow_bag::new_borrow_bag();
 ///   let response_extender = ResponseExtenderBuilder::new().finalize();
 ///
-///   Router::new(tree, pipelines, response_extender);
+///   Router::new(tree, response_extender);
 /// # }
 /// ```
-pub struct Router<'n, P>
-    where P: Sync
-{
-    data: Arc<RouterData<'n, P>>,
+pub struct Router<'n> {
+    data: Arc<RouterData<'n>>,
 }
 
-impl<'n, P> Clone for Router<'n, P>
-    where P: Sync
-{
-    fn clone(&self) -> Router<'n, P> {
+impl<'n> Clone for Router<'n> {
+    fn clone(&self) -> Router<'n> {
         Router { data: self.data.clone() }
     }
 }
 
-impl<'n, P> NewHandler for Router<'n, P>
-    where P: Send + Sync
-{
-    type Instance = Router<'n, P>;
+impl<'n> NewHandler for Router<'n> {
+    type Instance = Router<'n>;
 
     // Creates a new Router instance to route new HTTP requests
     fn new_handler(&self) -> io::Result<Self::Instance> {
@@ -90,9 +77,7 @@ impl<'n, P> NewHandler for Router<'n, P>
     }
 }
 
-impl<'n, P> Handler for Router<'n, P>
-    where P: Send + Sync
-{
+impl<'n> Handler for Router<'n> {
     /// Handles the request by determining the correct `Route` from the internal
     /// `Tree`, storing any path related variables in `State` and dispatching
     /// appropriately to the configured `Handler`.
@@ -107,16 +92,11 @@ impl<'n, P> Handler for Router<'n, P>
     }
 }
 
-impl<'n, P> Router<'n, P>
-    where P: Sync
-{
+impl<'n> Router<'n> {
     /// Creates a `Router` instance.
-    pub fn new(tree: Tree<'n, P>,
-               pipelines: BorrowBag<P>,
-               response_extender: ResponseExtender)
-               -> Router<'n, P> {
+    pub fn new(tree: Tree<'n>, response_extender: ResponseExtender) -> Router<'n> {
 
-        let router_data = RouterData::new(tree, pipelines, response_extender);
+        let router_data = RouterData::new(tree, response_extender);
         Router { data: Arc::new(router_data) }
     }
 
@@ -161,7 +141,7 @@ impl<'n, P> Router<'n, P>
                 req: Request,
                 uri: &Uri,
                 segment_mapping: SegmentMapping,
-                route: &Box<Route<P> + Send + Sync>)
+                route: &Box<Route + Send + Sync>)
                 -> Box<HandlerFuture> {
         match route.extract_request_path(&mut state, segment_mapping) {
             Ok(()) => {
@@ -171,13 +151,13 @@ impl<'n, P> Router<'n, P>
                         Ok(()) => {
                             trace!("[{}] extracted query string", request_id(&state));
                             trace!("[{}] dispatching", request_id(&state));
-                            return route.dispatch(&self.data.pipelines, state, req)
+                            return route.dispatch(state, req)
                         }
                         Err(_) => (),
                     }
                 } else {
                     trace!("[{}] dispatching", request_id(&state));
-                    return route.dispatch(&self.data.pipelines, state, req);
+                    return route.dispatch(state, req);
                 }
             }
             Err(_) => (),
@@ -220,8 +200,6 @@ mod tests {
     use hyper::{Request, Method, Uri, Body};
     use hyper::header::{ContentType, ContentLength};
 
-    use borrow_bag;
-
     use router::tree::TreeBuilder;
     use router::response_extender::ResponseExtenderBuilder;
     use state::set_request_id;
@@ -230,7 +208,6 @@ mod tests {
     fn executes_response_extender_when_present() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
-        let pipelines = borrow_bag::new_borrow_bag();
 
         let mut response_extender_builder = ResponseExtenderBuilder::new();
         let not_found_extender = |s, mut r: Response| {
@@ -240,7 +217,7 @@ mod tests {
         response_extender_builder.add(StatusCode::NotFound, Box::new(not_found_extender));
         let response_extender = response_extender_builder.finalize();
 
-        let router = Router::new(tree, pipelines, response_extender);
+        let router = Router::new(tree, response_extender);
         let method = Method::Get;
         let uri = Uri::from_str("https://test.gotham.rs").unwrap();
         let request: Request<Body> = Request::new(method, uri);
@@ -262,10 +239,9 @@ mod tests {
     fn populates_core_request_data_into_state() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
-        let pipelines = borrow_bag::new_borrow_bag();
         let response_extender = ResponseExtenderBuilder::new().finalize();
 
-        let router = Router::new(tree, pipelines, response_extender);
+        let router = Router::new(tree, response_extender);
         let method = Method::Get;
         let uri = Uri::from_str("https://test.gotham.rs").unwrap();
         let version = HttpVersion::H2;
