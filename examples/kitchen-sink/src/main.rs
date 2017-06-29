@@ -5,6 +5,7 @@ extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
 extern crate chrono;
+#[macro_use]
 extern crate log;
 extern crate fern;
 
@@ -239,7 +240,8 @@ impl Echo {
 fn main() {
     fern::Dispatch::new()
         .level(LogLevelFilter::Error)
-        .level_for("gotham", log::LogLevelFilter::Debug)
+        .level_for("gotham", log::LogLevelFilter::Trace)
+        .level_for("kitchen_sink", log::LogLevelFilter::Trace)
         .chain(std::io::stdout())
         .format(|out, message, record| {
                     out.finish(format_args!("{}[{}][{}]{}",
