@@ -15,8 +15,6 @@ const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 
 /// Spilt a `Request` path into indivdual segments with leading "/" to represent the root.
 ///
-/// Removes any reference to `.` or `..` if supplied.
-///
 /// # Example
 ///
 /// ```rust
