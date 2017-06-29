@@ -57,14 +57,9 @@ impl RouterData {
 ///   Router::new(tree, response_extender);
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct Router {
     data: Arc<RouterData>,
-}
-
-impl Clone for Router {
-    fn clone(&self) -> Router {
-        Router { data: self.data.clone() }
-    }
 }
 
 impl NewHandler for Router {
