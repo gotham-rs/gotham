@@ -15,13 +15,22 @@ pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
              #where_clause
         {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
-                -> Result<(), String> {
-                fn parse<T>(segments: Option<&Vec<&gotham::http::PercentDecoded>>) -> Result<T, String> where T: gotham::http::request_path::FromRequestPath {
+                -> Result<(), String>
+            {
+                fn parse<T>(s: &gotham::state::State, segments: Option<&Vec<&gotham::http::PercentDecoded>>) -> Result<T, String>
+                    where T: gotham::http::request_path::FromRequestPath
+                {
                     match segments {
                         Some(segments) => {
                             match T::from_request_path(segments.as_slice()) {
-                                Ok(val) => Ok(val),
-                                Err(_) => Err(String::from("Unrecoverable error converting Request path")),
+                                Ok(val) => {
+                                    trace!("[{}] extracted request path segments", gotham::state::request_id(s));
+                                    Ok(val)
+                                }
+                                Err(_) => {
+                                    error!("[{}] unrecoverable error converting request path", gotham::state::request_id(s));
+                                    Err(String::from("unrecoverable error converting request path"))
+                                }
                             }
                         }
                         None => Err(String::from("Error converting Request path values")),
@@ -46,7 +55,7 @@ pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 let rp = #name {
                     #(
-                        #fields: parse(sm.get(#keys))?,
+                        #fields: parse(s, sm.get(#keys))?,
                      )*
                 };
 
@@ -73,12 +82,20 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
              #where_clause
         {
             fn extract(s: &mut gotham::state::State, mut qsm: gotham::http::query_string::QueryStringMapping) -> Result<(), String> {
-                fn parse<T>(key: &str, values: Option<&Vec<gotham::http::FormUrlDecoded>>) -> Result<T, String> where T: gotham::http::query_string::FromQueryString {
+                fn parse<T>(s: &gotham::state::State, key: &str, values: Option<&Vec<gotham::http::FormUrlDecoded>>) -> Result<T, String>
+                    where T: gotham::http::query_string::FromQueryString
+                {
                     match values {
                         Some(values) => {
                             match T::from_query_string(key, values.as_slice()) {
-                                Ok(val) => Ok(val),
-                                Err(_) => Err(String::from("Unrecoverable error converting query string")),
+                                Ok(val) => {
+                                    trace!("[{}] extracted query string segments", gotham::state::request_id(&s));
+                                    Ok(val)
+                                }
+                                Err(_) => {
+                                    error!("[{}] unrecoverable error converting query string", gotham::state::request_id(&s));
+                                    Err(String::from("unrecoverable error converting query string"))
+                                }
                             }
                         }
                         None => Err(String::from("Error converting query string values")),
@@ -98,7 +115,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 let rp = #name {
                     #(
-                        #fields: parse(#keys, qsm.get(#keys2))?,
+                        #fields: parse(s, #keys, qsm.get(#keys2))?,
                      )*
                 };
 
