@@ -8,36 +8,55 @@ use std::str::ParseBoolError;
 use std::num::{ParseIntError, ParseFloatError};
 
 use http::PercentDecoded;
-use state::State;
+use state::{State, StateData};
 use router::tree::SegmentMapping;
 
 const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 
-/// Spilt a `Request` path into indivdual segments with leading "/" to represent the root.
-///
-/// # Example
-///
-/// ```rust
-/// # extern crate gotham;
-/// #
-/// # use gotham::http::request_path;
-/// #
-/// # pub fn main() {
-///     let srp = request_path::split("/%61ctiv%61te//batsignal");
-///     assert_eq!("/", srp[0].val());
-///     assert_eq!("activate", srp[1].val());
-///     assert_eq!("batsignal", srp[2].val());
-/// # }
-/// ```
-pub fn split<'r>(path: &'r str) -> Vec<PercentDecoded> {
-    let mut segments = vec!["/"];
-    segments.extend(path.split('/')
-                        .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
-                        .collect::<Vec<&'r str>>());
-    segments
-        .iter()
-        .filter_map(|s| PercentDecoded::new(s))
-        .collect::<Vec<PercentDecoded>>()
+/// Holder for `Request` uri path segments that have been split into individual segments that are
+/// suitable for use with `Tree` traversal.
+pub struct RequestPathSegments {
+    segments: Vec<PercentDecoded>,
+}
+
+impl StateData for RequestPathSegments {}
+
+impl RequestPathSegments {
+    /// Creates a new RequestPathSegments instance.
+    ///
+    /// * path: A `Request` uri path that is split into indivdual segments with leading "/" to represent the root.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// #
+    /// # use gotham::http::request_path::RequestPathSegments;
+    /// #
+    /// # pub fn main() {
+    ///     let srp = RequestPathSegments::new("/%61ctiv%61te//batsignal");
+    ///     assert_eq!("/", srp.segments()[0].val());
+    ///     assert_eq!("activate", srp.segments()[1].val());
+    ///     assert_eq!("batsignal", srp.segments()[2].val());
+    /// # }
+    /// ```
+    pub fn new<'r>(path: &'r str) -> RequestPathSegments {
+        let mut segments = vec!["/"];
+        segments.extend(path.split('/')
+                            .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
+                            .collect::<Vec<&'r str>>());
+        let segments = segments
+            .iter()
+            .filter_map(|s| PercentDecoded::new(s))
+            .collect::<Vec<PercentDecoded>>();
+
+        RequestPathSegments { segments }
+    }
+
+    /// Access split `Request` uri path
+    pub fn segments<'a>(&'a self) -> &'a Vec<PercentDecoded> {
+        &self.segments
+    }
 }
 
 /// Derived through the macro of the same name supplied by `gotham-derive` for application defined

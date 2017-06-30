@@ -108,8 +108,10 @@ impl Router {
         trace!("[{}] attempting to route: {}",
                request_id(&state),
                uri.path());
-        let rp = request_path::split(uri.path());
-        if let Some((_, leaf, segment_mapping)) = self.data.tree.traverse(rp.as_slice()) {
+
+        let rp = request_path::RequestPathSegments::new(uri.path());
+        if let Some((_, leaf, segment_mapping)) =
+            self.data.tree.traverse(rp.segments().as_slice()) {
             // Valid path for the application, determine if any configured
             // routes will accept the request
             if let Some(route) = leaf.borrow_routes()
