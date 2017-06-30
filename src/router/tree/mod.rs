@@ -71,10 +71,9 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::NodeSegmentType;
-/// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::request_path::{RequestPathSegments, NoopRequestPathExtractor};
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::http::PercentDecoded;
-/// # use gotham::http::request_path;
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -103,7 +102,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///
 ///   let tree = tree_builder.finalize();
 ///
-///   match tree.traverse(request_path::split("/%61ctiv%61te/batsignal").as_slice()) {
+///   match tree.traverse(RequestPathSegments::new("/%61ctiv%61te/batsignal").segments().as_slice()) {
 ///       Some((path, leaf, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(path.last().unwrap().segment(), leaf.segment());

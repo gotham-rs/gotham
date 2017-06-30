@@ -13,7 +13,8 @@ use hyper::{Headers, StatusCode, Uri, HttpVersion, Method};
 use hyper::server::{Request, Response};
 
 use handler::{NewHandler, Handler, HandlerFuture};
-use http::{request_path, query_string};
+use http::query_string;
+use http::request_path::RequestPathSegments;
 use router::response_extender::ResponseExtender;
 use router::route::Route;
 use router::tree::{SegmentMapping, Tree};
@@ -79,10 +80,18 @@ impl Handler for Router {
     fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
         trace!("[{}] starting", request_id(&state));
 
-        let uri = req.uri().clone();
-        self.populate_state(&mut state, &req);
+        let response = match state.take::<RequestPathSegments>() {
+            Some(rp) => {
+                let uri = req.uri().clone();
+                self.route(uri, rp, state, req)
+            }
+            None => {
+                trace!("[{}] could not access request path segments",
+                       request_id(&state));
+                self.generate_response(StatusCode::InternalServerError, state)
+            }
+        };
 
-        let response = self.route(uri, state, req);
         self.finalize_response(response)
     }
 }
@@ -95,21 +104,16 @@ impl Router {
         Router { data: Arc::new(router_data) }
     }
 
-    fn populate_state(&self, state: &mut State, req: &Request) {
-        trace!("[{}] populating immutable request data into state",
-               request_id(&state));
-        state.put(req.method().clone());
-        state.put(req.uri().clone());
-        state.put(req.version().clone());
-        state.put(req.headers().clone());
-    }
-
-    fn route(&self, uri: Uri, state: State, req: Request) -> Box<HandlerFuture> {
-        trace!("[{}] attempting to route: {}",
+    fn route(&self,
+             uri: Uri,
+             rp: RequestPathSegments,
+             state: State,
+             req: Request)
+             -> Box<HandlerFuture> {
+        trace!("[{}] attempting to route: {:?}",
                request_id(&state),
-               uri.path());
+               rp.segments());
 
-        let rp = request_path::RequestPathSegments::new(uri.path());
         if let Some((_, leaf, segment_mapping)) =
             self.data.tree.traverse(rp.segments().as_slice()) {
             // Valid path for the application, determine if any configured
@@ -195,7 +199,7 @@ mod tests {
     use super::*;
     use std::str::FromStr;
     use hyper::{Request, Method, Uri, Body};
-    use hyper::header::{ContentType, ContentLength};
+    use hyper::header::ContentLength;
 
     use router::tree::TreeBuilder;
     use router::response_extender::ResponseExtenderBuilder;
@@ -221,46 +225,14 @@ mod tests {
 
         let mut state = State::new();
         set_request_id(&mut state, &request);
+        state.put(RequestPathSegments::new(request.uri().path().clone()));
+
         let result = router.handle(state, request).wait();
 
         match result {
             Ok((_state, res)) => {
                 assert_eq!(*res.headers().get::<ContentLength>().unwrap(),
                            ContentLength(3u64));
-            }
-            Err(_) => panic!("Router should have correctly handled request"),
-        };
-    }
-
-    #[test]
-    fn populates_core_request_data_into_state() {
-        let tree_builder = TreeBuilder::new();
-        let tree = tree_builder.finalize();
-        let response_extender = ResponseExtenderBuilder::new().finalize();
-
-        let router = Router::new(tree, response_extender);
-        let method = Method::Get;
-        let uri = Uri::from_str("https://test.gotham.rs").unwrap();
-        let version = HttpVersion::H2;
-        let mut request: Request<Body> = Request::new(method.clone(), uri.clone());
-        request.set_version(version.clone());
-        request.headers_mut().set(ContentType::json());
-
-        let mut state = State::new();
-        set_request_id(&mut state, &request);
-        let result = router.handle(state, request).wait();
-
-        match result {
-            Ok((state, _res)) => {
-                assert_eq!(*state.borrow::<Method>().unwrap(), method);
-                assert_eq!(*state.borrow::<Uri>().unwrap(), uri);
-                assert_eq!(*state.borrow::<HttpVersion>().unwrap(), version);
-                assert_eq!(*state
-                                .borrow::<Headers>()
-                                .unwrap()
-                                .get::<ContentType>()
-                                .unwrap(),
-                           ContentType::json());
             }
             Err(_) => panic!("Router should have correctly handled request"),
         };
