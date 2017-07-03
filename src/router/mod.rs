@@ -18,6 +18,7 @@ use http::request_path::RequestPathSegments;
 use router::response_extender::ResponseExtender;
 use router::route::Route;
 use router::tree::{SegmentMapping, Tree};
+use router::tree::node::{Node, NodeSegmentType};
 use state::{State, StateData, request_id};
 
 // Holds data for Router which lives behind single Arc instance
@@ -81,13 +82,21 @@ impl Handler for Router {
         trace!("[{}] starting", request_id(&state));
 
         let response = match state.take::<RequestPathSegments>() {
-            Some(rp) => {
-                let uri = req.uri().clone();
-                self.route(uri, rp, state, req)
+            Some(rps) => {
+                if let Some((_, leaf, sm)) = self.data.tree.traverse(&rps.segments()) {
+                    match leaf.segment_type() {
+                        &NodeSegmentType::Delegator => {
+                            self.delegate_request(rps.clone(), leaf, sm, state, req)
+                        }
+                        _ => self.process_request(leaf, sm, state, req),
+                    }
+                } else {
+                    trace!("[{}] did not find routable node", request_id(&state));
+                    self.generate_response(StatusCode::NotFound, state)
+                }
             }
             None => {
-                trace!("[{}] could not access request path segments",
-                       request_id(&state));
+                trace!("[{}] invalid request path segments", request_id(&state));
                 self.generate_response(StatusCode::InternalServerError, state)
             }
         };
@@ -104,49 +113,65 @@ impl Router {
         Router { data: Arc::new(router_data) }
     }
 
-    fn route(&self,
-             uri: Uri,
-             rp: RequestPathSegments,
-             state: State,
-             req: Request)
-             -> Box<HandlerFuture> {
-        trace!("[{}] attempting to route: {:?}",
-               request_id(&state),
-               rp.segments());
-
-        if let Some((_, leaf, segment_mapping)) =
-            self.data.tree.traverse(rp.segments().as_slice()) {
-            // Valid path for the application, determine if any configured
-            // routes will accept the request
-            if let Some(route) = leaf.borrow_routes()
-                   .iter()
-                   .find(|r| r.is_match(&state, &req).is_ok()) {
-                trace!("[{}] starting dispatch for matched route",
-                       request_id(&state));
-                self.dispatch(state, req, &uri, segment_mapping, route)
-            } else {
-                // No routes accepted the request, the error status associated with the first route
-                // is then chosen as the status code for the response.
-                trace!("[{}] no routes accepted the request", request_id(&state));
-                let status = leaf.borrow_routes().first().unwrap().is_match(&state, &req);
-                self.generate_response(status.unwrap_err(), state)
-            }
+    fn process_request(&self,
+                       leaf: &Node,
+                       sm: SegmentMapping,
+                       state: State,
+                       req: Request)
+                       -> Box<HandlerFuture> {
+        if let Some(route) = self.find_matching_route(leaf, &state, &req) {
+            trace!("[{}] dispatching to route", request_id(&state));
+            self.dispatch(state, req, sm, route)
         } else {
-            trace!("[{}] did not find routable leaf node", request_id(&state));
+            self.dispatch_error(leaf, state, req)
+        }
+    }
+
+    fn delegate_request(&self,
+                        mut rps: RequestPathSegments,
+                        leaf: &Node,
+                        sm: SegmentMapping,
+                        mut state: State,
+                        req: Request)
+                        -> Box<HandlerFuture> {
+        trace!("[{}] attempting to delegate request", request_id(&state));
+        trace!("[{}] segment_mapping: [{:?}]", request_id(&state), sm);
+
+        if let Some(route) = leaf.borrow_routes().first() {
+            trace!("[{}] delegating to secondary router", request_id(&state));
+
+            rps.increase_offset(sm.len());
+            state.put(rps);
+
+            route.dispatch(state, req)
+        } else {
+            trace!("[{}] did not find routable delegator node",
+                   request_id(&state));
             self.generate_response(StatusCode::NotFound, state)
         }
+    }
+
+    fn find_matching_route<'a>(&self,
+                               leaf: &'a Node,
+                               state: &State,
+                               req: &Request)
+                               -> Option<&'a Box<Route + Send + Sync>> {
+        leaf.borrow_routes()
+            .iter()
+            .find(|r| r.is_match(&state, &req).is_ok())
     }
 
     fn dispatch(&self,
                 mut state: State,
                 req: Request,
-                uri: &Uri,
-                segment_mapping: SegmentMapping,
+                sm: SegmentMapping,
                 route: &Box<Route + Send + Sync>)
                 -> Box<HandlerFuture> {
-        match route.extract_request_path(&mut state, segment_mapping) {
+        match route.extract_request_path(&mut state, sm) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
+
+                let uri = req.uri().clone();
                 if let Some(q) = uri.query() {
                     match route.extract_query_string(&mut state, query_string::split(q)) {
                         Ok(()) => {
@@ -169,6 +194,20 @@ impl Router {
         error!("[{}] internal server error, failed to dispatch",
                request_id(&state));
         future::ok((state, res)).boxed()
+    }
+
+    fn dispatch_error(&self, leaf: &Node, state: State, req: Request) -> Box<HandlerFuture> {
+        // No routes accepted the request, the error status associated with the first route
+        // is then chosen as the status code for the response.
+        trace!("[{}] no routes accepted the request", request_id(&state));
+        if let Some(route) = leaf.borrow_routes().first() {
+            let status = route.is_match(&state, &req);
+            trace!("[{}] responding with error status", request_id(&state));
+            self.generate_response(status.unwrap_err(), state)
+        } else {
+            trace!("[{}] no routes, default error response", request_id(&state));
+            self.generate_response(StatusCode::InternalServerError, state)
+        }
     }
 
     fn generate_response(&self, status: StatusCode, state: State) -> Box<HandlerFuture> {

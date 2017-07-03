@@ -16,6 +16,7 @@ pub type Path<'a> = Vec<&'a Node>;
 /// which have been matched against the `Request` path.
 ///
 /// Data is percent and utf8 decoded.
+#[derive(Debug)]
 pub struct SegmentMapping<'a, 'b> {
     data: HashMap<&'a str, Vec<&'b PercentDecoded>>,
 }
@@ -37,6 +38,11 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
         if !self.data.contains_key(key) {
             self.data.insert(key, Vec::new());
         }
+    }
+
+    /// Number of segments from the Request path that have been mapped
+    pub fn len(&self) -> usize {
+        self.data.len()
     }
 }
 
@@ -112,8 +118,8 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///   }
 ///
 ///   // These paths are not routable but could be if 1 or more `Route` were added.
-///   assert!(tree.traverse(&[PercentDecoded::new("/").unwrap()]).is_none());
-///   assert!(tree.traverse(&[PercentDecoded::new("/activate").unwrap()]).is_none());
+///   assert!(tree.traverse(&[&PercentDecoded::new("/").unwrap()]).is_none());
+///   assert!(tree.traverse(&[&PercentDecoded::new("/activate").unwrap()]).is_none());
 /// # }
 /// ```
 pub struct Tree {
@@ -130,7 +136,7 @@ impl Tree {
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
     pub fn traverse<'r, 'n>(&'n self,
-                            req_path_segments: &'r [PercentDecoded])
+                            req_path_segments: &'r [&PercentDecoded])
                             -> Option<(Path<'n>, &Node, SegmentMapping<'n, 'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)

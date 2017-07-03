@@ -6,7 +6,7 @@ pub mod query_string;
 use url::percent_encoding::percent_decode;
 
 /// Represents data that has been successfully percent decoded and is valid utf8
-#[derive(Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct PercentDecoded {
     val: String,
 }

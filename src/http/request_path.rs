@@ -1,5 +1,6 @@
 //! Defines functionality for operating on `Request` path values
 
+use std::sync::Arc;
 use std::str::FromStr;
 use std::error::Error;
 use std::fmt;
@@ -15,8 +16,10 @@ const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 
 /// Holder for `Request` uri path segments that have been split into individual segments that are
 /// suitable for use with `Tree` traversal.
+#[derive(Clone, PartialEq)]
 pub struct RequestPathSegments {
-    segments: Vec<PercentDecoded>,
+    offset: usize,
+    segments: Arc<Vec<PercentDecoded>>,
 }
 
 impl StateData for RequestPathSegments {}
@@ -24,7 +27,8 @@ impl StateData for RequestPathSegments {}
 impl RequestPathSegments {
     /// Creates a new RequestPathSegments instance.
     ///
-    /// * path: A `Request` uri path that is split into indivdual segments with leading "/" to represent the root.
+    /// * path: A `Request` uri path that will be split into indivdual segments with
+    ///         a leading "/" to represent the root. Empty segments are removed.
     ///
     /// # Example
     ///
@@ -40,22 +44,49 @@ impl RequestPathSegments {
     ///     assert_eq!("batsignal", srp.segments()[2].val());
     /// # }
     /// ```
-    pub fn new<'r>(path: &'r str) -> RequestPathSegments {
+    pub fn new<'r>(path: &'r str) -> Self {
         let mut segments = vec!["/"];
         segments.extend(path.split('/')
                             .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
                             .collect::<Vec<&'r str>>());
-        let segments = segments
-            .iter()
-            .filter_map(|s| PercentDecoded::new(s))
-            .collect::<Vec<PercentDecoded>>();
 
-        RequestPathSegments { segments }
+        let segments = Arc::new(segments
+                                    .iter()
+                                    .filter_map(|s| PercentDecoded::new(s))
+                                    .collect::<Vec<PercentDecoded>>());
+
+        RequestPathSegments {
+            offset: 0,
+            segments,
+        }
     }
 
-    /// Access split `Request` uri path
-    pub fn segments<'a>(&'a self) -> &'a Vec<PercentDecoded> {
-        &self.segments
+    /// Provide segments that still need to be processed via a `Router`.
+    ///
+    /// n.b. When offset from something other than 0, that is for a delegated `Router`, the
+    /// `Tree` structure will still (validly) believe it starts from a root segment of "/" as
+    /// there is deliberately no knowledge of any other `Router` having been involved in
+    /// the `Request`. To facilitiate this we always include "/" and filter anything that has
+    /// previously been processed.
+    pub fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
+        self.segments
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| if i == 0 || i > self.offset {
+                            Some(v)
+                        } else {
+                            None
+                        })
+            .collect::<Vec<&PercentDecoded>>()
+    }
+
+    /// Increases the offset for the original Request path that should be considered the
+    /// first node for the next delegated router.
+    ///
+    /// * add: Indicates how many segments have been consumed by the current router, *including* the
+    /// root node, "/". This will be added to any exisiting offset amount.
+    pub fn increase_offset(&mut self, add: usize) {
+        self.offset += add - 1;
     }
 }
 
