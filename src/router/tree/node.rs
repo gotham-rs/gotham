@@ -1,4 +1,4 @@
-//! Defines `Node` and `NodeSegmentType` for `Tree`
+//! Defines `Node` and `SegmentType` for `Tree`
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -13,7 +13,7 @@ use state::{State, request_id};
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum NodeSegmentType {
+pub enum SegmentType {
     /// Is matched exactly to the corresponding segment for incoming request paths.
     Static,
 
@@ -54,7 +54,7 @@ pub enum NodeSegmentType {
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::router::tree::node::{NodeBuilder, NodeSegmentType};
+/// # use gotham::router::tree::node::{NodeBuilder, SegmentType};
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -62,10 +62,10 @@ pub enum NodeSegmentType {
 /// #
 /// # fn main() {
 /// #  let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-///   let mut root_node_builder = NodeBuilder::new("/", NodeSegmentType::Static);
-///   let mut activate_node_builder = NodeBuilder::new("activate", NodeSegmentType::Static);
+///   let mut root_node_builder = NodeBuilder::new("/", SegmentType::Static);
+///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
 ///
-///   let mut batsignal_node = NodeBuilder::new("batsignal", NodeSegmentType::Static);
+///   let mut batsignal_node = NodeBuilder::new("batsignal", SegmentType::Static);
 ///   let route = {
 ///       // elided ..
 /// #     let methods = vec![Method::Get];
@@ -92,7 +92,7 @@ pub enum NodeSegmentType {
 /// ```
 pub struct Node {
     segment: String,
-    segment_type: NodeSegmentType,
+    segment_type: SegmentType,
 
     routes: Vec<Box<Route + Send + Sync>>,
 
@@ -107,7 +107,7 @@ impl Node {
     }
 
     /// Provides the type of segment this `Node` represents.
-    pub fn segment_type(&self) -> &NodeSegmentType {
+    pub fn segment_type(&self) -> &SegmentType {
         &self.segment_type
     }
 
@@ -165,7 +165,7 @@ impl Node {
     /// Only the first fully matching path is returned.
     ///
     /// Children are searched in a most to least specific order of contained segment value based on
-    /// the `NodeSegmentType` value held by the `Node`:
+    /// the `SegmentType` value held by the `Node`:
     ///
     /// 1. Static
     /// 2. Constrained
@@ -230,7 +230,7 @@ impl Node {
                     // If we're in a Glob consume segment and continue
                     // otherwise we've failed to find a suitable way
                     // forward.
-                    None if self.segment_type == NodeSegmentType::Glob => {
+                    None if self.segment_type == SegmentType::Glob => {
                         trace!(" continuing with glob match for segment `{}`", self.segment);
                         consumed_segments.push(x);
                         self.inner_traverse(xs, consumed_segments)
@@ -249,9 +249,9 @@ impl Node {
 
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
         match self.segment_type {
-            NodeSegmentType::Static => self.segment == req_path_segment.val(),
-            NodeSegmentType::Constrained { regex: _ } => unimplemented!(), // TODO
-            NodeSegmentType::Dynamic | NodeSegmentType::Glob => true,
+            SegmentType::Static => self.segment == req_path_segment.val(),
+            SegmentType::Constrained { regex: _ } => unimplemented!(), // TODO
+            SegmentType::Dynamic | SegmentType::Glob => true,
         }
     }
 
@@ -263,7 +263,7 @@ impl Node {
 /// Constructs a `Node` which is sorted and immutable.
 pub struct NodeBuilder {
     segment: String,
-    segment_type: NodeSegmentType,
+    segment_type: SegmentType,
     routes: Vec<Box<Route + Send + Sync>>,
 
     delegating: bool,
@@ -272,7 +272,7 @@ pub struct NodeBuilder {
 
 impl NodeBuilder {
     /// Creates new `NodeBuilder` for the given segment.
-    pub fn new<S>(segment: S, segment_type: NodeSegmentType) -> Self
+    pub fn new<S>(segment: S, segment_type: SegmentType) -> Self
         where S: Borrow<str>
     {
         let segment = segment.borrow().to_owned();
@@ -417,12 +417,12 @@ mod tests {
     }
 
     fn test_structure() -> NodeBuilder {
-        let mut root: NodeBuilder = NodeBuilder::new("/", NodeSegmentType::Static);
+        let mut root: NodeBuilder = NodeBuilder::new("/", SegmentType::Static);
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 
         // Two methods, same path, same handler
         // [Get|Head]: /seg1
-        let mut seg1 = NodeBuilder::new("seg1", NodeSegmentType::Static);
+        let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
         let methods = vec![Method::Get, Method::Head];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
@@ -434,7 +434,7 @@ mod tests {
 
         // Two methods, same path, different handlers
         // Post: /seg2
-        let mut seg2 = NodeBuilder::new("seg2", NodeSegmentType::Static);
+        let mut seg2 = NodeBuilder::new("seg2", SegmentType::Static);
         let methods = vec![Method::Post];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
@@ -455,8 +455,8 @@ mod tests {
 
         // Ensure basic traversal
         // Get: /seg3/seg4
-        let mut seg3 = NodeBuilder::new("seg3", NodeSegmentType::Static);
-        let mut seg4 = NodeBuilder::new("seg4", NodeSegmentType::Static);
+        let mut seg3 = NodeBuilder::new("seg3", SegmentType::Static);
+        let mut seg4 = NodeBuilder::new("seg4", SegmentType::Static);
         seg4.add_route(get_route(pipeline_set.clone()));
         seg3.add_child(seg4);
         root.add_child(seg3);
@@ -467,19 +467,19 @@ mod tests {
         //
         // Get /seg5/:segdyn1/seg7
         // Get /seg5/seg6
-        let mut seg5 = NodeBuilder::new("seg5", NodeSegmentType::Static);
-        let mut seg6 = NodeBuilder::new("seg6", NodeSegmentType::Static);
+        let mut seg5 = NodeBuilder::new("seg5", SegmentType::Static);
+        let mut seg6 = NodeBuilder::new("seg6", SegmentType::Static);
         seg6.add_route(get_route(pipeline_set.clone()));
 
-        let mut segdyn1 = NodeBuilder::new(":segdyn1", NodeSegmentType::Dynamic);
-        let mut seg7 = NodeBuilder::new("seg7", NodeSegmentType::Static);
+        let mut segdyn1 = NodeBuilder::new(":segdyn1", SegmentType::Dynamic);
+        let mut seg7 = NodeBuilder::new("seg7", SegmentType::Static);
         seg7.add_route(get_route(pipeline_set.clone()));
 
         // Ensure traversal will respect Globs
-        let mut seg8 = NodeBuilder::new("seg8", NodeSegmentType::Glob);
-        let mut seg9 = NodeBuilder::new("seg9", NodeSegmentType::Static);
+        let mut seg8 = NodeBuilder::new("seg8", SegmentType::Glob);
+        let mut seg9 = NodeBuilder::new("seg9", SegmentType::Static);
 
-        let mut seg10 = NodeBuilder::new(String::from("seg10"), NodeSegmentType::Glob);
+        let mut seg10 = NodeBuilder::new(String::from("seg10"), SegmentType::Glob);
         seg10.add_route(get_route(pipeline_set.clone()));
 
         seg9.add_child(seg10);

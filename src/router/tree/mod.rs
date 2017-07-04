@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use http::PercentDecoded;
 use router::route::Route;
-use router::tree::node::{Node, NodeBuilder, NodeSegmentType};
+use router::tree::node::{Node, NodeBuilder, SegmentType};
 
 pub mod node;
 
@@ -76,7 +76,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::tree::node::NodeBuilder;
-/// # use gotham::router::tree::node::NodeSegmentType;
+/// # use gotham::router::tree::node::SegmentType;
 /// # use gotham::http::request_path::{RequestPathSegments, NoopRequestPathExtractor};
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::http::PercentDecoded;
@@ -89,9 +89,9 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 ///   let mut tree_builder: TreeBuilder = TreeBuilder::new();
 ///
-///   let mut activate_node_builder = NodeBuilder::new("activate", NodeSegmentType::Static);
+///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
 ///
-///   let mut thing_node_builder = NodeBuilder::new("thing", NodeSegmentType::Dynamic);
+///   let mut thing_node_builder = NodeBuilder::new("thing", SegmentType::Dynamic);
 ///   let batsignal_route = {
 ///       // elided ...
 /// #     let methods = vec![Method::Get];
@@ -153,7 +153,7 @@ impl TreeBuilder {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
         trace!(" creating new tree");
-        TreeBuilder { root: NodeBuilder::new("/", NodeSegmentType::Static) }
+        TreeBuilder { root: NodeBuilder::new("/", SegmentType::Static) }
     }
 
     /// Adds a direct child to the root of the `TreeBuilder`.

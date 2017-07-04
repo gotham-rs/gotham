@@ -28,7 +28,7 @@ use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, Dis
                        PipelineHandleChain};
 use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 use gotham::router::tree::TreeBuilder;
-use gotham::router::tree::node::{NodeBuilder, NodeSegmentType};
+use gotham::router::tree::node::{NodeBuilder, SegmentType};
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::state::State;
@@ -116,7 +116,7 @@ fn build_router() -> Router {
                                         (global, ()),
                                         pipeline_set.clone()));
 
-    let mut echo = NodeBuilder::new("echo", NodeSegmentType::Static);
+    let mut echo = NodeBuilder::new("echo", SegmentType::Static);
     echo.add_route(static_route(vec![Method::Get],
                                 || Ok(Echo::get),
                                 (global, ()),
@@ -127,29 +127,29 @@ fn build_router() -> Router {
                                 pipeline_set.clone()));
     tree_builder.add_child(echo);
 
-    let mut async = NodeBuilder::new("async", NodeSegmentType::Static);
+    let mut async = NodeBuilder::new("async", SegmentType::Static);
     async.add_route(static_route(vec![Method::Get],
                                  || Ok(Echo::async),
                                  (global, ()),
                                  pipeline_set.clone()));
     tree_builder.add_child(async);
 
-    let mut header_value = NodeBuilder::new("header_value", NodeSegmentType::Static);
+    let mut header_value = NodeBuilder::new("header_value", SegmentType::Static);
     header_value.add_route(static_route(vec![Method::Get],
                                         || Ok(Echo::header_value),
                                         (global, ()),
                                         pipeline_set.clone()));
     tree_builder.add_child(header_value);
 
-    let mut hello = NodeBuilder::new("hello", NodeSegmentType::Static);
+    let mut hello = NodeBuilder::new("hello", SegmentType::Static);
 
-    let mut name = NodeBuilder::new("name", NodeSegmentType::Dynamic);
+    let mut name = NodeBuilder::new("name", SegmentType::Dynamic);
     name.add_route(dynamic_route(vec![Method::Get],
                                  || Ok(Echo::hello),
                                  (global, ()),
                                  pipeline_set.clone()));
 
-    let mut from = NodeBuilder::new("from", NodeSegmentType::Dynamic);
+    let mut from = NodeBuilder::new("from", SegmentType::Dynamic);
     from.add_route(dynamic_route(vec![Method::Get],
                                  || Ok(Echo::greeting),
                                  (global, ()),
