@@ -71,7 +71,7 @@ fn static_route<NH, P, C>(methods: Vec<Method>,
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
         Extractors::new();
-    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
     Box::new(route)
 }
 
@@ -87,7 +87,7 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
-    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
     Box::new(route)
 }
 
@@ -240,8 +240,8 @@ impl Echo {
 fn main() {
     fern::Dispatch::new()
         .level(LogLevelFilter::Error)
-        .level_for("gotham", log::LogLevelFilter::Trace)
-        .level_for("kitchen_sink", log::LogLevelFilter::Trace)
+        .level_for("gotham", log::LogLevelFilter::Error)
+        .level_for("kitchen_sink", log::LogLevelFilter::Error)
         .chain(std::io::stdout())
         .format(|out, message, record| {
                     out.finish(format_args!("{}[{}][{}]{}",

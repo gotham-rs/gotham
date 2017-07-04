@@ -136,7 +136,7 @@ use state::{State, request_id};
 ///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 ///     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
 ///     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///     let route = RouteImpl::new(matcher, dispatcher, extractors);
+///     let route = RouteImpl::new(matcher, dispatcher, extractors, false);
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();
 ///

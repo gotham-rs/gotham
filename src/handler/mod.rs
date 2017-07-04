@@ -97,7 +97,7 @@ impl<T> NewHandlerService<T>
     /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
     /// let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
     /// let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-    /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+    /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
     ///
     /// tree_builder.add_route(Box::new(route));
     /// let tree = tree_builder.finalize();
@@ -318,7 +318,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
 /// #   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-/// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+/// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();
 ///     Router::new(tree, response_extender);

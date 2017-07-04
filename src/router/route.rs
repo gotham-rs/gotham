@@ -23,6 +23,9 @@ pub trait Route {
     /// Determines if this `Route` can be invoked, based on the `Request`.
     fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode>;
 
+    /// Determines if this `Route` intends to delegate to secondary `Router` instance.
+    fn is_delegating(&self) -> bool;
+
     /// Extracts the `Request` path into a Struct and stores it in `State`  for use
     /// by Middleware and Handlers
     fn extract_request_path(&self,
@@ -73,7 +76,7 @@ pub trait Route {
 ///   let matcher = MethodOnlyRequestMatcher::new(methods);
 ///   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///   RouteImpl::new(matcher, dispatcher, extractors);
+///   RouteImpl::new(matcher, dispatcher, extractors, false);
 /// # }
 /// ```
 pub struct RouteImpl<RM, RE, QE>
@@ -84,6 +87,7 @@ pub struct RouteImpl<RM, RE, QE>
     matcher: RM,
     dispatcher: Box<Dispatcher + Send + Sync>,
     _extractors: Extractors<RE, QE>,
+    delegating: bool,
 }
 
 /// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
@@ -104,12 +108,14 @@ impl<RM, RE, QE> RouteImpl<RM, RE, QE>
     /// Creates a new `RouteImpl`
     pub fn new(matcher: RM,
                dispatcher: Box<Dispatcher + Send + Sync>,
-               _extractors: Extractors<RE, QE>)
+               _extractors: Extractors<RE, QE>,
+               delegating: bool)
                -> Self {
         RouteImpl {
             matcher,
             dispatcher,
             _extractors,
+            delegating,
         }
     }
 }
@@ -134,6 +140,10 @@ impl<RM, RE, QE> Route for RouteImpl<RM, RE, QE>
 {
     fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode> {
         self.matcher.is_match(state, req)
+    }
+
+    fn is_delegating(&self) -> bool {
+        self.delegating
     }
 
     fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture> {

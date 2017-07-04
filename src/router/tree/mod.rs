@@ -98,7 +98,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 /// #     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-/// #     let route = RouteImpl::new(matcher, dispatcher, extractors);
+/// #     let route = RouteImpl::new(matcher, dispatcher, extractors, false);
 /// #     Box::new(route)
 ///   };
 ///   thing_node_builder.add_route(batsignal_route);

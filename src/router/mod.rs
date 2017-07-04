@@ -9,8 +9,7 @@ use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
-use hyper::{Headers, StatusCode, Uri, HttpVersion, Method};
-use hyper::server::{Request, Response};
+use hyper::{Request, Response, Headers, StatusCode, Uri, HttpVersion, Method};
 
 use handler::{NewHandler, Handler, HandlerFuture};
 use http::query_string;
@@ -18,7 +17,6 @@ use http::request_path::RequestPathSegments;
 use router::response_extender::ResponseExtender;
 use router::route::Route;
 use router::tree::{SegmentMapping, Tree};
-use router::tree::node::{Node, NodeSegmentType};
 use state::{State, StateData, request_id};
 
 // Holds data for Router which lives behind single Arc instance
@@ -84,11 +82,25 @@ impl Handler for Router {
         let response = match state.take::<RequestPathSegments>() {
             Some(rps) => {
                 if let Some((_, leaf, sm)) = self.data.tree.traverse(&rps.segments()) {
-                    match leaf.segment_type() {
-                        &NodeSegmentType::Delegator => {
-                            self.delegate_request(rps.clone(), leaf, sm, state, req)
+                    match leaf.select_route(&state, &req) {
+                        Ok(route) => {
+                            if route.is_delegating() {
+                                trace!("[{}] delegating to secondary router", request_id(&state));
+
+                                let mut rps = rps.clone();
+                                rps.increase_offset(sm.len());
+                                state.put(rps);
+
+                                route.dispatch(state, req)
+                            } else {
+                                trace!("[{}] dispatching to route", request_id(&state));
+                                self.dispatch(state, req, sm, route)
+                            }
                         }
-                        _ => self.process_request(leaf, sm, state, req),
+                        Err(status) => {
+                            trace!("[{}] responding with error status", request_id(&state));
+                            self.generate_response(status, state)
+                        }
                     }
                 } else {
                     trace!("[{}] did not find routable node", request_id(&state));
@@ -111,54 +123,6 @@ impl Router {
 
         let router_data = RouterData::new(tree, response_extender);
         Router { data: Arc::new(router_data) }
-    }
-
-    fn process_request(&self,
-                       leaf: &Node,
-                       sm: SegmentMapping,
-                       state: State,
-                       req: Request)
-                       -> Box<HandlerFuture> {
-        if let Some(route) = self.find_matching_route(leaf, &state, &req) {
-            trace!("[{}] dispatching to route", request_id(&state));
-            self.dispatch(state, req, sm, route)
-        } else {
-            self.dispatch_error(leaf, state, req)
-        }
-    }
-
-    fn delegate_request(&self,
-                        mut rps: RequestPathSegments,
-                        leaf: &Node,
-                        sm: SegmentMapping,
-                        mut state: State,
-                        req: Request)
-                        -> Box<HandlerFuture> {
-        trace!("[{}] attempting to delegate request", request_id(&state));
-        trace!("[{}] segment_mapping: [{:?}]", request_id(&state), sm);
-
-        if let Some(route) = leaf.borrow_routes().first() {
-            trace!("[{}] delegating to secondary router", request_id(&state));
-
-            rps.increase_offset(sm.len());
-            state.put(rps);
-
-            route.dispatch(state, req)
-        } else {
-            trace!("[{}] did not find routable delegator node",
-                   request_id(&state));
-            self.generate_response(StatusCode::NotFound, state)
-        }
-    }
-
-    fn find_matching_route<'a>(&self,
-                               leaf: &'a Node,
-                               state: &State,
-                               req: &Request)
-                               -> Option<&'a Box<Route + Send + Sync>> {
-        leaf.borrow_routes()
-            .iter()
-            .find(|r| r.is_match(&state, &req).is_ok())
     }
 
     fn dispatch(&self,
@@ -194,20 +158,6 @@ impl Router {
         error!("[{}] internal server error, failed to dispatch",
                request_id(&state));
         future::ok((state, res)).boxed()
-    }
-
-    fn dispatch_error(&self, leaf: &Node, state: State, req: Request) -> Box<HandlerFuture> {
-        // No routes accepted the request, the error status associated with the first route
-        // is then chosen as the status code for the response.
-        trace!("[{}] no routes accepted the request", request_id(&state));
-        if let Some(route) = leaf.borrow_routes().first() {
-            let status = route.is_match(&state, &req);
-            trace!("[{}] responding with error status", request_id(&state));
-            self.generate_response(status.unwrap_err(), state)
-        } else {
-            trace!("[{}] no routes, default error response", request_id(&state));
-            self.generate_response(StatusCode::InternalServerError, state)
-        }
     }
 
     fn generate_response(&self, status: StatusCode, state: State) -> Box<HandlerFuture> {

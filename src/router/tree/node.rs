@@ -3,11 +3,13 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::borrow::Borrow;
+use hyper::{Request, StatusCode};
 
 use http::PercentDecoded;
 use router::route::Route;
 use router::tree::SegmentMapping;
 use router::tree::Path;
+use state::{State, request_id};
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -27,19 +29,9 @@ pub enum NodeSegmentType {
     /// Matches multiple path segments until the end of the request path or until a child
     /// segment of the above defined types is found.
     Glob,
-
-    /// Is matched exactly to the corresponding segment for incoming request paths.
-    ///
-    /// Will result in the request being passed to a child `Handler` instance, usually a
-    /// `Router` to complete processing any remaining `Request` path segments.
-    ///
-    /// All parent `Nodes` *should* contain segments that are of the type `Static`.
-    /// Previously matched segments will *not* be made available to `Handlers` invoked by
-    /// the child `Router`.
-    Delegator,
 }
 
-/// A recursive member of `Tree` representative of a segment(s) in a routable path.
+/// A recursive member of `Tree` representative of segment(s) in a routable path.
 ///
 /// Ultimately provides `0..n` `Route` instances which are further evaluated by the `Router` if
 /// the `Node` is determined to be the routable end point for a single path through the tree.
@@ -80,7 +72,7 @@ pub enum NodeSegmentType {
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///       let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///       let route = RouteImpl::new(matcher, dispatcher, extractors);
+///       let route = RouteImpl::new(matcher, dispatcher, extractors, false);
 ///       Box::new(route)
 ///   };
 ///   batsignal_node.add_route(route);
@@ -101,8 +93,10 @@ pub enum NodeSegmentType {
 pub struct Node {
     segment: String,
     segment_type: NodeSegmentType,
+
     routes: Vec<Box<Route + Send + Sync>>,
 
+    delegating: bool,
     children: Vec<Node>,
 }
 
@@ -117,11 +111,40 @@ impl Node {
         &self.segment_type
     }
 
-    /// Allow the `Router` to access the `Routes` for this `Node` when it is
-    /// selected as the lead in a single path through the `Tree`.
-    pub fn borrow_routes(&self) -> &Vec<Box<Route + Send + Sync>> {
-        trace!(" borrowing routes for `{}`", self.segment);
-        &self.routes
+    /// Determines if a `Route` instance associated with this `Node` is willing to handle the
+    /// request.
+    ///
+    /// Where multiple `Route` instances could possibly handle the `Request` only the first, ordered
+    /// per creation, is invoked.
+    ///
+    /// Where no `Route` instances will accept the `Request` the resulting Error will be the
+    /// erroneous status code provided by the first `Route` instance, ordered per creation.
+    ///
+    /// In the situation where all these avenues are exhausted an InternalServerError will be
+    /// provided.
+    pub fn select_route(&self,
+                        state: &State,
+                        req: &Request)
+                        -> Result<&Box<Route + Send + Sync>, StatusCode> {
+        match self.routes.iter().find(|r| r.is_match(state, req).is_ok()) {
+            Some(route) => {
+                trace!("[{}] found matching route", request_id(state));
+                Ok(route)
+            }
+            None => {
+                trace!("[{}] no matching route", request_id(state));
+                match self.routes.first() {
+                    Some(route) => {
+                        trace!("[{}] using error status code from route", request_id(state));
+                        Err(route.is_match(state, req).unwrap_err())
+                    }
+                    None => {
+                        trace!("[{}] using generic error status code", request_id(state));
+                        Err(StatusCode::InternalServerError)
+                    }
+                }
+            }
+        }
     }
 
     /// True if there is at least one child `Node` present
@@ -168,10 +191,10 @@ impl Node {
          mut consumed_segments: Vec<&'r PercentDecoded>)
          -> Option<(Vec<&Node>, &Node, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
-            Some((x, _)) if self.is_delegator(x) => {
+            Some((x, _)) if self.is_delegating(x) => {
                 trace!(" found delegator node `{}`", self.segment);
 
-                // A Delegator terminates local processing, start building result
+                // A delegated node terminates processing, start building result
                 consumed_segments.push(x);
 
                 let mut sm = HashMap::new();
@@ -220,10 +243,13 @@ impl Node {
         }
     }
 
+    fn is_delegating(&self, req_path_segment: &PercentDecoded) -> bool {
+        self.is_match(req_path_segment) && self.delegating
+    }
+
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
         match self.segment_type {
-            NodeSegmentType::Static |
-            NodeSegmentType::Delegator => self.segment == req_path_segment.val(),
+            NodeSegmentType::Static => self.segment == req_path_segment.val(),
             NodeSegmentType::Constrained { regex: _ } => unimplemented!(), // TODO
             NodeSegmentType::Dynamic | NodeSegmentType::Glob => true,
         }
@@ -231,10 +257,6 @@ impl Node {
 
     fn is_leaf(&self, s: &PercentDecoded, rs: &[&PercentDecoded]) -> bool {
         rs.is_empty() && self.is_match(s) && self.is_routable()
-    }
-
-    fn is_delegator(&self, s: &PercentDecoded) -> bool {
-        self.is_match(s) && self.segment_type == NodeSegmentType::Delegator
     }
 }
 
@@ -244,6 +266,7 @@ pub struct NodeBuilder {
     segment_type: NodeSegmentType,
     routes: Vec<Box<Route + Send + Sync>>,
 
+    delegating: bool,
     children: Vec<NodeBuilder>,
 }
 
@@ -258,6 +281,7 @@ impl NodeBuilder {
             segment_type,
             routes: vec![],
             children: vec![],
+            delegating: false,
         }
     }
 
@@ -270,6 +294,11 @@ impl NodeBuilder {
     /// single path through the `Tree`.
     pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
         trace!(" adding route to `{}`", self.segment());
+
+        if route.is_delegating() {
+            self.delegating = true;
+        }
+
         self.routes.push(route);
     }
 
@@ -315,6 +344,7 @@ impl NodeBuilder {
             segment: self.segment,
             segment_type: self.segment_type,
             routes: self.routes,
+            delegating: self.delegating,
             children,
         }
     }
@@ -382,7 +412,7 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
         Box::new(route)
     }
 
@@ -398,7 +428,7 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
         seg1.add_route(Box::new(route));
         root.add_child(seg1);
 
@@ -410,7 +440,7 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
         seg2.add_route(Box::new(route));
 
         // Patch: /seg2
@@ -419,7 +449,7 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
         seg2.add_route(Box::new(route));
         root.add_child(seg2);
 
