@@ -90,14 +90,14 @@ impl Handler for Router {
 
         let response = match state.take::<RequestPathSegments>() {
             Some(rps) => {
-                if let Some((_, leaf, sm)) = self.data.tree.traverse(&rps.segments()) {
+                if let Some((_, leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
                     match leaf.select_route(&state, &req) {
                         Ok(route) => {
                             if route.is_delegating() {
                                 trace!("[{}] delegating to secondary router", request_id(&state));
 
                                 let mut rps = rps.clone();
-                                rps.increase_offset(sm.len());
+                                rps.increase_offset(sp);
                                 state.put(rps);
 
                                 route.dispatch(state, req)

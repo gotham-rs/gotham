@@ -7,14 +7,15 @@ use hyper::{Request, StatusCode};
 
 use http::PercentDecoded;
 use router::route::Route;
-use router::tree::SegmentMapping;
-use router::tree::Path;
+use router::tree::{SegmentsProcessed, SegmentMapping, Path};
 use state::{State, request_id};
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum SegmentType {
-    /// Is matched exactly to the corresponding segment for incoming request paths.
+    /// Is matched exactly to the corresponding segment for incoming request paths. Unlike all
+    /// other `NodeSegmentTypes` values determined to be associated with this segment
+    /// within a `Request` path are **not** stored within `State`.
     Static,
 
     /// Uses the supplied regex to determine match against incoming request paths.
@@ -85,7 +86,10 @@ pub enum SegmentType {
 ///                              &PercentDecoded::new("activate").unwrap(),
 ///                              &PercentDecoded::new("batsignal").unwrap()])
 ///   {
-///       Some((path, _leaf, _segment_mapping)) => assert!(path.last().unwrap().is_routable()),
+///       Some((path, _leaf, segments_processed, _segment_mapping)) =>  {
+///         assert!(path.last().unwrap().is_routable());
+///         assert_eq!(segments_processed, 2);
+///       }
 ///       None => panic!(),
 ///   }
 /// # }
@@ -171,14 +175,15 @@ impl Node {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'r, 'n>(&'n self,
-                            req_path_segments: &'r [&PercentDecoded])
-                            -> Option<(Path<'n>, &Node, SegmentMapping<'n, 'r>)> {
+    pub fn traverse<'r, 'n>
+        (&'n self,
+         req_path_segments: &'r [&PercentDecoded])
+         -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
-            Some((mut path, leaf, sm)) => {
+            Some((mut path, leaf, c, sm)) => {
                 path.reverse();
-                let segment_mapping = SegmentMapping { data: sm };
-                Some((path, leaf, segment_mapping))
+                let sm = SegmentMapping { data: sm };
+                Some((path, leaf, c, sm))
             }
             None => None,
         }
@@ -189,27 +194,30 @@ impl Node {
         (&self,
          req_path_segments: &'r [&PercentDecoded],
          mut consumed_segments: Vec<&'r PercentDecoded>)
-         -> Option<(Vec<&Node>, &Node, HashMap<&str, Vec<&'r PercentDecoded>>)> {
+         -> Option<(Vec<&Node>, &Node, SegmentsProcessed, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
             Some((x, _)) if self.is_delegating(x) => {
+                // A delegated node terminates processing, start building result
                 trace!(" found delegator node `{}`", self.segment);
 
-                // A delegated node terminates processing, start building result
-                consumed_segments.push(x);
-
                 let mut sm = HashMap::new();
-                sm.insert(self.segment(), consumed_segments);
-                Some((vec![self], self, sm))
+                if self.segment_type != SegmentType::Static {
+                    consumed_segments.push(x);
+                    sm.insert(self.segment(), consumed_segments);
+                };
+
+                Some((vec![self], self, 0, sm))
             }
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 trace!(" found leaf node `{}`", self.segment);
 
-                // Leaf Node for Route Path, start building result
-                consumed_segments.push(x);
-
                 let mut sm = HashMap::new();
-                sm.insert(self.segment(), consumed_segments);
-                Some((vec![self], self, sm))
+                if self.segment_type != SegmentType::Static {
+                    consumed_segments.push(x);
+                    sm.insert(self.segment(), consumed_segments);
+                };
+
+                Some((vec![self], self, 0, sm))
             }
             Some((x, xs)) if self.is_match(x) => {
                 trace!(" found node `{}`", self.segment);
@@ -220,20 +228,26 @@ impl Node {
                     .next();
 
                 match child {
-                    Some((mut path, leaf, mut sm)) => {
-                        path.push(self);
-                        consumed_segments.push(x);
-                        sm.insert(self.segment(), consumed_segments);
-                        path.push(self);
-                        Some((path, leaf, sm))
+                    Some((mut path, leaf, sp, mut sm)) => {
+                        if self.segment_type != SegmentType::Static {
+                            consumed_segments.push(x);
+                            sm.insert(&self.segment, consumed_segments);
+                            path.push(self);
+                        }
+
+                        Some((path, leaf, sp + 1, sm))
                     }
+
                     // If we're in a Glob consume segment and continue
                     // otherwise we've failed to find a suitable way
                     // forward.
                     None if self.segment_type == SegmentType::Glob => {
                         trace!(" continuing with glob match for segment `{}`", self.segment);
                         consumed_segments.push(x);
-                        self.inner_traverse(xs, consumed_segments)
+                        match self.inner_traverse(xs, consumed_segments) {
+                            Some((nodes, n, sp, sm)) => Some((nodes, n, sp + 1, sm)),
+                            None => None,
+                        }
                     }
                     None => None,
                 }
@@ -533,9 +547,10 @@ mod tests {
         // GET /seg3/seg4
         let rs = RequestPathSegments::new("/seg3/seg4");
         match root.traverse(&rs.segments()) {
-            Some((path, leaf, _)) => {
+            Some((path, leaf, sp, _)) => {
                 assert_eq!(path.last().unwrap().segment(), "seg4");
                 assert_eq!(path.last().unwrap().segment(), leaf.segment());
+                assert_eq!(sp, 2);
             }
             None => panic!("traversal should have succeeded here"),
         }
@@ -547,21 +562,30 @@ mod tests {
         // GET /seg5/seg6
         let rs = RequestPathSegments::new("/seg5/seg6");
         match root.traverse(&rs.segments()) {
-            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg6"),
+            Some((path, _, sp, _)) => {
+                assert_eq!(path.last().unwrap().segment(), "seg6");
+                assert_eq!(sp, 2);
+            }
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /seg5/someval/seg7
         let rs = RequestPathSegments::new("/seg5/someval/seg7");
         match root.traverse(&rs.segments()) {
-            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg7"),
+            Some((path, _, sp, _)) => {
+                assert_eq!(path.last().unwrap().segment(), "seg7");
+                assert_eq!(sp, 3);
+            }
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /some/path/seg9/another/path
         let rs = RequestPathSegments::new("/some/path/seg9/another/branch");
         match root.traverse(&rs.segments()) {
-            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg10"),
+            Some((path, _, sp, _)) => {
+                assert_eq!(path.last().unwrap().segment(), "seg10");
+                assert_eq!(sp, 5);
+            }
             None => panic!("traversal should have succeeded here"),
         }
     }

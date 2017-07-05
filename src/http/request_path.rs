@@ -86,7 +86,7 @@ impl RequestPathSegments {
     /// * add: Indicates how many segments have been consumed by the current router, *including* the
     /// root node, "/". This will be added to any exisiting offset amount.
     pub fn increase_offset(&mut self, add: usize) {
-        self.offset += add - 1;
+        self.offset += add;
     }
 }
 

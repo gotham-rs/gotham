@@ -21,6 +21,10 @@ pub struct SegmentMapping<'a, 'b> {
     data: HashMap<&'a str, Vec<&'b PercentDecoded>>,
 }
 
+/// Number of segments from a `Request` path that are considered to have been processed
+/// by an `Router` traversing its `Tree`.
+type SegmentsProcessed = usize;
+
 impl<'a, 'b> SegmentMapping<'a, 'b> {
     /// Returns a reference for `Request` path segments mapped to the segment key.
     pub fn get(&self, key: &'a str) -> Option<&Vec<&'b PercentDecoded>> {
@@ -109,9 +113,10 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///   let tree = tree_builder.finalize();
 ///
 ///   match tree.traverse(RequestPathSegments::new("/%61ctiv%61te/batsignal").segments().as_slice()) {
-///       Some((path, leaf, segment_mapping)) => {
+///       Some((path, leaf, segments_processed, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(path.last().unwrap().segment(), leaf.segment());
+///         assert_eq!(segments_processed, 2);
 ///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap().val(), "batsignal");
 ///       }
 ///       None => panic!(),
@@ -135,9 +140,10 @@ impl Tree {
     }
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
-    pub fn traverse<'r, 'n>(&'n self,
-                            req_path_segments: &'r [&PercentDecoded])
-                            -> Option<(Path<'n>, &Node, SegmentMapping<'n, 'r>)> {
+    pub fn traverse<'r, 'n>
+        (&'n self,
+         req_path_segments: &'r [&PercentDecoded])
+         -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
