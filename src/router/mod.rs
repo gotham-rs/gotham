@@ -19,8 +19,6 @@ use router::route::Route;
 use router::tree::{SegmentMapping, Tree};
 use state::{State, StateData, request_id};
 
-// Holds data for Router which lives behind single Arc instance
-// so that otherwise non Clone-able structs are able to be used via NewHandler
 struct RouterData {
     tree: Tree,
     response_extender: ResponseExtender,
@@ -37,6 +35,17 @@ impl RouterData {
 
 /// Responsible for dispatching `Requests` to a linked `Route` and
 /// dispatching error states when a valid `Route` is unable to be determined.
+///
+/// The `Router` is capable of delegating `Requests` to secondary `Router` instances which allows it
+/// to support "Umbrella Applications". An umbrella application contains multiple
+/// applications that are run together but have clear boundaries between them, via module
+/// seperation. Umbrella applications live within a single repository. This style of application
+/// is roughly a halfway point between monolithic application design and
+/// microservice application design. Umbrella Applications may also share modules.
+/// e.g. Authentication/Authorization/Identity.
+///
+/// Please see the documentation for `Route` in order to create routes that delegate to secondary
+/// `Routers`.
 ///
 /// # Examples
 ///
@@ -187,12 +196,177 @@ impl StateData for Headers {}
 mod tests {
     use super::*;
     use std::str::FromStr;
-    use hyper::{Request, Method, Uri, Body};
+    use hyper::{Error, Request, Method, Uri, Body};
     use hyper::header::ContentLength;
 
     use router::tree::TreeBuilder;
+    use router::tree::node::{SegmentType, NodeBuilder};
+    use router::route::{RouteImpl, Extractors};
+    use http::request_path::NoopRequestPathExtractor;
+    use http::query_string::NoopQueryStringExtractor;
+    use dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+    use router::request_matcher::MethodOnlyRequestMatcher;
     use router::response_extender::ResponseExtenderBuilder;
     use state::set_request_id;
+
+    fn handler(state: State, _req: Request) -> (State, Response) {
+        (state, Response::new())
+    }
+
+    fn send_request(r: Router, m: Method, uri: &str) -> Result<(State, Response), (State, Error)> {
+        let uri = Uri::from_str(uri).unwrap();
+        let request: Request<Body> = Request::new(m, uri);
+
+        let mut state = State::new();
+        set_request_id(&mut state, &request);
+        state.put(RequestPathSegments::new(request.uri().path().clone()));
+
+        r.handle(state, request).wait()
+    }
+
+    #[test]
+    fn internal_server_error_if_no_request_path_segments() {
+        let tree_builder = TreeBuilder::new();
+        let tree = tree_builder.finalize();
+        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+
+        let method = Method::Get;
+        let uri = Uri::from_str("https://test.gotham.rs").unwrap();
+        let request: Request<Body> = Request::new(method, uri);
+
+        let mut state = State::new();
+        set_request_id(&mut state, &request);
+
+        match router.handle(state, request).wait() {
+            Ok((_state, res)) => {
+                assert_eq!(res.status(), StatusCode::InternalServerError);
+            }
+            Err(_) => panic!("Router should have handled request"),
+        };
+    }
+
+    #[test]
+    fn not_found_error_if_request_path_is_not_found() {
+        let tree_builder = TreeBuilder::new();
+        let tree = tree_builder.finalize();
+        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+
+        match send_request(router, Method::Get, "https://test.gotham.rs") {
+            Ok((_state, res)) => {
+                assert_eq!(res.status(), StatusCode::NotFound);
+            }
+            Err(_) => panic!("Router should have handled request"),
+        };
+    }
+
+    #[test]
+    fn custom_error_if_leaf_found_but_matching_route_not_found() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut tree_builder = TreeBuilder::new();
+
+        let route = {
+            let methods = vec![Method::Post];
+            let matcher = MethodOnlyRequestMatcher::new(methods);
+            let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
+            let extractors: Extractors<NoopRequestPathExtractor,
+                                       NoopQueryStringExtractor> = Extractors::new();
+            let route = RouteImpl::new(matcher, dispatcher, extractors, false);
+            Box::new(route)
+        };
+        tree_builder.add_route(route);
+        let tree = tree_builder.finalize();
+        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+
+        match send_request(router, Method::Get, "https://test.gotham.rs") {
+            Ok((_state, res)) => {
+                assert_eq!(res.status(), StatusCode::MethodNotAllowed);
+            }
+            Err(_) => panic!("Router should have handled request"),
+        };
+    }
+
+    #[test]
+    fn success_if_leaf_and_route_found() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut tree_builder = TreeBuilder::new();
+
+        let route = {
+            let methods = vec![Method::Get];
+            let matcher = MethodOnlyRequestMatcher::new(methods);
+            let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
+            let extractors: Extractors<NoopRequestPathExtractor,
+                                       NoopQueryStringExtractor> = Extractors::new();
+            let route = RouteImpl::new(matcher, dispatcher, extractors, false);
+            Box::new(route)
+        };
+        tree_builder.add_route(route);
+        let tree = tree_builder.finalize();
+        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+
+        match send_request(router, Method::Get, "https://test.gotham.rs") {
+            Ok((_state, res)) => {
+                assert_eq!(res.status(), StatusCode::Ok);
+            }
+            Err(_) => panic!("Router should have handled request"),
+        };
+    }
+
+    #[test]
+    fn delegates_to_secondary_router() {
+        let delegated_router = {
+            let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+            let mut tree_builder = TreeBuilder::new();
+
+            let route = {
+                let methods = vec![Method::Get];
+                let matcher = MethodOnlyRequestMatcher::new(methods);
+                let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
+                let extractors: Extractors<NoopRequestPathExtractor,
+                                           NoopQueryStringExtractor> = Extractors::new();
+                let route = RouteImpl::new(matcher, dispatcher, extractors, false);
+                Box::new(route)
+            };
+            tree_builder.add_route(route);
+
+            let tree = tree_builder.finalize();
+            Router::new(tree, ResponseExtenderBuilder::new().finalize())
+        };
+
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut tree_builder = TreeBuilder::new();
+        let mut delegated_node = NodeBuilder::new("var", SegmentType::Dynamic);
+
+        let route = {
+            let methods = vec![Method::Get];
+            let matcher = MethodOnlyRequestMatcher::new(methods);
+            let dispatcher = Box::new(DispatcherImpl::new(delegated_router, (), pipeline_set));
+            let extractors: Extractors<NoopRequestPathExtractor,
+                                       NoopQueryStringExtractor> = Extractors::new();
+            let route = RouteImpl::new(matcher, dispatcher, extractors, true);
+            Box::new(route)
+        };
+
+        delegated_node.add_route(route);
+        tree_builder.add_child(delegated_node);
+        let tree = tree_builder.finalize();
+        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+
+        // Ensure that top level tree has no route
+        match send_request(router.clone(), Method::Get, "https://test.gotham.rs") {
+            Ok((_state, res)) => {
+                assert_eq!(res.status(), StatusCode::NotFound);
+            }
+            Err(_) => panic!("Router should have handled request"),
+        };
+
+        // Ensure that top level tree of delegated router has route that responds correctly
+        match send_request(router, Method::Get, "https://test.gotham.rs/api") {
+            Ok((_state, res)) => {
+                assert_eq!(res.status(), StatusCode::Ok);
+            }
+            Err(_) => panic!("Router should have handled request"),
+        };
+    }
 
     #[test]
     fn executes_response_extender_when_present() {
@@ -206,19 +380,9 @@ mod tests {
         };
         response_extender_builder.add(StatusCode::NotFound, Box::new(not_found_extender));
         let response_extender = response_extender_builder.finalize();
-
         let router = Router::new(tree, response_extender);
-        let method = Method::Get;
-        let uri = Uri::from_str("https://test.gotham.rs").unwrap();
-        let request: Request<Body> = Request::new(method, uri);
 
-        let mut state = State::new();
-        set_request_id(&mut state, &request);
-        state.put(RequestPathSegments::new(request.uri().path().clone()));
-
-        let result = router.handle(state, request).wait();
-
-        match result {
+        match send_request(router, Method::Get, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
                 assert_eq!(*res.headers().get::<ContentLength>().unwrap(),
                            ContentLength(3u64));

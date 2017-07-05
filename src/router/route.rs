@@ -19,11 +19,14 @@ use state::State;
 
 /// A type that determines if its associated logic can be exposed by the `Router`
 /// in response to an external request.
+///
+/// Capable of delegating requests to secondary `Router` instances in order to support "Umbrella
+/// Applications".
 pub trait Route {
     /// Determines if this `Route` can be invoked, based on the `Request`.
     fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode>;
 
-    /// Determines if this `Route` intends to delegate to secondary `Router` instance.
+    /// Determines if this `Route` intends to delegate requests to a secondary `Router` instance.
     fn is_delegating(&self) -> bool;
 
     /// Extracts the `Request` path into a Struct and stores it in `State`  for use
@@ -52,6 +55,8 @@ pub trait Route {
 ///
 /// # Examples
 ///
+/// ## Standard `Route` which calls application code
+///
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
@@ -77,6 +82,58 @@ pub trait Route {
 ///   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///   RouteImpl::new(matcher, dispatcher, extractors, false);
+/// # }
+/// ```
+///
+/// ## A `Route` which delegates remaining `Request` details to a secondary `Router` instance
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use hyper::server::{Request, Response};
+/// # use hyper::Method;
+/// #
+/// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::http::query_string::NoopQueryStringExtractor;
+/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::state::State;
+/// # use gotham::router::Router;
+/// # use gotham::router::route::{RouteImpl, Extractors};
+/// # use gotham::router::tree::TreeBuilder;
+/// # use gotham::router::response_extender::ResponseExtenderBuilder;
+/// #
+/// # fn main() {
+///   fn handler(state: State, _req: Request) -> (State, Response) {
+///     (state, Response::new())
+///   }
+///
+///   let secondary_router = {
+///        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+///        let mut tree_builder = TreeBuilder::new();
+///
+///        let route = {
+///            let methods = vec![Method::Get];
+///            let matcher = MethodOnlyRequestMatcher::new(methods);
+///            let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
+///            let extractors: Extractors<NoopRequestPathExtractor,
+///                                       NoopQueryStringExtractor> = Extractors::new();
+///            let route = RouteImpl::new(matcher, dispatcher, extractors, false);
+///            Box::new(route)
+///        };
+///        tree_builder.add_route(route);
+///
+///        let tree = tree_builder.finalize();
+///        Router::new(tree, ResponseExtenderBuilder::new().finalize())
+///   };
+///
+///   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+///   let methods = vec![Method::Get];
+///   let matcher = MethodOnlyRequestMatcher::new(methods);
+///   let dispatcher = Box::new(DispatcherImpl::new(secondary_router, (), pipeline_set));
+///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+///   RouteImpl::new(matcher, dispatcher, extractors, true);
 /// # }
 /// ```
 pub struct RouteImpl<RM, RE, QE>

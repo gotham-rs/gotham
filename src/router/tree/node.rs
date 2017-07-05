@@ -293,6 +293,13 @@ impl NodeBuilder {
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
     pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+        if self.delegating && !self.routes.is_empty() {
+            panic!("Node which is delegating to secondary Router must have only a single Route")
+        }
+        if route.is_delegating() && !self.children.is_empty() {
+            panic!("Node which is delegating to secondary Router must not have existing children")
+        }
+
         trace!(" adding route to `{}`", self.segment());
 
         if route.is_delegating() {
@@ -304,6 +311,10 @@ impl NodeBuilder {
 
     /// Adds a new child to this sub-tree structure
     pub fn add_child(&mut self, child: NodeBuilder) {
+        if self.delegating {
+            panic!("Node which is delegating to secondary Router must not have children")
+        }
+
         trace!(" adding child `{}` to `{}`",
                child.segment(),
                self.segment());
@@ -413,6 +424,18 @@ mod tests {
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
         let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
+        Box::new(route)
+    }
+
+    fn get_delegated_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
+        where P: Send + Sync + 'static
+    {
+        let methods = vec![Method::Get];
+        let matcher = MethodOnlyRequestMatcher::new(methods);
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
+        let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
+            Extractors::new();
+        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, true);
         Box::new(route)
     }
 
@@ -541,5 +564,37 @@ mod tests {
             Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg10"),
             None => panic!("traversal should have succeeded here"),
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "Node which is delegating to secondary Router must not have children")]
+    fn panics_when_delegated_node_adds_children() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
+        let seg2 = NodeBuilder::new("seg2", SegmentType::Static);
+
+        seg1.add_route(get_delegated_route(pipeline_set));
+        seg1.add_child(seg2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Node which is delegating to secondary Router must not have existing children")]
+    fn panics_when_node_with_children_is_provided_delegated_route() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
+        let seg2 = NodeBuilder::new("seg2", SegmentType::Static);
+
+        seg1.add_child(seg2);
+        seg1.add_route(get_delegated_route(pipeline_set));
+    }
+
+    #[test]
+    #[should_panic(expected = "Node which is delegating to secondary Router must have only a single Route")]
+    fn panics_when_node_with_a_route_adds_another() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
+
+        seg1.add_route(get_delegated_route(pipeline_set.clone()));
+        seg1.add_route(get_delegated_route(pipeline_set));
     }
 }
