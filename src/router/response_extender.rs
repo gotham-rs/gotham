@@ -24,15 +24,19 @@ pub struct NoopExtender {}
 
 impl Extender for NoopExtender {
     fn extend(&self, state: State, res: Response) -> Box<HandlerFuture> {
-        // TODO: Request hyper API ext to determine if body is present or not or some other
-        // mechanism to signal that the response is 'committed'. If so, bail.
-        //
-        // https://github.com/hyperium/hyper/issues/1216
-
-        trace!("[{}] found {} response extender",
-               request_id(&state),
-               res.status());
-        future::ok((state, res)).boxed()
+        match res.body_ref() {
+            Some(_) => {
+                trace!("[{}] found response extender, not invoking, body present",
+                       request_id(&state));
+                future::ok((state, res)).boxed()
+            }
+            None => {
+                trace!("[{}] found {} response extender, no body, making extensions",
+                       request_id(&state),
+                       res.status());
+                future::ok((state, res)).boxed()
+            }
+        }
     }
 }
 
