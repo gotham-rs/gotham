@@ -38,7 +38,7 @@ impl PercentDecoded {
 
 /// Represents data that has been successfully decoded from a form-urlencoded source and is
 /// valid utf8
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Debug)]
 pub struct FormUrlDecoded {
     val: String,
 }

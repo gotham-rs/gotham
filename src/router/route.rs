@@ -14,7 +14,7 @@ use handler::HandlerFuture;
 use router::request_matcher::RequestMatcher;
 use router::tree::SegmentMapping;
 use http::request_path::RequestPathExtractor;
-use http::query_string::{QueryStringExtractor, QueryStringMapping};
+use http::query_string::QueryStringExtractor;
 use state::State;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -51,10 +51,7 @@ pub trait Route {
 
     /// Extracts the `Request` query string into a Struct and stores it in `State`  for use
     /// by Middleware and Handlers
-    fn extract_query_string(&self,
-                            state: &mut State,
-                            query_string_mapping: QueryStringMapping)
-                            -> Result<(), String>;
+    fn extract_query_string(&self, state: &mut State, query: Option<&str>) -> Result<(), String>;
 
     /// Final call made by the `Router` to the matched `Route` allowing
     /// application specific logic to respond to the request.
@@ -227,10 +224,7 @@ impl<RM, RE, QE> Route for RouteImpl<RM, RE, QE>
         RE::extract(state, segment_mapping)
     }
 
-    fn extract_query_string(&self,
-                            state: &mut State,
-                            query_string_mapping: QueryStringMapping)
-                            -> Result<(), String> {
-        QE::extract(state, query_string_mapping)
+    fn extract_query_string(&self, state: &mut State, query: Option<&str>) -> Result<(), String> {
+        QE::extract(state, query)
     }
 }
