@@ -100,7 +100,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 }
                             }
                         }
-                        None => Err(format!("error converting query string value `{}`", key)),
+                        None => Err(format!("error converting query string value `{}`", key))
                     }
                 }
 
