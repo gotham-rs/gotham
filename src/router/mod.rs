@@ -12,7 +12,6 @@ use futures::{future, Future};
 use hyper::{Request, Response, Headers, StatusCode, Uri, HttpVersion, Method};
 
 use handler::{NewHandler, Handler, HandlerFuture};
-use http::query_string;
 use http::request_path::RequestPathSegments;
 use router::response_extender::ResponseExtender;
 use router::route::{Route, Delegation};
@@ -147,30 +146,30 @@ impl Router {
         match route.extract_request_path(&mut state, sm) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
-
-                let uri = req.uri().clone();
-                if let Some(q) = uri.query() {
-                    match route.extract_query_string(&mut state, query_string::split(q)) {
-                        Ok(()) => {
-                            trace!("[{}] extracted query string", request_id(&state));
-                            trace!("[{}] dispatching", request_id(&state));
-                            return route.dispatch(state, req)
-                        }
-                        Err(_) => (),
+                match route.extract_query_string(&mut state, req.query()) {
+                    Ok(()) => {
+                        trace!("[{}] extracted query string", request_id(&state));
+                        trace!("[{}] dispatching", request_id(&state));
+                        route.dispatch(state, req)
                     }
-                } else {
-                    trace!("[{}] dispatching", request_id(&state));
-                    return route.dispatch(state, req);
+                    Err(e) => {
+                        trace!("[{}] {}", request_id(&state), e);
+                        let mut res = Response::new();
+                        res.set_status(StatusCode::BadRequest);
+                        error!("[{}] the server cannot or will not process the request due to an apparent client error",
+                               request_id(&state));
+                        future::ok((state, res)).boxed()
+                    }
                 }
             }
-            Err(_) => (),
-        };
-
-        let mut res = Response::new();
-        res.set_status(StatusCode::InternalServerError);
-        error!("[{}] internal server error, failed to dispatch",
-               request_id(&state));
-        future::ok((state, res)).boxed()
+            Err(_) => {
+                let mut res = Response::new();
+                res.set_status(StatusCode::InternalServerError);
+                error!("[{}] internal server error, failed to dispatch",
+                       request_id(&state));
+                future::ok((state, res)).boxed()
+            }
+        }
     }
 
     fn generate_response(&self, status: StatusCode, state: State) -> Box<HandlerFuture> {

@@ -1,7 +1,7 @@
 //! Defines functionality for operating on `Request` query strings
 
+use std;
 use std::error::Error;
-use std::fmt;
 use std::collections::HashMap;
 use std::str::FromStr;
 use std::string::ParseError;
@@ -12,6 +12,7 @@ use state::State;
 use http::FormUrlDecoded;
 
 /// Provides a mapping of keys from `Request` query string to their supplied values
+#[derive(Debug)]
 pub struct QueryStringMapping {
     data: HashMap<FormUrlDecoded, Vec<FormUrlDecoded>>,
 }
@@ -58,38 +59,43 @@ impl QueryStringMapping {
 /// # use gotham::http::query_string::split;
 /// #
 /// # pub fn main() {
-///       let res = split("key=val&key2=val");
+///       let res = split(Some("key=val&key2=val"));
 ///       assert_eq!("val", res.get("key").unwrap().first().unwrap().val());
 ///       assert_eq!("val", res.get("key2").unwrap().first().unwrap().val());
 ///
-///       let res = split("k%65y=val&key=%76al+2");
+///       let res = split(Some("k%65y=val&key=%76al+2"));
 ///       assert_eq!("val", res.get("key").unwrap().first().unwrap().val());
 ///       assert_eq!("val 2", res.get("key").unwrap().last().unwrap().val());
 ///
-///       let res = split("key=val&key2=");
+///       let res = split(Some("key=val&key2="));
 ///       assert_eq!("val", res.get("key").unwrap().first().unwrap().val());
 ///       assert_eq!("", res.get("key2").unwrap().first().unwrap().val());
 /// # }
 /// ```
-pub fn split<'r>(query_string: &'r str) -> QueryStringMapping {
-    let pairs = query_string.split("&").filter(|pair| pair.contains("="));
-    let data = pairs.fold(HashMap::new(), |mut acc, p| {
-        let mut sp = p.split("=");
-        let (f, v) = (sp.next().unwrap(), sp.next().unwrap());
-        match FormUrlDecoded::new(f) {
-            Some(key) => {
-                let vec = acc.entry(key).or_insert(Vec::new());
-                match FormUrlDecoded::new(v) {
-                    Some(dv) => vec.push(dv),
+pub fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
+    match query {
+        Some(query) => {
+            let pairs = query.split("&").filter(|pair| pair.contains("="));
+            let data = pairs.fold(HashMap::new(), |mut acc, p| {
+                let mut sp = p.split("=");
+                let (f, v) = (sp.next().unwrap(), sp.next().unwrap());
+                match FormUrlDecoded::new(f) {
+                    Some(key) => {
+                        let vec = acc.entry(key).or_insert(Vec::new());
+                        match FormUrlDecoded::new(v) {
+                            Some(dv) => vec.push(dv),
+                            None => (),
+                        }
+                    }
                     None => (),
-                }
-            }
-            None => (),
-        };
-        acc
-    });
+                };
+                acc
+            });
 
-    QueryStringMapping { data }
+            QueryStringMapping { data }
+        }
+        None => QueryStringMapping { data: HashMap::new() },
+    }
 }
 
 /// Derived through the macro of the same name supplied by `gotham-derive` for application defined
@@ -97,15 +103,16 @@ pub fn split<'r>(query_string: &'r str) -> QueryStringMapping {
 /// implementations.
 pub trait QueryStringExtractor {
     /// Populates the struct with data from the `Request` query string and adds it to `State`
-    fn extract(state: &mut State, query_string: QueryStringMapping) -> Result<(), String>;
+    fn extract(state: &mut State, query: Option<&str>) -> Result<(), String>;
 }
 
 /// A `QueryStringExtractor` that does not extract/store any data.
 ///
 /// Useful in purely static routes and within documentation.
+#[derive(Debug)]
 pub struct NoopQueryStringExtractor;
 impl QueryStringExtractor for NoopQueryStringExtractor {
-    fn extract(_state: &mut State, _query_string: QueryStringMapping) -> Result<(), String> {
+    fn extract(_state: &mut State, _query: Option<&str>) -> Result<(), String> {
         Ok(())
     }
 }
@@ -119,8 +126,8 @@ pub struct FromQueryStringError {
     description: String,
 }
 
-impl fmt::Display for FromQueryStringError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl std::fmt::Display for FromQueryStringError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Error decoding query string: {}", self.description)
     }
 }

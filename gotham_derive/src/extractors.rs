@@ -81,7 +81,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         impl #borrowed gotham::http::query_string::QueryStringExtractor for #name #borrowed
              #where_clause
         {
-            fn extract(s: &mut gotham::state::State, mut qsm: gotham::http::query_string::QueryStringMapping) -> Result<(), String> {
+            fn extract(s: &mut gotham::state::State, query: Option<&str>) -> Result<(), String> {
                 fn parse<T>(s: &gotham::state::State, key: &str, values: Option<&Vec<gotham::http::FormUrlDecoded>>) -> Result<T, String>
                     where T: gotham::http::query_string::FromQueryString
                 {
@@ -89,7 +89,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         Some(values) => {
                             match T::from_query_string(key, values.as_slice()) {
                                 Ok(val) => {
-                                    trace!("[{}] extracted query string segments", gotham::state::request_id(&s));
+                                    trace!("[{}] extracted query string values", gotham::state::request_id(&s));
                                     Ok(val)
                                 }
                                 Err(_) => {
@@ -98,9 +98,12 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 }
                             }
                         }
-                        None => Err(String::from("Error converting query string values")),
+                        None => Err(format!("error converting query string value `{}`", key)),
                     }
                 }
+
+                let mut qsm = gotham::http::query_string::split(query);
+                trace!("[{}] query string mappings recieved from client: {:?}", gotham::state::request_id(s), qsm);
 
                 // Add an empty Vec for Optional segments that have not been provided.
                 //
@@ -109,17 +112,21 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 let ofl = [#(#ofl),*];
                 for label in ofl.iter() {
                     if !qsm.contains_key(label) {
+                        trace!(" adding unmapped value: {:?}", label);
                         qsm.add_unmapped_segment(label);
                     }
                 }
 
-                let rp = #name {
+                trace!("[{}] query string mappings to be parsed: {:?}", gotham::state::request_id(s), qsm);
+
+                let qss = #name {
                     #(
                         #fields: parse(s, #keys, qsm.get(#keys2))?,
                      )*
                 };
+                trace!("[{}] query string struct created and stored in state", gotham::state::request_id(s));
 
-                s.put(rp);
+                s.put(qss);
                 Ok(())
             }
         }
