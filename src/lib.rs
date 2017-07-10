@@ -28,6 +28,8 @@ extern crate uuid;
 #[macro_use]
 extern crate log;
 extern crate chrono;
+extern crate rand;
+extern crate base64;
 
 pub mod handler;
 pub mod middleware;
