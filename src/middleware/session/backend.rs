@@ -2,7 +2,6 @@ use super::*;
 
 use std::thread::{spawn, JoinHandle};
 use std::collections::HashMap;
-use std::marker::PhantomData;
 use std::sync::mpsc;
 
 use futures::sync::oneshot;
@@ -36,10 +35,12 @@ impl NewMemoryBackend {
         loop {
             match rx.recv() {
                 Ok(Command::Get(id, tx)) => {
-                    tx.send(storage.get(&id.value).map(Vec::clone));
+                    // We can't act on a failed oneshot channel, discard the result instead
+                    let _discard = tx.send(storage.get(&id.value).map(Vec::clone));
                 }
                 Ok(Command::Take(id, tx)) => {
-                    tx.send(storage.remove(&id.value));
+                    // We can't act on a failed oneshot channel, discard the result instead
+                    let _discard = tx.send(storage.remove(&id.value));
                 }
                 Ok(Command::Put(id, t)) => {
                     storage.insert(id.value, t);
