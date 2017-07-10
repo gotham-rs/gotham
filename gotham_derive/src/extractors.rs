@@ -7,6 +7,7 @@ pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let (name, borrowed, where_clause) = ty_params(&ast);
     let (fields, optional_fields) = ty_fields(&ast);
     let ofl = optional_field_labels(optional_fields);
+    let ofl_len = ofl.len();
     let keys = field_names(&fields);
 
     let gen = quote! {
@@ -46,7 +47,7 @@ pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 //
                 // Ideally `optional_fields` would be a const but this doesn't yet seem to be
                 // possible when using the `quote` crate as we are here.
-                let ofl = [#(#ofl),*];
+                let ofl:[&str; #ofl_len] = [#(#ofl), *];
                 for label in ofl.iter() {
                     if !sm.contains_key(label) {
                         sm.add_unmapped_segment(label);
@@ -73,6 +74,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let (name, borrowed, where_clause) = ty_params(&ast);
     let (fields, optional_fields) = ty_fields(&ast);
     let ofl = optional_field_labels(optional_fields);
+    let ofl_len = ofl.len();
     let keys = field_names(&fields);
     let keys2 = keys.clone();
 
@@ -109,7 +111,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 //
                 // Ideally `optional_fields` would be a const but this doesn't yet seem to be
                 // possible when using the `quote` crate as we are here.
-                let ofl = [#(#ofl),*];
+                let ofl:[&str; #ofl_len] = [#(#ofl), *];
                 for label in ofl.iter() {
                     if !qsm.contains_key(label) {
                         trace!(" adding unmapped value: {:?}", label);
