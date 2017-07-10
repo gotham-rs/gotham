@@ -76,7 +76,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::tree::TreeBuilder;
-    /// # use gotham::router::route::{RouteImpl, Extractors};
+    /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
     /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
     /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
     /// # use gotham::http::request_path::NoopRequestPathExtractor;
@@ -97,7 +97,7 @@ impl<T> NewHandlerService<T>
     /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
     /// let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
     /// let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-    /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
+    /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
     ///
     /// tree_builder.add_route(Box::new(route));
     /// let tree = tree_builder.finalize();
@@ -276,7 +276,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
-/// # use gotham::router::route::{RouteImpl, Extractors};
+/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
@@ -318,7 +318,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
 /// #   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-/// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
+/// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();
 ///     Router::new(tree, response_extender);

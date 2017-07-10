@@ -74,7 +74,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
-/// # use gotham::router::route::{RouteImpl, Extractors};
+/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
@@ -102,7 +102,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 /// #     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-/// #     let route = RouteImpl::new(matcher, dispatcher, extractors, false);
+/// #     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 /// #     Box::new(route)
 ///   };
 ///   thing_node_builder.add_route(batsignal_route);

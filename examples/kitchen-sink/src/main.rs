@@ -23,7 +23,7 @@ use gotham::http::request_path::NoopRequestPathExtractor;
 use gotham::http::query_string::NoopQueryStringExtractor;
 use gotham::router::response_extender::ResponseExtenderBuilder;
 use gotham::router::Router;
-use gotham::router::route::{Route, RouteImpl, Extractors};
+use gotham::router::route::{Route, RouteImpl, Extractors, Delegation};
 use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
                        PipelineHandleChain};
 use gotham::router::request_matcher::MethodOnlyRequestMatcher;
@@ -71,7 +71,10 @@ fn static_route<NH, P, C>(methods: Vec<Method>,
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
         Extractors::new();
-    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
+    let route = RouteImpl::new(matcher,
+                               Box::new(dispatcher),
+                               extractors,
+                               Delegation::Internal);
     Box::new(route)
 }
 
@@ -87,7 +90,10 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
-    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
+    let route = RouteImpl::new(matcher,
+                               Box::new(dispatcher),
+                               extractors,
+                               Delegation::Internal);
     Box::new(route)
 }
 

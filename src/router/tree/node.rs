@@ -6,7 +6,7 @@ use std::borrow::Borrow;
 use hyper::{Request, StatusCode};
 
 use http::PercentDecoded;
-use router::route::Route;
+use router::route::{Route, Delegation};
 use router::tree::{SegmentsProcessed, SegmentMapping, Path};
 use state::{State, request_id};
 
@@ -51,7 +51,7 @@ pub enum SegmentType {
 /// # use gotham::http::PercentDecoded;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::route::{RouteImpl, Extractors};
+/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
@@ -73,7 +73,7 @@ pub enum SegmentType {
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///       let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///       let route = RouteImpl::new(matcher, dispatcher, extractors, false);
+///       let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 ///       Box::new(route)
 ///   };
 ///   batsignal_node.add_route(route);
@@ -307,26 +307,27 @@ impl NodeBuilder {
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
     pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
-        if self.delegating && !self.routes.is_empty() {
-            panic!("Node which is delegating to secondary Router must have only a single Route")
-        }
-        if route.is_delegating() && !self.children.is_empty() {
-            panic!("Node which is delegating to secondary Router must not have existing children")
-        }
+
+        if route.delegation() == Delegation::External {
+            if !self.routes.is_empty() {
+                panic!("Node which is externally delegating must have single Route");
+            }
+
+            if !self.children.is_empty() {
+                panic!("Node which is externally delegating must not have existing children");
+            }
+
+            self.delegating = true;
+        };
 
         trace!(" adding route to `{}`", self.segment());
-
-        if route.is_delegating() {
-            self.delegating = true;
-        }
-
         self.routes.push(route);
     }
 
     /// Adds a new child to this sub-tree structure
     pub fn add_child(&mut self, child: NodeBuilder) {
         if self.delegating {
-            panic!("Node which is delegating to secondary Router must not have children")
+            panic!("Node which is externally delegating must not have existing children")
         }
 
         trace!(" adding child `{}` to `{}`",
@@ -437,7 +438,10 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::Internal);
         Box::new(route)
     }
 
@@ -449,7 +453,10 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, true);
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::External);
         Box::new(route)
     }
 
@@ -465,7 +472,10 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::Internal);
         seg1.add_route(Box::new(route));
         root.add_child(seg1);
 
@@ -477,7 +487,10 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::Internal);
         seg2.add_route(Box::new(route));
 
         // Patch: /seg2
@@ -486,7 +499,10 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, false);
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::Internal);
         seg2.add_route(Box::new(route));
         root.add_child(seg2);
 
@@ -591,7 +607,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Node which is delegating to secondary Router must not have children")]
+    #[should_panic(expected = "Node which is externally delegating must not have existing children")]
     fn panics_when_delegated_node_adds_children() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
@@ -602,7 +618,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Node which is delegating to secondary Router must not have existing children")]
+    #[should_panic(expected = "Node which is externally delegating must not have existing children")]
     fn panics_when_node_with_children_is_provided_delegated_route() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
@@ -613,7 +629,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Node which is delegating to secondary Router must have only a single Route")]
+    #[should_panic(expected = "Node which is externally delegating must have single Route")]
     fn panics_when_node_with_a_route_adds_another() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);

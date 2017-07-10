@@ -15,7 +15,7 @@ use handler::{NewHandler, Handler, HandlerFuture};
 use http::query_string;
 use http::request_path::RequestPathSegments;
 use router::response_extender::ResponseExtender;
-use router::route::Route;
+use router::route::{Route, Delegation};
 use router::tree::{SegmentMapping, Tree};
 use state::{State, StateData, request_id};
 
@@ -93,17 +93,21 @@ impl Handler for Router {
                 if let Some((_, leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
                     match leaf.select_route(&state, &req) {
                         Ok(route) => {
-                            if route.is_delegating() {
-                                trace!("[{}] delegating to secondary router", request_id(&state));
+                            match route.delegation() {
+                                Delegation::External => {
+                                    trace!("[{}] delegating to secondary router",
+                                           request_id(&state));
 
-                                let mut rps = rps.clone();
-                                rps.increase_offset(sp);
-                                state.put(rps);
+                                    let mut rps = rps.clone();
+                                    rps.increase_offset(sp);
+                                    state.put(rps);
 
-                                route.dispatch(state, req)
-                            } else {
-                                trace!("[{}] dispatching to route", request_id(&state));
-                                self.dispatch(state, req, sm, route)
+                                    route.dispatch(state, req)
+                                }
+                                Delegation::Internal => {
+                                    trace!("[{}] dispatching to route", request_id(&state));
+                                    self.dispatch(state, req, sm, route)
+                                }
                             }
                         }
                         Err(status) => {
@@ -270,7 +274,7 @@ mod tests {
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopRequestPathExtractor,
                                        NoopQueryStringExtractor> = Extractors::new();
-            let route = RouteImpl::new(matcher, dispatcher, extractors, false);
+            let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
         };
         tree_builder.add_route(route);
@@ -296,7 +300,7 @@ mod tests {
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopRequestPathExtractor,
                                        NoopQueryStringExtractor> = Extractors::new();
-            let route = RouteImpl::new(matcher, dispatcher, extractors, false);
+            let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
         };
         tree_builder.add_route(route);
@@ -323,7 +327,7 @@ mod tests {
                 let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
                 let extractors: Extractors<NoopRequestPathExtractor,
                                            NoopQueryStringExtractor> = Extractors::new();
-                let route = RouteImpl::new(matcher, dispatcher, extractors, false);
+                let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
                 Box::new(route)
             };
             tree_builder.add_route(route);
@@ -342,7 +346,7 @@ mod tests {
             let dispatcher = Box::new(DispatcherImpl::new(delegated_router, (), pipeline_set));
             let extractors: Extractors<NoopRequestPathExtractor,
                                        NoopQueryStringExtractor> = Extractors::new();
-            let route = RouteImpl::new(matcher, dispatcher, extractors, true);
+            let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
             Box::new(route)
         };
 
