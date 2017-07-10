@@ -24,16 +24,18 @@ pub struct NoopExtender {}
 
 impl Extender for NoopExtender {
     fn extend(&self, state: State, res: Response) -> Box<HandlerFuture> {
+        trace!("[{}] NoopExtender invoked, does not make any changes to Response",
+               request_id(&state));
         match res.body_ref() {
             Some(_) => {
-                trace!("[{}] found response extender, not invoking, body present",
+                // Full implementations should not make extensions if they find this state
+                trace!("[{}] found response body, no change made",
                        request_id(&state));
                 future::ok((state, res)).boxed()
             }
             None => {
-                trace!("[{}] found {} response extender, no body, making extensions",
-                       request_id(&state),
-                       res.status());
+                // Full implementations should make extensions if they find this state
+                trace!("[{}] no response body, no change made", request_id(&state));
                 future::ok((state, res)).boxed()
             }
         }

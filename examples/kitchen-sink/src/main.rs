@@ -251,6 +251,7 @@ fn main() {
     fern::Dispatch::new()
         .level(LogLevelFilter::Error)
         .level_for("gotham", log::LogLevelFilter::Error)
+        .level_for("gotham::state", log::LogLevelFilter::Error)
         .level_for("kitchen_sink", log::LogLevelFilter::Error)
         .chain(std::io::stdout())
         .format(|out, message, record| {
