@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use http::PercentDecoded;
 use router::route::Route;
-use router::tree::node::{Node, NodeBuilder, NodeSegmentType};
+use router::tree::node::{Node, NodeBuilder, SegmentType};
 
 pub mod node;
 
@@ -16,9 +16,14 @@ pub type Path<'a> = Vec<&'a Node>;
 /// which have been matched against the `Request` path.
 ///
 /// Data is percent and utf8 decoded.
+#[derive(Debug)]
 pub struct SegmentMapping<'a, 'b> {
     data: HashMap<&'a str, Vec<&'b PercentDecoded>>,
 }
+
+/// Number of segments from a `Request` path that are considered to have been processed
+/// by an `Router` traversing its `Tree`.
+type SegmentsProcessed = usize;
 
 impl<'a, 'b> SegmentMapping<'a, 'b> {
     /// Returns a reference for `Request` path segments mapped to the segment key.
@@ -37,6 +42,11 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
         if !self.data.contains_key(key) {
             self.data.insert(key, Vec::new());
         }
+    }
+
+    /// Number of segments from the Request path that have been mapped
+    pub fn len(&self) -> usize {
+        self.data.len()
     }
 }
 
@@ -64,17 +74,16 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
-/// # use gotham::router::route::{RouteImpl, Extractors};
+/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::tree::node::NodeBuilder;
-/// # use gotham::router::tree::node::NodeSegmentType;
-/// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::router::tree::node::SegmentType;
+/// # use gotham::http::request_path::{RequestPathSegments, NoopRequestPathExtractor};
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
 /// # use gotham::http::PercentDecoded;
-/// # use gotham::http::request_path;
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -84,16 +93,16 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 ///   let mut tree_builder: TreeBuilder = TreeBuilder::new();
 ///
-///   let mut activate_node_builder = NodeBuilder::new("activate", NodeSegmentType::Static);
+///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
 ///
-///   let mut thing_node_builder = NodeBuilder::new("thing", NodeSegmentType::Dynamic);
+///   let mut thing_node_builder = NodeBuilder::new("thing", SegmentType::Dynamic);
 ///   let batsignal_route = {
 ///       // elided ...
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 /// #     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-/// #     let route = RouteImpl::new(matcher, dispatcher, extractors);
+/// #     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 /// #     Box::new(route)
 ///   };
 ///   thing_node_builder.add_route(batsignal_route);
@@ -103,18 +112,19 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///
 ///   let tree = tree_builder.finalize();
 ///
-///   match tree.traverse(request_path::split("/%61ctiv%61te/batsignal").as_slice()) {
-///       Some((path, leaf, segment_mapping)) => {
+///   match tree.traverse(RequestPathSegments::new("/%61ctiv%61te/batsignal").segments().as_slice()) {
+///       Some((path, leaf, segments_processed, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(path.last().unwrap().segment(), leaf.segment());
+///         assert_eq!(segments_processed, 2);
 ///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap().val(), "batsignal");
 ///       }
 ///       None => panic!(),
 ///   }
 ///
 ///   // These paths are not routable but could be if 1 or more `Route` were added.
-///   assert!(tree.traverse(&[PercentDecoded::new("/").unwrap()]).is_none());
-///   assert!(tree.traverse(&[PercentDecoded::new("/activate").unwrap()]).is_none());
+///   assert!(tree.traverse(&[&PercentDecoded::new("/").unwrap()]).is_none());
+///   assert!(tree.traverse(&[&PercentDecoded::new("/activate").unwrap()]).is_none());
 /// # }
 /// ```
 pub struct Tree {
@@ -130,9 +140,10 @@ impl Tree {
     }
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
-    pub fn traverse<'r, 'n>(&'n self,
-                            req_path_segments: &'r [PercentDecoded])
-                            -> Option<(Path<'n>, &Node, SegmentMapping<'n, 'r>)> {
+    pub fn traverse<'r, 'n>
+        (&'n self,
+         req_path_segments: &'r [&PercentDecoded])
+         -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
@@ -148,7 +159,7 @@ impl TreeBuilder {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
         trace!(" creating new tree");
-        TreeBuilder { root: NodeBuilder::new("/", NodeSegmentType::Static) }
+        TreeBuilder { root: NodeBuilder::new("/", SegmentType::Static) }
     }
 
     /// Adds a direct child to the root of the `TreeBuilder`.

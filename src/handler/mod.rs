@@ -16,6 +16,7 @@ use hyper::server::Request;
 use futures::{future, Future};
 
 use state::{State, set_request_id, request_id};
+use http::request_path::RequestPathSegments;
 
 /// A type alias for the trait objects returned by `HandlerService`
 pub type HandlerFuture =
@@ -75,7 +76,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::tree::TreeBuilder;
-    /// # use gotham::router::route::{RouteImpl, Extractors};
+    /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
     /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
     /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
     /// # use gotham::http::request_path::NoopRequestPathExtractor;
@@ -96,7 +97,7 @@ impl<T> NewHandlerService<T>
     /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
     /// let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
     /// let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-    /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+    /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
     ///
     /// tree_builder.add_route(Box::new(route));
     /// let tree = tree_builder.finalize();
@@ -136,6 +137,14 @@ impl<T> server::Service for NewHandlerService<T>
 
         let mut state = State::new();
         set_request_id(&mut state, &req);
+
+        trace!("[{}] populating immutable request data into state",
+               request_id(&state));
+        state.put(req.method().clone());
+        state.put(req.uri().clone());
+        state.put(req.version().clone());
+        state.put(req.headers().clone());
+        state.put(RequestPathSegments::new(req.uri().path().clone()));
 
         info!("[REQUEST][{}][{}][{}]",
               request_id(&state),
@@ -267,7 +276,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
-/// # use gotham::router::route::{RouteImpl, Extractors};
+/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
@@ -309,7 +318,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
 /// #   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-/// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+/// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();
 ///     Router::new(tree, response_extender);

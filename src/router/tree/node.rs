@@ -1,17 +1,18 @@
-//! Defines `Node` and `NodeSegmentType` for `Tree`
+//! Defines `Node` and `SegmentType` for `Tree`
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::borrow::Borrow;
+use hyper::{Request, StatusCode};
 
 use http::PercentDecoded;
-use router::route::Route;
-use router::tree::SegmentMapping;
-use router::tree::Path;
+use router::route::{Route, Delegation};
+use router::tree::{SegmentsProcessed, SegmentMapping, Path};
+use state::{State, request_id};
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-pub enum NodeSegmentType {
+pub enum SegmentType {
     /// Is matched exactly to the corresponding segment for incoming request paths. Unlike all
     /// other `NodeSegmentTypes` values determined to be associated with this segment
     /// within a `Request` path are **not** stored within `State`.
@@ -31,7 +32,7 @@ pub enum NodeSegmentType {
     Glob,
 }
 
-/// A recursive member of `Tree` representative of a segment(s) in a routable path.
+/// A recursive member of `Tree` representative of segment(s) in a routable path.
 ///
 /// Ultimately provides `0..n` `Route` instances which are further evaluated by the `Router` if
 /// the `Node` is determined to be the routable end point for a single path through the tree.
@@ -50,11 +51,11 @@ pub enum NodeSegmentType {
 /// # use gotham::http::PercentDecoded;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::route::{RouteImpl, Extractors};
+/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::router::tree::node::{NodeBuilder, NodeSegmentType};
+/// # use gotham::router::tree::node::{NodeBuilder, SegmentType};
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
 /// #   (state, Response::new())
@@ -62,17 +63,17 @@ pub enum NodeSegmentType {
 /// #
 /// # fn main() {
 /// #  let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-///   let mut root_node_builder = NodeBuilder::new("/", NodeSegmentType::Static);
-///   let mut activate_node_builder = NodeBuilder::new("activate", NodeSegmentType::Static);
+///   let mut root_node_builder = NodeBuilder::new("/", SegmentType::Static);
+///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
 ///
-///   let mut batsignal_node = NodeBuilder::new("batsignal", NodeSegmentType::Static);
+///   let mut batsignal_node = NodeBuilder::new("batsignal", SegmentType::Static);
 ///   let route = {
 ///       // elided ..
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRequestMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///       let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///       let route = RouteImpl::new(matcher, dispatcher, extractors);
+///       let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 ///       Box::new(route)
 ///   };
 ///   batsignal_node.add_route(route);
@@ -81,20 +82,25 @@ pub enum NodeSegmentType {
 ///   root_node_builder.add_child(activate_node_builder);
 ///
 ///   let root_node = root_node_builder.finalize();
-///   match root_node.traverse(&[PercentDecoded::new("/").unwrap(),
-///                              PercentDecoded::new("activate").unwrap(),
-///                              PercentDecoded::new("batsignal").unwrap()])
+///   match root_node.traverse(&[&PercentDecoded::new("/").unwrap(),
+///                              &PercentDecoded::new("activate").unwrap(),
+///                              &PercentDecoded::new("batsignal").unwrap()])
 ///   {
-///       Some((path, _leaf, _segment_mapping)) => assert!(path.last().unwrap().is_routable()),
+///       Some((path, _leaf, segments_processed, _segment_mapping)) =>  {
+///         assert!(path.last().unwrap().is_routable());
+///         assert_eq!(segments_processed, 2);
+///       }
 ///       None => panic!(),
 ///   }
 /// # }
 /// ```
 pub struct Node {
     segment: String,
-    segment_type: NodeSegmentType,
+    segment_type: SegmentType,
+
     routes: Vec<Box<Route + Send + Sync>>,
 
+    delegating: bool,
     children: Vec<Node>,
 }
 
@@ -105,15 +111,44 @@ impl Node {
     }
 
     /// Provides the type of segment this `Node` represents.
-    pub fn segment_type(&self) -> &NodeSegmentType {
+    pub fn segment_type(&self) -> &SegmentType {
         &self.segment_type
     }
 
-    /// Allow the `Router` to access the `Routes` for this `Node` when it is
-    /// selected as the lead in a single path through the `Tree`.
-    pub fn borrow_routes(&self) -> &Vec<Box<Route + Send + Sync>> {
-        trace!(" borrowing routes for `{}`", self.segment);
-        &self.routes
+    /// Determines if a `Route` instance associated with this `Node` is willing to handle the
+    /// request.
+    ///
+    /// Where multiple `Route` instances could possibly handle the `Request` only the first, ordered
+    /// per creation, is invoked.
+    ///
+    /// Where no `Route` instances will accept the `Request` the resulting Error will be the
+    /// erroneous status code provided by the first `Route` instance, ordered per creation.
+    ///
+    /// In the situation where all these avenues are exhausted an InternalServerError will be
+    /// provided.
+    pub fn select_route(&self,
+                        state: &State,
+                        req: &Request)
+                        -> Result<&Box<Route + Send + Sync>, StatusCode> {
+        match self.routes.iter().find(|r| r.is_match(state, req).is_ok()) {
+            Some(route) => {
+                trace!("[{}] found matching route", request_id(state));
+                Ok(route)
+            }
+            None => {
+                trace!("[{}] no matching route", request_id(state));
+                match self.routes.first() {
+                    Some(route) => {
+                        trace!("[{}] using error status code from route", request_id(state));
+                        Err(route.is_match(state, req).unwrap_err())
+                    }
+                    None => {
+                        trace!("[{}] using generic error status code", request_id(state));
+                        Err(StatusCode::InternalServerError)
+                    }
+                }
+            }
+        }
     }
 
     /// True if there is at least one child `Node` present
@@ -134,20 +169,21 @@ impl Node {
     /// Only the first fully matching path is returned.
     ///
     /// Children are searched in a most to least specific order of contained segment value based on
-    /// the `NodeSegmentType` value held by the `Node`:
+    /// the `SegmentType` value held by the `Node`:
     ///
     /// 1. Static
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'r, 'n>(&'n self,
-                            req_path_segments: &'r [PercentDecoded])
-                            -> Option<(Path<'n>, &Node, SegmentMapping<'n, 'r>)> {
+    pub fn traverse<'r, 'n>
+        (&'n self,
+         req_path_segments: &'r [&PercentDecoded])
+         -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
-            Some((mut path, leaf, sm)) => {
+            Some((mut path, leaf, c, sm)) => {
                 path.reverse();
-                let segment_mapping = SegmentMapping { data: sm };
-                Some((path, leaf, segment_mapping))
+                let sm = SegmentMapping { data: sm };
+                Some((path, leaf, c, sm))
             }
             None => None,
         }
@@ -156,24 +192,32 @@ impl Node {
     #[allow(unknown_lints, type_complexity)]
     fn inner_traverse<'r>
         (&self,
-         req_path_segments: &'r [PercentDecoded],
+         req_path_segments: &'r [&PercentDecoded],
          mut consumed_segments: Vec<&'r PercentDecoded>)
-         -> Option<(Vec<&Node>, &Node, HashMap<&str, Vec<&'r PercentDecoded>>)> {
+         -> Option<(Vec<&Node>, &Node, SegmentsProcessed, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
+            Some((x, _)) if self.is_delegating(x) => {
+                // A delegated node terminates processing, start building result
+                trace!(" found delegator node `{}`", self.segment);
+
+                let mut sm = HashMap::new();
+                if self.segment_type != SegmentType::Static {
+                    consumed_segments.push(x);
+                    sm.insert(self.segment(), consumed_segments);
+                };
+
+                Some((vec![self], self, 0, sm))
+            }
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 trace!(" found leaf node `{}`", self.segment);
 
-                // Leaf Node for Route Path, start building result
-                match self.segment_type {
-                    NodeSegmentType::Static => Some((vec![self], self, HashMap::new())),
-                    _ => {
-                        consumed_segments.push(x);
+                let mut sm = HashMap::new();
+                if self.segment_type != SegmentType::Static {
+                    consumed_segments.push(x);
+                    sm.insert(self.segment(), consumed_segments);
+                };
 
-                        let mut sm = HashMap::new();
-                        sm.insert(self.segment(), consumed_segments);
-                        Some((vec![self], self, sm))
-                    }
-                }
+                Some((vec![self], self, 0, sm))
             }
             Some((x, xs)) if self.is_match(x) => {
                 trace!(" found node `{}`", self.segment);
@@ -184,25 +228,26 @@ impl Node {
                     .next();
 
                 match child {
-                    Some((mut path, leaf, mut sm)) => {
-                        path.push(self);
-                        match self.segment_type {
-                            NodeSegmentType::Static => Some((path, leaf, sm)),
-                            _ => {
-                                consumed_segments.push(x);
-                                sm.insert(self.segment(), consumed_segments);
-                                path.push(self);
-                                Some((path, leaf, sm))
-                            }
+                    Some((mut path, leaf, sp, mut sm)) => {
+                        if self.segment_type != SegmentType::Static {
+                            consumed_segments.push(x);
+                            sm.insert(&self.segment, consumed_segments);
+                            path.push(self);
                         }
+
+                        Some((path, leaf, sp + 1, sm))
                     }
+
                     // If we're in a Glob consume segment and continue
                     // otherwise we've failed to find a suitable way
                     // forward.
-                    None if self.segment_type == NodeSegmentType::Glob => {
+                    None if self.segment_type == SegmentType::Glob => {
                         trace!(" continuing with glob match for segment `{}`", self.segment);
                         consumed_segments.push(x);
-                        self.inner_traverse(xs, consumed_segments)
+                        match self.inner_traverse(xs, consumed_segments) {
+                            Some((nodes, n, sp, sm)) => Some((nodes, n, sp + 1, sm)),
+                            None => None,
+                        }
                     }
                     None => None,
                 }
@@ -212,15 +257,19 @@ impl Node {
         }
     }
 
+    fn is_delegating(&self, req_path_segment: &PercentDecoded) -> bool {
+        self.is_match(req_path_segment) && self.delegating
+    }
+
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
         match self.segment_type {
-            NodeSegmentType::Static => self.segment == req_path_segment.val(),
-            NodeSegmentType::Constrained { regex: _ } => unimplemented!(), // TODO
-            NodeSegmentType::Dynamic | NodeSegmentType::Glob => true,
+            SegmentType::Static => self.segment == req_path_segment.val(),
+            SegmentType::Constrained { regex: _ } => unimplemented!(), // TODO
+            SegmentType::Dynamic | SegmentType::Glob => true,
         }
     }
 
-    fn is_leaf(&self, s: &PercentDecoded, rs: &[PercentDecoded]) -> bool {
+    fn is_leaf(&self, s: &PercentDecoded, rs: &[&PercentDecoded]) -> bool {
         rs.is_empty() && self.is_match(s) && self.is_routable()
     }
 }
@@ -228,15 +277,16 @@ impl Node {
 /// Constructs a `Node` which is sorted and immutable.
 pub struct NodeBuilder {
     segment: String,
-    segment_type: NodeSegmentType,
+    segment_type: SegmentType,
     routes: Vec<Box<Route + Send + Sync>>,
 
+    delegating: bool,
     children: Vec<NodeBuilder>,
 }
 
 impl NodeBuilder {
     /// Creates new `NodeBuilder` for the given segment.
-    pub fn new<S>(segment: S, segment_type: NodeSegmentType) -> Self
+    pub fn new<S>(segment: S, segment_type: SegmentType) -> Self
         where S: Borrow<str>
     {
         let segment = segment.borrow().to_owned();
@@ -245,6 +295,7 @@ impl NodeBuilder {
             segment_type,
             routes: vec![],
             children: vec![],
+            delegating: false,
         }
     }
 
@@ -256,12 +307,29 @@ impl NodeBuilder {
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
     pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+
+        if route.delegation() == Delegation::External {
+            if !self.routes.is_empty() {
+                panic!("Node which is externally delegating must have single Route");
+            }
+
+            if !self.children.is_empty() {
+                panic!("Node which is externally delegating must not have existing children");
+            }
+
+            self.delegating = true;
+        };
+
         trace!(" adding route to `{}`", self.segment());
         self.routes.push(route);
     }
 
     /// Adds a new child to this sub-tree structure
     pub fn add_child(&mut self, child: NodeBuilder) {
+        if self.delegating {
+            panic!("Node which is externally delegating must not have existing children")
+        }
+
         trace!(" adding child `{}` to `{}`",
                child.segment(),
                self.segment());
@@ -302,6 +370,7 @@ impl NodeBuilder {
             segment: self.segment,
             segment_type: self.segment_type,
             routes: self.routes,
+            delegating: self.delegating,
             children,
         }
     }
@@ -353,7 +422,7 @@ mod tests {
     use dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl};
     use router::request_matcher::MethodOnlyRequestMatcher;
     use router::route::{Route, RouteImpl, Extractors};
-    use http::request_path::NoopRequestPathExtractor;
+    use http::request_path::{RequestPathSegments, NoopRequestPathExtractor};
     use http::query_string::NoopQueryStringExtractor;
     use state::State;
 
@@ -369,35 +438,59 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::Internal);
+        Box::new(route)
+    }
+
+    fn get_delegated_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
+        where P: Send + Sync + 'static
+    {
+        let methods = vec![Method::Get];
+        let matcher = MethodOnlyRequestMatcher::new(methods);
+        let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
+        let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
+            Extractors::new();
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::External);
         Box::new(route)
     }
 
     fn test_structure() -> NodeBuilder {
-        let mut root: NodeBuilder = NodeBuilder::new("/", NodeSegmentType::Static);
+        let mut root: NodeBuilder = NodeBuilder::new("/", SegmentType::Static);
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 
         // Two methods, same path, same handler
         // [Get|Head]: /seg1
-        let mut seg1 = NodeBuilder::new("seg1", NodeSegmentType::Static);
+        let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
         let methods = vec![Method::Get, Method::Head];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::Internal);
         seg1.add_route(Box::new(route));
         root.add_child(seg1);
 
         // Two methods, same path, different handlers
         // Post: /seg2
-        let mut seg2 = NodeBuilder::new("seg2", NodeSegmentType::Static);
+        let mut seg2 = NodeBuilder::new("seg2", SegmentType::Static);
         let methods = vec![Method::Post];
         let matcher = MethodOnlyRequestMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::Internal);
         seg2.add_route(Box::new(route));
 
         // Patch: /seg2
@@ -406,14 +499,17 @@ mod tests {
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
-        let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+        let route = RouteImpl::new(matcher,
+                                   Box::new(dispatcher),
+                                   extractors,
+                                   Delegation::Internal);
         seg2.add_route(Box::new(route));
         root.add_child(seg2);
 
         // Ensure basic traversal
         // Get: /seg3/seg4
-        let mut seg3 = NodeBuilder::new("seg3", NodeSegmentType::Static);
-        let mut seg4 = NodeBuilder::new("seg4", NodeSegmentType::Static);
+        let mut seg3 = NodeBuilder::new("seg3", SegmentType::Static);
+        let mut seg4 = NodeBuilder::new("seg4", SegmentType::Static);
         seg4.add_route(get_route(pipeline_set.clone()));
         seg3.add_child(seg4);
         root.add_child(seg3);
@@ -424,19 +520,19 @@ mod tests {
         //
         // Get /seg5/:segdyn1/seg7
         // Get /seg5/seg6
-        let mut seg5 = NodeBuilder::new("seg5", NodeSegmentType::Static);
-        let mut seg6 = NodeBuilder::new("seg6", NodeSegmentType::Static);
+        let mut seg5 = NodeBuilder::new("seg5", SegmentType::Static);
+        let mut seg6 = NodeBuilder::new("seg6", SegmentType::Static);
         seg6.add_route(get_route(pipeline_set.clone()));
 
-        let mut segdyn1 = NodeBuilder::new(":segdyn1", NodeSegmentType::Dynamic);
-        let mut seg7 = NodeBuilder::new("seg7", NodeSegmentType::Static);
+        let mut segdyn1 = NodeBuilder::new(":segdyn1", SegmentType::Dynamic);
+        let mut seg7 = NodeBuilder::new("seg7", SegmentType::Static);
         seg7.add_route(get_route(pipeline_set.clone()));
 
         // Ensure traversal will respect Globs
-        let mut seg8 = NodeBuilder::new("seg8", NodeSegmentType::Glob);
-        let mut seg9 = NodeBuilder::new("seg9", NodeSegmentType::Static);
+        let mut seg8 = NodeBuilder::new("seg8", SegmentType::Glob);
+        let mut seg9 = NodeBuilder::new("seg9", SegmentType::Static);
 
-        let mut seg10 = NodeBuilder::new(String::from("seg10"), NodeSegmentType::Glob);
+        let mut seg10 = NodeBuilder::new(String::from("seg10"), SegmentType::Glob);
         seg10.add_route(get_route(pipeline_set.clone()));
 
         seg9.add_child(seg10);
@@ -449,13 +545,6 @@ mod tests {
         root.add_child(seg5);
 
         root
-    }
-
-    fn rs<'a>(segments: &'a [&str]) -> Vec<PercentDecoded> {
-        segments
-            .iter()
-            .map(|s| PercentDecoded::new(s).unwrap())
-            .collect::<Vec<PercentDecoded>>()
     }
 
     #[test]
@@ -472,34 +561,80 @@ mod tests {
         let root = test_structure().finalize();
 
         // GET /seg3/seg4
-        match root.traverse(rs(&["/", "seg3", "seg4"]).as_slice()) {
-            Some((path, leaf, _)) => {
+        let rs = RequestPathSegments::new("/seg3/seg4");
+        match root.traverse(&rs.segments()) {
+            Some((path, leaf, sp, _)) => {
                 assert_eq!(path.last().unwrap().segment(), "seg4");
                 assert_eq!(path.last().unwrap().segment(), leaf.segment());
+                assert_eq!(sp, 2);
             }
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /seg3/seg4/seg5
-        assert!(root.traverse(rs(&["/", "seg3", "seg4", "seg5"]).as_slice())
-                    .is_none());
+        let rs = RequestPathSegments::new("/seg3/seg4/seg5");
+        assert!(root.traverse(&rs.segments()).is_none());
 
         // GET /seg5/seg6
-        match root.traverse(rs(&["/", "seg5", "seg6"]).as_slice()) {
-            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg6"),
+        let rs = RequestPathSegments::new("/seg5/seg6");
+        match root.traverse(&rs.segments()) {
+            Some((path, _, sp, _)) => {
+                assert_eq!(path.last().unwrap().segment(), "seg6");
+                assert_eq!(sp, 2);
+            }
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /seg5/someval/seg7
-        match root.traverse(rs(&["/", "seg5", "someval", "seg7"]).as_slice()) {
-            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg7"),
+        let rs = RequestPathSegments::new("/seg5/someval/seg7");
+        match root.traverse(&rs.segments()) {
+            Some((path, _, sp, _)) => {
+                assert_eq!(path.last().unwrap().segment(), "seg7");
+                assert_eq!(sp, 3);
+            }
             None => panic!("traversal should have succeeded here"),
         }
 
         // GET /some/path/seg9/another/path
-        match root.traverse(rs(&["/", "some", "path", "seg9", "some2", "path2"]).as_slice()) {
-            Some((path, _, _)) => assert_eq!(path.last().unwrap().segment(), "seg10"),
+        let rs = RequestPathSegments::new("/some/path/seg9/another/branch");
+        match root.traverse(&rs.segments()) {
+            Some((path, _, sp, _)) => {
+                assert_eq!(path.last().unwrap().segment(), "seg10");
+                assert_eq!(sp, 5);
+            }
             None => panic!("traversal should have succeeded here"),
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "Node which is externally delegating must not have existing children")]
+    fn panics_when_delegated_node_adds_children() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
+        let seg2 = NodeBuilder::new("seg2", SegmentType::Static);
+
+        seg1.add_route(get_delegated_route(pipeline_set));
+        seg1.add_child(seg2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Node which is externally delegating must not have existing children")]
+    fn panics_when_node_with_children_is_provided_delegated_route() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
+        let seg2 = NodeBuilder::new("seg2", SegmentType::Static);
+
+        seg1.add_child(seg2);
+        seg1.add_route(get_delegated_route(pipeline_set));
+    }
+
+    #[test]
+    #[should_panic(expected = "Node which is externally delegating must have single Route")]
+    fn panics_when_node_with_a_route_adds_another() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
+
+        seg1.add_route(get_delegated_route(pipeline_set.clone()));
+        seg1.add_route(get_delegated_route(pipeline_set));
     }
 }

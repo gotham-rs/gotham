@@ -23,12 +23,12 @@ use gotham::http::request_path::NoopRequestPathExtractor;
 use gotham::http::query_string::NoopQueryStringExtractor;
 use gotham::router::response_extender::ResponseExtenderBuilder;
 use gotham::router::Router;
-use gotham::router::route::{Route, RouteImpl, Extractors};
+use gotham::router::route::{Route, RouteImpl, Extractors, Delegation};
 use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
                        PipelineHandleChain};
 use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 use gotham::router::tree::TreeBuilder;
-use gotham::router::tree::node::{NodeBuilder, NodeSegmentType};
+use gotham::router::tree::node::{NodeBuilder, SegmentType};
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::state::State;
@@ -71,7 +71,10 @@ fn static_route<NH, P, C>(methods: Vec<Method>,
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
         Extractors::new();
-    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+    let route = RouteImpl::new(matcher,
+                               Box::new(dispatcher),
+                               extractors,
+                               Delegation::Internal);
     Box::new(route)
 }
 
@@ -87,7 +90,10 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
     let matcher = MethodOnlyRequestMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
-    let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors);
+    let route = RouteImpl::new(matcher,
+                               Box::new(dispatcher),
+                               extractors,
+                               Delegation::Internal);
     Box::new(route)
 }
 
@@ -116,7 +122,7 @@ fn build_router() -> Router {
                                         (global, ()),
                                         pipeline_set.clone()));
 
-    let mut echo = NodeBuilder::new("echo", NodeSegmentType::Static);
+    let mut echo = NodeBuilder::new("echo", SegmentType::Static);
     echo.add_route(static_route(vec![Method::Get],
                                 || Ok(Echo::get),
                                 (global, ()),
@@ -127,29 +133,29 @@ fn build_router() -> Router {
                                 pipeline_set.clone()));
     tree_builder.add_child(echo);
 
-    let mut async = NodeBuilder::new("async", NodeSegmentType::Static);
+    let mut async = NodeBuilder::new("async", SegmentType::Static);
     async.add_route(static_route(vec![Method::Get],
                                  || Ok(Echo::async),
                                  (global, ()),
                                  pipeline_set.clone()));
     tree_builder.add_child(async);
 
-    let mut header_value = NodeBuilder::new("header_value", NodeSegmentType::Static);
+    let mut header_value = NodeBuilder::new("header_value", SegmentType::Static);
     header_value.add_route(static_route(vec![Method::Get],
                                         || Ok(Echo::header_value),
                                         (global, ()),
                                         pipeline_set.clone()));
     tree_builder.add_child(header_value);
 
-    let mut hello = NodeBuilder::new("hello", NodeSegmentType::Static);
+    let mut hello = NodeBuilder::new("hello", SegmentType::Static);
 
-    let mut name = NodeBuilder::new("name", NodeSegmentType::Dynamic);
+    let mut name = NodeBuilder::new("name", SegmentType::Dynamic);
     name.add_route(dynamic_route(vec![Method::Get],
                                  || Ok(Echo::hello),
                                  (global, ()),
                                  pipeline_set.clone()));
 
-    let mut from = NodeBuilder::new("from", NodeSegmentType::Dynamic);
+    let mut from = NodeBuilder::new("from", SegmentType::Dynamic);
     from.add_route(dynamic_route(vec![Method::Get],
                                  || Ok(Echo::greeting),
                                  (global, ()),
@@ -240,8 +246,8 @@ impl Echo {
 fn main() {
     fern::Dispatch::new()
         .level(LogLevelFilter::Error)
-        .level_for("gotham", log::LogLevelFilter::Trace)
-        .level_for("kitchen_sink", log::LogLevelFilter::Trace)
+        .level_for("gotham", log::LogLevelFilter::Error)
+        .level_for("kitchen_sink", log::LogLevelFilter::Error)
         .chain(std::io::stdout())
         .format(|out, message, record| {
                     out.finish(format_args!("{}[{}][{}]{}",
