@@ -9,15 +9,15 @@ use std::str::ParseBoolError;
 use std::num::{ParseIntError, ParseFloatError};
 
 use state::State;
-use http::FormUrlDecoded;
+use http::{form_url_decode, FormUrlDecoded};
 
 /// Provides a mapping of keys from `Request` query string to their supplied values
 #[derive(Debug)]
-pub struct QueryStringMapping<'a> {
-    data: HashMap<&'a str, Vec<FormUrlDecoded>>,
+pub struct QueryStringMapping {
+    data: HashMap<String, Vec<FormUrlDecoded>>,
 }
 
-impl<'a> QueryStringMapping<'a> {
+impl QueryStringMapping {
     /// Returns a reference for `Request` query string values mapped to the key.
     pub fn get(&self, key: &str) -> Option<&Vec<FormUrlDecoded>> {
         self.data.get(key)
@@ -31,9 +31,15 @@ impl<'a> QueryStringMapping<'a> {
     /// Adds an empty value for a key, useful for keys that are considered
     /// optional and haven't been explicitly provided as part of a `Request` query string.
     pub fn add_unmapped_segment(&mut self, key: &str) {
-        match FormUrlDecoded::new(key) {
-            Some(fud) => self.data.insert(fud.val(), Vec::new()),
-            None => None,
+        match form_url_decode(key) {
+            Ok(key) => {
+                trace!(" unmapped segment {} was added to QueryStringMapping", key);
+                self.data.insert(key, Vec::new());
+            }
+            Err(_) => {
+                trace!(" unmapped segment {} was unable to be decoded and will not be added to QueryStringMapping",
+                       key)
+            }
         };
     }
 }
@@ -72,16 +78,16 @@ pub fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
             let pairs = query.split("&").filter(|pair| pair.contains("="));
             let data = pairs.fold(HashMap::new(), |mut acc, p| {
                 let mut sp = p.split("=");
-                let (f, v) = (sp.next().unwrap(), sp.next().unwrap());
-                match FormUrlDecoded::new(f) {
-                    Some(fud) => {
-                        let vec = acc.entry(fud.val()).or_insert(Vec::new());
+                let (k, v) = (sp.next().unwrap(), sp.next().unwrap());
+                match form_url_decode(k) {
+                    Ok(k) => {
+                        let vec = acc.entry(k).or_insert(Vec::new());
                         match FormUrlDecoded::new(v) {
                             Some(dv) => vec.push(dv),
                             None => (),
                         }
                     }
-                    None => (),
+                    Err(_) => (),
                 };
                 acc
             });
