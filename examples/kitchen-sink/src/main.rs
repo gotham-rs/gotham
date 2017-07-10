@@ -13,15 +13,15 @@ mod middleware;
 
 use futures::{future, Future};
 
+use hyper::{Request, Response, Method, StatusCode};
+use hyper::server::Http;
 use hyper::header::ContentLength;
-use hyper::server::{Http, Request, Response};
-use hyper::Method;
 
 use log::LogLevelFilter;
 
 use gotham::http::request_path::NoopRequestPathExtractor;
 use gotham::http::query_string::NoopQueryStringExtractor;
-use gotham::router::response_extender::ResponseExtenderBuilder;
+use gotham::router::response_extender::{NoopExtender, ResponseExtenderBuilder};
 use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors, Delegation};
 use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
@@ -167,7 +167,11 @@ fn build_router() -> Router {
 
     let tree = tree_builder.finalize();
 
-    let response_extender_builder = ResponseExtenderBuilder::new();
+    let mut response_extender_builder = ResponseExtenderBuilder::new();
+    let extender_200 = NoopExtender::new();
+    response_extender_builder.add(StatusCode::Ok, Box::new(extender_200));
+    let extender_500 = NoopExtender::new();
+    response_extender_builder.add(StatusCode::InternalServerError, Box::new(extender_500));
     let response_extender = response_extender_builder.finalize();
 
     Router::new(tree, response_extender)
@@ -247,6 +251,7 @@ fn main() {
     fern::Dispatch::new()
         .level(LogLevelFilter::Error)
         .level_for("gotham", log::LogLevelFilter::Error)
+        .level_for("gotham::state", log::LogLevelFilter::Error)
         .level_for("kitchen_sink", log::LogLevelFilter::Error)
         .chain(std::io::stdout())
         .format(|out, message, record| {
