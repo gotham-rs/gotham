@@ -13,32 +13,26 @@ use http::FormUrlDecoded;
 
 /// Provides a mapping of keys from `Request` query string to their supplied values
 #[derive(Debug)]
-pub struct QueryStringMapping {
-    data: HashMap<FormUrlDecoded, Vec<FormUrlDecoded>>,
+pub struct QueryStringMapping<'a> {
+    data: HashMap<&'a str, Vec<FormUrlDecoded>>,
 }
 
-impl QueryStringMapping {
+impl<'a> QueryStringMapping<'a> {
     /// Returns a reference for `Request` query string values mapped to the key.
     pub fn get(&self, key: &str) -> Option<&Vec<FormUrlDecoded>> {
-        match FormUrlDecoded::new(key) {
-            Some(key) => self.data.get(&key),
-            None => None,
-        }
+        self.data.get(key)
     }
 
     /// Determines if `Request` query string values exist for the key.
     pub fn contains_key(&self, key: &str) -> bool {
-        match FormUrlDecoded::new(key) {
-            Some(key) => self.data.contains_key(&key),
-            None => false,
-        }
+        self.data.contains_key(key)
     }
 
     /// Adds an empty value for a key, useful for keys that are considered
     /// optional and haven't been explicitly provided as part of a `Request` query string.
     pub fn add_unmapped_segment(&mut self, key: &str) {
         match FormUrlDecoded::new(key) {
-            Some(key) => self.data.insert(key, Vec::new()),
+            Some(fud) => self.data.insert(fud.val(), Vec::new()),
             None => None,
         };
     }
@@ -80,8 +74,8 @@ pub fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
                 let mut sp = p.split("=");
                 let (f, v) = (sp.next().unwrap(), sp.next().unwrap());
                 match FormUrlDecoded::new(f) {
-                    Some(key) => {
-                        let vec = acc.entry(key).or_insert(Vec::new());
+                    Some(fud) => {
+                        let vec = acc.entry(fud.val()).or_insert(Vec::new());
                         match FormUrlDecoded::new(v) {
                             Some(dv) => vec.push(dv),
                             None => (),
