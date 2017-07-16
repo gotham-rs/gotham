@@ -4,6 +4,8 @@
 
 use std::io;
 use std::sync::Arc;
+use std::ops::{Deref, DerefMut};
+use std::marker::PhantomData;
 
 use rand;
 use base64;
@@ -11,6 +13,8 @@ use hyper;
 use hyper::server::Request;
 use hyper::header::Cookie;
 use futures::{future, Future};
+use serde::{Serialize, Deserialize};
+use rmp_serde;
 
 use super::{NewMiddleware, Middleware};
 use handler::HandlerFuture;
@@ -26,11 +30,66 @@ pub struct SessionIdentifier {
     value: String,
 }
 
-pub struct SessionData {
-    value: Vec<u8>,
+#[derive(Debug)]
+pub enum SessionError {
+    Backend(String),
 }
 
-impl StateData for SessionData {}
+enum SessionDataState {
+    Clean,
+    Dirty,
+}
+
+pub struct SessionData<T>
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    value: T,
+    state: SessionDataState,
+}
+
+impl<T> SessionData<T>
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    fn from_raw(val: Option<Vec<u8>>) -> Result<SessionData<T>, SessionError> {
+        let state = SessionDataState::Clean;
+
+        match val {
+            Some(val) => {
+                // TODO: don't unwrap
+                let value = T::deserialize(&mut rmp_serde::Deserializer::new(&val[..])).unwrap();
+                Ok(SessionData { value, state })
+            }
+            None => {
+                let value = T::default();
+                Ok(SessionData { value, state })
+            }
+        }
+    }
+}
+
+impl<T> StateData for SessionData<T>
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+}
+
+impl<T> Deref for SessionData<T>
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<T> DerefMut for SessionData<T>
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    fn deref_mut(&mut self) -> &mut T {
+        self.state = SessionDataState::Dirty;
+        &mut self.value
+    }
+}
 
 pub trait NewBackend {
     type Instance: Backend + Send + 'static;
@@ -54,50 +113,58 @@ pub trait Backend {
     fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture>;
 }
 
-#[derive(Debug)]
-pub enum SessionError {
-    Backend(String),
-}
-
-pub struct NewSessionMiddleware<T>
-    where T: NewBackend
+pub struct NewSessionMiddleware<B, T>
+    where B: NewBackend,
+          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    t: T,
+    new_backend: B,
     cookie: Arc<String>,
+    phantom: PhantomData<T>,
 }
 
-pub struct SessionMiddleware<T>
-    where T: Backend
+pub struct SessionMiddleware<B, T>
+    where B: Backend,
+          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    t: T,
+    backend: B,
     cookie: Arc<String>,
+    phantom: PhantomData<T>,
 }
 
-impl<T> NewMiddleware for NewSessionMiddleware<T>
-    where T: NewBackend
+impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
+    where B: NewBackend,
+          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    type Instance = SessionMiddleware<T::Instance>;
+    type Instance = SessionMiddleware<B::Instance, T>;
 
     fn new_middleware(&self) -> io::Result<Self::Instance> {
-        let cookie = self.cookie.clone();
-
-        self.t
+        self.new_backend
             .new_backend()
-            .map(move |t| SessionMiddleware { t, cookie })
+            .map(|backend| {
+                     SessionMiddleware {
+                         backend,
+                         cookie: self.cookie.clone(),
+                         phantom: PhantomData,
+                     }
+                 })
     }
 }
 
-impl Default for NewSessionMiddleware<NewMemoryBackend> {
-    fn default() -> NewSessionMiddleware<NewMemoryBackend> {
+impl<T> Default for NewSessionMiddleware<NewMemoryBackend, T>
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    fn default() -> NewSessionMiddleware<NewMemoryBackend, T> {
         NewSessionMiddleware {
-            t: NewMemoryBackend::default(),
+            new_backend: NewMemoryBackend::default(),
             cookie: Arc::new("_gotham_session".to_owned()),
+            phantom: PhantomData,
         }
     }
 }
 
-impl<T> Middleware for SessionMiddleware<T>
-    where T: Backend + Send + 'static
+impl<B, T> Middleware for SessionMiddleware<B, T>
+    where B: Backend + Send + 'static,
+          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     fn call<Chain>(self, state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
@@ -111,7 +178,7 @@ impl<T> Middleware for SessionMiddleware<T>
 
         match session_identifier {
             Some(id) => {
-                self.t
+                self.backend
                     .read_session(id)
                     .then(move |r| self.store_session(state, r))
                     .and_then(|state| chain(state, request))
@@ -122,19 +189,29 @@ impl<T> Middleware for SessionMiddleware<T>
     }
 }
 
-impl<T> SessionMiddleware<T>
-    where T: Backend + Send + 'static
+impl<B, T> SessionMiddleware<B, T>
+    where B: Backend + Send + 'static,
+          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     fn store_session(&self,
                      mut state: State,
                      result: Result<Option<Vec<u8>>, SessionError>)
                      -> future::FutureResult<State, (State, hyper::Error)> {
         match result {
-            Ok(Some(value)) => {
-                state.put(SessionData { value });
-                future::ok(state)
+            Ok(v) => {
+                match SessionData::<T>::from_raw(v) {
+                    Ok(session_data) => {
+                        state.put(session_data);
+                        future::ok(state)
+                    }
+                    Err(e) => {
+                        let e = io::Error::new(io::ErrorKind::Other,
+                                               format!("session couldn't be deserialized: {:?}",
+                                                       e));
+                        future::err((state, e.into()))
+                    }
+                }
             }
-            Ok(None) => future::ok(state),
             Err(e) => {
                 let e = io::Error::new(io::ErrorKind::Other,
                                        format!("backend failed to return session: {:?}", e));
@@ -148,7 +225,12 @@ impl<T> SessionMiddleware<T>
 mod tests {
     use super::*;
     use std::sync::Mutex;
-    use hyper::{Body, Method, StatusCode, Response};
+    use hyper::{Method, StatusCode, Response};
+
+    #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
+    struct TestSession {
+        val: u64,
+    }
 
     #[test]
     fn random_identifier() {
@@ -159,13 +241,20 @@ mod tests {
 
     #[test]
     fn existing_session() {
-        let nm = NewSessionMiddleware::default();
+        let nm: NewSessionMiddleware<_, TestSession> = NewSessionMiddleware::default();
         let m = nm.new_middleware().unwrap();
 
-        let identifier = m.t.random_identifier();
-        let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
+        let identifier = m.backend.random_identifier();
 
-        m.t.update_session(identifier.clone(), &bytes);
+        let session = TestSession { val: rand::random() };
+        let mut bytes = Vec::new();
+        session
+            .serialize(&mut rmp_serde::Serializer::new(&mut bytes))
+            .unwrap();
+
+        m.backend
+            .update_session(identifier.clone(), &bytes)
+            .unwrap();
 
         let mut cookies = Cookie::new();
         cookies.set("_gotham_session", identifier.value);
@@ -173,19 +262,19 @@ mod tests {
         let mut req: Request<hyper::Body> = Request::new(Method::Get, "/".parse().unwrap());
         req.headers_mut().set::<Cookie>(cookies);
 
-        let received: Arc<Mutex<Option<SessionData>>> = Arc::new(Mutex::new(None));
+        let received: Arc<Mutex<Option<SessionData<TestSession>>>> = Arc::new(Mutex::new(None));
         let r = received.clone();
 
-        let f = move |mut state: State, req: Request| {
-            *r.lock().unwrap() = state.take::<SessionData>();
+        let handler = move |mut state: State, _req: Request| {
+            *r.lock().unwrap() = state.take::<SessionData<TestSession>>();
             future::ok((state, Response::new().with_status(StatusCode::Accepted))).boxed()
         };
 
-        match m.call(State::new(), req, f).wait() {
+        match m.call(State::new(), req, handler).wait() {
             Ok(_) => {
                 let guard = received.lock().unwrap();
-                if let Some(SessionData { ref value }) = *guard {
-                    assert_eq!(value, &bytes);
+                if let Some(SessionData { ref value, .. }) = *guard {
+                    assert_eq!(value, &session);
                 } else {
                     panic!("no session data");
                 }
