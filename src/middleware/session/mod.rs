@@ -9,8 +9,8 @@ use std::marker::PhantomData;
 
 use rand;
 use base64;
-use hyper;
-use hyper::server::Request;
+use hyper::{self, StatusCode};
+use hyper::server::{Request, Response};
 use hyper::header::Cookie;
 use futures::{future, Future};
 use serde::{Serialize, Deserialize};
@@ -45,23 +45,38 @@ pub struct SessionData<T>
 {
     value: T,
     state: SessionDataState,
+    identifier: SessionIdentifier,
+    backend: Box<Backend + Send>,
 }
 
 impl<T> SessionData<T>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    fn from_raw(val: Option<Vec<u8>>) -> Result<SessionData<T>, SessionError> {
+    fn construct(backend: Box<Backend + Send>,
+                 identifier: SessionIdentifier,
+                 val: Option<Vec<u8>>)
+                 -> Result<SessionData<T>, SessionError> {
         let state = SessionDataState::Clean;
 
         match val {
             Some(val) => {
                 // TODO: don't unwrap
                 let value = T::deserialize(&mut rmp_serde::Deserializer::new(&val[..])).unwrap();
-                Ok(SessionData { value, state })
+                Ok(SessionData {
+                       value,
+                       state,
+                       identifier,
+                       backend,
+                   })
             }
             None => {
                 let value = T::default();
-                Ok(SessionData { value, state })
+                Ok(SessionData {
+                       value,
+                       state,
+                       identifier,
+                       backend,
+                   })
             }
         }
     }
@@ -182,6 +197,7 @@ impl<B, T> Middleware for SessionMiddleware<B, T>
                     .read_session(id)
                     .then(move |r| self.store_session(state, r))
                     .and_then(|state| chain(state, request))
+                    .and_then(persist_session::<T>)
                     .boxed()
             }
             None => chain(state, request),
@@ -189,17 +205,41 @@ impl<B, T> Middleware for SessionMiddleware<B, T>
     }
 }
 
+fn persist_session<T>((mut state, response): (State, Response))
+                      -> future::FutureResult<(State, Response), (State, hyper::Error)>
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    match state.take::<SessionData<T>>() {
+        Some(session_data) => {
+            let mut bytes = Vec::new();
+            let ise_response = || Response::new().with_status(StatusCode::InternalServerError);
+
+            match session_data.serialize(&mut rmp_serde::Serializer::new(&mut bytes)) {
+                Ok(()) => {
+                    match session_data.backend.update_session(session_data.identifier, &bytes[..]) {
+                        Ok(()) => future::ok((state, response)),
+                        Err(_) => future::ok((state, ise_response())),
+                    }
+                }
+                Err(_) => future::ok((state, ise_response())),
+            }
+        }
+        None => future::ok((state, response)),
+    }
+}
+
 impl<B, T> SessionMiddleware<B, T>
     where B: Backend + Send + 'static,
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    fn store_session(&self,
+    fn store_session(self,
                      mut state: State,
                      result: Result<Option<Vec<u8>>, SessionError>)
                      -> future::FutureResult<State, (State, hyper::Error)> {
+        let identifier = self.backend.random_identifier();
         match result {
             Ok(v) => {
-                match SessionData::<T>::from_raw(v) {
+                match SessionData::<T>::construct(Box::new(self.backend), identifier, v) {
                     Ok(session_data) => {
                         state.put(session_data);
                         future::ok(state)
@@ -257,29 +297,45 @@ mod tests {
             .unwrap();
 
         let mut cookies = Cookie::new();
-        cookies.set("_gotham_session", identifier.value);
+        cookies.set("_gotham_session", identifier.value.clone());
 
         let mut req: Request<hyper::Body> = Request::new(Method::Get, "/".parse().unwrap());
         req.headers_mut().set::<Cookie>(cookies);
 
-        let received: Arc<Mutex<Option<SessionData<TestSession>>>> = Arc::new(Mutex::new(None));
+        let received: Arc<Mutex<Option<u64>>> = Arc::new(Mutex::new(None));
         let r = received.clone();
 
         let handler = move |mut state: State, _req: Request| {
-            *r.lock().unwrap() = state.take::<SessionData<TestSession>>();
+            {
+                let session_data = state
+                    .borrow_mut::<SessionData<TestSession>>()
+                    .expect("no session data??");
+
+                *r.lock().unwrap() = Some(session_data.val);
+                session_data.val += 1;
+            }
+
             future::ok((state, Response::new().with_status(StatusCode::Accepted))).boxed()
         };
 
         match m.call(State::new(), req, handler).wait() {
             Ok(_) => {
                 let guard = received.lock().unwrap();
-                if let Some(SessionData { ref value, .. }) = *guard {
-                    assert_eq!(value, &session);
+                if let Some(value) = *guard {
+                    assert_eq!(value, session.val);
                 } else {
                     panic!("no session data");
                 }
             }
             Err(e) => panic!(e),
         }
+
+        let m = nm.new_middleware().unwrap();
+        let bytes = m.backend.read_session(identifier).wait().unwrap().unwrap();
+        let updated = TestSession::deserialize(&mut rmp_serde::Deserializer::new(&bytes[..]))
+            .unwrap();
+
+        // TODO: Use the correct identifier instead of always generating random identifiers.
+        // assert_eq!(updated.val, session.val + 1);
     }
 }
