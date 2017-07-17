@@ -33,6 +33,7 @@ pub struct SessionIdentifier {
 #[derive(Debug)]
 pub enum SessionError {
     Backend(String),
+    Deserialize,
 }
 
 enum SessionDataState {
@@ -60,14 +61,17 @@ impl<T> SessionData<T>
 
         match val {
             Some(val) => {
-                // TODO: don't unwrap
-                let value = T::deserialize(&mut rmp_serde::Deserializer::new(&val[..])).unwrap();
-                Ok(SessionData {
-                       value,
-                       state,
-                       identifier,
-                       backend,
-                   })
+                match T::deserialize(&mut rmp_serde::Deserializer::new(&val[..])) {
+                    Ok(value) => {
+                        Ok(SessionData {
+                               value,
+                               state,
+                               identifier,
+                               backend,
+                           })
+                    }
+                    Err(_) => Err(SessionError::Deserialize),
+                }
             }
             None => {
                 let value = T::default();
