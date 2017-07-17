@@ -194,8 +194,8 @@ impl<B, T> Middleware for SessionMiddleware<B, T>
         match session_identifier {
             Some(id) => {
                 self.backend
-                    .read_session(id)
-                    .then(move |r| self.store_session(state, r))
+                    .read_session(id.clone())
+                    .then(move |r| self.load_session(state, id, r))
                     .and_then(|state| chain(state, request))
                     .and_then(persist_session::<T>)
                     .boxed()
@@ -232,11 +232,11 @@ impl<B, T> SessionMiddleware<B, T>
     where B: Backend + Send + 'static,
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    fn store_session(self,
-                     mut state: State,
-                     result: Result<Option<Vec<u8>>, SessionError>)
-                     -> future::FutureResult<State, (State, hyper::Error)> {
-        let identifier = self.backend.random_identifier();
+    fn load_session(self,
+                    mut state: State,
+                    identifier: SessionIdentifier,
+                    result: Result<Option<Vec<u8>>, SessionError>)
+                    -> future::FutureResult<State, (State, hyper::Error)> {
         match result {
             Ok(v) => {
                 match SessionData::<T>::construct(Box::new(self.backend), identifier, v) {
@@ -335,7 +335,6 @@ mod tests {
         let updated = TestSession::deserialize(&mut rmp_serde::Deserializer::new(&bytes[..]))
             .unwrap();
 
-        // TODO: Use the correct identifier instead of always generating random identifiers.
-        // assert_eq!(updated.val, session.val + 1);
+        assert_eq!(updated.val, session.val + 1);
     }
 }
