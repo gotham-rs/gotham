@@ -11,7 +11,7 @@ use rand;
 use base64;
 use hyper::{self, StatusCode};
 use hyper::server::{Request, Response};
-use hyper::header::Cookie;
+use hyper::header::{Cookie, SetCookie};
 use futures::{future, Future};
 use serde::{Serialize, Deserialize};
 use rmp_serde;
@@ -36,27 +36,64 @@ pub enum SessionError {
     Deserialize,
 }
 
+enum SessionCookieState {
+    New,
+    Existing,
+}
+
 enum SessionDataState {
     Clean,
     Dirty,
+}
+
+enum SecureCookie {
+    Insecure,
+    Secure,
+}
+
+pub struct SessionCookieConfig {
+    name: String,
+    secure: SecureCookie,
 }
 
 pub struct SessionData<T>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     value: T,
+    cookie_state: SessionCookieState,
     state: SessionDataState,
     identifier: SessionIdentifier,
     backend: Box<Backend + Send>,
+    cookie_config: Arc<SessionCookieConfig>,
 }
 
 impl<T> SessionData<T>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
+    fn new(backend: Box<Backend + Send>,
+           cookie_config: Arc<SessionCookieConfig>)
+           -> SessionData<T> {
+        let state = SessionDataState::Clean;
+        let cookie_state = SessionCookieState::New;
+        let identifier = backend.random_identifier();
+        let value = T::default();
+
+        SessionData {
+            value,
+            cookie_state,
+            state,
+            identifier,
+            backend,
+            cookie_config,
+        }
+    }
+
     fn construct(backend: Box<Backend + Send>,
+                 cookie_config: Arc<SessionCookieConfig>,
                  identifier: SessionIdentifier,
                  val: Option<Vec<u8>>)
                  -> Result<SessionData<T>, SessionError> {
+        let cookie_state = SessionCookieState::Existing;
         let state = SessionDataState::Clean;
 
         match val {
@@ -65,11 +102,16 @@ impl<T> SessionData<T>
                     Ok(value) => {
                         Ok(SessionData {
                                value,
+                               cookie_state,
                                state,
                                identifier,
                                backend,
+                               cookie_config,
                            })
                     }
+                    // TODO: What's the correct thing to do here? If the app changes the structure
+                    // of its session type, the existing data won't deserialize anymore, through no
+                    // fault of the users. Should we fall back to `T::default()` instead?
                     Err(_) => Err(SessionError::Deserialize),
                 }
             }
@@ -77,9 +119,11 @@ impl<T> SessionData<T>
                 let value = T::default();
                 Ok(SessionData {
                        value,
+                       cookie_state,
                        state,
                        identifier,
                        backend,
+                       cookie_config,
                    })
             }
         }
@@ -137,7 +181,7 @@ pub struct NewSessionMiddleware<B, T>
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     new_backend: B,
-    cookie: Arc<String>,
+    cookie_config: Arc<SessionCookieConfig>,
     phantom: PhantomData<T>,
 }
 
@@ -146,7 +190,7 @@ pub struct SessionMiddleware<B, T>
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     backend: B,
-    cookie: Arc<String>,
+    cookie_config: Arc<SessionCookieConfig>,
     phantom: PhantomData<T>,
 }
 
@@ -162,7 +206,7 @@ impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
             .map(|backend| {
                      SessionMiddleware {
                          backend,
-                         cookie: self.cookie.clone(),
+                         cookie_config: self.cookie_config.clone(),
                          phantom: PhantomData,
                      }
                  })
@@ -175,7 +219,10 @@ impl<T> Default for NewSessionMiddleware<NewMemoryBackend, T>
     fn default() -> NewSessionMiddleware<NewMemoryBackend, T> {
         NewSessionMiddleware {
             new_backend: NewMemoryBackend::default(),
-            cookie: Arc::new("_gotham_session".to_owned()),
+            cookie_config: Arc::new(SessionCookieConfig {
+                                        name: "_gotham_session".to_owned(),
+                                        secure: SecureCookie::Insecure,
+                                    }),
             phantom: PhantomData,
         }
     }
@@ -192,7 +239,7 @@ impl<B, T> Middleware for SessionMiddleware<B, T>
         let session_identifier = request
             .headers()
             .get::<Cookie>()
-            .and_then(|c| c.get(self.cookie.as_ref()))
+            .and_then(|c| c.get(self.cookie_config.name.as_ref()))
             .map(|value| SessionIdentifier { value: value.to_owned() });
 
         match session_identifier {
@@ -209,7 +256,7 @@ impl<B, T> Middleware for SessionMiddleware<B, T>
     }
 }
 
-fn persist_session<T>((mut state, response): (State, Response))
+fn persist_session<T>((mut state, mut response): (State, Response))
                       -> future::FutureResult<(State, Response), (State, hyper::Error)>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
@@ -217,6 +264,25 @@ fn persist_session<T>((mut state, response): (State, Response))
         Some(session_data) => {
             let mut bytes = Vec::new();
             let ise_response = || Response::new().with_status(StatusCode::InternalServerError);
+
+            if let SessionCookieState::New = session_data.cookie_state {
+                let cookie_string = match session_data.cookie_config.secure {
+                    SecureCookie::Insecure => {
+                        format!("{}={}; HttpOnly",
+                                session_data.cookie_config.name,
+                                session_data.identifier.value)
+                    }
+
+                    SecureCookie::Secure => {
+                        format!("{}={}; secure; HttpOnly",
+                                session_data.cookie_config.name,
+                                session_data.identifier.value)
+                    }
+                };
+
+                let set_cookie = SetCookie(vec![cookie_string]);
+                response.headers_mut().set(set_cookie);
+            }
 
             match session_data.serialize(&mut rmp_serde::Serializer::new(&mut bytes)) {
                 Ok(()) => {
@@ -243,7 +309,11 @@ impl<B, T> SessionMiddleware<B, T>
                     -> future::FutureResult<State, (State, hyper::Error)> {
         match result {
             Ok(v) => {
-                match SessionData::<T>::construct(Box::new(self.backend), identifier, v) {
+                let result = SessionData::<T>::construct(Box::new(self.backend),
+                                                         self.cookie_config.clone(),
+                                                         identifier,
+                                                         v);
+                match result {
                     Ok(session_data) => {
                         state.put(session_data);
                         future::ok(state)
@@ -262,6 +332,13 @@ impl<B, T> SessionMiddleware<B, T>
                 future::err((state, e.into()))
             }
         }
+    }
+
+    fn new_session(self, mut state: State) -> future::FutureResult<State, (State, hyper::Error)> {
+        let session_data = SessionData::<T>::new(Box::new(self.backend),
+                                                 self.cookie_config.clone());
+        state.put(session_data);
+        future::ok(state)
     }
 }
 
