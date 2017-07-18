@@ -41,7 +41,7 @@ use state::{State, request_id};
 /// # use gotham::test::TestServer;
 /// # use gotham::http::request_path::NoopRequestPathExtractor;
 /// # use gotham::http::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::response_extender::ResponseExtenderBuilder;
+/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::server::{Request, Response};
 /// # use hyper::StatusCode;
 /// # use hyper::Method;
@@ -141,8 +141,8 @@ use state::{State, request_id};
 ///     let tree = tree_builder.finalize();
 ///
 ///
-///     let response_extender = ResponseExtenderBuilder::new().finalize();
-///     let router = Router::new(tree, response_extender);
+///     let response_finalizer = ResponseFinalizerBuilder::new().finalize();
+///     let router = Router::new(tree, response_finalizer);
 ///
 ///     let new_service = NewHandlerService::new(router);
 ///     let mut test_server = TestServer::new(new_service).unwrap();

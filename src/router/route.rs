@@ -112,7 +112,7 @@ pub trait Route {
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::response_extender::ResponseExtenderBuilder;
+/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// #
 /// # fn main() {
 ///   fn handler(state: State, _req: Request) -> (State, Response) {
@@ -135,7 +135,7 @@ pub trait Route {
 ///        tree_builder.add_route(route);
 ///
 ///        let tree = tree_builder.finalize();
-///        Router::new(tree, ResponseExtenderBuilder::new().finalize())
+///        Router::new(tree, ResponseFinalizerBuilder::new().finalize())
 ///   };
 ///
 ///   let pipeline_set = finalize_pipeline_set(new_pipeline_set());

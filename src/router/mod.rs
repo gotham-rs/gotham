@@ -2,8 +2,9 @@
 
 pub mod tree;
 pub mod route;
+pub mod response;
+
 pub mod request_matcher;
-pub mod response_extender;
 
 use std::io;
 use std::sync::Arc;
@@ -13,21 +14,21 @@ use hyper::{Request, Response, Headers, StatusCode, Uri, HttpVersion, Method};
 
 use handler::{NewHandler, Handler, HandlerFuture};
 use http::request_path::RequestPathSegments;
-use router::response_extender::ResponseExtender;
+use router::response::finalizer::ResponseFinalizer;
 use router::route::{Route, Delegation};
 use router::tree::{SegmentMapping, Tree};
 use state::{State, StateData, request_id};
 
 struct RouterData {
     tree: Tree,
-    response_extender: ResponseExtender,
+    response_finalizer: ResponseFinalizer,
 }
 
 impl RouterData {
-    pub fn new(tree: Tree, response_extender: ResponseExtender) -> RouterData {
+    pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> RouterData {
         RouterData {
             tree,
-            response_extender,
+            response_finalizer,
         }
     }
 }
@@ -55,14 +56,14 @@ impl RouterData {
 /// #
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::Router;
-/// # use gotham::router::response_extender::ResponseExtenderBuilder;
+/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// #
 /// # fn main() {
 ///   let tree_builder = TreeBuilder::new();
 ///   let tree = tree_builder.finalize();
-///   let response_extender = ResponseExtenderBuilder::new().finalize();
+///   let response_finalizer = ResponseFinalizerBuilder::new().finalize();
 ///
-///   Router::new(tree, response_extender);
+///   Router::new(tree, response_finalizer);
 /// # }
 /// ```
 #[derive(Clone)]
@@ -131,9 +132,9 @@ impl Handler for Router {
 
 impl Router {
     /// Creates a `Router` instance.
-    pub fn new(tree: Tree, response_extender: ResponseExtender) -> Router {
+    pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
 
-        let router_data = RouterData::new(tree, response_extender);
+        let router_data = RouterData::new(tree, response_finalizer);
         Router { data: Arc::new(router_data) }
     }
 
@@ -153,11 +154,11 @@ impl Router {
                         route.dispatch(state, req)
                     }
                     Err(e) => {
-                        trace!("[{}] {}", request_id(&state), e);
-                        let mut res = Response::new();
-                        res.set_status(StatusCode::BadRequest);
                         error!("[{}] the server cannot or will not process the request due to an apparent client error",
                                request_id(&state));
+                        trace!("[{}] {}", request_id(&state), e);
+
+                        let res = Response::new();
                         future::ok((state, res)).boxed()
                     }
                 }
@@ -180,11 +181,11 @@ impl Router {
     }
 
     fn finalize_response(&self, result: Box<HandlerFuture>) -> Box<HandlerFuture> {
-        let response_extender = self.data.response_extender.clone();
+        let response_finalizer = self.data.response_finalizer.clone();
         result
             .and_then(move |(state, res)| {
                           trace!("[{}] handler complete", request_id(&state));
-                          response_extender.extend(state, res)
+                          response_finalizer.finalize(state, res)
                       })
             .boxed()
     }
@@ -209,7 +210,7 @@ mod tests {
     use http::query_string::NoopQueryStringExtractor;
     use dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
     use router::request_matcher::MethodOnlyRequestMatcher;
-    use router::response_extender::ResponseExtenderBuilder;
+    use router::response::finalizer::ResponseFinalizerBuilder;
     use state::set_request_id;
 
     fn handler(state: State, _req: Request) -> (State, Response) {
@@ -231,7 +232,7 @@ mod tests {
     fn internal_server_error_if_no_request_path_segments() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
-        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+        let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         let method = Method::Get;
         let uri = Uri::from_str("https://test.gotham.rs").unwrap();
@@ -252,7 +253,7 @@ mod tests {
     fn not_found_error_if_request_path_is_not_found() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
-        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+        let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         match send_request(router, Method::Get, "https://test.gotham.rs") {
             Ok((_state, res)) => {
@@ -278,7 +279,7 @@ mod tests {
         };
         tree_builder.add_route(route);
         let tree = tree_builder.finalize();
-        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+        let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         match send_request(router, Method::Get, "https://test.gotham.rs") {
             Ok((_state, res)) => {
@@ -304,7 +305,7 @@ mod tests {
         };
         tree_builder.add_route(route);
         let tree = tree_builder.finalize();
-        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+        let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         match send_request(router, Method::Get, "https://test.gotham.rs") {
             Ok((_state, res)) => {
@@ -332,7 +333,7 @@ mod tests {
             tree_builder.add_route(route);
 
             let tree = tree_builder.finalize();
-            Router::new(tree, ResponseExtenderBuilder::new().finalize())
+            Router::new(tree, ResponseFinalizerBuilder::new().finalize())
         };
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
@@ -352,7 +353,7 @@ mod tests {
         delegated_node.add_route(route);
         tree_builder.add_child(delegated_node);
         let tree = tree_builder.finalize();
-        let router = Router::new(tree, ResponseExtenderBuilder::new().finalize());
+        let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         // Ensure that top level tree has no route
         match send_request(router.clone(), Method::Get, "https://test.gotham.rs") {
@@ -372,18 +373,16 @@ mod tests {
     }
 
     #[test]
-    fn executes_response_extender_when_present() {
+    fn executes_response_finalizer_when_present() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
 
-        let mut response_extender_builder = ResponseExtenderBuilder::new();
-        let not_found_extender = |s, mut r: Response| {
-            r.headers_mut().set(ContentLength(3u64));
-            future::ok((s, r)).boxed()
-        };
-        response_extender_builder.add(StatusCode::NotFound, Box::new(not_found_extender));
-        let response_extender = response_extender_builder.finalize();
-        let router = Router::new(tree, response_extender);
+        let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
+        let not_found_extender =
+            |_s: &mut State, r: &mut Response| { r.headers_mut().set(ContentLength(3u64)); };
+        response_finalizer_builder.add(StatusCode::NotFound, Box::new(not_found_extender));
+        let response_finalizer = response_finalizer_builder.finalize();
+        let router = Router::new(tree, response_finalizer);
 
         match send_request(router, Method::Get, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
