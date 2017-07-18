@@ -82,7 +82,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::SegmentType;
 /// # use gotham::http::request_path::{RequestPathSegments, NoopRequestPathExtractor};
-/// # use gotham::http::query_string::NoopQueryStringExtractor;
+/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::http::PercentDecoded;
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {

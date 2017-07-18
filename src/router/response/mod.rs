@@ -1,4 +1,4 @@
-//! Defines functionality which acts on the Response object to be provided to clients
+//! Defines Router functionality which acts on the Response
 
 pub mod extender;
 pub mod finalizer;

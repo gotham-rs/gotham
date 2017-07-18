@@ -80,12 +80,12 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let gen = quote! {
         impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
-        impl #borrowed gotham::http::query_string::QueryStringExtractor for #name #borrowed
+        impl #borrowed gotham::router::request::query_string::QueryStringExtractor for #name #borrowed
              #where_clause
         {
             fn extract(s: &mut gotham::state::State, query: Option<&str>) -> Result<(), String> {
                 fn parse<T>(s: &gotham::state::State, key: &str, values: Option<&Vec<gotham::http::FormUrlDecoded>>) -> Result<T, String>
-                    where T: gotham::http::query_string::FromQueryString
+                    where T: gotham::router::request::query_string::FromQueryString
                 {
                     match values {
                         Some(values) => {
