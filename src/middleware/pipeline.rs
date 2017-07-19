@@ -25,11 +25,13 @@ use state::{State, request_id};
 ///
 /// ```rust
 /// # extern crate gotham;
+/// # #[macro_use]
+/// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
 /// # use std::io;
-/// # use gotham::state::{State, StateData};
+/// # use gotham::state::State;
 /// # use gotham::handler::{HandlerFuture, NewHandlerService};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
 /// # use gotham::middleware::pipeline::new_pipeline;
@@ -46,11 +48,10 @@ use state::{State, request_id};
 /// # use hyper::StatusCode;
 /// # use hyper::Method;
 /// #
+/// #[derive(StateData)]
 /// struct MiddlewareData {
 ///     vec: Vec<i32>
 /// }
-///
-/// impl StateData for MiddlewareData {}
 ///
 /// # #[derive(Clone)]
 /// struct MiddlewareOne;

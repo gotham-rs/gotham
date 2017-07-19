@@ -11,14 +11,14 @@ use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
-use hyper::{Request, Response, Headers, StatusCode, Uri, HttpVersion, Method};
+use hyper::{Request, Response, StatusCode};
 
 use handler::{NewHandler, Handler, HandlerFuture};
 use http::request_path::RequestPathSegments;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Route, Delegation};
 use router::tree::{SegmentMapping, Tree};
-use state::{State, StateData, request_id};
+use state::{State, request_id};
 
 struct RouterData {
     tree: Tree,
@@ -191,11 +191,6 @@ impl Router {
             .boxed()
     }
 }
-
-impl StateData for Method {}
-impl StateData for Uri {}
-impl StateData for HttpVersion {}
-impl StateData for Headers {}
 
 #[cfg(test)]
 mod tests {

@@ -47,21 +47,22 @@ pub mod pipeline;
 ///
 /// ```rust,no_run
 /// # extern crate gotham;
+/// # #[macro_use]
+/// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// #
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
-/// # use gotham::state::{State, StateData};
+/// # use gotham::state::State;
 /// # use hyper::server::Request;
 /// #
 /// struct MiddlewareWithStateData;
 ///
 /// # #[allow(unused)]
+/// # #[derive(StateData)]
 /// struct MiddlewareStateData {
 ///     i: i32,
 /// }
-///
-/// impl StateData for MiddlewareStateData {}
 ///
 /// impl Middleware for MiddlewareWithStateData {
 ///     fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
