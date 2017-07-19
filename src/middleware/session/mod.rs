@@ -264,7 +264,12 @@ impl<B, T> Middleware for SessionMiddleware<B, T>
                     .and_then(persist_session::<T>)
                     .boxed()
             }
-            None => chain(state, request),
+            None => {
+                self.new_session(state)
+                    .and_then(|state| chain(state, request))
+                    .and_then(persist_session::<T>)
+                    .boxed()
+            }
         }
     }
 }
