@@ -158,7 +158,7 @@ pub trait Middleware {
 }
 
 /// Creates new `Middleware` values.
-pub trait NewMiddleware {
+pub trait NewMiddleware: Sync {
     /// The type of `Middleware` created by the implementor.
     type Instance: Middleware;
 
