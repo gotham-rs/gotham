@@ -3,10 +3,16 @@
 use hyper::server::Response;
 use state::{State, request_id};
 
-/// Application specific response extenders.
-pub trait ResponseExtender {
+/// Extend the Response based on current State and Response data
+pub trait StaticResponseExtender {
     /// Extend the response.
-    fn extend(&self, state: &mut State, res: &mut Response);
+    fn extend(&mut State, &mut Response);
+}
+
+/// Allow complex types to extend the Response based on current State and Response data
+pub trait ResponseExtender {
+    /// Extend the Response
+    fn extend(&self, &mut State, &mut Response);
 }
 
 impl<F> ResponseExtender for F
@@ -31,9 +37,27 @@ impl NoopResponseExtender {
     }
 }
 
+impl StaticResponseExtender for NoopResponseExtender {
+    fn extend(state: &mut State, res: &mut Response) {
+        trace!("[{}] NoopResponseExtender invoked, does not make any changes to Response",
+               request_id(&state));
+        match res.body_ref() {
+            Some(_) => {
+                // Full implementations should not make extensions if they find this state
+                trace!("[{}] found response body, no change made",
+                       request_id(&state));
+            }
+            None => {
+                // Full implementations should make extensions if they find this state
+                trace!("[{}] no response body, no change made", request_id(&state));
+            }
+        }
+    }
+}
+
 impl ResponseExtender for NoopResponseExtender {
     fn extend(&self, state: &mut State, res: &mut Response) {
-        trace!("[{}] NoopResponseExtender invoked, does not make any changes to Response",
+        trace!("[{}] NoopResponseExtender invoked on instance, does not make any changes to Response",
                request_id(&state));
         match res.body_ref() {
             Some(_) => {
