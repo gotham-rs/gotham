@@ -154,7 +154,7 @@ impl<T> DerefMut for SessionData<T>
     }
 }
 
-pub trait NewBackend {
+pub trait NewBackend: Sync {
     type Instance: Backend + Send + 'static;
 
     fn new_backend(&self) -> io::Result<Self::Instance>;
@@ -162,7 +162,7 @@ pub trait NewBackend {
 
 pub type SessionFuture = Future<Item = Option<Vec<u8>>, Error = SessionError> + Send;
 
-pub trait Backend {
+pub trait Backend: Send {
     fn random_identifier(&self) -> SessionIdentifier {
         let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
         SessionIdentifier { value: base64::encode_config(&bytes, base64::URL_SAFE_NO_PAD) }
@@ -176,13 +176,15 @@ pub trait Backend {
     fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture>;
 }
 
+trait SessionTypePhantom<T>: Send + Sync where T: Send {}
+
 pub struct NewSessionMiddleware<B, T>
     where B: NewBackend,
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     new_backend: B,
     cookie_config: Arc<SessionCookieConfig>,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<SessionTypePhantom<T>>,
 }
 
 pub struct SessionMiddleware<B, T>

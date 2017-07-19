@@ -2,7 +2,7 @@ use super::*;
 
 use std::thread::{spawn, JoinHandle};
 use std::collections::HashMap;
-use std::sync::mpsc;
+use std::sync::{mpsc, Mutex};
 
 use futures::sync::oneshot;
 
@@ -14,7 +14,7 @@ enum Command {
 
 pub struct NewMemoryBackend {
     join_handle: JoinHandle<()>,
-    tx: mpsc::SyncSender<Command>,
+    tx: Mutex<mpsc::SyncSender<Command>>,
 }
 
 pub struct MemoryBackend {
@@ -26,7 +26,10 @@ impl NewMemoryBackend {
         let (tx, rx) = mpsc::sync_channel(bound);
         let join_handle = spawn(move || NewMemoryBackend::run(rx));
 
-        NewMemoryBackend { join_handle, tx }
+        NewMemoryBackend {
+            join_handle,
+            tx: Mutex::new(tx),
+        }
     }
 
     fn run(rx: mpsc::Receiver<Command>) {
@@ -63,7 +66,13 @@ impl NewBackend for NewMemoryBackend {
     type Instance = MemoryBackend;
 
     fn new_backend(&self) -> io::Result<Self::Instance> {
-        Ok(MemoryBackend { tx: self.tx.clone() })
+        match self.tx.lock() {
+            Ok(tx) => Ok(MemoryBackend { tx: tx.clone() }),
+            Err(_) => {
+                Err(io::Error::new(io::ErrorKind::Other,
+                                   "lock poisoned, can't borrow session channel"))
+            }
+        }
     }
 }
 
