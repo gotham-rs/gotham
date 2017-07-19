@@ -49,7 +49,7 @@ impl QueryStringMapping {
 /// ```rust
 /// # extern crate gotham;
 /// #
-/// # use gotham::http::query_string::split;
+/// # use gotham::http::request::query_string::split;
 /// #
 /// # pub fn main() {
 ///       let res = split(Some("key=val&key2=val"));

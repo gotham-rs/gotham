@@ -423,7 +423,7 @@ mod tests {
     use router::request_matcher::MethodOnlyRequestMatcher;
     use router::route::{Route, RouteImpl, Extractors};
     use router::request::path::NoopRequestPathExtractor;
-    use http::request_path::RequestPathSegments;
+    use http::request::path::RequestPathSegments;
     use router::request::query_string::NoopQueryStringExtractor;
     use state::State;
 

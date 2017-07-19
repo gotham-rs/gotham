@@ -2,7 +2,7 @@ use std::any::Any;
 
 use hyper::{Headers, Uri, HttpVersion, Method};
 
-use http::request_path::RequestPathSegments;
+use http::request::path::RequestPathSegments;
 use state::request_id::RequestId;
 
 /// A marker trait for types that can be stored in `State`.

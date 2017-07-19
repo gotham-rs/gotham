@@ -105,7 +105,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     }
                 }
 
-                let mut qsm = gotham::http::query_string::split(query);
+                let mut qsm = gotham::http::request::query_string::split(query);
                 trace!("[{}] query string mappings recieved from client: {:?}", gotham::state::request_id(s), qsm);
 
                 // Add an empty Vec for Optional segments that have not been provided.

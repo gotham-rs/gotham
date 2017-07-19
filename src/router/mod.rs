@@ -14,7 +14,7 @@ use futures::{future, Future};
 use hyper::{Request, Response, StatusCode};
 
 use handler::{NewHandler, Handler, HandlerFuture};
-use http::request_path::RequestPathSegments;
+use http::request::path::RequestPathSegments;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Route, Delegation};
 use router::tree::{SegmentMapping, Tree};

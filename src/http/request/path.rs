@@ -25,7 +25,7 @@ impl RequestPathSegments {
     /// ```rust
     /// # extern crate gotham;
     /// #
-    /// # use gotham::http::request_path::RequestPathSegments;
+    /// # use gotham::http::request::path::RequestPathSegments;
     /// #
     /// # pub fn main() {
     ///     let srp = RequestPathSegments::new("/%61ctiv%61te//batsignal");
@@ -62,7 +62,7 @@ impl RequestPathSegments {
     /// ```rust
     /// # extern crate gotham;
     /// #
-    /// # use gotham::http::request_path::RequestPathSegments;
+    /// # use gotham::http::request::path::RequestPathSegments;
     /// #
     /// # pub fn main() {
     ///     let mut srp = RequestPathSegments::new("/activate/batsignal");

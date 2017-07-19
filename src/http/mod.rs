@@ -1,7 +1,7 @@
-//! Helpers for HTTP related data
+//! Helpers for HTTP Request handling and Response generation
 
-pub mod request_path;
-pub mod query_string;
+pub mod request;
+pub mod response;
 
 use std;
 use url::percent_encoding::percent_decode;

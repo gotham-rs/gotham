@@ -16,7 +16,7 @@ use hyper::server::Request;
 use futures::{future, Future};
 
 use state::{State, set_request_id, request_id};
-use http::request_path::RequestPathSegments;
+use http::request::path::RequestPathSegments;
 
 /// A type alias for the trait objects returned by `HandlerService`
 pub type HandlerFuture =
