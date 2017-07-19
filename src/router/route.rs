@@ -14,7 +14,7 @@ use handler::HandlerFuture;
 use router::request::query_string::QueryStringExtractor;
 use router::request_matcher::RequestMatcher;
 use router::tree::SegmentMapping;
-use http::request_path::RequestPathExtractor;
+use router::request::path::RequestPathExtractor;
 use state::State;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -74,7 +74,7 @@ pub trait Route {
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
 /// #
-/// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::router::request::path::NoopRequestPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
@@ -104,7 +104,7 @@ pub trait Route {
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
 /// #
-/// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::router::request::path::NoopRequestPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};

@@ -12,14 +12,14 @@ pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let gen = quote! {
         impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
-        impl #borrowed gotham::http::request_path::RequestPathExtractor for #name #borrowed
+        impl #borrowed gotham::router::request::path::RequestPathExtractor for #name #borrowed
              #where_clause
         {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
                 -> Result<(), String>
             {
                 fn parse<T>(s: &gotham::state::State, segments: Option<&Vec<&gotham::http::PercentDecoded>>) -> Result<T, String>
-                    where T: gotham::http::request_path::FromRequestPath
+                    where T: gotham::router::request::path::FromRequestPath
                 {
                     match segments {
                         Some(segments) => {

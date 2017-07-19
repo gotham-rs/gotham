@@ -5,17 +5,21 @@ pub mod request_id;
 use std::collections::HashMap;
 use std::any::{Any, TypeId};
 
-pub use self::request_id::request_id;
-pub use self::request_id::set_request_id;
+use http::request_path::RequestPathSegments;
+
+pub use state::request_id::request_id;
+pub use state::request_id::set_request_id;
+
+/// A marker trait for types that can be stored in `State`.
+pub trait StateData: Any + Send {}
+
+impl StateData for RequestPathSegments {}
 
 /// Provides storage for request state, and stores one item of each type. The types used for
 /// storage must implement the `gotham::state::StateData` trait to allow its storage.
 pub struct State {
     data: HashMap<TypeId, Box<Any + Send>>,
 }
-
-/// A marker trait for types that can be stored in `State`.
-pub trait StateData: Any + Send {}
 
 impl State {
     /// Creates a new, empty `State`

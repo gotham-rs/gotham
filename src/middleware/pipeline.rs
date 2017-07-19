@@ -39,7 +39,7 @@ use state::{State, request_id};
 /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::test::TestServer;
-/// # use gotham::http::request_path::NoopRequestPathExtractor;
+/// # use gotham::router::request::path::NoopRequestPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::server::{Request, Response};

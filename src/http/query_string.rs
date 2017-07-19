@@ -1,4 +1,4 @@
-//! Defines helper functions for the Request quest string
+//! Defines helper functions for the Request query string
 
 use std::collections::HashMap;
 

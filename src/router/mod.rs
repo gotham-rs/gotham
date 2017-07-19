@@ -207,7 +207,7 @@ mod tests {
     use router::tree::TreeBuilder;
     use router::tree::node::{SegmentType, NodeBuilder};
     use router::route::{RouteImpl, Extractors};
-    use http::request_path::NoopRequestPathExtractor;
+    use router::request::path::NoopRequestPathExtractor;
     use router::request::query_string::NoopQueryStringExtractor;
     use dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
     use router::request_matcher::MethodOnlyRequestMatcher;

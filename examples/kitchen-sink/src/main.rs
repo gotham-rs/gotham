@@ -19,7 +19,7 @@ use hyper::header::ContentLength;
 
 use log::LogLevelFilter;
 
-use gotham::http::request_path::NoopRequestPathExtractor;
+use gotham::router::request::path::NoopRequestPathExtractor;
 use gotham::router::request::query_string::NoopQueryStringExtractor;
 use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 use gotham::router::response::extender::NoopResponseExtender;
