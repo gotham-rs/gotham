@@ -78,6 +78,9 @@ impl<T> SessionData<T>
         let identifier = backend.random_identifier();
         let value = T::default();
 
+        trace!(" no existing session, assigning new identifier ({})",
+               identifier.value);
+
         SessionData {
             value,
             cookie_state,
@@ -100,6 +103,8 @@ impl<T> SessionData<T>
             Some(val) => {
                 match T::deserialize(&mut rmp_serde::Deserializer::new(&val[..])) {
                     Ok(value) => {
+                        trace!(" successfully deserialized session data ({})",
+                               identifier.value);
                         Ok(SessionData {
                                value,
                                cookie_state,
@@ -112,10 +117,16 @@ impl<T> SessionData<T>
                     // TODO: What's the correct thing to do here? If the app changes the structure
                     // of its session type, the existing data won't deserialize anymore, through no
                     // fault of the users. Should we fall back to `T::default()` instead?
-                    Err(_) => Err(SessionError::Deserialize),
+                    Err(_) => {
+                        error!(" failed to deserialize session data ({})", identifier.value);
+                        Err(SessionError::Deserialize)
+                    }
                 }
             }
             None => {
+                trace!(" no existing session data, falling back to default ({})",
+                       identifier.value);
+
                 let value = T::default();
                 Ok(SessionData {
                        value,
