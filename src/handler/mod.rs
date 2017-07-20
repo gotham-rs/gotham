@@ -96,7 +96,7 @@ impl<T> NewHandlerService<T>
     ///
     /// let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
     /// let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
-    /// let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+    /// let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
     /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
     ///
     /// tree_builder.add_route(Box::new(route));
@@ -281,7 +281,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::handler::IntoResponse;
-/// # use gotham::router::request::path::NoopRequestPathExtractor;
+/// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
@@ -317,7 +317,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let finalizer = ResponseFinalizerBuilder::new().finalize();
 /// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
-/// #   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+/// #   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();

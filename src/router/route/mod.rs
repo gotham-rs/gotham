@@ -17,7 +17,7 @@ use handler::HandlerFuture;
 use router::request::query_string::QueryStringExtractor;
 use router::route::matcher::RouteMatcher;
 use router::tree::SegmentMapping;
-use router::request::path::RequestPathExtractor;
+use router::request::path::PathExtractor;
 use state::State;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -78,7 +78,7 @@ pub trait Route {
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
 /// #
-/// # use gotham::router::request::path::NoopRequestPathExtractor;
+/// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
@@ -94,7 +94,7 @@ pub trait Route {
 ///   let methods = vec![Method::Get];
 ///   let matcher = MethodOnlyRouteMatcher::new(methods);
 ///   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+///   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///   RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 /// # }
 /// ```
@@ -108,7 +108,7 @@ pub trait Route {
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
 /// #
-/// # use gotham::router::request::path::NoopRequestPathExtractor;
+/// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
@@ -131,7 +131,7 @@ pub trait Route {
 ///            let methods = vec![Method::Get];
 ///            let matcher = MethodOnlyRouteMatcher::new(methods);
 ///            let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-///            let extractors: Extractors<NoopRequestPathExtractor,
+///            let extractors: Extractors<NoopPathExtractor,
 ///                                       NoopQueryStringExtractor> = Extractors::new();
 ///            let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 ///            Box::new(route)
@@ -146,13 +146,13 @@ pub trait Route {
 ///   let methods = vec![Method::Get];
 ///   let matcher = MethodOnlyRouteMatcher::new(methods);
 ///   let dispatcher = Box::new(DispatcherImpl::new(secondary_router, (), pipeline_set));
-///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+///   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///   RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
 /// # }
 /// ```
 pub struct RouteImpl<RM, RE, QE>
     where RM: RouteMatcher,
-          RE: RequestPathExtractor,
+          RE: PathExtractor,
           QSE: QueryStringExtractor
 {
     matcher: RM,
@@ -164,7 +164,7 @@ pub struct RouteImpl<RM, RE, QE>
 /// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
 /// for use by custom `Middleware` and `Handler` implementations.
 pub struct Extractors<RE, QSE>
-    where RE: RequestPathExtractor,
+    where RE: PathExtractor,
           QSE: QueryStringExtractor
 {
     rpe_phantom: PhantomData<RE>,
@@ -173,7 +173,7 @@ pub struct Extractors<RE, QSE>
 
 impl<RM, RE, QE> RouteImpl<RM, RE, QE>
     where RM: RouteMatcher,
-          RE: RequestPathExtractor,
+          RE: PathExtractor,
           QSE: QueryStringExtractor
 {
     /// Creates a new `RouteImpl`
@@ -192,7 +192,7 @@ impl<RM, RE, QE> RouteImpl<RM, RE, QE>
 }
 
 impl<RE, QSE> Extractors<RE, QSE>
-    where RE: RequestPathExtractor,
+    where RE: PathExtractor,
           QSE: QueryStringExtractor
 {
     /// Creates a new set of Extractors for use with a `RouteImpl`
@@ -206,7 +206,7 @@ impl<RE, QSE> Extractors<RE, QSE>
 
 impl<RM, RE, QE> Route for RouteImpl<RM, RE, QE>
     where RM: RouteMatcher,
-          RE: RequestPathExtractor,
+          RE: PathExtractor,
           QSE: QueryStringExtractor
 {
     fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode> {

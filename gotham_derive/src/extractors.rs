@@ -12,7 +12,7 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
 
     quote! {
         impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
-        impl #borrowed gotham::router::request::path::RequestPathExtractor for #name #borrowed
+        impl #borrowed gotham::router::request::path::PathExtractor for #name #borrowed
              #where_clause
         {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)

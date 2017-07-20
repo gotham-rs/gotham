@@ -19,7 +19,7 @@ use hyper::header::ContentLength;
 
 use log::LogLevelFilter;
 
-use gotham::router::request::path::NoopRequestPathExtractor;
+use gotham::router::request::path::NoopPathExtractor;
 use gotham::router::request::query_string::NoopQueryStringExtractor;
 use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 use gotham::router::response::extender::NoopResponseExtender;
@@ -42,7 +42,7 @@ struct Echo;
 struct SharedRequestPath {
     name: String,
 
-    // Ideally RequestPathExtractors that are implemented by applications won't have any
+    // Ideally PathExtractors that are implemented by applications won't have any
     // Option fields.
     //
     // Instead have a fully specified Struct to represent every route with different segments
@@ -70,7 +70,7 @@ fn static_route<NH, P, C>(methods: Vec<Method>,
 {
     let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
-    let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
+    let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
         Extractors::new();
     let route = RouteImpl::new(matcher,
                                Box::new(dispatcher),

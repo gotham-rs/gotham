@@ -24,22 +24,22 @@ use router::response::extender::StaticResponseExtender;
 ///
 /// Custom responses can be written by using the `BasePathExtractor` derive and then
 /// implementing `StaticResponseExtender` independently.
-pub trait RequestPathExtractor: StaticResponseExtender {
+pub trait PathExtractor: StaticResponseExtender {
     /// Populates the struct with data from the `Request` path and adds it to `State`
     fn extract(state: &mut State, segment_mapping: SegmentMapping) -> Result<(), String>;
 }
 
-/// A `RequestPathExtractor` that does not extract/store any data from the `Request` path.
+/// A `PathExtractor` that does not extract/store any data from the `Request` path.
 ///
 /// Useful in purely static routes and within documentation.
-pub struct NoopRequestPathExtractor;
-impl RequestPathExtractor for NoopRequestPathExtractor {
+pub struct NoopPathExtractor;
+impl PathExtractor for NoopPathExtractor {
     fn extract(_state: &mut State, _segment_mapping: SegmentMapping) -> Result<(), String> {
         Ok(())
     }
 }
 
-impl StaticResponseExtender for NoopRequestPathExtractor {
+impl StaticResponseExtender for NoopPathExtractor {
     fn extend(_state: &mut State, _res: &mut Response) {}
 }
 
