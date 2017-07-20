@@ -157,7 +157,8 @@ impl Router {
                                request_id(&state));
                         trace!("[{}] {}", request_id(&state), e);
 
-                        let res = Response::new();
+                        let mut res = Response::new();
+                        route.extend_response_on_query_string_error(&mut state, &mut res);
                         future::ok((state, res)).boxed()
                     }
                 }

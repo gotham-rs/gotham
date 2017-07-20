@@ -8,13 +8,22 @@ use std::string::ParseError;
 use std::str::ParseBoolError;
 use std::num::{ParseIntError, ParseFloatError};
 
+use hyper::Response;
+
 use state::State;
 use http::FormUrlDecoded;
+use router::response::extender::StaticResponseExtender;
 
-/// Derived through the macro of the same name supplied by `gotham-derive` for application defined
-/// structs that will pass `Request` query string data to custom `Middleware` and `Handler`
-/// implementations.
-pub trait QueryStringExtractor {
+/// Extracts the `Request` query string into `State`. On failure is capable of extending `Response`
+/// to indicate why the extraction process failed.
+///
+/// This functionality can be simply derived for application structs via `QueryStringExtractor`,
+/// which will attempt to populate the associated struct and simply set "400 Bad Request"
+/// on failure.
+///
+/// Custom responses can be written by using the `BaseQueryStringExtractor` derive and then
+/// implementing `StaticResponseExtender` independently.
+pub trait QueryStringExtractor: StaticResponseExtender {
     /// Populates the struct with data from the `Request` query string and adds it to `State`
     fn extract(state: &mut State, query: Option<&str>) -> Result<(), String>;
 }
@@ -28,6 +37,10 @@ impl QueryStringExtractor for NoopQueryStringExtractor {
     fn extract(_state: &mut State, _query: Option<&str>) -> Result<(), String> {
         Ok(())
     }
+}
+
+impl StaticResponseExtender for NoopQueryStringExtractor {
+    fn extend(_state: &mut State, _res: &mut Response) {}
 }
 
 #[derive(Debug)]

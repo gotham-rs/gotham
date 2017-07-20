@@ -7,6 +7,7 @@ extern crate syn;
 extern crate quote;
 
 mod extractors;
+mod extenders;
 mod helpers;
 
 use helpers::ty_params;
@@ -16,9 +17,21 @@ pub fn request_path_extractor(input: proc_macro::TokenStream) -> proc_macro::Tok
     extractors::request_path(input)
 }
 
+#[proc_macro_derive(BaseQueryStringExtractor)]
+pub fn base_query_string_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+    let gen = extractors::base_query_string(&ast);
+    gen.parse().unwrap()
+}
+
 #[proc_macro_derive(QueryStringExtractor)]
 pub fn query_string_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    extractors::query_string(input)
+    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+    let bqs = extractors::base_query_string(&ast);
+    let brre = extenders::bad_request_static_response_extender(&ast);
+
+    let gen = quote! { #bqs #brre };
+    gen.parse().unwrap()
 }
 
 #[proc_macro_derive(StateData)]
