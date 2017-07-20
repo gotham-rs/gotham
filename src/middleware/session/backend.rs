@@ -2,57 +2,21 @@ use super::*;
 
 use std::thread::{spawn, JoinHandle};
 use std::collections::HashMap;
-use std::sync::{mpsc, Mutex};
+use std::sync::{mpsc, Mutex, Arc, RwLock};
 
 use futures::sync::oneshot;
 
-enum Command {
-    Get(SessionIdentifier, oneshot::Sender<Option<Vec<u8>>>),
-    Take(SessionIdentifier, oneshot::Sender<Option<Vec<u8>>>),
-    Put(SessionIdentifier, Vec<u8>),
-}
-
 pub struct NewMemoryBackend {
-    join_handle: JoinHandle<()>,
-    tx: Mutex<mpsc::SyncSender<Command>>,
+    storage: Arc<RwLock<HashMap<String, Vec<u8>>>>,
 }
 
 pub struct MemoryBackend {
-    tx: mpsc::SyncSender<Command>,
+    storage: Arc<RwLock<HashMap<String, Vec<u8>>>>,
 }
 
 impl NewMemoryBackend {
-    pub fn new(bound: usize) -> NewMemoryBackend {
-        let (tx, rx) = mpsc::sync_channel(bound);
-        let join_handle = spawn(move || NewMemoryBackend::run(rx));
-
-        NewMemoryBackend {
-            join_handle,
-            tx: Mutex::new(tx),
-        }
-    }
-
-    fn run(rx: mpsc::Receiver<Command>) {
-        let mut storage = HashMap::new();
-
-        loop {
-            match rx.recv() {
-                Ok(Command::Get(id, tx)) => {
-                    // We can't act on a failed oneshot channel, discard the result instead
-                    let _discard = tx.send(storage.get(&id.value).map(Vec::clone));
-                }
-                Ok(Command::Take(id, tx)) => {
-                    // We can't act on a failed oneshot channel, discard the result instead
-                    let _discard = tx.send(storage.remove(&id.value));
-                }
-                Ok(Command::Put(id, t)) => {
-                    storage.insert(id.value, t);
-                }
-                Err(mpsc::RecvError) => {
-                    break;
-                }
-            }
-        }
+    pub fn new(_bound: usize) -> NewMemoryBackend {
+        NewMemoryBackend { storage: Arc::new(RwLock::new(HashMap::new())) }
     }
 }
 
@@ -66,45 +30,26 @@ impl NewBackend for NewMemoryBackend {
     type Instance = MemoryBackend;
 
     fn new_backend(&self) -> io::Result<Self::Instance> {
-        match self.tx.lock() {
-            Ok(tx) => Ok(MemoryBackend { tx: tx.clone() }),
-            Err(_) => {
-                Err(io::Error::new(io::ErrorKind::Other,
-                                   "lock poisoned, can't borrow session channel"))
-            }
-        }
-    }
-}
-
-impl MemoryBackend {
-    fn send(&self, command: Command) -> Result<(), SessionError> {
-        self.tx
-            .send(command)
-            .map_err(|_| SessionError::Backend("SyncSender::send returned Err(_)".into()))
+        Ok(MemoryBackend { storage: self.storage.clone() })
     }
 }
 
 impl Backend for MemoryBackend {
     fn new_session(&self, content: &[u8]) -> Result<SessionIdentifier, SessionError> {
-        let identifier = self.random_identifier();
-        self.send(Command::Put(identifier.clone(), Vec::from(content))).map(|()| identifier)
+        unimplemented!()
     }
 
     fn update_session(&self,
                       identifier: SessionIdentifier,
                       content: &[u8])
                       -> Result<(), SessionError> {
-        self.send(Command::Put(identifier.clone(), Vec::from(content)))
+        let mut storage = self.storage.write().unwrap();
+        storage.insert(identifier.value, Vec::from(content));
+        Ok(())
     }
 
     fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture> {
-        let (tx, rx) = oneshot::channel();
-        match self.send(Command::Get(identifier, tx)) {
-            Ok(_) => {
-                rx.map_err(|_| SessionError::Backend("Received cancelled".into()))
-                    .boxed()
-            }
-            Err(e) => future::err(e).boxed(),
-        }
+        let storage = self.storage.read().unwrap();
+        future::ok(storage.get(&identifier.value).map(Clone::clone)).boxed()
     }
 }
