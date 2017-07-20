@@ -17,11 +17,11 @@ pub trait Backend: Send {
         SessionIdentifier { value: base64::encode_config(&bytes, base64::URL_SAFE_NO_PAD) }
     }
 
-    fn new_session(&self, content: &[u8]) -> Result<SessionIdentifier, SessionError>;
-    fn update_session(&self,
-                      identifier: SessionIdentifier,
-                      content: &[u8])
-                      -> Result<(), SessionError>;
+    fn persist_session(&self,
+                       identifier: SessionIdentifier,
+                       content: &[u8])
+                       -> Result<(), SessionError>;
+
     fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture>;
 }
 
@@ -45,14 +45,10 @@ impl NewBackend for MemoryBackend {
 }
 
 impl Backend for MemoryBackend {
-    fn new_session(&self, content: &[u8]) -> Result<SessionIdentifier, SessionError> {
-        unimplemented!()
-    }
-
-    fn update_session(&self,
-                      identifier: SessionIdentifier,
-                      content: &[u8])
-                      -> Result<(), SessionError> {
+    fn persist_session(&self,
+                       identifier: SessionIdentifier,
+                       content: &[u8])
+                       -> Result<(), SessionError> {
         let mut storage = self.storage.write().unwrap();
         storage.insert(identifier.value, Vec::from(content));
         Ok(())

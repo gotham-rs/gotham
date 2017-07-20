@@ -268,7 +268,7 @@ fn persist_session<T>((mut state, mut response): (State, Response))
 
             match session_data.serialize(&mut rmp_serde::Serializer::new(&mut bytes)) {
                 Ok(()) => {
-                    match session_data.backend.update_session(session_data.identifier, &bytes[..]) {
+                    match session_data.backend.persist_session(session_data.identifier, &bytes[..]) {
                         Ok(()) => {
                             trace!(" persisted session successfully");
                             future::ok((state, response))
@@ -359,7 +359,7 @@ mod tests {
             .unwrap();
 
         m.backend
-            .update_session(identifier.clone(), &bytes)
+            .persist_session(identifier.clone(), &bytes)
             .unwrap();
 
         let mut cookies = Cookie::new();
