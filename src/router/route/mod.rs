@@ -150,7 +150,7 @@ pub trait Route {
 ///   RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
 /// # }
 /// ```
-pub struct RouteImpl<RM, RE, QE>
+pub struct RouteImpl<RM, RE, QSE>
     where RM: RouteMatcher,
           RE: PathExtractor,
           QSE: QueryStringExtractor
@@ -171,7 +171,7 @@ pub struct Extractors<RE, QSE>
     qse_phantom: PhantomData<QSE>,
 }
 
-impl<RM, RE, QE> RouteImpl<RM, RE, QE>
+impl<RM, RE, QSE> RouteImpl<RM, RE, QSE>
     where RM: RouteMatcher,
           RE: PathExtractor,
           QSE: QueryStringExtractor
@@ -204,7 +204,7 @@ impl<RE, QSE> Extractors<RE, QSE>
     }
 }
 
-impl<RM, RE, QE> Route for RouteImpl<RM, RE, QE>
+impl<RM, RE, QSE> Route for RouteImpl<RM, RE, QSE>
     where RM: RouteMatcher,
           RE: PathExtractor,
           QSE: QueryStringExtractor
