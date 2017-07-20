@@ -5,8 +5,6 @@ pub mod route;
 pub mod request;
 pub mod response;
 
-pub mod request_matcher;
-
 use std::io;
 use std::sync::Arc;
 
@@ -205,7 +203,7 @@ mod tests {
     use router::request::path::NoopRequestPathExtractor;
     use router::request::query_string::NoopQueryStringExtractor;
     use dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
-    use router::request_matcher::MethodOnlyRequestMatcher;
+    use router::route::request_matcher::MethodOnlyRequestMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;
     use state::set_request_id;
 

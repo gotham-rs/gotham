@@ -27,7 +27,7 @@ use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors, Delegation};
 use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
                        PipelineHandleChain};
-use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
 use gotham::router::tree::TreeBuilder;
 use gotham::router::tree::node::{NodeBuilder, SegmentType};
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};

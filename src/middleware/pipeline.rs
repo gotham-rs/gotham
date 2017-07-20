@@ -38,7 +38,7 @@ use state::{State, request_id};
 /// # use gotham::router::Router;
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::test::TestServer;
 /// # use gotham::router::request::path::NoopRequestPathExtractor;

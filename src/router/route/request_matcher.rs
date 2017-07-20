@@ -6,7 +6,8 @@ use hyper::StatusCode;
 
 use state::{State, request_id};
 
-/// A type that determines if a `Request` meets pre-defined conditions.
+/// Determines if a `Request` meets pre-defined conditions required for the associated `Route` to
+/// be invoked by the `Router` when determining where to dispatch a `Request` to.
 pub trait RequestMatcher {
     /// Determines if the `Request` meets pre-defined conditions.
     fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode>;
@@ -22,7 +23,7 @@ pub trait RequestMatcher {
 /// # extern crate hyper;
 /// # fn main() {
 /// # use hyper::Method;
-/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
 ///   let methods = vec![Method::Get, Method::Head];
 ///   MethodOnlyRequestMatcher::new(methods);
 /// # }

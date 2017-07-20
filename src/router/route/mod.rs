@@ -1,8 +1,10 @@
-//! Defines a `Route` type and a default implementation.
+//! Defines types that support individual application routes.
 //!
 //! The Gotham `Router` having identified one or more potential `Route` instances to service a
 //! request via route `Tree` traversal will attempt to identify a matching `Route` and
 //! dispatch to it when it does so.
+
+pub mod request_matcher;
 
 use std::marker::PhantomData;
 
@@ -12,7 +14,7 @@ use hyper::StatusCode;
 use dispatch::Dispatcher;
 use handler::HandlerFuture;
 use router::request::query_string::QueryStringExtractor;
-use router::request_matcher::RequestMatcher;
+use router::route::request_matcher::RequestMatcher;
 use router::tree::SegmentMapping;
 use router::request::path::RequestPathExtractor;
 use state::State;
@@ -76,7 +78,7 @@ pub trait Route {
 /// #
 /// # use gotham::router::request::path::NoopRequestPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
@@ -106,7 +108,7 @@ pub trait Route {
 /// #
 /// # use gotham::router::request::path::NoopRequestPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
