@@ -23,7 +23,6 @@ use state::{State, StateData};
 mod backend;
 
 pub use self::backend::MemoryBackend;
-pub use self::backend::NewMemoryBackend;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SessionIdentifier {
@@ -73,7 +72,7 @@ impl<T> SessionData<T>
     fn new(backend: Box<Backend + Send>,
            cookie_config: Arc<SessionCookieConfig>)
            -> SessionData<T> {
-        let state = SessionDataState::Clean;
+        let state = SessionDataState::Dirty; // Always persist a new session
         let cookie_state = SessionCookieState::New;
         let identifier = backend.random_identifier();
         let value = T::default();
@@ -213,12 +212,12 @@ impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
     }
 }
 
-impl<T> Default for NewSessionMiddleware<NewMemoryBackend, T>
+impl<T> Default for NewSessionMiddleware<MemoryBackend, T>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    fn default() -> NewSessionMiddleware<NewMemoryBackend, T> {
+    fn default() -> NewSessionMiddleware<MemoryBackend, T> {
         NewSessionMiddleware {
-            new_backend: NewMemoryBackend::default(),
+            new_backend: MemoryBackend::default(),
             cookie_config: Arc::new(SessionCookieConfig {
                                         name: "_gotham_session".to_owned(),
                                         secure: SecureCookie::Insecure,
@@ -363,7 +362,7 @@ mod tests {
 
     #[test]
     fn random_identifier() {
-        let backend = NewMemoryBackend::default().new_backend().unwrap();
+        let backend = MemoryBackend::default().new_backend().unwrap();
         assert!(backend.random_identifier() != backend.random_identifier(),
                 "identifier collision");
     }

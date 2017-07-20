@@ -6,31 +6,22 @@ use std::sync::{mpsc, Mutex, Arc, RwLock};
 
 use futures::sync::oneshot;
 
-pub struct NewMemoryBackend {
-    storage: Arc<RwLock<HashMap<String, Vec<u8>>>>,
-}
-
+#[derive(Clone)]
 pub struct MemoryBackend {
     storage: Arc<RwLock<HashMap<String, Vec<u8>>>>,
 }
 
-impl NewMemoryBackend {
-    pub fn new(_bound: usize) -> NewMemoryBackend {
-        NewMemoryBackend { storage: Arc::new(RwLock::new(HashMap::new())) }
+impl Default for MemoryBackend {
+    fn default() -> MemoryBackend {
+        MemoryBackend { storage: Arc::new(RwLock::new(HashMap::new())) }
     }
 }
 
-impl Default for NewMemoryBackend {
-    fn default() -> NewMemoryBackend {
-        NewMemoryBackend::new(100)
-    }
-}
-
-impl NewBackend for NewMemoryBackend {
+impl NewBackend for MemoryBackend {
     type Instance = MemoryBackend;
 
     fn new_backend(&self) -> io::Result<Self::Instance> {
-        Ok(MemoryBackend { storage: self.storage.clone() })
+        Ok(self.clone())
     }
 }
 
