@@ -78,7 +78,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::router::tree::TreeBuilder;
     /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
     /// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
-    /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
     /// # use gotham::router::request::path::NoopRequestPathExtractor;
     /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
     /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
@@ -279,7 +279,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::handler::IntoResponse;
 /// # use gotham::router::request::path::NoopRequestPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;

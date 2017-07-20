@@ -5,13 +5,14 @@
 //! dispatch to it when it does so.
 
 pub mod request_matcher;
+pub mod dispatch;
 
 use std::marker::PhantomData;
 
 use hyper::server::Request;
 use hyper::StatusCode;
 
-use dispatch::Dispatcher;
+use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
 use router::request::query_string::QueryStringExtractor;
 use router::route::request_matcher::RequestMatcher;
@@ -62,9 +63,6 @@ pub trait Route {
 
 /// Default implementation for `Route`.
 ///
-/// Delegates `is_match` to `RequestMatcher` and `dispatch` to `Dispatcher`
-/// without any additional involvement.
-///
 /// # Examples
 ///
 /// ## Standard `Route` which calls application code
@@ -79,7 +77,7 @@ pub trait Route {
 /// # use gotham::router::request::path::NoopRequestPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// #
@@ -109,7 +107,7 @@ pub trait Route {
 /// # use gotham::router::request::path::NoopRequestPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};

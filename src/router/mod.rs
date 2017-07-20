@@ -202,7 +202,7 @@ mod tests {
     use router::route::{RouteImpl, Extractors};
     use router::request::path::NoopRequestPathExtractor;
     use router::request::query_string::NoopQueryStringExtractor;
-    use dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+    use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
     use router::route::request_matcher::MethodOnlyRequestMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;
     use state::set_request_id;

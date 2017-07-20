@@ -75,7 +75,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use hyper::Method;
 /// # use hyper::server::{Request, Response};
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::TreeBuilder;

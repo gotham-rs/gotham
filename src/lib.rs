@@ -28,7 +28,6 @@ extern crate uuid;
 extern crate log;
 extern crate chrono;
 
-pub mod dispatch;
 pub mod handler;
 pub mod middleware;
 pub mod http;

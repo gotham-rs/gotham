@@ -52,7 +52,7 @@ pub enum SegmentType {
 /// # use gotham::router::request::path::NoopRequestPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
 /// # use gotham::router::tree::node::{NodeBuilder, SegmentType};
@@ -419,7 +419,7 @@ mod tests {
     use hyper::Method;
     use hyper::server::{Request, Response};
 
-    use dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl};
+    use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl};
     use router::route::request_matcher::MethodOnlyRequestMatcher;
     use router::route::{Route, RouteImpl, Extractors};
     use router::request::path::NoopRequestPathExtractor;
