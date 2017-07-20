@@ -203,7 +203,7 @@ mod tests {
     use router::request::path::NoopRequestPathExtractor;
     use router::request::query_string::NoopQueryStringExtractor;
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
-    use router::route::request_matcher::MethodOnlyRequestMatcher;
+    use router::route::matcher::MethodOnlyRouteMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;
     use state::set_request_id;
 
@@ -264,7 +264,7 @@ mod tests {
 
         let route = {
             let methods = vec![Method::Post];
-            let matcher = MethodOnlyRequestMatcher::new(methods);
+            let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopRequestPathExtractor,
                                        NoopQueryStringExtractor> = Extractors::new();
@@ -290,7 +290,7 @@ mod tests {
 
         let route = {
             let methods = vec![Method::Get];
-            let matcher = MethodOnlyRequestMatcher::new(methods);
+            let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopRequestPathExtractor,
                                        NoopQueryStringExtractor> = Extractors::new();
@@ -317,7 +317,7 @@ mod tests {
 
             let route = {
                 let methods = vec![Method::Get];
-                let matcher = MethodOnlyRequestMatcher::new(methods);
+                let matcher = MethodOnlyRouteMatcher::new(methods);
                 let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
                 let extractors: Extractors<NoopRequestPathExtractor,
                                            NoopQueryStringExtractor> = Extractors::new();
@@ -336,7 +336,7 @@ mod tests {
 
         let route = {
             let methods = vec![Method::Get];
-            let matcher = MethodOnlyRequestMatcher::new(methods);
+            let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(delegated_router, (), pipeline_set));
             let extractors: Extractors<NoopRequestPathExtractor,
                                        NoopQueryStringExtractor> = Extractors::new();

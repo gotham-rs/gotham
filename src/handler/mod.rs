@@ -77,7 +77,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::router::Router;
     /// # use gotham::router::tree::TreeBuilder;
     /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-    /// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
+    /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
     /// # use gotham::router::request::path::NoopRequestPathExtractor;
     /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
@@ -94,7 +94,7 @@ impl<T> NewHandlerService<T>
     /// let pipeline_set = finalize_pipeline_set(new_pipeline_set());
     /// let finalizer = ResponseFinalizerBuilder::new().finalize();
     ///
-    /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+    /// let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
     /// let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
     /// let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
     /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
@@ -278,7 +278,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::handler::IntoResponse;
 /// # use gotham::router::request::path::NoopRequestPathExtractor;
@@ -315,7 +315,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let mut tree_builder = TreeBuilder::new();
 /// #   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 /// #   let finalizer = ResponseFinalizerBuilder::new().finalize();
-/// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
 /// #   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);

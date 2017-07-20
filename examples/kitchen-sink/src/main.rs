@@ -25,9 +25,9 @@ use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 use gotham::router::response::extender::NoopResponseExtender;
 use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors, Delegation};
-use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
+use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
                        PipelineHandleChain};
-use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
+use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 use gotham::router::tree::TreeBuilder;
 use gotham::router::tree::node::{NodeBuilder, SegmentType};
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
@@ -68,7 +68,7 @@ fn static_route<NH, P, C>(methods: Vec<Method>,
           C: PipelineHandleChain<P> + Send + Sync + 'static,
           P: Send + Sync + 'static
 {
-    let matcher = MethodOnlyRequestMatcher::new(methods);
+    let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
         Extractors::new();
@@ -88,7 +88,7 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
           C: PipelineHandleChain<P> + Send + Sync + 'static,
           P: Send + Sync + 'static
 {
-    let matcher = MethodOnlyRequestMatcher::new(methods);
+    let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
     let route = RouteImpl::new(matcher,

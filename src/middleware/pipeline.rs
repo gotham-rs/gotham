@@ -38,7 +38,7 @@ use state::{State, request_id};
 /// # use gotham::router::Router;
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::test::TestServer;
 /// # use gotham::router::request::path::NoopRequestPathExtractor;
@@ -134,7 +134,7 @@ use state::{State, request_id};
 ///
 ///     let mut tree_builder = TreeBuilder::new();
 ///
-///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+///     let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
 ///     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
 ///     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);

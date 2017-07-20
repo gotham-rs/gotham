@@ -77,7 +77,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
-/// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::SegmentType;
@@ -100,7 +100,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///   let batsignal_route = {
 ///       // elided ...
 /// #     let methods = vec![Method::Get];
-/// #     let matcher = MethodOnlyRequestMatcher::new(methods);
+/// #     let matcher = MethodOnlyRouteMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 /// #     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);

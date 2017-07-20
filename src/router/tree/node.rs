@@ -54,7 +54,7 @@ pub enum SegmentType {
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
-/// # use gotham::router::route::request_matcher::MethodOnlyRequestMatcher;
+/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::tree::node::{NodeBuilder, SegmentType};
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
@@ -70,7 +70,7 @@ pub enum SegmentType {
 ///   let route = {
 ///       // elided ..
 /// #     let methods = vec![Method::Get];
-/// #     let matcher = MethodOnlyRequestMatcher::new(methods);
+/// #     let matcher = MethodOnlyRouteMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///       let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///       let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
@@ -420,7 +420,7 @@ mod tests {
     use hyper::server::{Request, Response};
 
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl};
-    use router::route::request_matcher::MethodOnlyRequestMatcher;
+    use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Route, RouteImpl, Extractors};
     use router::request::path::NoopRequestPathExtractor;
     use http::request::path::RequestPathSegments;
@@ -435,7 +435,7 @@ mod tests {
         where P: Send + Sync + 'static
     {
         let methods = vec![Method::Get];
-        let matcher = MethodOnlyRequestMatcher::new(methods);
+        let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
@@ -450,7 +450,7 @@ mod tests {
         where P: Send + Sync + 'static
     {
         let methods = vec![Method::Get];
-        let matcher = MethodOnlyRequestMatcher::new(methods);
+        let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
@@ -469,7 +469,7 @@ mod tests {
         // [Get|Head]: /seg1
         let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
         let methods = vec![Method::Get, Method::Head];
-        let matcher = MethodOnlyRequestMatcher::new(methods);
+        let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
@@ -484,7 +484,7 @@ mod tests {
         // Post: /seg2
         let mut seg2 = NodeBuilder::new("seg2", SegmentType::Static);
         let methods = vec![Method::Post];
-        let matcher = MethodOnlyRequestMatcher::new(methods);
+        let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
@@ -496,7 +496,7 @@ mod tests {
 
         // Patch: /seg2
         let methods = vec![Method::Patch];
-        let matcher = MethodOnlyRequestMatcher::new(methods);
+        let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
             Extractors::new();
