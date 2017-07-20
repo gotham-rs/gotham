@@ -1,10 +1,7 @@
 use super::*;
 
-use std::thread::{spawn, JoinHandle};
 use std::collections::HashMap;
-use std::sync::{mpsc, Mutex, Arc, RwLock};
-
-use futures::sync::oneshot;
+use std::sync::{Arc, RwLock};
 
 pub trait NewBackend: Sync {
     type Instance: Backend + Send + 'static;
