@@ -123,20 +123,7 @@ impl<T> SessionData<T>
                     }
                 }
             }
-            None => {
-                trace!(" no existing session data, falling back to default ({})",
-                       identifier.value);
-
-                let value = T::default();
-                Ok(SessionData {
-                       value,
-                       cookie_state,
-                       state,
-                       identifier,
-                       backend,
-                       cookie_config,
-                   })
-            }
+            None => Ok(SessionData::<T>::new(backend, cookie_config)),
         }
     }
 }
