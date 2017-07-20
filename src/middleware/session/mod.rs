@@ -22,7 +22,7 @@ use state::{State, StateData};
 
 mod backend;
 
-pub use self::backend::MemoryBackend;
+pub use self::backend::{NewBackend, Backend, MemoryBackend};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SessionIdentifier {
@@ -149,28 +149,6 @@ impl<T> DerefMut for SessionData<T>
         self.state = SessionDataState::Dirty;
         &mut self.value
     }
-}
-
-pub trait NewBackend: Sync {
-    type Instance: Backend + Send + 'static;
-
-    fn new_backend(&self) -> io::Result<Self::Instance>;
-}
-
-pub type SessionFuture = Future<Item = Option<Vec<u8>>, Error = SessionError> + Send;
-
-pub trait Backend: Send {
-    fn random_identifier(&self) -> SessionIdentifier {
-        let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
-        SessionIdentifier { value: base64::encode_config(&bytes, base64::URL_SAFE_NO_PAD) }
-    }
-
-    fn new_session(&self, content: &[u8]) -> Result<SessionIdentifier, SessionError>;
-    fn update_session(&self,
-                      identifier: SessionIdentifier,
-                      content: &[u8])
-                      -> Result<(), SessionError>;
-    fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture>;
 }
 
 trait SessionTypePhantom<T>: Send + Sync where T: Send {}

@@ -6,6 +6,28 @@ use std::sync::{mpsc, Mutex, Arc, RwLock};
 
 use futures::sync::oneshot;
 
+pub trait NewBackend: Sync {
+    type Instance: Backend + Send + 'static;
+
+    fn new_backend(&self) -> io::Result<Self::Instance>;
+}
+
+pub type SessionFuture = Future<Item = Option<Vec<u8>>, Error = SessionError> + Send;
+
+pub trait Backend: Send {
+    fn random_identifier(&self) -> SessionIdentifier {
+        let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
+        SessionIdentifier { value: base64::encode_config(&bytes, base64::URL_SAFE_NO_PAD) }
+    }
+
+    fn new_session(&self, content: &[u8]) -> Result<SessionIdentifier, SessionError>;
+    fn update_session(&self,
+                      identifier: SessionIdentifier,
+                      content: &[u8])
+                      -> Result<(), SessionError>;
+    fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture>;
+}
+
 #[derive(Clone)]
 pub struct MemoryBackend {
     storage: Arc<RwLock<HashMap<String, Vec<u8>>>>,
