@@ -292,7 +292,10 @@ fn persist_session<T>((mut state, mut response): (State, Response))
             match session_data.serialize(&mut rmp_serde::Serializer::new(&mut bytes)) {
                 Ok(()) => {
                     match session_data.backend.update_session(session_data.identifier, &bytes[..]) {
-                        Ok(()) => future::ok((state, response)),
+                        Ok(()) => {
+                            trace!(" persisted session successfully");
+                            future::ok((state, response))
+                        }
                         Err(_) => future::ok((state, ise_response())),
                     }
                 }
