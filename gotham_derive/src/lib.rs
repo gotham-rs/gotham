@@ -12,9 +12,21 @@ mod helpers;
 
 use helpers::ty_params;
 
-#[proc_macro_derive(RequestPathExtractor)]
-pub fn request_path_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    extractors::request_path(input)
+#[proc_macro_derive(BasePathExtractor)]
+pub fn base_path_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+    let gen = extractors::base_path(&ast);
+    gen.parse().unwrap()
+}
+
+#[proc_macro_derive(PathExtractor)]
+pub fn path_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+    let brp = extractors::base_path(&ast);
+    let brsre = extenders::bad_request_static_response_extender(&ast);
+
+    let gen = quote! { #brp #brsre};
+    gen.parse().unwrap()
 }
 
 #[proc_macro_derive(BaseQueryStringExtractor)]
@@ -28,9 +40,9 @@ pub fn base_query_string_extractor(input: proc_macro::TokenStream) -> proc_macro
 pub fn query_string_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input(&input.to_string()).unwrap();
     let bqs = extractors::base_query_string(&ast);
-    let brre = extenders::bad_request_static_response_extender(&ast);
+    let brsre = extenders::bad_request_static_response_extender(&ast);
 
-    let gen = quote! { #bqs #brre };
+    let gen = quote! { #bqs #brsre };
     gen.parse().unwrap()
 }
 

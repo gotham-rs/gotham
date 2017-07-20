@@ -38,7 +38,7 @@ use self::middleware::{KitchenSinkData, KitchenSinkMiddleware};
 
 struct Echo;
 
-#[derive(RequestPathExtractor)]
+#[derive(PathExtractor)]
 struct SharedRequestPath {
     name: String,
 

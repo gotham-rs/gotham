@@ -51,6 +51,9 @@ pub trait Route {
                             segment_mapping: SegmentMapping)
                             -> Result<(), String>;
 
+    /// Extends the `Response` object when path extraction fails
+    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response);
+
     /// Extracts the `Request` query string and stores it in `State`
     fn extract_query_string(&self, state: &mut State, query: Option<&str>) -> Result<(), String>;
 
@@ -223,6 +226,10 @@ impl<RM, RE, QE> Route for RouteImpl<RM, RE, QE>
                             segment_mapping: SegmentMapping)
                             -> Result<(), String> {
         RE::extract(state, segment_mapping)
+    }
+
+    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response) {
+        RE::extend(state, res)
     }
 
     fn extract_query_string(&self, state: &mut State, query: Option<&str>) -> Result<(), String> {

@@ -153,9 +153,9 @@ impl Router {
                         route.dispatch(state, req)
                     }
                     Err(e) => {
-                        error!("[{}] the server cannot or will not process the request due to an apparent client error",
-                               request_id(&state));
                         trace!("[{}] {}", request_id(&state), e);
+                        error!("[{}] the server cannot or will not process the request due to a client error within the query string",
+                               request_id(&state));
 
                         let mut res = Response::new();
                         route.extend_response_on_query_string_error(&mut state, &mut res);
@@ -163,11 +163,12 @@ impl Router {
                     }
                 }
             }
-            Err(_) => {
-                let mut res = Response::new();
-                res.set_status(StatusCode::InternalServerError);
-                error!("[{}] internal server error, failed to dispatch",
+            Err(e) => {
+                trace!("[{}] {}", request_id(&state), e);
+                error!("[{}] the server cannot or will not process the request due to a client error on the request path",
                        request_id(&state));
+                let mut res = Response::new();
+                route.extend_response_on_path_error(&mut state, &mut res);
                 future::ok((state, res)).boxed()
             }
         }

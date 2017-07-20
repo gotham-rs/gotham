@@ -7,14 +7,24 @@ use std::string::ParseError;
 use std::str::ParseBoolError;
 use std::num::{ParseIntError, ParseFloatError};
 
+use hyper::Response;
+
 use http::PercentDecoded;
 use state::State;
 use router::tree::SegmentMapping;
 
+use router::response::extender::StaticResponseExtender;
 
-/// Derived through the macro of the same name supplied by `gotham-derive` for application defined
-/// Structs that will pass `Request` path data to custom `Middleware` and `Handler` implementations.
-pub trait RequestPathExtractor {
+/// Extracts the `Request` path into `State`. On failure is capable of extending `Response`
+/// to indicate why the extraction process failed.
+///
+/// This functionality can be simply derived for application structs via `PathExtractor`,
+/// which will attempt to populate the associated struct and simply set "400 Bad Request"
+/// on failure.
+///
+/// Custom responses can be written by using the `BasePathExtractor` derive and then
+/// implementing `StaticResponseExtender` independently.
+pub trait RequestPathExtractor: StaticResponseExtender {
     /// Populates the struct with data from the `Request` path and adds it to `State`
     fn extract(state: &mut State, segment_mapping: SegmentMapping) -> Result<(), String>;
 }
@@ -27,6 +37,10 @@ impl RequestPathExtractor for NoopRequestPathExtractor {
     fn extract(_state: &mut State, _segment_mapping: SegmentMapping) -> Result<(), String> {
         Ok(())
     }
+}
+
+impl StaticResponseExtender for NoopRequestPathExtractor {
+    fn extend(_state: &mut State, _res: &mut Response) {}
 }
 
 #[derive(Debug)]
