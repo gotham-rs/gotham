@@ -244,42 +244,62 @@ fn persist_session<T>((mut state, mut response): (State, Response))
 {
     match state.take::<SessionData<T>>() {
         Some(session_data) => {
-            let mut bytes = Vec::new();
-            let ise_response = || Response::new().with_status(StatusCode::InternalServerError);
-
             if let SessionCookieState::New = session_data.cookie_state {
-                let cookie_string = match session_data.cookie_config.secure {
-                    SecureCookie::Insecure => {
-                        format!("{}={}; HttpOnly",
-                                session_data.cookie_config.name,
-                                session_data.identifier.value)
-                    }
-
-                    SecureCookie::Secure => {
-                        format!("{}={}; secure; HttpOnly",
-                                session_data.cookie_config.name,
-                                session_data.identifier.value)
-                    }
-                };
-
-                let set_cookie = SetCookie(vec![cookie_string]);
-                response.headers_mut().set(set_cookie);
+                send_cookie(&mut response, &session_data);
             }
 
-            match session_data.serialize(&mut rmp_serde::Serializer::new(&mut bytes)) {
-                Ok(()) => {
-                    match session_data.backend.persist_session(session_data.identifier, &bytes[..]) {
-                        Ok(()) => {
-                            trace!(" persisted session successfully");
-                            future::ok((state, response))
-                        }
-                        Err(_) => future::ok((state, ise_response())),
-                    }
-                }
-                Err(_) => future::ok((state, ise_response())),
+            match session_data.state {
+                SessionDataState::Dirty => write_session(state, response, session_data),
+                SessionDataState::Clean => future::ok((state, response)),
             }
         }
         None => future::ok((state, response)),
+    }
+}
+
+fn send_cookie<T>(response: &mut Response, session_data: &SessionData<T>)
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    let cookie_string = match session_data.cookie_config.secure {
+        SecureCookie::Insecure => {
+            format!("{}={}; HttpOnly",
+                    session_data.cookie_config.name,
+                    session_data.identifier.value)
+        }
+
+        SecureCookie::Secure => {
+            format!("{}={}; secure; HttpOnly",
+                    session_data.cookie_config.name,
+                    session_data.identifier.value)
+        }
+    };
+
+    let set_cookie = SetCookie(vec![cookie_string]);
+    response.headers_mut().set(set_cookie);
+}
+
+fn write_session<T>(state: State,
+                    response: Response,
+                    session_data: SessionData<T>)
+                    -> future::FutureResult<(State, Response), (State, hyper::Error)>
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    let mut bytes = Vec::new();
+    let ise_response = || Response::new().with_status(StatusCode::InternalServerError);
+
+    if let Err(_) = session_data.serialize(&mut rmp_serde::Serializer::new(&mut bytes)) {
+        return future::ok((state, ise_response()));
+    }
+
+    let identifier = session_data.identifier;
+    let slice = &bytes[..];
+
+    match session_data.backend.persist_session(identifier, slice) {
+        Ok(()) => {
+                                    trace!(" persisted session successfully");
+                                    future::ok((state, response))
+                                }
+        Err(_) => future::ok((state, ise_response())),
     }
 }
 
