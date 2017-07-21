@@ -32,13 +32,13 @@ use gotham::router::tree::TreeBuilder;
 use gotham::router::tree::node::{NodeBuilder, SegmentType};
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
 use gotham::middleware::pipeline::new_pipeline;
-use gotham::state::State;
+use gotham::state::{State, FromState};
 
 use self::middleware::{KitchenSinkData, KitchenSinkMiddleware};
 
 struct Echo;
 
-#[derive(StateData, PathExtractor, StaticResponseExtender)]
+#[derive(StateData, FromState, PathExtractor, StaticResponseExtender)]
 struct SharedRequestPath {
     name: String,
 
@@ -50,7 +50,7 @@ struct SharedRequestPath {
     from: Option<String>,
 }
 
-#[derive(StateData, QueryStringExtractor, StaticResponseExtender)]
+#[derive(StateData, FromState, QueryStringExtractor, StaticResponseExtender)]
 struct SharedQueryString {
     i: u8,
     q: Option<Vec<String>>,
@@ -208,9 +208,8 @@ impl Echo {
              .with_body(INDEX))
     }
 
-    fn hello(state: State, _req: Request) -> (State, Response) {
-        let hello = format!("Hello, {}\n",
-                            state.borrow::<SharedRequestPath>().unwrap().name);
+    fn hello(mut state: State, _req: Request) -> (State, Response) {
+        let hello = format!("Hello, {}\n", SharedRequestPath::take_from(&mut state).name);
 
         (state,
          Response::new()
@@ -220,7 +219,7 @@ impl Echo {
 
     fn greeting(state: State, _req: Request) -> (State, Response) {
         let res = {
-            let srp = state.borrow::<SharedRequestPath>().unwrap();
+            let srp = SharedRequestPath::borrow_from(&state);
             let name = srp.name.as_str();
             let from = match srp.from {
                 Some(ref s) => &s,

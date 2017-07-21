@@ -1,12 +1,14 @@
 //! Defines types for passing request state through `Middleware` and `Handler` implementations
 
 mod data;
+mod from_state;
 pub mod request_id;
 
 use std::collections::HashMap;
 use std::any::{Any, TypeId};
 
 pub use state::data::StateData;
+pub use state::from_state::FromState;
 pub use state::request_id::request_id;
 pub use state::request_id::set_request_id;
 

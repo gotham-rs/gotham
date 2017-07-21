@@ -10,6 +10,9 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
     let ofl_len = ofl.len();
     let keys = field_names(&fields);
 
+    let struct_name_token = quote!{#name};
+    let struct_name = struct_name_token.as_str();
+
     quote! {
         impl #borrowed gotham::router::request::path::PathExtractor for #name #borrowed
              #where_clause
@@ -73,6 +76,9 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
     let ofl_len = ofl.len();
     let keys = field_names(&fields);
     let keys2 = keys.clone();
+
+    let struct_name_token = quote!{#name};
+    let struct_name = struct_name_token.as_str();
 
     quote! {
         impl #borrowed gotham::router::request::query_string::QueryStringExtractor for #name #borrowed
