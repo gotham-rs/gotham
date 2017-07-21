@@ -1,7 +1,7 @@
 use super::*;
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, PoisonError};
 
 pub trait NewBackend: Sync {
     type Instance: Backend + Send + 'static;
@@ -49,13 +49,23 @@ impl Backend for MemoryBackend {
                        identifier: SessionIdentifier,
                        content: &[u8])
                        -> Result<(), SessionError> {
-        let mut storage = self.storage.write().unwrap();
-        storage.insert(identifier.value, Vec::from(content));
-        Ok(())
+        match self.storage.write() {
+            Ok(mut storage) => {
+                storage.insert(identifier.value, Vec::from(content));
+                Ok(())
+            }
+            Err(PoisonError { .. }) => {
+                unreachable!("session memory backend lock poisoned, HashMap panicked?")
+            }
+        }
     }
 
     fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture> {
-        let storage = self.storage.read().unwrap();
-        future::ok(storage.get(&identifier.value).map(Clone::clone)).boxed()
+        match self.storage.read() {
+            Ok(storage) => future::ok(storage.get(&identifier.value).map(Clone::clone)).boxed(),
+            Err(PoisonError { .. }) => {
+                unreachable!("session memory backend lock poisoned, HashMap panicked?")
+            }
+        }
     }
 }
