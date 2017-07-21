@@ -1,0 +1,23 @@
+[package]
+name = "todo-session"
+version = "0.1.0"
+authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
+
+[dependencies]
+gotham = { path = "../.." }
+gotham_derive = { path = "../../gotham_derive" }
+hyper = { git = "https://github.com/gotham-rs/hyper.git", branch = "add-response-body_ref-function" }
+futures = "*"
+serde = "*"
+serde_derive = "*"
+fern = "*"
+log = "*"
+chrono = "*"
+
+[lib]
+name = "todo_session_lib"
+path = "src/lib.rs"
+
+[[bin]]
+name = "todo_session"
+path = "src/bin.rs"
