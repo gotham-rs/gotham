@@ -3,6 +3,7 @@
 pub mod request_path;
 pub mod query_string;
 
+use std;
 use url::percent_encoding::percent_decode;
 
 /// Represents data that has been successfully percent decoded and is valid utf8
@@ -36,6 +37,20 @@ impl PercentDecoded {
     }
 }
 
+/// Decode form-urlencoded strings
+pub fn form_url_decode(raw: &str) -> Result<String, std::str::Utf8Error> {
+    match percent_decode(raw.replace("+", " ").as_bytes()).decode_utf8() {
+        Ok(pd) => {
+            trace!(" form_url_decode: {}, src: {}", pd, raw);
+            Ok(pd.into_owned())
+        }
+        Err(e) => {
+            trace!(" form_url_decode: error, src: {}", raw);
+            Err(e)
+        }
+    }
+}
+
 /// Represents data that has been successfully decoded from a form-urlencoded source and is
 /// valid utf8
 #[derive(PartialEq, Eq, Hash, Debug)]
@@ -50,15 +65,9 @@ impl FormUrlDecoded {
     /// On success encapulate resultant data for use by components that expect this transformation
     /// has already occured.
     pub fn new(raw: &str) -> Option<Self> {
-        match percent_decode(raw.replace("+", " ").as_bytes()).decode_utf8() {
-            Ok(pd) => {
-                trace!(" form_url_decoded: {}, src: {}", pd, raw);
-                Some(FormUrlDecoded { val: pd.into_owned() })
-            }
-            Err(_) => {
-                trace!(" form_url_decoded: error, src: {}", raw);
-                None
-            }
+        match form_url_decode(raw) {
+            Ok(val) => Some(FormUrlDecoded { val }),
+            Err(_) => None,
         }
     }
 
