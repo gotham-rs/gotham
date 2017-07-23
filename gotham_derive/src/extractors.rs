@@ -1,6 +1,7 @@
 use proc_macro;
 use syn;
-use quote;
+
+use helpers::{ty_params, ty_fields};
 
 pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input(&input.to_string()).unwrap();
@@ -12,14 +13,14 @@ pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let gen = quote! {
         impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
-        impl #borrowed gotham::http::request_path::RequestPathExtractor for #name #borrowed
+        impl #borrowed gotham::router::request::path::RequestPathExtractor for #name #borrowed
              #where_clause
         {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
                 -> Result<(), String>
             {
                 fn parse<T>(s: &gotham::state::State, segments: Option<&Vec<&gotham::http::PercentDecoded>>) -> Result<T, String>
-                    where T: gotham::http::request_path::FromRequestPath
+                    where T: gotham::router::request::path::FromRequestPath
                 {
                     match segments {
                         Some(segments) => {
@@ -80,12 +81,12 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let gen = quote! {
         impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
-        impl #borrowed gotham::http::query_string::QueryStringExtractor for #name #borrowed
+        impl #borrowed gotham::router::request::query_string::QueryStringExtractor for #name #borrowed
              #where_clause
         {
             fn extract(s: &mut gotham::state::State, query: Option<&str>) -> Result<(), String> {
                 fn parse<T>(s: &gotham::state::State, key: &str, values: Option<&Vec<gotham::http::FormUrlDecoded>>) -> Result<T, String>
-                    where T: gotham::http::query_string::FromQueryString
+                    where T: gotham::router::request::query_string::FromQueryString
                 {
                     match values {
                         Some(values) => {
@@ -104,7 +105,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     }
                 }
 
-                let mut qsm = gotham::http::query_string::split(query);
+                let mut qsm = gotham::http::request::query_string::split(query);
                 trace!("[{}] query string mappings recieved from client: {:?}", gotham::state::request_id(s), qsm);
 
                 // Add an empty Vec for Optional segments that have not been provided.
@@ -137,70 +138,6 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     gen.parse().unwrap()
 }
 
-fn ty_params<'a>(ast: &'a syn::DeriveInput) -> (&'a syn::Ident, quote::Tokens, quote::Tokens) {
-    // This was directly borrowed from the DeepClone example at
-    // https://github.com/asajeffrey/deep-clone/blob/master/deep-clone-derive/lib.rs
-    // which was instrumental in helping me undertand how to plug this all together.
-    let name = &ast.ident;
-    let borrowed_lifetime_params = ast.generics.lifetimes.iter().map(|alpha| quote! { #alpha });
-    let borrowed_type_params = ast.generics.ty_params.iter().map(|ty| quote! { #ty });
-    let borrowed_params = borrowed_lifetime_params
-        .chain(borrowed_type_params)
-        .collect::<Vec<_>>();
-    let borrowed = if borrowed_params.is_empty() {
-        quote!{}
-    } else {
-        quote! { < #(#borrowed_params),* > }
-    };
-
-    let type_constraints = ast.generics
-        .ty_params
-        .iter()
-        .map(|ty| quote! { #ty: RequestPathExtractor });
-    let where_clause_predicates = ast.generics
-        .where_clause
-        .predicates
-        .iter()
-        .map(|pred| quote! { #pred });
-    let where_clause_items = type_constraints
-        .chain(where_clause_predicates)
-        .collect::<Vec<_>>();
-    let where_clause = if where_clause_items.is_empty() {
-        quote!{}
-    } else {
-        quote! { where #(#where_clause_items),* }
-    };
-    // End of DeepClone borrow, thanks again @asajeffrey.
-
-    (name, borrowed, where_clause)
-}
-
-fn ty_fields<'a>(ast: &'a syn::DeriveInput) -> (Vec<&syn::Ident>, Vec<&syn::Ident>) {
-    let fields = match ast.body {
-        syn::Body::Struct(syn::VariantData::Struct(ref body)) => {
-            body.iter()
-                .filter_map(|field| field.ident.as_ref())
-                .collect::<Vec<_>>()
-        }
-        _ => panic!("Not implemented for tuple or unit like structs"),
-    };
-
-    let optional_fields = match ast.body {
-        syn::Body::Struct(syn::VariantData::Struct(ref body)) => {
-            body.iter()
-                .filter_map(|field| if is_option(&field.ty) {
-                                field.ident.as_ref()
-                            } else {
-                                None
-                            })
-                .collect::<Vec<_>>()
-        }
-        _ => panic!("Not implemented for tuple or unit like structs"),
-    };
-
-    (fields, optional_fields)
-}
-
 fn optional_field_labels<'a>(optional_fields: Vec<&'a syn::Ident>) -> Vec<&'a str> {
     let mut ofl = Vec::new();
     for ident in optional_fields {
@@ -215,16 +152,4 @@ fn field_names<'a>(fields: &'a Vec<&'a syn::Ident>) -> Vec<String> {
         keys.push(String::from(ident.as_ref()));
     }
     keys
-}
-
-fn is_option(ty: &syn::Ty) -> bool {
-    match *ty {
-        syn::Ty::Path(_, ref p) => {
-            match p.segments.first() {
-                Some(segment) => segment.ident == syn::Ident::from("Option"),
-                None => false,
-            }
-        }
-        _ => false,
-    }
 }

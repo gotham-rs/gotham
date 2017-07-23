@@ -1,6 +1,5 @@
-//! Defines functionality for operating on `Request` path values
+//! Extracts Request path segments into type safe structs
 
-use std::sync::Arc;
 use std::str::FromStr;
 use std::error::Error;
 use std::fmt;
@@ -9,86 +8,9 @@ use std::str::ParseBoolError;
 use std::num::{ParseIntError, ParseFloatError};
 
 use http::PercentDecoded;
-use state::{State, StateData};
+use state::State;
 use router::tree::SegmentMapping;
 
-const EXCLUDED_SEGMENTS: [&str; 1] = [""];
-
-/// Holder for `Request` uri path segments that have been split into individual segments that are
-/// suitable for use with `Tree` traversal.
-#[derive(Clone, PartialEq)]
-pub struct RequestPathSegments {
-    offset: usize,
-    segments: Arc<Vec<PercentDecoded>>,
-}
-
-impl StateData for RequestPathSegments {}
-
-impl RequestPathSegments {
-    /// Creates a new RequestPathSegments instance.
-    ///
-    /// * path: A `Request` uri path that will be split into indivdual segments with
-    ///         a leading "/" to represent the root. Empty segments are removed.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// #
-    /// # use gotham::http::request_path::RequestPathSegments;
-    /// #
-    /// # pub fn main() {
-    ///     let srp = RequestPathSegments::new("/%61ctiv%61te//batsignal");
-    ///     assert_eq!("/", srp.segments()[0].val());
-    ///     assert_eq!("activate", srp.segments()[1].val());
-    ///     assert_eq!("batsignal", srp.segments()[2].val());
-    /// # }
-    /// ```
-    pub fn new<'r>(path: &'r str) -> Self {
-        let mut segments = vec!["/"];
-        segments.extend(path.split('/')
-                            .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
-                            .collect::<Vec<&'r str>>());
-
-        let segments = Arc::new(segments
-                                    .iter()
-                                    .filter_map(|s| PercentDecoded::new(s))
-                                    .collect::<Vec<PercentDecoded>>());
-
-        RequestPathSegments {
-            offset: 0,
-            segments,
-        }
-    }
-
-    /// Provide segments that still need to be processed via a `Router`.
-    ///
-    /// n.b. When offset from something other than 0, that is for a delegated `Router`, the
-    /// `Tree` structure will still (validly) believe it starts from a root segment of "/" as
-    /// there is deliberately no knowledge of any other `Router` having been involved in
-    /// the `Request`. To facilitiate this we always include "/" and filter anything that has
-    /// previously been processed.
-    pub fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
-        self.segments
-            .iter()
-            .enumerate()
-            .filter_map(|(i, v)| if i == 0 || i > self.offset {
-                            Some(v)
-                        } else {
-                            None
-                        })
-            .collect::<Vec<&PercentDecoded>>()
-    }
-
-    /// Increases the offset for the original Request path that should be considered the
-    /// first node for the next delegated router.
-    ///
-    /// * add: Indicates how many segments have been consumed by the current router, *including* the
-    /// root node, "/". This will be added to any exisiting offset amount.
-    pub fn increase_offset(&mut self, add: usize) {
-        self.offset += add;
-    }
-}
 
 /// Derived through the macro of the same name supplied by `gotham-derive` for application defined
 /// Structs that will pass `Request` path data to custom `Middleware` and `Handler` implementations.

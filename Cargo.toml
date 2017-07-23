@@ -18,3 +18,6 @@ borrow-bag = "0.3"
 url = "1.4.0"
 uuid = { version = "0.5", features = ["v4"] }
 chrono = "0.3"
+
+[dev-dependencies]
+gotham_derive = { path = "gotham_derive" }

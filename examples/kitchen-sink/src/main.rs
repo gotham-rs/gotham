@@ -19,14 +19,15 @@ use hyper::header::ContentLength;
 
 use log::LogLevelFilter;
 
-use gotham::http::request_path::NoopRequestPathExtractor;
-use gotham::http::query_string::NoopQueryStringExtractor;
-use gotham::router::response_extender::{NoopExtender, ResponseExtenderBuilder};
+use gotham::router::request::path::NoopRequestPathExtractor;
+use gotham::router::request::query_string::NoopQueryStringExtractor;
+use gotham::router::response::finalizer::ResponseFinalizerBuilder;
+use gotham::router::response::extender::NoopResponseExtender;
 use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors, Delegation};
-use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
+use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
                        PipelineHandleChain};
-use gotham::router::request_matcher::MethodOnlyRequestMatcher;
+use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 use gotham::router::tree::TreeBuilder;
 use gotham::router::tree::node::{NodeBuilder, SegmentType};
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
@@ -67,7 +68,7 @@ fn static_route<NH, P, C>(methods: Vec<Method>,
           C: PipelineHandleChain<P> + Send + Sync + 'static,
           P: Send + Sync + 'static
 {
-    let matcher = MethodOnlyRequestMatcher::new(methods);
+    let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> =
         Extractors::new();
@@ -87,7 +88,7 @@ fn dynamic_route<NH, P, C>(methods: Vec<Method>,
           C: PipelineHandleChain<P> + Send + Sync + 'static,
           P: Send + Sync + 'static
 {
-    let matcher = MethodOnlyRequestMatcher::new(methods);
+    let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
     let route = RouteImpl::new(matcher,
@@ -167,14 +168,14 @@ fn build_router() -> Router {
 
     let tree = tree_builder.finalize();
 
-    let mut response_extender_builder = ResponseExtenderBuilder::new();
-    let extender_200 = NoopExtender::new();
-    response_extender_builder.add(StatusCode::Ok, Box::new(extender_200));
-    let extender_500 = NoopExtender::new();
-    response_extender_builder.add(StatusCode::InternalServerError, Box::new(extender_500));
-    let response_extender = response_extender_builder.finalize();
+    let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
+    let extender_200 = NoopResponseExtender::new();
+    response_finalizer_builder.add(StatusCode::Ok, Box::new(extender_200));
+    let extender_500 = NoopResponseExtender::new();
+    response_finalizer_builder.add(StatusCode::InternalServerError, Box::new(extender_500));
+    let response_finalizer = response_finalizer_builder.finalize();
 
-    Router::new(tree, response_extender)
+    Router::new(tree, response_finalizer)
 }
 
 impl Echo {

@@ -1,20 +1,23 @@
-//! Defines a `Route` type and a default implementation.
+//! Defines types that support individual application routes.
 //!
 //! The Gotham `Router` having identified one or more potential `Route` instances to service a
 //! request via route `Tree` traversal will attempt to identify a matching `Route` and
 //! dispatch to it when it does so.
+
+pub mod matcher;
+pub mod dispatch;
 
 use std::marker::PhantomData;
 
 use hyper::server::Request;
 use hyper::StatusCode;
 
-use dispatch::Dispatcher;
+use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
-use router::request_matcher::RequestMatcher;
+use router::request::query_string::QueryStringExtractor;
+use router::route::matcher::RouteMatcher;
 use router::tree::SegmentMapping;
-use http::request_path::RequestPathExtractor;
-use http::query_string::QueryStringExtractor;
+use router::request::path::RequestPathExtractor;
 use state::State;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -60,9 +63,6 @@ pub trait Route {
 
 /// Default implementation for `Route`.
 ///
-/// Delegates `is_match` to `RequestMatcher` and `dispatch` to `Dispatcher`
-/// without any additional involvement.
-///
 /// # Examples
 ///
 /// ## Standard `Route` which calls application code
@@ -74,10 +74,10 @@ pub trait Route {
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
 /// #
-/// # use gotham::http::request_path::NoopRequestPathExtractor;
-/// # use gotham::http::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::request::path::NoopRequestPathExtractor;
+/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// #
@@ -88,7 +88,7 @@ pub trait Route {
 ///
 ///   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 ///   let methods = vec![Method::Get];
-///   let matcher = MethodOnlyRequestMatcher::new(methods);
+///   let matcher = MethodOnlyRouteMatcher::new(methods);
 ///   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///   RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
@@ -104,15 +104,15 @@ pub trait Route {
 /// # use hyper::server::{Request, Response};
 /// # use hyper::Method;
 /// #
-/// # use gotham::http::request_path::NoopRequestPathExtractor;
-/// # use gotham::http::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::request::path::NoopRequestPathExtractor;
+/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::response_extender::ResponseExtenderBuilder;
+/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// #
 /// # fn main() {
 ///   fn handler(state: State, _req: Request) -> (State, Response) {
@@ -125,7 +125,7 @@ pub trait Route {
 ///
 ///        let route = {
 ///            let methods = vec![Method::Get];
-///            let matcher = MethodOnlyRequestMatcher::new(methods);
+///            let matcher = MethodOnlyRouteMatcher::new(methods);
 ///            let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
 ///            let extractors: Extractors<NoopRequestPathExtractor,
 ///                                       NoopQueryStringExtractor> = Extractors::new();
@@ -135,19 +135,19 @@ pub trait Route {
 ///        tree_builder.add_route(route);
 ///
 ///        let tree = tree_builder.finalize();
-///        Router::new(tree, ResponseExtenderBuilder::new().finalize())
+///        Router::new(tree, ResponseFinalizerBuilder::new().finalize())
 ///   };
 ///
 ///   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 ///   let methods = vec![Method::Get];
-///   let matcher = MethodOnlyRequestMatcher::new(methods);
+///   let matcher = MethodOnlyRouteMatcher::new(methods);
 ///   let dispatcher = Box::new(DispatcherImpl::new(secondary_router, (), pipeline_set));
 ///   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///   RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
 /// # }
 /// ```
 pub struct RouteImpl<RM, RE, QE>
-    where RM: RequestMatcher,
+    where RM: RouteMatcher,
           RE: RequestPathExtractor,
           QE: QueryStringExtractor
 {
@@ -168,7 +168,7 @@ pub struct Extractors<RE, QE>
 }
 
 impl<RM, RE, QE> RouteImpl<RM, RE, QE>
-    where RM: RequestMatcher,
+    where RM: RouteMatcher,
           RE: RequestPathExtractor,
           QE: QueryStringExtractor
 {
@@ -201,7 +201,7 @@ impl<RE, QE> Extractors<RE, QE>
 }
 
 impl<RM, RE, QE> Route for RouteImpl<RM, RE, QE>
-    where RM: RequestMatcher,
+    where RM: RouteMatcher,
           RE: RequestPathExtractor,
           QE: QueryStringExtractor
 {

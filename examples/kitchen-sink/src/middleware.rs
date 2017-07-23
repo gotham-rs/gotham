@@ -1,17 +1,18 @@
 use std::io;
+
+use gotham;
 use gotham::handler::HandlerFuture;
-use gotham::state::{State, StateData};
+use gotham::state::State;
 use gotham::middleware::{Middleware, NewMiddleware};
 use hyper::server::Request;
 use futures::{future, Future};
 
 use gotham::state::request_id;
 
+#[derive(StateData)]
 pub struct KitchenSinkData {
     pub header_value: String,
 }
-
-impl StateData for KitchenSinkData {}
 
 pub struct KitchenSinkMiddleware {
     pub header_name: &'static str,

@@ -1,21 +1,43 @@
 //! Defines types for passing request state through `Middleware` and `Handler` implementations
 
+mod data;
 pub mod request_id;
 
 use std::collections::HashMap;
 use std::any::{Any, TypeId};
 
-pub use self::request_id::request_id;
-pub use self::request_id::set_request_id;
+pub use state::data::StateData;
+pub use state::request_id::request_id;
+pub use state::request_id::set_request_id;
 
 /// Provides storage for request state, and stores one item of each type. The types used for
-/// storage must implement the `gotham::state::StateData` trait to allow its storage.
+/// storage must implement the `gotham::state::StateData` trait to allow its storage. Gotham
+/// provides `StateData` to ease this implementation via `derive`.
+///
+/// # Examples
+///
+/// ```rust
+///  extern crate gotham;
+///  #[macro_use]
+///  extern crate gotham_derive;
+///
+///  use gotham::state::State;
+///
+///  #[derive(StateData)]
+///  struct MyStruct {
+///    value: i32
+///  }
+///
+///  # fn main() {
+///  let mut state = State::new();
+///
+///  state.put(MyStruct { value: 1 });
+///  assert_eq!(state.borrow::<MyStruct>().unwrap().value, 1);
+/// # }
+/// ```
 pub struct State {
     data: HashMap<TypeId, Box<Any + Send>>,
 }
-
-/// A marker trait for types that can be stored in `State`.
-pub trait StateData: Any + Send {}
 
 impl State {
     /// Creates a new, empty `State`
@@ -30,20 +52,20 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
     /// #
-    /// # use gotham::state::{State, StateData};
+    /// # use gotham::state::State;
     /// #
+    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # impl StateData for MyStruct {}
-    /// #
+    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// #     value: &'static str
     /// # }
-    /// #
-    /// # impl StateData for AnotherStruct {}
     /// #
     /// # fn main() {
     /// # let mut state = State::new();
@@ -72,19 +94,19 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
     /// #
-    /// # use gotham::state::{State, StateData};
+    /// # use gotham::state::State;
     /// #
+    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # impl StateData for MyStruct {}
-    /// #
+    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// # }
-    /// #
-    /// # impl StateData for AnotherStruct {}
     /// #
     /// # fn main() {
     /// # let mut state = State::new();
@@ -109,19 +131,19 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
     /// #
-    /// # use gotham::state::{State, StateData};
+    /// # use gotham::state::State;
     /// #
+    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # impl StateData for MyStruct {}
-    /// #
+    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// # }
-    /// #
-    /// # impl StateData for AnotherStruct {}
     /// #
     /// # fn main() {
     /// # let mut state = State::new();
@@ -147,19 +169,19 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
     /// #
-    /// # use gotham::state::{State, StateData};
+    /// # use gotham::state::State;
     /// #
+    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # impl StateData for MyStruct {}
-    /// #
+    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// # }
-    /// #
-    /// # impl StateData for AnotherStruct {}
     /// #
     /// # fn main() {
     /// # let mut state = State::new();
@@ -191,19 +213,19 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
     /// #
-    /// # use gotham::state::{State, StateData};
+    /// # use gotham::state::State;
     /// #
+    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # impl StateData for MyStruct {}
-    /// #
+    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// # }
-    /// #
-    /// # impl StateData for AnotherStruct {}
     /// #
     /// # fn main() {
     /// # let mut state = State::new();

@@ -16,7 +16,7 @@ use hyper::server::Request;
 use futures::{future, Future};
 
 use state::{State, set_request_id, request_id};
-use http::request_path::RequestPathSegments;
+use http::request::path::RequestPathSegments;
 
 /// A type alias for the trait objects returned by `HandlerService`
 pub type HandlerFuture =
@@ -77,11 +77,11 @@ impl<T> NewHandlerService<T>
     /// # use gotham::router::Router;
     /// # use gotham::router::tree::TreeBuilder;
     /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-    /// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-    /// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
-    /// # use gotham::http::request_path::NoopRequestPathExtractor;
-    /// # use gotham::http::query_string::NoopQueryStringExtractor;
-    /// # use gotham::router::response_extender::ResponseExtenderBuilder;
+    /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
+    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+    /// # use gotham::router::request::path::NoopRequestPathExtractor;
+    /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+    /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
     /// # use hyper::server::{Request, Response};
     /// # use hyper::{StatusCode, Method};
     /// #
@@ -92,16 +92,16 @@ impl<T> NewHandlerService<T>
     ///
     /// let mut tree_builder = TreeBuilder::new();
     /// let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-    /// let response_extender = ResponseExtenderBuilder::new().finalize();
+    /// let finalizer = ResponseFinalizerBuilder::new().finalize();
     ///
-    /// let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+    /// let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
     /// let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
     /// let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
     /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
     ///
     /// tree_builder.add_route(Box::new(route));
     /// let tree = tree_builder.finalize();
-    /// let router = Router::new(tree, response_extender);
+    /// let router = Router::new(tree, finalizer);
     ///
     /// NewHandlerService::new(router);
     /// # }
@@ -278,12 +278,12 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::handler::IntoResponse;
-/// # use gotham::http::request_path::NoopRequestPathExtractor;
-/// # use gotham::http::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::response_extender::ResponseExtenderBuilder;
+/// # use gotham::router::request::path::NoopRequestPathExtractor;
+/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
 /// # use hyper::server::{Request, Response};
@@ -314,14 +314,14 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # fn main() {
 /// #   let mut tree_builder = TreeBuilder::new();
 /// #   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-/// #   let response_extender = ResponseExtenderBuilder::new().finalize();
-/// #   let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+/// #   let finalizer = ResponseFinalizerBuilder::new().finalize();
+/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
 /// #   let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
 ///     tree_builder.add_route(Box::new(route));
 ///     let tree = tree_builder.finalize();
-///     Router::new(tree, response_extender);
+///     Router::new(tree, finalizer);
 /// # }
 /// ```
 ///

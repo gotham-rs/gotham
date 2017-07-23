@@ -3,13 +3,12 @@
 use hyper::Request;
 use uuid::Uuid;
 
-use state::{StateData, State};
+use state::State;
 
-struct RequestId {
+/// Holds details about the current Request that are useful for enhancing logging.
+pub struct RequestId {
     val: String,
 }
-
-impl StateData for RequestId {}
 
 header! {
     /// Defines the X-Request-ID header for use with Hyper functions.

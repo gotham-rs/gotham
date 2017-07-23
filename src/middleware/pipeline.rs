@@ -25,32 +25,33 @@ use state::{State, request_id};
 ///
 /// ```rust
 /// # extern crate gotham;
+/// # #[macro_use]
+/// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
 /// # use std::io;
-/// # use gotham::state::{State, StateData};
+/// # use gotham::state::State;
 /// # use gotham::handler::{HandlerFuture, NewHandlerService};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
 /// # use gotham::middleware::pipeline::new_pipeline;
 /// # use gotham::router::Router;
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::request_matcher::MethodOnlyRequestMatcher;
-/// # use gotham::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::test::TestServer;
-/// # use gotham::http::request_path::NoopRequestPathExtractor;
-/// # use gotham::http::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::response_extender::ResponseExtenderBuilder;
+/// # use gotham::router::request::path::NoopRequestPathExtractor;
+/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::server::{Request, Response};
 /// # use hyper::StatusCode;
 /// # use hyper::Method;
 /// #
+/// #[derive(StateData)]
 /// struct MiddlewareData {
 ///     vec: Vec<i32>
 /// }
-///
-/// impl StateData for MiddlewareData {}
 ///
 /// # #[derive(Clone)]
 /// struct MiddlewareOne;
@@ -133,7 +134,7 @@ use state::{State, request_id};
 ///
 ///     let mut tree_builder = TreeBuilder::new();
 ///
-///     let matcher = MethodOnlyRequestMatcher::new(vec![Method::Get]);
+///     let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
 ///     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
 ///     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 ///     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
@@ -141,8 +142,8 @@ use state::{State, request_id};
 ///     let tree = tree_builder.finalize();
 ///
 ///
-///     let response_extender = ResponseExtenderBuilder::new().finalize();
-///     let router = Router::new(tree, response_extender);
+///     let response_finalizer = ResponseFinalizerBuilder::new().finalize();
+///     let router = Router::new(tree, response_finalizer);
 ///
 ///     let new_service = NewHandlerService::new(router);
 ///     let mut test_server = TestServer::new(new_service).unwrap();
