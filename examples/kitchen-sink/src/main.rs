@@ -8,10 +8,11 @@ extern crate chrono;
 #[macro_use]
 extern crate log;
 extern crate fern;
+extern crate mime;
 
 mod middleware;
 
-use futures::{future, Future};
+use futures::{future, Future, Stream};
 
 use hyper::{Request, Response, Method, StatusCode};
 use hyper::server::Http;
@@ -33,6 +34,7 @@ use gotham::router::tree::node::{NodeBuilder, SegmentType};
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::state::{State, FromState};
+use gotham::http::response::create_response;
 
 use self::middleware::{KitchenSinkData, KitchenSinkMiddleware};
 
@@ -56,7 +58,7 @@ struct SharedQueryString {
     q: Option<Vec<String>>,
 }
 
-static INDEX: &'static [u8] = b"Try POST /echo";
+static INDEX: &'static str = "Try POST /echo";
 static ASYNC: &'static [u8] = b"Got async response";
 
 fn static_route<NH, P, C>(methods: Vec<Method>,
@@ -123,7 +125,7 @@ fn build_router() -> Router {
                                         pipeline_set.clone()));
 
     let mut echo = NodeBuilder::new("echo", SegmentType::Static);
-    echo.add_route(static_route(vec![Method::Get],
+    echo.add_route(static_route(vec![Method::Get, Method::Head],
                                 || Ok(Echo::get),
                                 (global, ()),
                                 pipeline_set.clone()));
@@ -179,18 +181,27 @@ fn build_router() -> Router {
 
 impl Echo {
     fn get(state: State, _req: Request) -> (State, Response) {
-        (state,
-         Response::new()
-             .with_header(ContentLength(INDEX.len() as u64))
-             .with_body(INDEX))
+        let res = create_response(&state,
+                                  StatusCode::Ok,
+                                  mime::TEXT_PLAIN,
+                                  Some(String::from(INDEX).into_bytes()));
+        (state, res)
     }
 
-    fn post(state: State, req: Request) -> (State, Response) {
-        let mut res = Response::new();
-        if let Some(len) = req.headers().get::<ContentLength>() {
-            res.headers_mut().set(len.clone());
-        }
-        (state, res.with_body(req.body()))
+    fn post(state: State, req: Request) -> Box<HandlerFuture> {
+        req.body()
+            .concat2()
+            .then(move |full_body| match full_body {
+                      Ok(valid_body) => {
+                          let res = create_response(&state,
+                                                    StatusCode::Ok,
+                                                    mime::TEXT_PLAIN,
+                                                    Some(valid_body.to_vec()));
+                          future::ok((state, res))
+                      }
+                      Err(e) => future::err((state, e)),
+                  })
+            .boxed()
     }
 
     fn async(state: State, _req: Request) -> Box<HandlerFuture> {

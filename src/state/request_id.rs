@@ -3,19 +3,12 @@
 use hyper::Request;
 use uuid::Uuid;
 
+use http::response::headers::XRequestId;
 use state::State;
 
 /// Holds details about the current Request that are useful for enhancing logging.
 pub struct RequestId {
     val: String,
-}
-
-header! {
-    /// Defines the X-Request-ID header for use with Hyper functions.
-    ///
-    /// If present in a request this value will be assigned into to the requests unique id. Formats
-    /// are not dicated when upstream systems provide this value however they must be unique.
-    (XRequestId, "X-Request-ID") => [String]
 }
 
 /// Sets a unique identifier for the request if it has not already been stored.
