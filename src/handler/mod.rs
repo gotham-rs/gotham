@@ -14,6 +14,7 @@ use hyper;
 use hyper::server;
 use hyper::server::Request;
 use futures::{future, Future};
+use futures_cpupool::{CpuPool, CpuFuture};
 
 use state::{State, set_request_id, request_id};
 use http::request::path::RequestPathSegments;
@@ -28,13 +29,17 @@ pub struct NewHandlerService<T>
     where T: NewHandler + 'static
 {
     t: Arc<T>,
+    pool: Arc<CpuPool>,
 }
 
 impl<T> Clone for NewHandlerService<T>
     where T: NewHandler + 'static
 {
     fn clone(&self) -> Self {
-        NewHandlerService { t: self.t.clone() }
+        NewHandlerService {
+            t: self.t.clone(),
+            pool: self.pool.clone(),
+        }
     }
 }
 
@@ -107,7 +112,10 @@ impl<T> NewHandlerService<T>
     /// # }
     /// ```
     pub fn new(t: T) -> NewHandlerService<T> {
-        NewHandlerService { t: Arc::new(t) }
+        NewHandlerService {
+            t: Arc::new(t),
+            pool: Arc::new(CpuPool::new_num_cpus()),
+        }
     }
 }
 
@@ -130,11 +138,10 @@ impl<T> server::Service for NewHandlerService<T>
     type Request = server::Request;
     type Response = server::Response;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = server::Response, Error = hyper::Error>>;
+    type Future = CpuFuture<Self::Response, Self::Error>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
         let s = chrono::UTC::now();
-
         let mut state = State::new();
         set_request_id(&mut state, &req);
 
@@ -156,47 +163,50 @@ impl<T> server::Service for NewHandlerService<T>
         // immediately consuming it.
         match self.t.new_handler() {
             Ok(handler) => {
-                handler
-                    .handle(state, req)
-                    .and_then(move |(state, res)| {
-                        let f = chrono::UTC::now();
-                        match f.signed_duration_since(s).num_microseconds() {
-                            Some(dur) => {
-                                info!("[RESPONSE][{}][{}][{}][{}µs]",
-                                      request_id(&state),
-                                      res.version(),
-                                      res.status(),
-                                      dur);
-                            }
-                            None => {
-                                info!("[RESPONSE][{}][{}][{}][invalid]",
-                                      request_id(&state),
-                                      res.version(),
-                                      res.status());
-                            }
-                        }
-                        future::ok(res)
+                self.pool
+                    .spawn_fn(move || {
+                        handler
+                            .handle(state, req)
+                            .and_then(move |(state, res)| {
+                                let f = chrono::UTC::now();
+                                match f.signed_duration_since(s).num_microseconds() {
+                                    Some(dur) => {
+                                        info!("[RESPONSE][{}][{}][{}][{}µs]",
+                                              request_id(&state),
+                                              res.version(),
+                                              res.status(),
+                                              dur);
+                                    }
+                                    None => {
+                                        info!("[RESPONSE][{}][{}][{}][invalid]",
+                                              request_id(&state),
+                                              res.version(),
+                                              res.status());
+                                    }
+                                }
+                                future::ok(res)
+                            })
+                            .or_else(move |(state, err)| {
+                                let f = chrono::UTC::now();
+                                match f.signed_duration_since(s).num_microseconds() {
+                                    Some(dur) => {
+                                        error!("[ERROR][{}][Error: {}][{}]",
+                                               request_id(&state),
+                                               err.description(),
+                                               dur);
+                                    }
+                                    None => {
+                                        error!("[ERROR][{}][Error: {}][invalid]",
+                                               request_id(&state),
+                                               err.description());
+                                    }
+                                }
+                                future::err(err)
+                            })
+                            .boxed()
                     })
-                    .or_else(move |(state, err)| {
-                        let f = chrono::UTC::now();
-                        match f.signed_duration_since(s).num_microseconds() {
-                            Some(dur) => {
-                                error!("[ERROR][{}][Error: {}][{}]",
-                                       request_id(&state),
-                                       err.description(),
-                                       dur);
-                            }
-                            None => {
-                                error!("[ERROR][{}][Error: {}][invalid]",
-                                       request_id(&state),
-                                       err.description());
-                            }
-                        }
-                        future::err(err)
-                    })
-                    .boxed()
             }
-            Err(e) => future::err(e.into()).boxed(),
+            Err(e) => self.pool.spawn(future::err(e.into())),
         }
     }
 }
