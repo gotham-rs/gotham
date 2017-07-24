@@ -25,8 +25,8 @@ use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 use gotham::router::response::extender::NoopResponseExtender;
 use gotham::router::Router;
 use gotham::router::route::{Route, RouteImpl, Extractors, Delegation};
-use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl,
-                       PipelineHandleChain};
+use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet,
+                                      DispatcherImpl, PipelineHandleChain};
 use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 use gotham::router::tree::TreeBuilder;
 use gotham::router::tree::node::{NodeBuilder, SegmentType};
@@ -38,7 +38,7 @@ use self::middleware::{KitchenSinkData, KitchenSinkMiddleware};
 
 struct Echo;
 
-#[derive(PathExtractor)]
+#[derive(StateData, PathExtractor, StaticResponseExtender)]
 struct SharedRequestPath {
     name: String,
 
@@ -50,7 +50,7 @@ struct SharedRequestPath {
     from: Option<String>,
 }
 
-#[derive(QueryStringExtractor)]
+#[derive(StateData, QueryStringExtractor, StaticResponseExtender)]
 struct SharedQueryString {
     i: u8,
     q: Option<Vec<String>>,
@@ -70,8 +70,7 @@ fn static_route<NH, P, C>(methods: Vec<Method>,
 {
     let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
-    let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
-        Extractors::new();
+    let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
     let route = RouteImpl::new(matcher,
                                Box::new(dispatcher),
                                extractors,

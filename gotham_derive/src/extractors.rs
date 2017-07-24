@@ -11,7 +11,6 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
     let keys = field_names(&fields);
 
     quote! {
-        impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
         impl #borrowed gotham::router::request::path::PathExtractor for #name #borrowed
              #where_clause
         {
@@ -76,7 +75,6 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
     let keys2 = keys.clone();
 
     quote! {
-        impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
         impl #borrowed gotham::router::request::query_string::QueryStringExtractor for #name #borrowed
              #where_clause
         {
