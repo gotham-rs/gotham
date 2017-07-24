@@ -1,7 +1,9 @@
 use super::*;
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Instant;
+
+use linked_hash_map::LinkedHashMap;
 
 pub trait NewBackend: Sync {
     type Instance: Backend + Send + 'static;
@@ -27,12 +29,12 @@ pub trait Backend: Send {
 
 #[derive(Clone)]
 pub struct MemoryBackend {
-    storage: Arc<RwLock<HashMap<String, Vec<u8>>>>,
+    storage: Arc<Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>>,
 }
 
 impl Default for MemoryBackend {
     fn default() -> MemoryBackend {
-        MemoryBackend { storage: Arc::new(RwLock::new(HashMap::new())) }
+        MemoryBackend { storage: Arc::new(Mutex::new(LinkedHashMap::new())) }
     }
 }
 
@@ -49,9 +51,9 @@ impl Backend for MemoryBackend {
                        identifier: SessionIdentifier,
                        content: &[u8])
                        -> Result<(), SessionError> {
-        match self.storage.write() {
+        match self.storage.lock() {
             Ok(mut storage) => {
-                storage.insert(identifier.value, Vec::from(content));
+                storage.insert(identifier.value, (Instant::now(), Vec::from(content)));
                 Ok(())
             }
             Err(PoisonError { .. }) => {
@@ -61,8 +63,16 @@ impl Backend for MemoryBackend {
     }
 
     fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture> {
-        match self.storage.read() {
-            Ok(storage) => future::ok(storage.get(&identifier.value).map(Clone::clone)).boxed(),
+        match self.storage.lock() {
+            Ok(mut storage) => {
+                match storage.remove(&identifier.value) {
+                    Some((_old_instant, value)) => {
+                        storage.insert(identifier.value, (Instant::now(), value.clone()));
+                        future::ok(Some(value)).boxed()
+                    }
+                    None => future::ok(None).boxed(),
+                }
+            }
             Err(PoisonError { .. }) => {
                 unreachable!("session memory backend lock poisoned, HashMap panicked?")
             }
