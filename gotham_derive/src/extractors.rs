@@ -1,19 +1,17 @@
-use proc_macro;
 use syn;
+use quote;
 
 use helpers::{ty_params, ty_fields};
 
-pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
     let (name, borrowed, where_clause) = ty_params(&ast);
     let (fields, optional_fields) = ty_fields(&ast);
     let ofl = optional_field_labels(optional_fields);
     let ofl_len = ofl.len();
     let keys = field_names(&fields);
 
-    let gen = quote! {
-        impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
-        impl #borrowed gotham::router::request::path::RequestPathExtractor for #name #borrowed
+    quote! {
+        impl #borrowed gotham::router::request::path::PathExtractor for #name #borrowed
              #where_clause
         {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
@@ -65,13 +63,10 @@ pub fn request_path(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 Ok(())
             }
         }
-    };
-
-    gen.parse().unwrap()
+    }
 }
 
-pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
     let (name, borrowed, where_clause) = ty_params(&ast);
     let (fields, optional_fields) = ty_fields(&ast);
     let ofl = optional_field_labels(optional_fields);
@@ -79,8 +74,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let keys = field_names(&fields);
     let keys2 = keys.clone();
 
-    let gen = quote! {
-        impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
+    quote! {
         impl #borrowed gotham::router::request::query_string::QueryStringExtractor for #name #borrowed
              #where_clause
         {
@@ -133,9 +127,7 @@ pub fn query_string(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 Ok(())
             }
         }
-    };
-
-    gen.parse().unwrap()
+    }
 }
 
 fn optional_field_labels<'a>(optional_fields: Vec<&'a syn::Ident>) -> Vec<&'a str> {

@@ -20,7 +20,7 @@ pub fn ty_params<'a>(ast: &'a syn::DeriveInput) -> (&'a syn::Ident, quote::Token
     let type_constraints = ast.generics
         .ty_params
         .iter()
-        .map(|ty| quote! { #ty: RequestPathExtractor });
+        .map(|ty| quote! { #ty: PathExtractor });
     let where_clause_predicates = ast.generics
         .where_clause
         .predicates

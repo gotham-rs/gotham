@@ -82,7 +82,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::SegmentType;
 /// # use gotham::http::request::path::RequestPathSegments;
-/// # use gotham::router::request::path::NoopRequestPathExtractor;
+/// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::http::PercentDecoded;
 /// #
@@ -102,7 +102,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRouteMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-/// #     let extractors: Extractors<NoopRequestPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+/// #     let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 /// #     Box::new(route)
 ///   };

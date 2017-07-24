@@ -153,20 +153,22 @@ impl Router {
                         route.dispatch(state, req)
                     }
                     Err(e) => {
-                        error!("[{}] the server cannot or will not process the request due to an apparent client error",
-                               request_id(&state));
                         trace!("[{}] {}", request_id(&state), e);
+                        error!("[{}] the server cannot or will not process the request due to a client error within the query string",
+                               request_id(&state));
 
-                        let res = Response::new();
+                        let mut res = Response::new();
+                        route.extend_response_on_query_string_error(&mut state, &mut res);
                         future::ok((state, res)).boxed()
                     }
                 }
             }
-            Err(_) => {
-                let mut res = Response::new();
-                res.set_status(StatusCode::InternalServerError);
-                error!("[{}] internal server error, failed to dispatch",
+            Err(e) => {
+                trace!("[{}] {}", request_id(&state), e);
+                error!("[{}] the server cannot or will not process the request due to a client error on the request path",
                        request_id(&state));
+                let mut res = Response::new();
+                route.extend_response_on_path_error(&mut state, &mut res);
                 future::ok((state, res)).boxed()
             }
         }
@@ -200,7 +202,7 @@ mod tests {
     use router::tree::TreeBuilder;
     use router::tree::node::{SegmentType, NodeBuilder};
     use router::route::{RouteImpl, Extractors};
-    use router::request::path::NoopRequestPathExtractor;
+    use router::request::path::NoopPathExtractor;
     use router::request::query_string::NoopQueryStringExtractor;
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
     use router::route::matcher::MethodOnlyRouteMatcher;
@@ -266,7 +268,7 @@ mod tests {
             let methods = vec![Method::Post];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-            let extractors: Extractors<NoopRequestPathExtractor,
+            let extractors: Extractors<NoopPathExtractor,
                                        NoopQueryStringExtractor> = Extractors::new();
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
@@ -292,7 +294,7 @@ mod tests {
             let methods = vec![Method::Get];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-            let extractors: Extractors<NoopRequestPathExtractor,
+            let extractors: Extractors<NoopPathExtractor,
                                        NoopQueryStringExtractor> = Extractors::new();
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
@@ -319,7 +321,7 @@ mod tests {
                 let methods = vec![Method::Get];
                 let matcher = MethodOnlyRouteMatcher::new(methods);
                 let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-                let extractors: Extractors<NoopRequestPathExtractor,
+                let extractors: Extractors<NoopPathExtractor,
                                            NoopQueryStringExtractor> = Extractors::new();
                 let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
                 Box::new(route)
@@ -338,7 +340,7 @@ mod tests {
             let methods = vec![Method::Get];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(delegated_router, (), pipeline_set));
-            let extractors: Extractors<NoopRequestPathExtractor,
+            let extractors: Extractors<NoopPathExtractor,
                                        NoopQueryStringExtractor> = Extractors::new();
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
             Box::new(route)
