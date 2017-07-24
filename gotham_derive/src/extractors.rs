@@ -23,15 +23,18 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
                 fn parse<T>(s: &gotham::state::State, segments: Option<&Vec<&gotham::http::PercentDecoded>>) -> Result<T, String>
                     where T: gotham::router::request::path::FromRequestPath
                 {
+                    let struct_name = #struct_name;
                     match segments {
                         Some(segments) => {
                             match T::from_request_path(segments.as_slice()) {
                                 Ok(val) => {
-                                    trace!("[{}] extracted request path segments", gotham::state::request_id(s));
+                                    trace!("[{}] extracted request path segment(s) into {}",
+                                           gotham::state::request_id(s), struct_name);
                                     Ok(val)
                                 }
                                 Err(_) => {
-                                    error!("[{}] unrecoverable error converting request path", gotham::state::request_id(s));
+                                    error!("[{}] unrecoverable error converting request path segment(s) into {}",
+                                           gotham::state::request_id(s), struct_name);
                                     Err(String::from("unrecoverable error converting request path"))
                                 }
                             }
@@ -88,15 +91,18 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
                 fn parse<T>(s: &gotham::state::State, key: &str, values: Option<&Vec<gotham::http::FormUrlDecoded>>) -> Result<T, String>
                     where T: gotham::router::request::query_string::FromQueryString
                 {
+                    let struct_name = #struct_name;
                     match values {
                         Some(values) => {
                             match T::from_query_string(key, values.as_slice()) {
                                 Ok(val) => {
-                                    trace!("[{}] extracted query string values", gotham::state::request_id(&s));
+                                    trace!("[{}] extracted query string value(s) into {}",
+                                           gotham::state::request_id(&s), struct_name);
                                     Ok(val)
                                 }
                                 Err(_) => {
-                                    error!("[{}] unrecoverable error converting query string", gotham::state::request_id(&s));
+                                    error!("[{}] unrecoverable error converting query string value(s) into {}",
+                                           gotham::state::request_id(&s), struct_name);
                                     Err(String::from("unrecoverable error converting query string"))
                                 }
                             }
