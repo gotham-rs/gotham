@@ -18,6 +18,7 @@
 #[macro_use]
 extern crate hyper;
 extern crate futures;
+extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate mio;
