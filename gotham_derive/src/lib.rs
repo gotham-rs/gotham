@@ -8,9 +8,8 @@ extern crate quote;
 
 mod extractors;
 mod extenders;
+mod state;
 mod helpers;
-
-use helpers::ty_params;
 
 #[proc_macro_derive(PathExtractor)]
 pub fn base_path_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -36,10 +35,13 @@ pub fn static_response_extender(input: proc_macro::TokenStream) -> proc_macro::T
 #[proc_macro_derive(StateData)]
 pub fn state_data(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input(&input.to_string()).unwrap();
-    let (name, borrowed, where_clause) = ty_params(&ast);
-    let gen = quote! {
-        impl #borrowed gotham::state::StateData for #name #borrowed #where_clause {}
-    };
+    let gen = state::state_data(&ast);
+    gen.parse().unwrap()
+}
 
+#[proc_macro_derive(FromState)]
+pub fn from_state(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+    let gen = state::from_state(&ast);
     gen.parse().unwrap()
 }
