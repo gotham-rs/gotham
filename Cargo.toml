@@ -24,6 +24,7 @@ uuid = { version = "0.5", features = ["v4"] }
 chrono = "0.3"
 base64 = "0.4"
 rand = "0.3"
+linked-hash-map = "0.4"
 
 [dev-dependencies]
 gotham_derive = { path = "gotham_derive" }

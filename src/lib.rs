@@ -32,6 +32,7 @@ extern crate serde;
 extern crate rand;
 extern crate base64;
 extern crate rmp_serde;
+extern crate linked_hash_map;
 
 #[cfg(test)]
 #[macro_use]
