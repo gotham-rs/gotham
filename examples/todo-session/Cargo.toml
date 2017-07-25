@@ -3,6 +3,9 @@ name = "todo-session"
 version = "0.1.0"
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
 
+[profile.release]
+lto = true
+
 [dependencies]
 gotham = { path = "../.." }
 gotham_derive = { path = "../../gotham_derive" }
