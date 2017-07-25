@@ -30,6 +30,20 @@ pub trait Backend: Send {
 
 #[derive(Clone)]
 pub struct MemoryBackend {
+    // Intuitively, a global `Mutex<_>` sounded like the slowest option. However, in some
+    // benchmarking it proved to be the faster out of the options that were tried:
+    //
+    // 1. Background thread containing all data, acting as an internal "server" for session data,
+    //    passing messages via `std::sync::mpsc::sync_channel`;
+    // 2. Background thread maintaining only LRU data for each session ID, and purging them when
+    //    they exceed the TTL, passing messages via a `std::sync::mpsc::sync_channel`;
+    // 3. The same options, but with messages being passed via `crossbeam::sync::MsQueue`;
+    // 4. Naive, global mutex.
+    //
+    // The performance was about 10~15% higher with the naive implementation, when measured in a
+    // similarly naive benchmark using `wrk` and a lightweight sample app. Real-world use cases
+    // might show a need to replace this with a smarter implementation, but today there's very
+    // little overhead here.
     storage: Arc<Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>>,
 }
 
