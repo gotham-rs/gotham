@@ -7,8 +7,6 @@ use std::sync::Arc;
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
 
-use rand;
-use base64;
 use hyper::{self, StatusCode};
 use hyper::server::{Request, Response};
 use hyper::header::{Cookie, SetCookie};
@@ -22,7 +20,8 @@ use state::{State, StateData};
 
 mod backend;
 
-pub use self::backend::{NewBackend, Backend, MemoryBackend};
+pub use self::backend::{NewBackend, Backend};
+pub use self::backend::memory::MemoryBackend;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SessionIdentifier {
@@ -351,6 +350,7 @@ impl<B, T> SessionMiddleware<B, T>
 mod tests {
     use super::*;
     use std::sync::Mutex;
+    use rand;
     use hyper::{Method, StatusCode, Response};
 
     #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]

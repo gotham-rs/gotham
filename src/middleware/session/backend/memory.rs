@@ -1,32 +1,12 @@
-use super::*;
-
 use std::sync::{Arc, Weak, Mutex, PoisonError};
 use std::time::{Instant, Duration};
-use std::thread;
+use std::{io, thread};
 
 use linked_hash_map::LinkedHashMap;
+use futures::{future, Future};
 
-pub trait NewBackend: Sync {
-    type Instance: Backend + Send + 'static;
-
-    fn new_backend(&self) -> io::Result<Self::Instance>;
-}
-
-pub type SessionFuture = Future<Item = Option<Vec<u8>>, Error = SessionError> + Send;
-
-pub trait Backend: Send {
-    fn random_identifier(&self) -> SessionIdentifier {
-        let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
-        SessionIdentifier { value: base64::encode_config(&bytes, base64::URL_SAFE_NO_PAD) }
-    }
-
-    fn persist_session(&self,
-                       identifier: SessionIdentifier,
-                       content: &[u8])
-                       -> Result<(), SessionError>;
-
-    fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture>;
-}
+use middleware::session::{SessionError, SessionIdentifier};
+use middleware::session::backend::{NewBackend, Backend, SessionFuture};
 
 #[derive(Clone)]
 pub struct MemoryBackend {
@@ -149,6 +129,8 @@ fn cleanup_once(storage: &mut LinkedHashMap<String, (Instant, Vec<u8>)>,
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use rand;
 
     #[test]
     fn cleanup_test() {
