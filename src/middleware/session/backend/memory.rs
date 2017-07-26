@@ -116,12 +116,38 @@ fn cleanup_once(storage: &mut LinkedHashMap<String, (Instant, Vec<u8>)>,
             let age = instant.elapsed();
 
             if age >= ttl {
-                storage.pop_front();
+                if let Some((key, _)) = storage.pop_front() {
+                    trace!("expired session {} and removed from MemoryBackend", key);
+                }
+
+                // We just removed one, so skip the sleep and check the next entry
                 None
             } else {
+                // Ensure to shrink the storage after a spike in sessions.
+                //
+                // Even with this, memory usage won't always drop back to pre-spike levels because
+                // the OS can hang onto it.
+                //
+                // The arbitrary numbers here were chosen to avoid the resizes being extremely
+                // frequent. Powers of 2 seemed like a reasonable idea, to let the optimiser
+                // potentially shave off a few CPU cycles. Totally unscientific though.
+                let cap = storage.capacity();
+                let len = storage.len();
+
+                if cap >= 65536 && cap / 8 > len {
+                    storage.shrink_to_fit();
+
+                    trace!(" session backend had capacity {} and {} sessions, new capacity: {}",
+                           cap,
+                           len,
+                           storage.capacity());
+                }
+
+                // Sleep until the next entry expires
                 Some(ttl - age)
             }
         }
+        // No sessions; sleep for the TTL, because that's the soonest we'll need to expire anything
         None => Some(ttl),
     }
 }
