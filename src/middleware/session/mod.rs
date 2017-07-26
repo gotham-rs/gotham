@@ -189,6 +189,12 @@ impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
     }
 }
 
+impl Default for NewSessionMiddleware<MemoryBackend, ()> {
+    fn default() -> NewSessionMiddleware<MemoryBackend, ()> {
+        NewSessionMiddleware::new(MemoryBackend::default())
+    }
+}
+
 impl<B> NewSessionMiddleware<B, ()>
     where B: NewBackend
 {
