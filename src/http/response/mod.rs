@@ -7,7 +7,7 @@ use hyper::header::{ContentType, ContentLength};
 use mime::Mime;
 
 use state::{State, FromState, request_id};
-use http::response::headers::XRequestId;
+use http::response::headers::{XRequestId, XFrameOptions};
 
 /// Creates a `Response` object and populates it with a set of default headers that ensure
 /// security and conformance to best practice.
@@ -163,6 +163,7 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Mime, length: Option
     headers.set(ContentType(mime));
 
     headers.set(XRequestId(request_id(state).into()));
+    headers.set(XFrameOptions::Deny);
 
     // TODO:
     // X-Frame-Options: DENY
