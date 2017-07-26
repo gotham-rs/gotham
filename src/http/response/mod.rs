@@ -1,13 +1,11 @@
 //! Helpers for HTTP Response generation
 
-pub mod headers;
-
 use hyper::{Response, StatusCode, Method};
 use hyper::header::{ContentType, ContentLength};
 use mime::Mime;
 
 use state::{State, FromState, request_id};
-use http::response::headers::{XRequestId, XFrameOptions};
+use http::header::{XRequestId, XFrameOptions};
 
 /// Creates a `Response` object and populates it with a set of default headers that ensure
 /// security and conformance to best practice.
@@ -30,7 +28,7 @@ use http::response::headers::{XRequestId, XFrameOptions};
 /// # use gotham::state::State;
 /// # use gotham::state::set_request_id;
 /// # use gotham::http::response::create_response;
-/// # use gotham::http::response::headers::XRequestId;
+/// # use gotham::http::header::XRequestId;
 /// #
 /// # fn main() {
 /// #   let mut state = State::new();
@@ -103,7 +101,7 @@ pub fn create_response(state: &State,
 /// # use gotham::state::State;
 /// # use gotham::state::set_request_id;
 /// # use gotham::http::response::set_headers;
-/// # use gotham::http::response::headers::XRequestId;
+/// # use gotham::http::header::XRequestId;
 /// #
 /// # fn main() {
 /// #   let mut state = State::new();
@@ -135,7 +133,7 @@ pub fn create_response(state: &State,
 /// # use gotham::state::State;
 /// # use gotham::state::set_request_id;
 /// # use gotham::http::response::set_headers;
-/// # use gotham::http::response::headers::XRequestId;
+/// # use gotham::http::header::XRequestId;
 /// #
 /// # fn main() {
 /// #   let mut state = State::new();

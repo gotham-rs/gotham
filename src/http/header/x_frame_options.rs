@@ -8,7 +8,7 @@ use hyper;
 use hyper::Uri;
 use hyper::header::{Header, Raw, Formatter};
 
-use http::response::headers::from_one_rws_delimited_raw_str;
+use http::header::from_one_rws_delimited_raw_str;
 
 /// The X-Frame-Options header as defined as part of [RFC
 /// 7034](https://tools.ietf.org/html/rfc7034).
@@ -39,7 +39,7 @@ use http::response::headers::from_one_rws_delimited_raw_str;
 /// # extern crate gotham;
 ///
 /// use hyper::header::Headers;
-/// use gotham::http::response::headers::XFrameOptions;
+/// use gotham::http::header::XFrameOptions;
 ///
 /// # fn main () {
 /// let mut headers = Headers::new();

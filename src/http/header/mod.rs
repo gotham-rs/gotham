@@ -4,8 +4,8 @@
 mod x_request_id;
 mod x_frame_options;
 
-pub use http::response::headers::x_request_id::XRequestId;
-pub use http::response::headers::x_frame_options::XFrameOptions;
+pub use http::header::x_request_id::XRequestId;
+pub use http::header::x_frame_options::XFrameOptions;
 
 use std::str;
 use hyper;

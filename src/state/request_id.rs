@@ -3,7 +3,7 @@
 use hyper::Request;
 use uuid::Uuid;
 
-use http::response::headers::XRequestId;
+use http::header::XRequestId;
 use state::State;
 
 /// Holds details about the current Request that are useful for enhancing logging.
