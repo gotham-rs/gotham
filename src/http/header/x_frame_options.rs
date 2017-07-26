@@ -1,4 +1,4 @@
-//! Definex the X-Frame-Options header.
+//! Define the X-Frame-Options header.
 
 use std::fmt;
 use std::str::FromStr;
@@ -9,6 +9,8 @@ use hyper::Uri;
 use hyper::header::{Header, Raw, Formatter};
 
 use http::header::from_one_rws_delimited_raw_str;
+
+static NAME: &'static str = "X-Frame-Options";
 
 /// The X-Frame-Options header as defined as part of [RFC
 /// 7034](https://tools.ietf.org/html/rfc7034).
@@ -63,8 +65,6 @@ pub enum XFrameOptions {
     AllowFrom(String),
 }
 
-static NAME: &'static str = "X-Frame-Options";
-
 impl Header for XFrameOptions {
     fn header_name() -> &'static str {
         NAME
@@ -103,7 +103,6 @@ impl Header for XFrameOptions {
         f.fmt_line(self)
     }
 }
-
 
 impl fmt::Display for XFrameOptions {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
