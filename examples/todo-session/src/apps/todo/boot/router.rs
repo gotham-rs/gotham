@@ -45,7 +45,8 @@ pub fn router() -> Router {
     let editable_pipeline_set = new_pipeline_set();
     let (editable_pipeline_set, global) = editable_pipeline_set
         .add(new_pipeline()
-                 .add(NewSessionMiddleware::insecure(MemoryBackend::default())
+                 .add(NewSessionMiddleware::default()
+                          .insecure()
                           .with_session_type::<Session>())
                  .build());
 

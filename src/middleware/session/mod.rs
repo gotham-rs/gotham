@@ -44,11 +44,13 @@ enum SessionDataState {
     Dirty,
 }
 
+#[derive(Copy, Clone)]
 enum SecureCookie {
     Insecure,
     Secure,
 }
 
+#[derive(Clone)]
 pub struct SessionCookieConfig {
     name: String,
     secure: SecureCookie,
@@ -208,20 +210,26 @@ impl<B> NewSessionMiddleware<B, ()>
             phantom: PhantomData,
         }
     }
+}
 
-    pub fn insecure(b: B) -> NewSessionMiddleware<B, ()> {
+impl<B, T> NewSessionMiddleware<B, T>
+    where B: NewBackend,
+          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    pub fn insecure(self) -> NewSessionMiddleware<B, T> {
+        let cookie_config = SessionCookieConfig {
+            secure: SecureCookie::Insecure,
+            ..(*self.cookie_config).clone()
+        };
+
         NewSessionMiddleware {
-            new_backend: b,
-            cookie_config: Arc::new(SessionCookieConfig {
-                                        name: "_gotham_session".to_owned(),
-                                        secure: SecureCookie::Insecure,
-                                    }),
-            phantom: PhantomData,
+            cookie_config: Arc::new(cookie_config),
+            ..self
         }
     }
 
-    pub fn with_session_type<T>(self) -> NewSessionMiddleware<B, T>
-        where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+    pub fn with_session_type<U>(self) -> NewSessionMiddleware<B, U>
+        where U: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
     {
         NewSessionMiddleware {
             new_backend: self.new_backend,
@@ -394,7 +402,7 @@ mod tests {
 
     #[test]
     fn existing_session() {
-        let nm: NewSessionMiddleware<_, TestSession> = NewSessionMiddleware::default();
+        let nm = NewSessionMiddleware::default().with_session_type::<TestSession>();
         let m = nm.new_middleware().unwrap();
 
         let identifier = m.backend.random_identifier();
