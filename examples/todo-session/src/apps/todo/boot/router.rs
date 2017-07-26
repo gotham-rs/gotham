@@ -5,7 +5,7 @@ use futures::{future, Future};
 
 use gotham::handler::NewHandler;
 use gotham::middleware::pipeline::new_pipeline;
-use gotham::middleware::session::NewSessionMiddleware;
+use gotham::middleware::session::{NewSessionMiddleware, MemoryBackend};
 use gotham::router::Router;
 use gotham::router::route::{Extractors, Route, RouteImpl, Delegation};
 use gotham::router::route::dispatch::{new_pipeline_set, PipelineSet, PipelineHandleChain,
@@ -45,7 +45,8 @@ pub fn router() -> Router {
     let editable_pipeline_set = new_pipeline_set();
     let (editable_pipeline_set, global) = editable_pipeline_set
         .add(new_pipeline()
-                 .add(NewSessionMiddleware::<_, Session>::default())
+                 .add(NewSessionMiddleware::insecure(MemoryBackend::default())
+                          .with_session_type::<Session>())
                  .build());
 
     let pipeline_set = Arc::new(editable_pipeline_set);

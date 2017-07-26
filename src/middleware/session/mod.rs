@@ -189,16 +189,37 @@ impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
     }
 }
 
-impl<T> Default for NewSessionMiddleware<MemoryBackend, T>
-    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+impl<B> NewSessionMiddleware<B, ()>
+    where B: NewBackend
 {
-    fn default() -> NewSessionMiddleware<MemoryBackend, T> {
+    pub fn new(b: B) -> NewSessionMiddleware<B, ()> {
         NewSessionMiddleware {
-            new_backend: MemoryBackend::default(),
+            new_backend: b,
+            cookie_config: Arc::new(SessionCookieConfig {
+                                        name: "_gotham_session".to_owned(),
+                                        secure: SecureCookie::Secure,
+                                    }),
+            phantom: PhantomData,
+        }
+    }
+
+    pub fn insecure(b: B) -> NewSessionMiddleware<B, ()> {
+        NewSessionMiddleware {
+            new_backend: b,
             cookie_config: Arc::new(SessionCookieConfig {
                                         name: "_gotham_session".to_owned(),
                                         secure: SecureCookie::Insecure,
                                     }),
+            phantom: PhantomData,
+        }
+    }
+
+    pub fn with_session_type<T>(self) -> NewSessionMiddleware<B, T>
+        where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+    {
+        NewSessionMiddleware {
+            new_backend: self.new_backend,
+            cookie_config: self.cookie_config,
             phantom: PhantomData,
         }
     }
