@@ -3,9 +3,11 @@
 
 mod x_request_id;
 mod x_frame_options;
+mod x_xss_protection;
 
 pub use http::header::x_request_id::XRequestId;
 pub use http::header::x_frame_options::XFrameOptions;
+pub use http::header::x_xss_protection::XXxsProtection;
 
 use std::str;
 use hyper;
