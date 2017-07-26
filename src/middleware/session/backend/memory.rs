@@ -143,8 +143,8 @@ fn cleanup_once(storage: &mut LinkedHashMap<String, (Instant, Vec<u8>)>,
                            storage.capacity());
                 }
 
-                // Sleep until the next entry expires
-                Some(ttl - age)
+                // Sleep until the next entry expires, but for at least 1 second
+                Some(::std::cmp::max(ttl - age, Duration::from_secs(1)))
             }
         }
         // No sessions; sleep for the TTL, because that's the soonest we'll need to expire anything
