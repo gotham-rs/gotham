@@ -104,6 +104,18 @@ impl Backend for MemoryBackend {
             }
         }
     }
+
+    fn drop_session(&self, identifier: SessionIdentifier) -> Result<(), SessionError> {
+        match self.storage.lock() {
+            Ok(mut storage) => {
+                storage.remove(&identifier.value);
+                Ok(())
+            }
+            Err(PoisonError { .. }) => {
+                unreachable!("session memory backend lock poisoned, HashMap panicked?")
+            }
+        }
+    }
 }
 
 fn cleanup_loop(storage: Weak<Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>>, ttl: Duration) {

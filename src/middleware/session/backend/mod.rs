@@ -43,4 +43,7 @@ pub trait Backend: Send {
     /// `None` indicates that the session is not available for use and a new session should be
     /// established.
     fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture>;
+
+    /// Drops a session from the underlying storage.
+    fn drop_session(&self, identifier: SessionIdentifier) -> Result<(), SessionError>;
 }

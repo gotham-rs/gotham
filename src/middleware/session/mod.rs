@@ -158,6 +158,12 @@ pub struct SessionData<T>
 impl<T> SessionData<T>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
+    /// Discards the session, invalidating it for future use and removing the data from the
+    /// `Backend`.
+    pub fn discard(self) -> Result<(), SessionError> {
+        self.backend.drop_session(self.identifier)
+    }
+
     // Create a new, blank `SessionData<T>`
     fn new(backend: Box<Backend + Send>,
            cookie_config: Arc<SessionCookieConfig>)
@@ -472,6 +478,7 @@ fn persist_session<T>((mut state, mut response): (State, Response))
                 SessionDataState::Clean => future::ok((state, response)),
             }
         }
+        // Session was discarded with `SessionData::discard`, or otherwise removed
         None => future::ok((state, response)),
     }
 }
