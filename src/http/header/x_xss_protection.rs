@@ -14,7 +14,7 @@ static NAME: &'static str = "X-XSS-Protection";
 ///
 /// No formal specification/RFC exists for this header.
 ///
-/// # Examples values
+/// # Example values
 /// * `1; mode=block`
 ///
 /// # Example

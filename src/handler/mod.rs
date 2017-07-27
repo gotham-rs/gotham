@@ -18,6 +18,7 @@ use futures_cpupool::{CpuPool, CpuFuture};
 
 use state::{State, set_request_id, request_id};
 use http::request::path::RequestPathSegments;
+use http::header::XRuntimeMicroseconds;
 
 /// A type alias for the trait objects returned by `HandlerService`
 pub type HandlerFuture = Future<Item = (State, Response), Error = (State, hyper::Error)> + Send;
@@ -175,15 +176,19 @@ impl<T> server::Service for NewHandlerService<T>
                                               res.version(),
                                               res.status(),
                                               dur);
+
+                                        future::ok(res.with_header(XRuntimeMicroseconds(dur)))
                                     }
                                     None => {
-                                        info!("[RESPONSE][{}][{}][{}][invalid]",
-                                              request_id(&state),
-                                              res.version(),
-                                              res.status());
+                                        // Valid response is still sent to client in this case but
+                                        // timing has failed and should be looked into.
+                                        error!("[RESPONSE][{}][{}][{}][invalid]",
+                                               request_id(&state),
+                                               res.version(),
+                                               res.status());
+                                        future::ok(res)
                                     }
                                 }
-                                future::ok(res)
                             })
                             .or_else(move |(state, err)| {
                                 let f = chrono::UTC::now();

@@ -164,7 +164,4 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Mime, length: Option
     headers.set(XFrameOptions::Deny);
     headers.set(XXxsProtection::EnableBlock);
     headers.set(XContentTypeOptions::NoSniff);
-
-    // Consider for Router itself
-    // X-Runtime
 }
