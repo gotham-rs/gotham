@@ -5,7 +5,7 @@ use hyper::header::{ContentType, ContentLength};
 use mime::Mime;
 
 use state::{State, FromState, request_id};
-use http::header::{XRequestId, XFrameOptions, XXxsProtection};
+use http::header::{XRequestId, XFrameOptions, XXxsProtection, XContentTypeOptions};
 
 /// Creates a `Response` object and populates it with a set of default headers that ensure
 /// security and conformance to best practice.
@@ -163,10 +163,7 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Mime, length: Option
     headers.set(XRequestId(request_id(state).into()));
     headers.set(XFrameOptions::Deny);
     headers.set(XXxsProtection::EnableBlock);
-
-    // TODO:
-    // X-XSS-Protection: 1; mode=block
-    // X-Content-Type-Options: nosniff
+    headers.set(XContentTypeOptions::NoSniff);
 
     // Consider for Router itself
     // X-Runtime
