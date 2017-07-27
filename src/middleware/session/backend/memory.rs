@@ -8,6 +8,9 @@ use futures::{future, Future};
 use middleware::session::{SessionError, SessionIdentifier};
 use middleware::session::backend::{NewBackend, Backend, SessionFuture};
 
+/// Defines the in-process memory based session storage.
+///
+/// This is the default implementation which is used by `NewSessionMiddleware::default()`
 #[derive(Clone)]
 pub struct MemoryBackend {
     // Intuitively, a global `Mutex<_>` sounded like the slowest option. However, in some
@@ -28,6 +31,21 @@ pub struct MemoryBackend {
 }
 
 impl MemoryBackend {
+    /// Creates a new `MemoryBackend` where sessions expire and are removed after the `ttl` has
+    /// elapsed.
+    ///
+    /// Alternately, `MemoryBackend::default()` creates a `MemoryBackend` with a `ttl` of one hour.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # use std::time::Duration;
+    /// # use gotham::middleware::session::{MemoryBackend, NewSessionMiddleware};
+    /// # fn main() {
+    /// NewSessionMiddleware::new(MemoryBackend::new(Duration::from_secs(3600)))
+    /// # ;}
+    /// ```
     pub fn new(ttl: Duration) -> MemoryBackend {
         let storage = Arc::new(Mutex::new(LinkedHashMap::new()));
 
