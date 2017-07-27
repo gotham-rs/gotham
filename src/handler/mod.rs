@@ -57,6 +57,7 @@ impl<T> NewHandlerService<T>
     /// # extern crate hyper;
     /// # extern crate borrow_bag;
     /// #
+    /// # use gotham::http::response::create_response;
     /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
     /// # use hyper::{Request, Response};
@@ -64,7 +65,8 @@ impl<T> NewHandlerService<T>
     /// #
     /// # fn main() {
     /// fn handler(state: State, _req: Request) -> (State, Response) {
-    ///     (state, Response::new().with_status(StatusCode::Accepted))
+    ///     let res = create_response(&state, StatusCode::Accepted, None);
+    ///     (state, res)
     /// }
     ///
     /// NewHandlerService::new(|| Ok(handler));
@@ -77,6 +79,7 @@ impl<T> NewHandlerService<T>
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
+    /// # use gotham::http::response::create_response;
     /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -92,7 +95,8 @@ impl<T> NewHandlerService<T>
     /// #
     /// # fn main() {
     /// fn handler(state: State, _req: Request) -> (State, Response) {
-    ///     (state, Response::new().with_status(StatusCode::Accepted))
+    ///     let res = create_response(&state, StatusCode::Accepted, None);
+    ///     (state, res)
     /// }
     ///
     /// let mut tree_builder = TreeBuilder::new();
