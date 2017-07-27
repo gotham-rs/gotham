@@ -318,11 +318,16 @@ fn write_session<T>(state: State,
                     -> future::FutureResult<(State, Response), (State, hyper::Error)>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    let mut bytes = Vec::new();
     let ise_response = || Response::new().with_status(StatusCode::InternalServerError);
+    let mut bytes = Vec::new();
 
-    if let Err(_) = session_data.serialize(&mut rmp_serde::Serializer::new(&mut bytes)) {
-        return future::ok((state, ise_response()));
+    {
+        let mut serializer = rmp_serde::Serializer::new(&mut bytes);
+
+        match session_data.value.serialize(&mut serializer) {
+            Err(_) => return future::ok((state, ise_response())),
+            Ok(_) => {}
+        }
     }
 
     let identifier = session_data.identifier;
