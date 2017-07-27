@@ -182,8 +182,7 @@ impl Echo {
     fn get(state: State, _req: Request) -> (State, Response) {
         let res = create_response(&state,
                                   StatusCode::Ok,
-                                  mime::TEXT_PLAIN,
-                                  Some(String::from(INDEX).into_bytes()));
+                                  Some((String::from(INDEX).into_bytes(), mime::TEXT_PLAIN)));
         (state, res)
     }
 
@@ -194,8 +193,7 @@ impl Echo {
                       Ok(valid_body) => {
                           let res = create_response(&state,
                                                     StatusCode::Ok,
-                                                    mime::TEXT_PLAIN,
-                                                    Some(valid_body.to_vec()));
+                                                    Some((valid_body.to_vec(), mime::TEXT_PLAIN)));
                           future::ok((state, res))
                       }
                       Err(e) => future::err((state, e)),
@@ -206,8 +204,7 @@ impl Echo {
     fn async(state: State, _req: Request) -> Box<HandlerFuture> {
         let res = create_response(&state,
                                   StatusCode::Ok,
-                                  mime::TEXT_PLAIN,
-                                  Some(String::from(ASYNC).into_bytes()));
+                                  Some((String::from(ASYNC).into_bytes(), mime::TEXT_PLAIN)));
         future::lazy(move || future::ok((state, res))).boxed()
     }
 
@@ -216,8 +213,7 @@ impl Echo {
 
         let res = create_response(&state,
                                   StatusCode::Ok,
-                                  mime::TEXT_PLAIN,
-                                  Some(String::from(INDEX).into_bytes()));
+                                  Some((String::from(INDEX).into_bytes(), mime::TEXT_PLAIN)));
         (state, res)
     }
 
@@ -226,8 +222,7 @@ impl Echo {
 
         let res = create_response(&state,
                                   StatusCode::Ok,
-                                  mime::TEXT_PLAIN,
-                                  Some(hello.into_bytes()));
+                                  Some((hello.into_bytes(), mime::TEXT_PLAIN)));
         (state, res)
     }
 
@@ -253,8 +248,7 @@ impl Echo {
 
         let res = create_response(&state,
                                   StatusCode::Ok,
-                                  mime::TEXT_PLAIN,
-                                  Some(g.into_bytes()));
+                                  Some((g.into_bytes(), mime::TEXT_PLAIN)));
         (state, res)
     }
 }
