@@ -53,6 +53,17 @@ pub fn add(mut state: State, req: Request) -> (State, Response) {
     (state, response)
 }
 
+pub fn reset(mut state: State, req: Request) -> (State, Response) {
+    if let Some(session) = state.take::<SessionData<Session>>() {
+        session.discard().unwrap();
+    }
+
+    let mut response = Response::new().with_status(StatusCode::SeeOther);
+    response.headers_mut().set(Location::new("/"));
+
+    (state, response)
+}
+
 // TODO: Use a template library instead. This is ugly.
 fn index_body(items: Vec<String>) -> Body {
     let mut out = String::new();
@@ -88,6 +99,10 @@ fn index_body(items: Vec<String>) -> Body {
                 <script type="text/javascript">
                     document.forms[0].getElementsByTagName('input')[0].focus()
                 </script>
+
+                <form method="post" action="/reset">
+                    <button type="submit">Reset</button>
+                </form>
             </body>
         </html>
         "#;

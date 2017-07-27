@@ -16,6 +16,7 @@ use gotham::router::request::query_string::NoopQueryStringExtractor;
 use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 use gotham::router::response::extender::NoopResponseExtender;
 use gotham::router::tree::TreeBuilder;
+use gotham::router::tree::node::{NodeBuilder, SegmentType};
 
 use apps::todo::Session;
 use apps::todo::controllers::todo;
@@ -57,11 +58,18 @@ pub fn router() -> Router {
                                         (global, ()),
                                         pipeline_set.clone()));
 
-
     tree_builder.add_route(static_route(vec![Method::Post],
                                         || Ok(todo::add),
                                         (global, ()),
                                         pipeline_set.clone()));
+
+    let mut reset = NodeBuilder::new("reset", SegmentType::Static);
+    reset.add_route(static_route(vec![Method::Post],
+                                 || Ok(todo::reset),
+                                 (global, ()),
+                                 pipeline_set.clone()));
+
+    tree_builder.add_child(reset);
 
     let tree = tree_builder.finalize();
 
