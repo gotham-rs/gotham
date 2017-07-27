@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use hyper::{Method, StatusCode};
-use futures::{future, Future};
 
 use gotham::handler::NewHandler;
 use gotham::middleware::pipeline::new_pipeline;
-use gotham::middleware::session::{NewSessionMiddleware, MemoryBackend};
+use gotham::middleware::session::NewSessionMiddleware;
 use gotham::router::Router;
 use gotham::router::route::{Extractors, Route, RouteImpl, Delegation};
 use gotham::router::route::dispatch::{new_pipeline_set, PipelineSet, PipelineHandleChain,

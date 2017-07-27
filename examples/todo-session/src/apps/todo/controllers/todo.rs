@@ -1,18 +1,16 @@
-use std::thread;
-use std::borrow::Cow;
 use std::collections::HashMap;
 
-use hyper::{StatusCode, Body, Chunk};
+use hyper::{StatusCode, Body};
 use hyper::header::Location;
 use hyper::server::{Request, Response};
-use futures::{future, Future, stream, Stream, Sink};
+use futures::{Future, Stream};
 
 use gotham::state::State;
 use gotham::middleware::session::SessionData;
 
 use apps::todo::Session;
 
-pub fn index(state: State, req: Request) -> (State, Response) {
+pub fn index(state: State, _req: Request) -> (State, Response) {
     let response = {
         if let Some(session) = state.borrow::<SessionData<Session>>() {
             Response::new()
@@ -53,7 +51,7 @@ pub fn add(mut state: State, req: Request) -> (State, Response) {
     (state, response)
 }
 
-pub fn reset(mut state: State, req: Request) -> (State, Response) {
+pub fn reset(mut state: State, _req: Request) -> (State, Response) {
     if let Some(session) = state.take::<SessionData<Session>>() {
         session.discard().unwrap();
     }
