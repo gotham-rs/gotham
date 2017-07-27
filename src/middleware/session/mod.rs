@@ -1,7 +1,5 @@
 //! Defines a default session middleware supporting multiple backends
 
-#![allow(missing_docs)]
-
 use std::io;
 use std::sync::Arc;
 use std::ops::{Deref, DerefMut};
@@ -23,14 +21,19 @@ mod backend;
 pub use self::backend::{NewBackend, Backend};
 pub use self::backend::memory::MemoryBackend;
 
+/// Represents the session identifier which is held in the user agent's session cookie.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SessionIdentifier {
-    value: String,
+    /// The value which is passed as a cookie, identifying the session
+    pub value: String,
 }
 
+/// The kind of failure which occurred trying to perform a session operation.
 #[derive(Debug)]
 pub enum SessionError {
+    /// The backend failed, and a message describes why
     Backend(String),
+    /// The session was unable to be deserialized
     Deserialize,
 }
 
@@ -50,12 +53,97 @@ enum SecureCookie {
     Secure,
 }
 
+/// Configuration for how the `Set-Cookie` header is generated.
+///
+/// By default, the cookie has the name "_gotham_session", and the cookie header includes the
+/// `secure` flag.  `NewSessionMiddleware` provides functions for adjusting the
+/// `SessionCookieConfig`.
 #[derive(Clone)]
 pub struct SessionCookieConfig {
     name: String,
     secure: SecureCookie,
 }
 
+/// The wrapping type for application session data.
+///
+/// The application will receive a `SessionData<T>` via the `State` container, where `T` is the
+/// session type given to `NewSessionMiddleware`.
+///
+/// ## Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// # extern crate futures;
+/// # extern crate serde;
+/// # #[macro_use]
+/// # extern crate serde_derive;
+/// # extern crate rmp_serde;
+/// #
+/// # use std::time::Duration;
+/// # use serde::Serialize;
+/// # use futures::{future, Future, Stream};
+/// # use gotham::state::State;
+/// # use gotham::middleware::{NewMiddleware, Middleware};
+/// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend};
+/// # use hyper::header::Cookie;
+/// # use hyper::server::{Request, Response};
+/// # use hyper::{Method, StatusCode};
+/// #
+/// #[derive(Default, Serialize, Deserialize)]
+/// struct MySessionType {
+///     items: Vec<String>,
+/// }
+///
+/// fn my_handler(state: State, _request: Request) -> (State, Response) {
+///     // The `Router` has a `NewSessionMiddleware<_, MySessionType>` in a pipeline which is
+///     // active for this handler.
+///     let response = {
+///         let session: &SessionData<MySessionType> = state.borrow().unwrap();
+///
+///         Response::new()
+///             .with_status(StatusCode::Ok)
+///             .with_body(format!("{:?}", session.items))
+///     };
+///
+///     (state, response)
+/// }
+/// #
+/// # fn main() {
+/// #   let backend = MemoryBackend::new(Duration::from_secs(1));
+/// #   let identifier = backend.random_identifier();
+/// #   let mut bytes = Vec::new();
+/// #   let session = MySessionType {
+/// #       items: vec!["a".into(), "b".into(), "c".into()],
+/// #   };
+/// #
+/// #   session.serialize(&mut rmp_serde::Serializer::new(&mut bytes)).unwrap();
+/// #   backend.persist_session(identifier.clone(), &bytes[..]).unwrap();
+/// #
+/// #   let mut cookies = Cookie::new();
+/// #   cookies.set("_gotham_session", identifier.value.clone());
+/// #
+/// #   let mut req = Request::new(Method::Get, "/".parse().unwrap());
+/// #   req.headers_mut().set(cookies);
+/// #
+/// #   let state = State::new();
+/// #
+/// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
+/// #   let m = nm.new_middleware().unwrap();
+/// #   let chain = |state, req| future::ok(my_handler(state, req)).boxed();
+/// #   let (_state, response) = m.call(state, req, chain).wait().map_err(|(_, e)| e).unwrap();
+/// #
+/// #   let response_bytes = response
+/// #       .body()
+/// #       .concat2()
+/// #       .wait()
+/// #       .unwrap()
+/// #       .to_vec();
+/// #
+/// #   assert_eq!(String::from_utf8(response_bytes).unwrap(),
+/// #              r#"["a", "b", "c"]"#);
+/// # }
+/// ```
 pub struct SessionData<T>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
@@ -70,6 +158,7 @@ pub struct SessionData<T>
 impl<T> SessionData<T>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
+    // Create a new, blank `SessionData<T>`
     fn new(backend: Box<Backend + Send>,
            cookie_config: Arc<SessionCookieConfig>)
            -> SessionData<T> {
@@ -91,6 +180,7 @@ impl<T> SessionData<T>
         }
     }
 
+    // Load an existing, serialized session into a `SessionData<T>`
     fn construct(backend: Box<Backend + Send>,
                  cookie_config: Arc<SessionCookieConfig>,
                  identifier: SessionIdentifier,
@@ -154,6 +244,56 @@ impl<T> DerefMut for SessionData<T>
 
 trait SessionTypePhantom<T>: Send + Sync where T: Send {}
 
+/// Added to a `Pipeline`, this spawns the per-request `SessionMiddleware`
+///
+/// There are two ways to construct the `NewSessionMiddleware`, but `with_session_type` **must** be
+/// called before the middleware is useful:
+///
+/// 1. Using the `Default` implementation, which sets up an in-memory session store. When
+///    constructed this way, sessions are unable to be shared between multiple application servers,
+///    and are lost on restart:
+///
+///     ```rust
+///     # extern crate gotham;
+///     # use gotham::middleware::session::NewSessionMiddleware;
+///     # fn main() {
+///     NewSessionMiddleware::default()
+///     # ;}
+///     ```
+///
+/// 2. Using the `NewSessionMiddleware::new` function, and providing a backend. The `Default`
+///    implementation uses `MemoryBackend`, but this can be changed by providing your own:
+///
+///     ```rust
+///     # extern crate gotham;
+///     # use gotham::middleware::session::{MemoryBackend, NewSessionMiddleware};
+///     # fn main() {
+///     NewSessionMiddleware::new(MemoryBackend::default())
+///     # ;}
+///     ```
+///
+/// Before the middleware can be used, it must be associated with a session type provided by the
+/// application. This gives type-safe storage for all session data:
+///
+/// ```rust
+/// # extern crate gotham;
+/// # #[macro_use]
+/// # extern crate serde_derive;
+/// #
+/// # use gotham::middleware::session::NewSessionMiddleware;
+/// #
+/// #[derive(Default, Serialize, Deserialize)]
+/// struct MySessionType {
+///     items: Vec<String>,
+/// }
+///
+/// # fn main() {
+/// NewSessionMiddleware::default().with_session_type::<MySessionType>()
+/// # ;}
+/// ```
+///
+/// For plaintext HTTP servers, the `insecure` method must also be called to instruct the
+/// middleware not to set the `secure` flag on the cookie.
 pub struct NewSessionMiddleware<B, T>
     where B: NewBackend,
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
@@ -163,6 +303,9 @@ pub struct NewSessionMiddleware<B, T>
     phantom: PhantomData<SessionTypePhantom<T>>,
 }
 
+/// The per-request value which deals with sessions
+///
+/// See `NewSessionMiddleware` for usage details.
 pub struct SessionMiddleware<B, T>
     where B: Backend,
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
@@ -200,6 +343,8 @@ impl Default for NewSessionMiddleware<MemoryBackend, ()> {
 impl<B> NewSessionMiddleware<B, ()>
     where B: NewBackend
 {
+    /// Create a `NewSessionMiddleware` value for the provided backend and with a blank session
+    /// type. `with_session_type` **must** be called before the result is useful.
     pub fn new(b: B) -> NewSessionMiddleware<B, ()> {
         NewSessionMiddleware {
             new_backend: b,
@@ -216,6 +361,27 @@ impl<B, T> NewSessionMiddleware<B, T>
     where B: NewBackend,
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
+    /// Configures the `NewSessionMiddleware` not to send the `secure` flag along with the cookie.
+    /// This is required for plaintext HTTP connections.
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
+    /// #
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct MySessionType {
+    /// #   items: Vec<String>,
+    /// # }
+    /// #
+    /// # fn main() {
+    /// NewSessionMiddleware::default()
+    ///     .with_session_type::<MySessionType>()
+    ///     .insecure()
+    /// # ;}
+    /// ```
     pub fn insecure(self) -> NewSessionMiddleware<B, T> {
         let cookie_config = SessionCookieConfig {
             secure: SecureCookie::Insecure,
@@ -228,6 +394,25 @@ impl<B, T> NewSessionMiddleware<B, T>
         }
     }
 
+    /// Changes the session type to the provided type parameter. This is required to override the
+    /// default (unusable) session type of `()`.
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
+    /// #
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// #
+    /// #[derive(Default, Serialize, Deserialize)]
+    /// struct MySessionType {
+    ///     items: Vec<String>,
+    /// }
+    ///
+    /// # fn main() {
+    /// NewSessionMiddleware::default().with_session_type::<MySessionType>()
+    /// # ;}
+    /// ```
     pub fn with_session_type<U>(self) -> NewSessionMiddleware<B, U>
         where U: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
     {
