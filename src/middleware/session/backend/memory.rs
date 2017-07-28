@@ -91,10 +91,10 @@ impl Backend for MemoryBackend {
     fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture> {
         match self.storage.lock() {
             Ok(mut storage) => {
-                match storage.remove(&identifier.value) {
-                    Some((_old_instant, value)) => {
-                        storage.insert(identifier.value, (Instant::now(), value.clone()));
-                        future::ok(Some(value)).boxed()
+                match storage.get_refresh(&identifier.value) {
+                    Some(&mut (ref mut instant, ref value)) => {
+                        *instant = Instant::now();
+                        future::ok(Some(value.clone())).boxed()
                     }
                     None => future::ok(None).boxed(),
                 }
@@ -225,11 +225,56 @@ mod tests {
         let received = new_backend
             .new_backend()
             .expect("can't create backend for read")
-            .read_session(identifier)
+            .read_session(identifier.clone())
             .wait()
             .expect("no response from backend")
             .expect("session data missing");
 
         assert_eq!(bytes, received);
+    }
+
+    #[test]
+    fn memory_backend_refresh_test() {
+        let new_backend = MemoryBackend::new(Duration::from_millis(100));
+        let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
+        let identifier = new_backend.new_backend().unwrap().random_identifier();
+        let bytes2: Vec<u8> = (0..64).map(|_| rand::random()).collect();
+        let identifier2 = new_backend.new_backend().unwrap().random_identifier();
+
+        let backend = new_backend
+            .new_backend()
+            .expect("can't create backend for write");
+
+        backend
+            .persist_session(identifier.clone(), &bytes[..])
+            .expect("failed to persist");
+
+        backend
+            .persist_session(identifier2.clone(), &bytes2[..])
+            .expect("failed to persist");
+
+        {
+            let mut storage = backend.storage.lock().expect("couldn't lock storage");
+            assert_eq!(storage.front().expect("no front element").0,
+                       &identifier.value);
+
+            assert_eq!(storage.back().expect("no back element").0,
+                       &identifier2.value);
+        }
+
+        backend
+            .read_session(identifier.clone())
+            .wait()
+            .expect("failed to read session");
+
+        {
+            // Identifiers have swapped
+            let mut storage = backend.storage.lock().expect("couldn't lock storage");
+            assert_eq!(storage.front().expect("no front element").0,
+                       &identifier2.value);
+
+            assert_eq!(storage.back().expect("no back element").0,
+                       &identifier.value);
+        }
     }
 }
