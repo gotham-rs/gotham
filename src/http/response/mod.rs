@@ -5,7 +5,7 @@ use hyper::header::{ContentType, ContentLength};
 use mime::Mime;
 
 use state::{State, FromState, request_id};
-use http::header::{XRequestId, XFrameOptions, XXxsProtection, XContentTypeOptions};
+use http::header::{XRequestId, XFrameOptions, XXssProtection, XContentTypeOptions};
 
 type Body = (Vec<u8>, Mime);
 
@@ -169,6 +169,6 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
 
     headers.set(XRequestId(request_id(state).into()));
     headers.set(XFrameOptions::Deny);
-    headers.set(XXxsProtection::EnableBlock);
+    headers.set(XXssProtection::EnableBlock);
     headers.set(XContentTypeOptions::NoSniff);
 }

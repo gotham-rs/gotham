@@ -23,15 +23,15 @@ static NAME: &'static str = "X-XSS-Protection";
 /// # extern crate gotham;
 ///
 /// use hyper::header::Headers;
-/// use gotham::http::header::XXxsProtection;
+/// use gotham::http::header::XXssProtection;
 ///
 /// # fn main () {
 /// let mut headers = Headers::new();
-/// headers.set(XXxsProtection::EnableBlock);
+/// headers.set(XXssProtection::EnableBlock);
 /// # }
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum XXxsProtection {
+pub enum XXssProtection {
     /// Disables XSS filtering.
     Disable,
 
@@ -49,17 +49,17 @@ pub enum XXxsProtection {
     EnableBlock,
 }
 
-impl Header for XXxsProtection {
+impl Header for XXssProtection {
     fn header_name() -> &'static str {
         NAME
     }
 
-    fn parse_header(raw: &Raw) -> hyper::error::Result<XXxsProtection> {
+    fn parse_header(raw: &Raw) -> hyper::error::Result<XXssProtection> {
         let value: String = parsing::from_one_raw_str(raw)?;
         match value.as_str() {
-            "0" => return Ok(XXxsProtection::Disable),
-            "1" => return Ok(XXxsProtection::Enable),
-            "1; mode=block" => return Ok(XXxsProtection::EnableBlock),
+            "0" => return Ok(XXssProtection::Disable),
+            "1" => return Ok(XXssProtection::Enable),
+            "1; mode=block" => return Ok(XXssProtection::EnableBlock),
             _ => (),
         };
 
@@ -71,9 +71,9 @@ impl Header for XXxsProtection {
     }
 }
 
-impl fmt::Display for XXxsProtection {
+impl fmt::Display for XXssProtection {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::XXxsProtection::*;
+        use self::XXssProtection::*;
         match *self {
             Disable => f.write_str("0"),
             Enable => f.write_str("1"),
@@ -88,32 +88,32 @@ mod tests {
 
     #[test]
     fn valid_display_formatting() {
-        assert_eq!(format!("{}", XXxsProtection::Disable), "0");
-        assert_eq!(format!("{}", XXxsProtection::Enable), "1");
-        assert_eq!(format!("{}", XXxsProtection::EnableBlock), "1; mode=block");
+        assert_eq!(format!("{}", XXssProtection::Disable), "0");
+        assert_eq!(format!("{}", XXssProtection::Enable), "1");
+        assert_eq!(format!("{}", XXssProtection::EnableBlock), "1; mode=block");
     }
 
     #[test]
     fn parse_disable() {
-        let a: XXxsProtection = Header::parse_header(&"0".into()).unwrap();
-        let b = XXxsProtection::Disable;
+        let a: XXssProtection = Header::parse_header(&"0".into()).unwrap();
+        let b = XXssProtection::Disable;
         assert_eq!(a, b);
     }
 
     #[test]
     fn parse_enable() {
-        let a: XXxsProtection = Header::parse_header(&"1".into()).unwrap();
-        let b = XXxsProtection::Enable;
+        let a: XXssProtection = Header::parse_header(&"1".into()).unwrap();
+        let b = XXssProtection::Enable;
         assert_eq!(a, b);
 
-        let a: XXxsProtection = Header::parse_header(&"1; mode=block".into()).unwrap();
-        let b = XXxsProtection::EnableBlock;
+        let a: XXssProtection = Header::parse_header(&"1; mode=block".into()).unwrap();
+        let b = XXssProtection::EnableBlock;
         assert_eq!(a, b);
     }
 
     #[test]
     fn parse_fails() {
-        let e: hyper::error::Result<XXxsProtection> = Header::parse_header(&"foobar".into());
+        let e: hyper::error::Result<XXssProtection> = Header::parse_header(&"foobar".into());
         assert!(e.is_err());
     }
 }

@@ -9,7 +9,7 @@ mod x_runtime_microseconds;
 
 pub use http::header::x_request_id::XRequestId;
 pub use http::header::x_frame_options::XFrameOptions;
-pub use http::header::x_xss_protection::XXxsProtection;
+pub use http::header::x_xss_protection::XXssProtection;
 pub use http::header::x_content_type_options::XContentTypeOptions;
 pub use http::header::x_runtime_microseconds::XRuntimeMicroseconds;
 
