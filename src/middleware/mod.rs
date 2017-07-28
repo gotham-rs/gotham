@@ -2,7 +2,7 @@
 
 use std::io;
 
-use hyper::server::Request;
+use hyper::Request;
 
 use handler::HandlerFuture;
 use state::State;
@@ -26,7 +26,7 @@ pub mod pipeline;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::State;
-/// # use hyper::server::Request;
+/// # use hyper::Request;
 /// #
 /// struct NoopMiddleware;
 ///
@@ -54,7 +54,7 @@ pub mod pipeline;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::State;
-/// # use hyper::server::Request;
+/// # use hyper::Request;
 /// #
 /// struct MiddlewareWithStateData;
 ///
@@ -89,7 +89,7 @@ pub mod pipeline;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::{State};
-/// # use hyper::server::Request;
+/// # use hyper::Request;
 /// # use hyper::{Method, StatusCode};
 /// # use futures::{future, Future};
 /// #
@@ -123,7 +123,7 @@ pub mod pipeline;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::State;
-/// # use hyper::server::Request;
+/// # use hyper::Request;
 /// # use futures::{future, Future};
 /// #
 /// struct AsyncMiddleware;

@@ -90,7 +90,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::router::request::path::NoopPathExtractor;
     /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
     /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-    /// # use hyper::server::{Request, Response};
+    /// # use hyper::{Request, Response};
     /// # use hyper::{StatusCode, Method};
     /// #
     /// # fn main() {
@@ -304,7 +304,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
-/// # use hyper::server::{Request, Response};
+/// # use hyper::{Request, Response};
 /// #
 /// struct MyStruct {
 ///     value: String

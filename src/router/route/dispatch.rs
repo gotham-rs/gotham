@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use borrow_bag::{new_borrow_bag, BorrowBag, Handle, Lookup};
-use hyper::server::Request;
+use hyper::Request;
 use futures::{future, Future};
 
 use handler::{Handler, NewHandler, HandlerFuture};
@@ -163,7 +163,7 @@ mod tests {
     use middleware::{Middleware, NewMiddleware};
     use middleware::pipeline::new_pipeline;
     use state::StateData;
-    use hyper::server::Response;
+    use hyper::Response;
     use hyper::StatusCode;
 
     fn handler(state: State, _req: Request) -> (State, Response) {

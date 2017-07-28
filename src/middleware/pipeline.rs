@@ -2,7 +2,7 @@
 
 use std::io;
 
-use hyper::server::Request;
+use hyper::Request;
 
 use handler::HandlerFuture;
 use middleware::{Middleware, NewMiddleware};
@@ -46,7 +46,7 @@ use state::{State, request_id};
 /// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-/// # use hyper::server::{Request, Response};
+/// # use hyper::{Request, Response};
 /// # use hyper::StatusCode;
 /// # use hyper::Method;
 /// #
@@ -222,7 +222,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::{Middleware, NewMiddleware};
 /// # use gotham::middleware::pipeline::new_pipeline;
-/// # use hyper::server::Request;
+/// # use hyper::Request;
 /// #
 /// # #[derive(Clone)]
 /// # struct MiddlewareOne;
@@ -432,7 +432,7 @@ mod tests {
     use test::TestServer;
     use handler::{Handler, NewHandlerService};
     use state::StateData;
-    use hyper::server::Response;
+    use hyper::Response;
     use hyper::StatusCode;
     use futures::{future, Future};
 

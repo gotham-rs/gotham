@@ -418,7 +418,7 @@ mod tests {
     use super::*;
 
     use hyper::Method;
-    use hyper::server::{Request, Response};
+    use hyper::{Request, Response};
 
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet,
                                   DispatcherImpl};
