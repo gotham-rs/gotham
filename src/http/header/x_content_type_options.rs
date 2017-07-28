@@ -46,11 +46,9 @@ impl Header for XContentTypeOptions {
     fn parse_header(raw: &Raw) -> hyper::error::Result<XContentTypeOptions> {
         let value: String = parsing::from_one_raw_str(raw)?;
         match value.to_ascii_lowercase().as_str() {
-            "nosniff" => return Ok(XContentTypeOptions::NoSniff),
-            _ => (),
-        };
-
-        Err(hyper::error::Error::Header)
+            "nosniff" => Ok(XContentTypeOptions::NoSniff),
+            _ => Err(hyper::error::Error::Header),
+        }
     }
 
     fn fmt_header(&self, f: &mut Formatter) -> fmt::Result {

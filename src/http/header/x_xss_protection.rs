@@ -57,13 +57,11 @@ impl Header for XXssProtection {
     fn parse_header(raw: &Raw) -> hyper::error::Result<XXssProtection> {
         let value: String = parsing::from_one_raw_str(raw)?;
         match value.as_str() {
-            "0" => return Ok(XXssProtection::Disable),
-            "1" => return Ok(XXssProtection::Enable),
-            "1; mode=block" => return Ok(XXssProtection::EnableBlock),
-            _ => (),
-        };
-
-        Err(hyper::error::Error::Header)
+            "0" => Ok(XXssProtection::Disable),
+            "1" => Ok(XXssProtection::Enable),
+            "1; mode=block" => Ok(XXssProtection::EnableBlock),
+            _ => Err(hyper::error::Error::Header),
+        }
     }
 
     fn fmt_header(&self, f: &mut Formatter) -> fmt::Result {

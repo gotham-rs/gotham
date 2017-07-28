@@ -85,18 +85,16 @@ impl Header for XFrameOptions {
         match values.first() {
             Some(fo) => {
                 match fo.to_ascii_uppercase().as_str() {
-                    "DENY" => return Ok(XFrameOptions::Deny),
-                    "SAMEORIGIN" => return Ok(XFrameOptions::SameOrigin),
+                    "DENY" => Ok(XFrameOptions::Deny),
+                    "SAMEORIGIN" => Ok(XFrameOptions::SameOrigin),
                     "ALLOW-FROM" if origin.is_some() => {
-                        return Ok(XFrameOptions::AllowFrom(origin.unwrap()))
+                        Ok(XFrameOptions::AllowFrom(origin.unwrap()))
                     }
-                    _ => (),
+                    _ => Err(hyper::error::Error::Header),
                 }
             }
-            None => (),
-        };
-
-        Err(hyper::error::Error::Header)
+            None => Err(hyper::error::Error::Header),
+        }
     }
 
     fn fmt_header(&self, f: &mut Formatter) -> fmt::Result {
