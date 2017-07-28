@@ -11,7 +11,7 @@ use std::error::Error;
 
 use chrono;
 use hyper;
-use hyper::server;
+use hyper::server::{NewService, Service};
 use hyper::{Request, Response};
 use futures::{future, Future};
 use futures_cpupool::{CpuPool, CpuFuture};
@@ -90,7 +90,7 @@ impl<T> NewHandlerService<T>
     /// # use gotham::router::request::path::NoopPathExtractor;
     /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
     /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-    /// # use hyper::server::{Request, Response};
+    /// # use hyper::{Request, Response};
     /// # use hyper::{StatusCode, Method};
     /// #
     /// # fn main() {
@@ -123,7 +123,7 @@ impl<T> NewHandlerService<T>
     }
 }
 
-impl<T> server::NewService for NewHandlerService<T>
+impl<T> NewService for NewHandlerService<T>
     where T: NewHandler + 'static
 {
     type Request = Request;
@@ -136,7 +136,7 @@ impl<T> server::NewService for NewHandlerService<T>
     }
 }
 
-impl<T> server::Service for NewHandlerService<T>
+impl<T> Service for NewHandlerService<T>
     where T: NewHandler
 {
     type Request = Request;
@@ -304,7 +304,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
-/// # use hyper::server::{Request, Response};
+/// # use hyper::{Request, Response};
 /// #
 /// struct MyStruct {
 ///     value: String

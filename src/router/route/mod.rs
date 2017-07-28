@@ -9,7 +9,7 @@ pub mod dispatch;
 
 use std::marker::PhantomData;
 
-use hyper::server::{Request, Response};
+use hyper::{Request, Response};
 use hyper::StatusCode;
 
 use router::route::dispatch::Dispatcher;

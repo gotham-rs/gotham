@@ -4,7 +4,7 @@ use gotham;
 use gotham::handler::HandlerFuture;
 use gotham::state::State;
 use gotham::middleware::{Middleware, NewMiddleware};
-use hyper::server::Request;
+use hyper::Request;
 use futures::{future, Future};
 
 use gotham::state::request_id;
