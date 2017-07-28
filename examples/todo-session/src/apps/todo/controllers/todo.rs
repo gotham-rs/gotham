@@ -5,22 +5,18 @@ use hyper::header::Location;
 use hyper::server::{Request, Response};
 use futures::{Future, Stream};
 
-use gotham::state::State;
+use gotham::state::{State, FromState};
 use gotham::middleware::session::SessionData;
 
 use apps::todo::Session;
 
 pub fn index(state: State, _req: Request) -> (State, Response) {
     let response = {
-        if let Some(session) = state.borrow::<SessionData<Session>>() {
-            Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body(index_body(session.todo_list.clone()))
-        } else {
-            Response::new()
-                .with_status(StatusCode::InternalServerError)
-                .with_body(Body::from("no session"))
-        }
+        let session = SessionData::<Session>::borrow_from(&state);
+
+        Response::new()
+            .with_status(StatusCode::Ok)
+            .with_body(index_body(session.todo_list.clone()))
     };
 
     (state, response)
@@ -29,32 +25,27 @@ pub fn index(state: State, _req: Request) -> (State, Response) {
 // TODO: This is full of CSRF holes. Don't be full of holes.
 pub fn add(mut state: State, req: Request) -> (State, Response) {
     let response = {
-        if let Some(ref mut session) = state.borrow_mut::<SessionData<Session>>() {
-            let req_body = ugly_request_body_reader(req.body());
-            let data = ugly_form_body_parser(&req_body);
+        let session = SessionData::<Session>::borrow_mut_from(&mut state);
 
-            if let Some(item) = data.get("item") {
-                session.todo_list.push((*item).to_owned());
-            }
+        let req_body = ugly_request_body_reader(req.body());
+        let data = ugly_form_body_parser(&req_body);
 
-            let mut response = Response::new().with_status(StatusCode::SeeOther);
-            response.headers_mut().set(Location::new("/"));
-
-            response
-        } else {
-            Response::new()
-                .with_status(StatusCode::InternalServerError)
-                .with_body(Body::from("no session"))
+        if let Some(item) = data.get("item") {
+            session.todo_list.push((*item).to_owned());
         }
+
+        let mut response = Response::new().with_status(StatusCode::SeeOther);
+        response.headers_mut().set(Location::new("/"));
+
+        response
     };
 
     (state, response)
 }
 
 pub fn reset(mut state: State, _req: Request) -> (State, Response) {
-    if let Some(session) = state.take::<SessionData<Session>>() {
-        session.discard().unwrap();
-    }
+    let session = SessionData::<Session>::take_from(&mut state);
+    session.discard().unwrap();
 
     let mut response = Response::new().with_status(StatusCode::SeeOther);
     response.headers_mut().set(Location::new("/"));

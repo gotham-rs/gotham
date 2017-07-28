@@ -14,7 +14,7 @@ use rmp_serde;
 
 use super::{NewMiddleware, Middleware};
 use handler::HandlerFuture;
-use state::{State, StateData};
+use state::{self, State, StateData, FromState};
 
 mod backend;
 
@@ -227,6 +227,38 @@ impl<T> SessionData<T>
 impl<T> StateData for SessionData<T>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
+}
+
+impl<T> FromState<SessionData<T>> for SessionData<T>
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    fn take_from(s: &mut State) -> SessionData<T> {
+        s.take::<SessionData<T>>()
+            .unwrap_or_else(|| {
+                                panic!("[{}] [take] SessionData<T> is not stored in State, \
+                                        is NewSessionMiddleware configured correctly?",
+                                       state::request_id(s))
+                            })
+    }
+
+    fn borrow_from(s: &State) -> &SessionData<T> {
+        s.borrow::<SessionData<T>>()
+            .unwrap_or_else(|| {
+                                panic!("[{}] [borrow] SessionData<T> is not stored in State, \
+                                        is NewSessionMiddleware configured correctly?",
+                                       state::request_id(s))
+                            })
+    }
+
+    fn borrow_mut_from(s: &mut State) -> &mut SessionData<T> {
+        let req_id = String::from(state::request_id(s));
+        s.borrow_mut::<SessionData<T>>()
+            .unwrap_or_else(|| {
+                                panic!("[{}] [borrow_mut] SessionData<T> is not stored in State, \
+                                        is NewSessionMiddleware configured correctly?",
+                                       req_id)
+                            })
+    }
 }
 
 impl<T> Deref for SessionData<T>
