@@ -10,7 +10,7 @@ static NAME: &'static str = "X-XSS-Protection";
 /// The HTTP X-XSS-Protection response header is a feature of Internet Explorer, Chrome and Safari
 /// that stops pages from loading when they detect reflected cross-site scripting (XSS) attacks.
 ///
-/// Not as important for modern browsers but useful to set none the less.
+/// Not as important for modern browsers but useful to set nonetheless.
 ///
 /// No formal specification/RFC exists for this header.
 ///
@@ -42,10 +42,10 @@ pub enum XXssProtection {
 
     /// Enables XSS filtering.
     ///
-    /// If a cross-site scripting attack is detected, the browser will sanitize the page.
+    /// Rather than sanitizing, the browser will prevent rendering of the page if an attack
+    /// is detected.
     ///
-    /// `mode=block`: Rather than sanitizing the page, the browser will prevent rendering of the
-    ///               page if an attack is detected.
+    /// Adds `mode=block` to the header value.
     EnableBlock,
 }
 
