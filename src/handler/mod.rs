@@ -11,7 +11,7 @@ use std::error::Error;
 
 use chrono;
 use hyper;
-use hyper::server;
+use hyper::server::{NewService, Service};
 use hyper::{Request, Response};
 use futures::{future, Future};
 use futures_cpupool::{CpuPool, CpuFuture};
@@ -123,7 +123,7 @@ impl<T> NewHandlerService<T>
     }
 }
 
-impl<T> server::NewService for NewHandlerService<T>
+impl<T> NewService for NewHandlerService<T>
     where T: NewHandler + 'static
 {
     type Request = Request;
@@ -136,7 +136,7 @@ impl<T> server::NewService for NewHandlerService<T>
     }
 }
 
-impl<T> server::Service for NewHandlerService<T>
+impl<T> Service for NewHandlerService<T>
     where T: NewHandler
 {
     type Request = Request;
