@@ -85,10 +85,11 @@ pub mod pipeline;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
+/// # use gotham::http::response::create_response;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::{State};
-/// # use hyper::server::{Request, Response};
+/// # use hyper::server::Request;
 /// # use hyper::{Method, StatusCode};
 /// # use futures::{future, Future};
 /// #
@@ -101,7 +102,7 @@ pub mod pipeline;
 ///         if *req.method() == Method::Get {
 ///             chain(state, req)
 ///         } else {
-///             let response = Response::new().with_status(StatusCode::MethodNotAllowed);
+///             let response = create_response(&state, StatusCode::MethodNotAllowed, None);
 ///             future::ok((state, response)).boxed()
 ///         }
 ///     }

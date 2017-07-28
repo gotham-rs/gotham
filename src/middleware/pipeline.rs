@@ -29,8 +29,10 @@ use state::{State, request_id};
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// # extern crate futures;
+/// # extern crate mime;
 /// #
 /// # use std::io;
+/// # use gotham::http::response::create_response;
 /// # use gotham::state::State;
 /// # use gotham::handler::{HandlerFuture, NewHandlerService};
 /// # use gotham::middleware::{Middleware, NewMiddleware};
@@ -120,7 +122,9 @@ use state::{State, request_id};
 ///        format!("{:?}", data.vec)
 ///     };
 ///
-///     (state, Response::new().with_status(StatusCode::Ok).with_body(body))
+///     let res = create_response(&state, StatusCode::Ok, Some((body.into_bytes(), mime::TEXT_PLAIN)));
+///
+///     (state, res)
 /// }
 ///
 /// fn main() {

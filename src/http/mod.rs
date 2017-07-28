@@ -2,6 +2,7 @@
 
 pub mod request;
 pub mod response;
+pub mod header;
 
 use std;
 use url::percent_encoding::percent_decode;
