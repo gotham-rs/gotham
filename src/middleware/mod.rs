@@ -2,7 +2,7 @@
 
 use std::io;
 
-use hyper::server::Request;
+use hyper::Request;
 
 use handler::HandlerFuture;
 use state::State;
@@ -27,7 +27,7 @@ pub mod session;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::State;
-/// # use hyper::server::Request;
+/// # use hyper::Request;
 /// #
 /// struct NoopMiddleware;
 ///
@@ -55,7 +55,7 @@ pub mod session;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::State;
-/// # use hyper::server::Request;
+/// # use hyper::Request;
 /// #
 /// struct MiddlewareWithStateData;
 ///
@@ -86,10 +86,11 @@ pub mod session;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
+/// # use gotham::http::response::create_response;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::{State};
-/// # use hyper::server::{Request, Response};
+/// # use hyper::Request;
 /// # use hyper::{Method, StatusCode};
 /// # use futures::{future, Future};
 /// #
@@ -102,7 +103,7 @@ pub mod session;
 ///         if *req.method() == Method::Get {
 ///             chain(state, req)
 ///         } else {
-///             let response = Response::new().with_status(StatusCode::MethodNotAllowed);
+///             let response = create_response(&state, StatusCode::MethodNotAllowed, None);
 ///             future::ok((state, response)).boxed()
 ///         }
 ///     }
@@ -123,7 +124,7 @@ pub mod session;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::state::State;
-/// # use hyper::server::Request;
+/// # use hyper::Request;
 /// # use futures::{future, Future};
 /// #
 /// struct AsyncMiddleware;

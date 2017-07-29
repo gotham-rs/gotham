@@ -45,10 +45,10 @@ pub enum SegmentType {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::Method;
-/// # use hyper::server::{Request, Response};
+/// # use hyper::{Request, Response, Method, StatusCode};
 /// #
 /// # use gotham::http::PercentDecoded;
+/// # use gotham::http::response::create_response;
 /// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
@@ -58,7 +58,8 @@ pub enum SegmentType {
 /// # use gotham::router::tree::node::{NodeBuilder, SegmentType};
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
-/// #   (state, Response::new())
+/// #   let res = create_response(&state, StatusCode::Ok, None);
+/// #   (state, res)
 /// # }
 /// #
 /// # fn main() {
@@ -417,9 +418,10 @@ mod tests {
     use super::*;
 
     use hyper::Method;
-    use hyper::server::{Request, Response};
+    use hyper::{Request, Response};
 
-    use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet, DispatcherImpl};
+    use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet,
+                                  DispatcherImpl};
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Route, RouteImpl, Extractors};
     use router::request::path::NoopPathExtractor;
@@ -437,8 +439,7 @@ mod tests {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
-        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
-            Extractors::new();
+        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher,
                                    Box::new(dispatcher),
                                    extractors,
@@ -452,8 +453,7 @@ mod tests {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
-        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
-            Extractors::new();
+        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher,
                                    Box::new(dispatcher),
                                    extractors,
@@ -471,8 +471,7 @@ mod tests {
         let methods = vec![Method::Get, Method::Head];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
-        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
-            Extractors::new();
+        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher,
                                    Box::new(dispatcher),
                                    extractors,
@@ -486,8 +485,7 @@ mod tests {
         let methods = vec![Method::Post];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
-        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
-            Extractors::new();
+        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher,
                                    Box::new(dispatcher),
                                    extractors,
@@ -498,8 +496,7 @@ mod tests {
         let methods = vec![Method::Patch];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
-        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
-            Extractors::new();
+        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher,
                                    Box::new(dispatcher),
                                    extractors,

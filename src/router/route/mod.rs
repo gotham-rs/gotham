@@ -9,7 +9,7 @@ pub mod dispatch;
 
 use std::marker::PhantomData;
 
-use hyper::server::{Request, Response};
+use hyper::{Request, Response};
 use hyper::StatusCode;
 
 use router::route::dispatch::Dispatcher;
@@ -75,9 +75,9 @@ pub trait Route {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::server::{Request, Response};
-/// # use hyper::Method;
+/// # use hyper::{Request, Response, Method, StatusCode};
 /// #
+/// # use gotham::http::response::create_response;
 /// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
@@ -87,7 +87,8 @@ pub trait Route {
 /// #
 /// # fn main() {
 ///   fn handler(state: State, _req: Request) -> (State, Response) {
-///     (state, Response::new())
+///     let res = create_response(&state, StatusCode::Ok, None);
+///     (state, res)
 ///   }
 ///
 ///   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
@@ -105,9 +106,9 @@ pub trait Route {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::server::{Request, Response};
-/// # use hyper::Method;
+/// # use hyper::{Request, Response, StatusCode, Method};
 /// #
+/// # use gotham::http::response::create_response;
 /// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
@@ -120,7 +121,8 @@ pub trait Route {
 /// #
 /// # fn main() {
 ///   fn handler(state: State, _req: Request) -> (State, Response) {
-///     (state, Response::new())
+///     let res = create_response(&state, StatusCode::Ok, None);
+///     (state, res)
 ///   }
 ///
 ///   let secondary_router = {

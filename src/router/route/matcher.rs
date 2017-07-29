@@ -1,6 +1,6 @@
 //! Defines the type `RouteMatcher` and default implementations.
 
-use hyper::server::Request;
+use hyper::Request;
 use hyper::Method;
 use hyper::StatusCode;
 

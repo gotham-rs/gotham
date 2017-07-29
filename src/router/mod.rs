@@ -13,6 +13,7 @@ use hyper::{Request, Response, StatusCode};
 
 use handler::{NewHandler, Handler, HandlerFuture};
 use http::request::path::RequestPathSegments;
+use http::response::create_response;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Route, Delegation};
 use router::tree::{SegmentMapping, Tree};
@@ -87,7 +88,7 @@ impl Handler for Router {
     fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
         trace!("[{}] starting", request_id(&state));
 
-        let response = match state.take::<RequestPathSegments>() {
+        let future = match state.take::<RequestPathSegments>() {
             Some(rps) => {
                 if let Some((_, leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
                     match leaf.select_route(&state, &req) {
@@ -111,21 +112,24 @@ impl Handler for Router {
                         }
                         Err(status) => {
                             trace!("[{}] responding with error status", request_id(&state));
-                            self.generate_response(status, state)
+                            let res = create_response(&state, status, None);
+                            future::ok((state, res)).boxed()
                         }
                     }
                 } else {
                     trace!("[{}] did not find routable node", request_id(&state));
-                    self.generate_response(StatusCode::NotFound, state)
+                    let res = create_response(&state, StatusCode::NotFound, None);
+                    future::ok((state, res)).boxed()
                 }
             }
             None => {
                 trace!("[{}] invalid request path segments", request_id(&state));
-                self.generate_response(StatusCode::InternalServerError, state)
+                let res = create_response(&state, StatusCode::InternalServerError, None);
+                future::ok((state, res)).boxed()
             }
         };
 
-        self.finalize_response(response)
+        self.finalize_response(future)
     }
 }
 
@@ -172,13 +176,6 @@ impl Router {
                 future::ok((state, res)).boxed()
             }
         }
-    }
-
-    fn generate_response(&self, status: StatusCode, state: State) -> Box<HandlerFuture> {
-        trace!("[{}][{}] generating response", request_id(&state), status);
-        let mut res = Response::new();
-        res.set_status(status);
-        future::ok((state, res)).boxed()
     }
 
     fn finalize_response(&self, result: Box<HandlerFuture>) -> Box<HandlerFuture> {
@@ -268,8 +265,8 @@ mod tests {
             let methods = vec![Method::Post];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-            let extractors: Extractors<NoopPathExtractor,
-                                       NoopQueryStringExtractor> = Extractors::new();
+            let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
+                Extractors::new();
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
         };
@@ -294,8 +291,8 @@ mod tests {
             let methods = vec![Method::Get];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-            let extractors: Extractors<NoopPathExtractor,
-                                       NoopQueryStringExtractor> = Extractors::new();
+            let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
+                Extractors::new();
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
         };
@@ -340,8 +337,8 @@ mod tests {
             let methods = vec![Method::Get];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(delegated_router, (), pipeline_set));
-            let extractors: Extractors<NoopPathExtractor,
-                                       NoopQueryStringExtractor> = Extractors::new();
+            let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
+                Extractors::new();
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
             Box::new(route)
         };

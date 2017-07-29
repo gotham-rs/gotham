@@ -1,6 +1,6 @@
 //! Defines functionality for extending a Response
 
-use hyper::server::Response;
+use hyper::Response;
 use state::{State, request_id};
 
 /// Extend the Response based on current State and Response data

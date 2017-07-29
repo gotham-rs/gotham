@@ -72,8 +72,9 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::Method;
-/// # use hyper::server::{Request, Response};
+/// # use hyper::{Request, Response, Method, StatusCode};
+/// #
+/// # use gotham::http::response::create_response;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
@@ -87,7 +88,8 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::http::PercentDecoded;
 /// #
 /// # fn handler(state: State, _req: Request) -> (State, Response) {
-/// #   (state, Response::new())
+/// #   let res = create_response(&state, StatusCode::Ok, None);
+/// #   (state, res)
 /// # }
 /// #
 /// # fn main() {

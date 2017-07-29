@@ -11,17 +11,17 @@ use std::error::Error;
 
 use chrono;
 use hyper;
-use hyper::server;
-use hyper::server::Request;
+use hyper::server::{NewService, Service};
+use hyper::{Request, Response};
 use futures::{future, Future};
 use futures_cpupool::{CpuPool, CpuFuture};
 
 use state::{State, set_request_id, request_id};
 use http::request::path::RequestPathSegments;
+use http::header::XRuntimeMicroseconds;
 
 /// A type alias for the trait objects returned by `HandlerService`
-pub type HandlerFuture =
-    Future<Item = (State, server::Response), Error = (State, hyper::Error)> + Send;
+pub type HandlerFuture = Future<Item = (State, Response), Error = (State, hyper::Error)> + Send;
 
 /// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
 /// handlers.
@@ -57,14 +57,16 @@ impl<T> NewHandlerService<T>
     /// # extern crate hyper;
     /// # extern crate borrow_bag;
     /// #
+    /// # use gotham::http::response::create_response;
     /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
-    /// # use hyper::server::{Request, Response};
+    /// # use hyper::{Request, Response};
     /// # use hyper::StatusCode;
     /// #
     /// # fn main() {
     /// fn handler(state: State, _req: Request) -> (State, Response) {
-    ///     (state, Response::new().with_status(StatusCode::Accepted))
+    ///     let res = create_response(&state, StatusCode::Accepted, None);
+    ///     (state, res)
     /// }
     ///
     /// NewHandlerService::new(|| Ok(handler));
@@ -77,6 +79,7 @@ impl<T> NewHandlerService<T>
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
+    /// # use gotham::http::response::create_response;
     /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -87,12 +90,13 @@ impl<T> NewHandlerService<T>
     /// # use gotham::router::request::path::NoopPathExtractor;
     /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
     /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-    /// # use hyper::server::{Request, Response};
+    /// # use hyper::{Request, Response};
     /// # use hyper::{StatusCode, Method};
     /// #
     /// # fn main() {
     /// fn handler(state: State, _req: Request) -> (State, Response) {
-    ///     (state, Response::new().with_status(StatusCode::Accepted))
+    ///     let res = create_response(&state, StatusCode::Accepted, None);
+    ///     (state, res)
     /// }
     ///
     /// let mut tree_builder = TreeBuilder::new();
@@ -119,11 +123,11 @@ impl<T> NewHandlerService<T>
     }
 }
 
-impl<T> server::NewService for NewHandlerService<T>
+impl<T> NewService for NewHandlerService<T>
     where T: NewHandler + 'static
 {
-    type Request = server::Request;
-    type Response = server::Response;
+    type Request = Request;
+    type Response = Response;
     type Error = hyper::Error;
     type Instance = Self;
 
@@ -132,11 +136,11 @@ impl<T> server::NewService for NewHandlerService<T>
     }
 }
 
-impl<T> server::Service for NewHandlerService<T>
+impl<T> Service for NewHandlerService<T>
     where T: NewHandler
 {
-    type Request = server::Request;
-    type Response = server::Response;
+    type Request = Request;
+    type Response = Response;
     type Error = hyper::Error;
     type Future = CpuFuture<Self::Response, Self::Error>;
 
@@ -176,15 +180,19 @@ impl<T> server::Service for NewHandlerService<T>
                                               res.version(),
                                               res.status(),
                                               dur);
+
+                                        future::ok(res.with_header(XRuntimeMicroseconds(dur)))
                                     }
                                     None => {
-                                        info!("[RESPONSE][{}][{}][{}][invalid]",
-                                              request_id(&state),
-                                              res.version(),
-                                              res.status());
+                                        // Valid response is still sent to client in this case but
+                                        // timing has failed and should be looked into.
+                                        error!("[RESPONSE][{}][{}][{}][invalid]",
+                                               request_id(&state),
+                                               res.version(),
+                                               res.status());
+                                        future::ok(res)
                                     }
                                 }
-                                future::ok(res)
                             })
                             .or_else(move |(state, err)| {
                                 let f = chrono::UTC::now();
@@ -274,7 +282,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// Represents a type which can be converted to a response. This trait is used in converting the
 /// return type of a function into a response.
 ///
-/// The only default implementation is the noop which converts a `hyper::server::Response` by
+/// The only default implementation is the noop which converts a `hyper::Response` by
 /// returning the value unmodified.
 ///
 /// # Examples
@@ -296,7 +304,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
-/// # use hyper::server::{Request, Response};
+/// # use hyper::{Request, Response};
 /// #
 /// struct MyStruct {
 ///     value: String
@@ -337,15 +345,15 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 ///
 /// # Default implementations
 ///
-/// * `hyper::server::Response` &ndash; The response is wrapped in a completed future and boxed
+/// * `hyper::Response` &ndash; The response is wrapped in a completed future and boxed
 /// * `Box<HandlerFuture>` &ndash; The boxed future is returned directly
 pub trait IntoResponse {
-    /// Converts this value into a `hyper::server::Response`
-    fn into_response(self) -> server::Response;
+    /// Converts this value into a `hyper::Response`
+    fn into_response(self) -> Response;
 }
 
-impl IntoResponse for server::Response {
-    fn into_response(self) -> server::Response {
+impl IntoResponse for Response {
+    fn into_response(self) -> Response {
         self
     }
 }

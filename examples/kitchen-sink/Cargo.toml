@@ -8,8 +8,9 @@ authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
 gotham = { path = "../.." }
 gotham_derive = { path = "../../gotham_derive" }
 futures = "*"
-hyper = { git = "https://github.com/gotham-rs/hyper.git", branch = "add-response-body_ref-function" }
+hyper="~0.11.2"
 borrow-bag = "*"
 log = "0.3"
 fern = "0.4"
 chrono = "0.3"
+mime = "0.3"

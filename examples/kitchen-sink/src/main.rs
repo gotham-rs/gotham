@@ -8,14 +8,14 @@ extern crate chrono;
 #[macro_use]
 extern crate log;
 extern crate fern;
+extern crate mime;
 
 mod middleware;
 
-use futures::{future, Future};
+use futures::{future, Future, Stream};
 
 use hyper::{Request, Response, Method, StatusCode};
 use hyper::server::Http;
-use hyper::header::ContentLength;
 
 use log::LogLevelFilter;
 
@@ -33,6 +33,7 @@ use gotham::router::tree::node::{NodeBuilder, SegmentType};
 use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::state::{State, FromState};
+use gotham::http::response::create_response;
 
 use self::middleware::{KitchenSinkData, KitchenSinkMiddleware};
 
@@ -56,8 +57,8 @@ struct SharedQueryString {
     q: Option<Vec<String>>,
 }
 
-static INDEX: &'static [u8] = b"Try POST /echo";
-static ASYNC: &'static [u8] = b"Got async response";
+static INDEX: &'static str = "Try POST /echo";
+static ASYNC: &'static str = "Got async response";
 
 fn static_route<NH, P, C>(methods: Vec<Method>,
                           new_handler: NH,
@@ -123,7 +124,7 @@ fn build_router() -> Router {
                                         pipeline_set.clone()));
 
     let mut echo = NodeBuilder::new("echo", SegmentType::Static);
-    echo.add_route(static_route(vec![Method::Get],
+    echo.add_route(static_route(vec![Method::Get, Method::Head],
                                 || Ok(Echo::get),
                                 (global, ()),
                                 pipeline_set.clone()));
@@ -179,46 +180,54 @@ fn build_router() -> Router {
 
 impl Echo {
     fn get(state: State, _req: Request) -> (State, Response) {
-        (state,
-         Response::new()
-             .with_header(ContentLength(INDEX.len() as u64))
-             .with_body(INDEX))
+        let res = create_response(&state,
+                                  StatusCode::Ok,
+                                  Some((String::from(INDEX).into_bytes(), mime::TEXT_PLAIN)));
+        (state, res)
     }
 
-    fn post(state: State, req: Request) -> (State, Response) {
-        let mut res = Response::new();
-        if let Some(len) = req.headers().get::<ContentLength>() {
-            res.headers_mut().set(len.clone());
-        }
-        (state, res.with_body(req.body()))
+    fn post(state: State, req: Request) -> Box<HandlerFuture> {
+        req.body()
+            .concat2()
+            .then(move |full_body| match full_body {
+                      Ok(valid_body) => {
+                          let res = create_response(&state,
+                                                    StatusCode::Ok,
+                                                    Some((valid_body.to_vec(), mime::TEXT_PLAIN)));
+                          future::ok((state, res))
+                      }
+                      Err(e) => future::err((state, e)),
+                  })
+            .boxed()
     }
 
     fn async(state: State, _req: Request) -> Box<HandlerFuture> {
-        let mut res = Response::new();
-        res = res.with_header(ContentLength(ASYNC.len() as u64))
-            .with_body(ASYNC);
+        let res = create_response(&state,
+                                  StatusCode::Ok,
+                                  Some((String::from(ASYNC).into_bytes(), mime::TEXT_PLAIN)));
         future::lazy(move || future::ok((state, res))).boxed()
     }
 
     fn header_value(mut state: State, _req: Request) -> (State, Response) {
         state.borrow_mut::<KitchenSinkData>().unwrap().header_value = "different value!".to_owned();
-        (state,
-         Response::new()
-             .with_header(ContentLength(INDEX.len() as u64))
-             .with_body(INDEX))
+
+        let res = create_response(&state,
+                                  StatusCode::Ok,
+                                  Some((String::from(INDEX).into_bytes(), mime::TEXT_PLAIN)));
+        (state, res)
     }
 
     fn hello(mut state: State, _req: Request) -> (State, Response) {
         let hello = format!("Hello, {}\n", SharedRequestPath::take_from(&mut state).name);
 
-        (state,
-         Response::new()
-             .with_header(ContentLength(hello.len() as u64))
-             .with_body(hello))
+        let res = create_response(&state,
+                                  StatusCode::Ok,
+                                  Some((hello.into_bytes(), mime::TEXT_PLAIN)));
+        (state, res)
     }
 
     fn greeting(state: State, _req: Request) -> (State, Response) {
-        let res = {
+        let g = {
             let srp = SharedRequestPath::borrow_from(&state);
             let name = srp.name.as_str();
             let from = match srp.from {
@@ -227,21 +236,19 @@ impl Echo {
             };
 
             if let Some(srq) = state.borrow::<SharedQueryString>() {
-                let g = format!("Greetings, {} from {}. [i: {}, q: {:?}]\n",
-                                name,
-                                from,
-                                srq.i,
-                                srq.q);
-                Response::new()
-                    .with_header(ContentLength(g.len() as u64))
-                    .with_body(g)
+                format!("Greetings, {} from {}. [i: {}, q: {:?}]\n",
+                        name,
+                        from,
+                        srq.i,
+                        srq.q)
             } else {
-                let g = format!("Greetings, {} from {}.\n", name, from);
-                Response::new()
-                    .with_header(ContentLength(g.len() as u64))
-                    .with_body(g)
+                format!("Greetings, {} from {}.\n", name, from)
             }
         };
+
+        let res = create_response(&state,
+                                  StatusCode::Ok,
+                                  Some((g.into_bytes(), mime::TEXT_PLAIN)));
         (state, res)
     }
 }

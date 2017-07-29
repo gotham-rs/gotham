@@ -28,6 +28,7 @@ extern crate uuid;
 #[macro_use]
 extern crate log;
 extern crate chrono;
+extern crate mime;
 extern crate serde;
 extern crate rand;
 extern crate base64;
