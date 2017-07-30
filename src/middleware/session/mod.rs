@@ -191,7 +191,7 @@ impl<T> SessionData<T>
                  cookie_config: Arc<SessionCookieConfig>,
                  identifier: SessionIdentifier,
                  val: Option<Vec<u8>>)
-                 -> Result<SessionData<T>, SessionError> {
+                 -> SessionData<T> {
         let cookie_state = SessionCookieState::Existing;
         let state = SessionDataState::Clean;
 
@@ -201,25 +201,25 @@ impl<T> SessionData<T>
                     Ok(value) => {
                         trace!(" successfully deserialized session data ({})",
                                identifier.value);
-                        Ok(SessionData {
-                               value,
-                               cookie_state,
-                               state,
-                               identifier,
-                               backend,
-                               cookie_config,
-                           })
+                        SessionData {
+                            value,
+                            cookie_state,
+                            state,
+                            identifier,
+                            backend,
+                            cookie_config,
+                        }
                     }
                     Err(_) => {
                         // This is most likely caused by the application changing their session
                         // struct but the backend not being purged of sessions.
                         warn!(" failed to deserialize session data ({}), falling back to new session",
                               identifier.value);
-                        Ok(SessionData::new(backend, cookie_config))
+                        SessionData::new(backend, cookie_config)
                     }
                 }
             }
-            None => Ok(SessionData::<T>::new(backend, cookie_config)),
+            None => SessionData::<T>::new(backend, cookie_config),
         }
     }
 }
@@ -557,11 +557,18 @@ fn write_session<T>(state: State,
     let identifier = session_data.identifier;
     let slice = &bytes[..];
 
-    match session_data.backend.persist_session(identifier, slice) {
-        Ok(()) => {
-                                    trace!(" persisted session successfully");
-                                    future::ok((state, response))
-                                }
+    let result = session_data
+        .backend
+        .persist_session(identifier.clone(), slice);
+
+    match result {
+        Ok(_) => {
+            trace!("[{}] persisted session ({}) successfully",
+                   state::request_id(&state),
+                   identifier.value);
+
+            future::ok((state, response))
+        }
         Err(_) => future::ok((state, ise_response())),
     }
 }
@@ -577,26 +584,27 @@ impl<B, T> SessionMiddleware<B, T>
                     -> future::FutureResult<State, (State, hyper::Error)> {
         match result {
             Ok(v) => {
-                let result = SessionData::<T>::construct(Box::new(self.backend),
-                                                         self.cookie_config.clone(),
-                                                         identifier,
-                                                         v);
-                match result {
-                    Ok(session_data) => {
-                        state.put(session_data);
-                        future::ok(state)
-                    }
-                    Err(e) => {
-                        let e = io::Error::new(io::ErrorKind::Other,
-                                               format!("session couldn't be deserialized: {:?}",
-                                                       e));
-                        future::err((state, e.into()))
-                    }
-                }
+                trace!("[{}] retrieved session ({}) from backend successfully",
+                       state::request_id(&state),
+                       identifier.value);
+
+                let session_data = SessionData::<T>::construct(Box::new(self.backend),
+                                                               self.cookie_config.clone(),
+                                                               identifier,
+                                                               v);
+
+                state.put(session_data);
+                future::ok(state)
             }
             Err(e) => {
+                error!("[{}] failed to retrieve session ({}) from backend: {:?}",
+                       state::request_id(&state),
+                       identifier.value,
+                       e);
+
                 let e = io::Error::new(io::ErrorKind::Other,
                                        format!("backend failed to return session: {:?}", e));
+
                 future::err((state, e.into()))
             }
         }
@@ -605,6 +613,11 @@ impl<B, T> SessionMiddleware<B, T>
     fn new_session(self, mut state: State) -> future::FutureResult<State, (State, hyper::Error)> {
         let session_data = SessionData::<T>::new(Box::new(self.backend),
                                                  self.cookie_config.clone());
+
+        trace!("[{}] created new session ({})",
+               state::request_id(&state),
+               session_data.identifier.value);
+
         state.put(session_data);
         future::ok(state)
     }
