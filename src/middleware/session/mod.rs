@@ -654,13 +654,6 @@ mod tests {
     }
 
     #[test]
-    fn random_identifier() {
-        let backend = MemoryBackend::default().new_backend().unwrap();
-        assert!(backend.random_identifier() != backend.random_identifier(),
-                "identifier collision");
-    }
-
-    #[test]
     fn existing_session() {
         let nm = NewSessionMiddleware::default().with_session_type::<TestSession>();
         let m = nm.new_middleware().unwrap();
