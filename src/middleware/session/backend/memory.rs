@@ -193,9 +193,9 @@ mod tests {
         let mut storage = LinkedHashMap::new();
 
         storage.insert("abcd".to_owned(),
-                       (Instant::now() - Duration::from_secs(3601), vec![]));
+                       (Instant::now() - Duration::from_secs(2), vec![]));
 
-        cleanup_once(&mut storage, Duration::from_secs(3600));
+        cleanup_once(&mut storage, Duration::from_secs(1));
         assert!(storage.is_empty());
     }
 
