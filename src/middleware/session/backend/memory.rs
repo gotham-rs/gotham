@@ -147,7 +147,7 @@ fn cleanup_once(storage: &mut LinkedHashMap<String, (Instant, Vec<u8>)>,
 
             if age >= ttl {
                 if let Some((key, _)) = storage.pop_front() {
-                    trace!("expired session {} and removed from MemoryBackend", key);
+                    trace!(" expired session {} and removed from MemoryBackend", key);
                 }
 
                 // We just removed one, so skip the sleep and check the next entry
