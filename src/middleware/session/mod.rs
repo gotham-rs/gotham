@@ -210,12 +210,12 @@ impl<T> SessionData<T>
                                cookie_config,
                            })
                     }
-                    // TODO: What's the correct thing to do here? If the app changes the structure
-                    // of its session type, the existing data won't deserialize anymore, through no
-                    // fault of the users. Should we fall back to `T::default()` instead?
                     Err(_) => {
-                        error!(" failed to deserialize session data ({})", identifier.value);
-                        Err(SessionError::Deserialize)
+                        // This is most likely caused by the application changing their session
+                        // struct but the backend not being purged of sessions.
+                        warn!(" failed to deserialize session data ({}), falling back to new session",
+                              identifier.value);
+                        Ok(SessionData::new(backend, cookie_config))
                     }
                 }
             }
