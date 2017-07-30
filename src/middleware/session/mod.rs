@@ -1,6 +1,6 @@
 //! Defines a default session middleware supporting multiple backends
 
-use std::io;
+use std::{io, fmt};
 use std::sync::Arc;
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
@@ -48,10 +48,36 @@ enum SessionDataState {
     Dirty,
 }
 
-#[derive(Copy, Clone)]
-enum SecureCookie {
-    Insecure,
+#[derive(Copy, Clone, PartialEq)]
+enum SameSiteEnforcement {
+    Strict,
+    Lax,
+}
+
+#[derive(Clone, PartialEq)]
+enum CookieOption {
     Secure,
+    HttpOnly,
+    SameSite(SameSiteEnforcement),
+    Domain(String),
+}
+
+impl fmt::Display for CookieOption {
+    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+        use self::CookieOption::*;
+        use self::SameSiteEnforcement::*;
+
+        match *self {
+            Secure => out.write_str("secure"),
+            HttpOnly => out.write_str("HttpOnly"),
+            SameSite(Strict) => out.write_str("SameSite=strict"),
+            SameSite(Lax) => out.write_str("SameSite=lax"),
+            Domain(ref s) => {
+                out.write_str("Domain=")?;
+                out.write_str(s)
+            }
+        }
+    }
 }
 
 /// Configuration for how the `Set-Cookie` header is generated.
@@ -62,7 +88,7 @@ enum SecureCookie {
 #[derive(Clone)]
 pub struct SessionCookieConfig {
     name: String,
-    secure: SecureCookie,
+    options: Vec<CookieOption>,
 }
 
 /// The wrapping type for application session data.
@@ -401,17 +427,48 @@ impl<B> NewSessionMiddleware<B, ()>
             new_backend: b,
             cookie_config: Arc::new(SessionCookieConfig {
                                         name: "_gotham_session".to_owned(),
-                                        secure: SecureCookie::Secure,
+                                        options: default_cookie_options(),
                                     }),
             phantom: PhantomData,
         }
     }
 }
 
+fn default_cookie_options() -> Vec<CookieOption> {
+    vec![CookieOption::HttpOnly,
+         CookieOption::Secure,
+         CookieOption::SameSite(SameSiteEnforcement::Lax)]
+}
+
 impl<B, T> NewSessionMiddleware<B, T>
     where B: NewBackend,
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
+    fn add_cookie_option(self, opt: CookieOption) -> NewSessionMiddleware<B, T> {
+        let mut cookie_config = (*self.cookie_config).clone();
+        cookie_config.options.push(opt);
+
+        NewSessionMiddleware {
+            cookie_config: Arc::new(cookie_config),
+            ..self
+        }
+    }
+
+    fn remove_cookie_option(self, opt: CookieOption) -> NewSessionMiddleware<B, T> {
+        let mut cookie_config = (*self.cookie_config).clone();
+        cookie_config.options = cookie_config
+            .options
+            .iter()
+            .cloned()
+            .filter(|v| *v != opt)
+            .collect();
+
+        NewSessionMiddleware {
+            cookie_config: Arc::new(cookie_config),
+            ..self
+        }
+    }
+
     /// Configures the `NewSessionMiddleware` not to send the `secure` flag along with the cookie.
     /// This is required for plaintext HTTP connections.
     ///
@@ -434,15 +491,7 @@ impl<B, T> NewSessionMiddleware<B, T>
     /// # ;}
     /// ```
     pub fn insecure(self) -> NewSessionMiddleware<B, T> {
-        let cookie_config = SessionCookieConfig {
-            secure: SecureCookie::Insecure,
-            ..(*self.cookie_config).clone()
-        };
-
-        NewSessionMiddleware {
-            cookie_config: Arc::new(cookie_config),
-            ..self
-        }
+        self.remove_cookie_option(CookieOption::Secure)
     }
 
     /// Configures the `NewSessionMiddleware` to use an alternate cookie name.
@@ -477,6 +526,94 @@ impl<B, T> NewSessionMiddleware<B, T>
             cookie_config: Arc::new(cookie_config),
             ..self
         }
+    }
+
+    /// Configures the `NewSessionMiddleware` to use a `Domain` attribute with the provided value.
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
+    /// #
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct MySessionType {
+    /// #   items: Vec<String>,
+    /// # }
+    /// #
+    /// # fn main() {
+    /// NewSessionMiddleware::default()
+    ///     .with_session_type::<MySessionType>()
+    ///     .with_cookie_domain("example.com")
+    /// # ;}
+    /// ```
+    pub fn with_cookie_domain<S>(self, name: S) -> NewSessionMiddleware<B, T>
+        where S: AsRef<str>
+    {
+        self.add_cookie_option(CookieOption::Domain(name.as_ref().to_owned()))
+    }
+
+    /// Removes the `SameSite` cookie attribute, allowing cross-site requests to include the cookie.
+    ///
+    /// By default, the session cookie will be set with `SameSite=lax`, which ensures cross-site
+    /// requests will include the cookie if and only if they are top-level navigations which use a
+    /// "safe" (in the RFC7231 sense) HTTP method.
+    ///
+    /// See: <https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00#section-4.1>
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
+    /// #
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct MySessionType {
+    /// #   items: Vec<String>,
+    /// # }
+    /// #
+    /// # fn main() {
+    /// NewSessionMiddleware::default()
+    ///     .with_session_type::<MySessionType>()
+    ///     .allow_cross_site_usage()
+    /// # ;}
+    /// ```
+    pub fn allow_cross_site_usage(self) -> NewSessionMiddleware<B, T> {
+        self.remove_cookie_option(CookieOption::SameSite(SameSiteEnforcement::Lax))
+    }
+
+    /// Sets the "SameSite" cookie attribute value to "strict".
+    ///
+    /// This will ensure that the cookie is never sent for cross-site requests (including top-level
+    /// navigations).
+    ///
+    /// By default, the session cookie will be set with "SameSite=lax", which ensures cross-site
+    /// requests will include the cookie if and only if they are top-level navigations which use a
+    /// "safe" (in the [RFC7231] sense) HTTP method.
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
+    /// #
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct MySessionType {
+    /// #   items: Vec<String>,
+    /// # }
+    /// #
+    /// # fn main() {
+    /// NewSessionMiddleware::default()
+    ///     .with_session_type::<MySessionType>()
+    ///     .with_strict_same_site_enforcement()
+    /// # ;}
+    /// ```
+    pub fn with_strict_same_site_enforcement(self) -> NewSessionMiddleware<B, T> {
+        self.remove_cookie_option(CookieOption::SameSite(SameSiteEnforcement::Lax))
+            .add_cookie_option(CookieOption::SameSite(SameSiteEnforcement::Strict))
     }
 
     /// Changes the session type to the provided type parameter. This is required to override the
@@ -565,19 +702,15 @@ fn persist_session<T>((mut state, mut response): (State, Response))
 fn send_cookie<T>(response: &mut Response, session_data: &SessionData<T>)
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    let cookie_string = match session_data.cookie_config.secure {
-        SecureCookie::Insecure => {
-            format!("{}={}; HttpOnly",
-                    session_data.cookie_config.name,
-                    session_data.identifier.value)
-        }
+    let cookie_value = format!("{}={}",
+                               session_data.cookie_config.name,
+                               session_data.identifier.value);
 
-        SecureCookie::Secure => {
-            format!("{}={}; secure; HttpOnly",
-                    session_data.cookie_config.name,
-                    session_data.identifier.value)
-        }
-    };
+    let cookie_string = session_data
+        .cookie_config
+        .options
+        .iter()
+        .fold(cookie_value, |acc, opt| format!("{}; {}", acc, opt));
 
     let set_cookie = SetCookie(vec![cookie_string]);
     response.headers_mut().set(set_cookie);
