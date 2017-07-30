@@ -84,12 +84,15 @@ pub struct SessionCookieConfig {
 /// # use std::time::Duration;
 /// # use serde::Serialize;
 /// # use futures::{future, Future, Stream};
+/// # use gotham::handler::NewHandlerService;
 /// # use gotham::state::State;
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend};
+/// # use gotham::http::response::create_response;
 /// # use hyper::header::Cookie;
-/// # use hyper::server::{Request, Response};
+/// # use hyper::server::{Request, Response, Service};
 /// # use hyper::{Method, StatusCode};
+/// # use hyper::mime;
 /// #
 /// #[derive(Default, Serialize, Deserialize)]
 /// struct MySessionType {
@@ -99,13 +102,14 @@ pub struct SessionCookieConfig {
 /// fn my_handler(state: State, _request: Request) -> (State, Response) {
 ///     // The `Router` has a `NewSessionMiddleware<_, MySessionType>` in a pipeline which is
 ///     // active for this handler.
-///     let response = {
+///     let body = {
 ///         let session: &SessionData<MySessionType> = state.borrow().unwrap();
-///
-///         Response::new()
-///             .with_status(StatusCode::Ok)
-///             .with_body(format!("{:?}", session.items))
+///         format!("{:?}", session.items).into_bytes()
 ///     };
+///
+///     let response = create_response(&state,
+///                                    StatusCode::Ok,
+///                                    Some((body, mime::TEXT_PLAIN)));
 ///
 ///     (state, response)
 /// }
@@ -127,12 +131,20 @@ pub struct SessionCookieConfig {
 /// #   let mut req = Request::new(Method::Get, "/".parse().unwrap());
 /// #   req.headers_mut().set(cookies);
 /// #
-/// #   let state = State::new();
-/// #
 /// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
-/// #   let m = nm.new_middleware().unwrap();
-/// #   let chain = |state, req| future::ok(my_handler(state, req)).boxed();
-/// #   let (_state, response) = m.call(state, req, chain).wait().map_err(|(_, e)| e).unwrap();
+/// #
+/// #   let service = NewHandlerService::new(move || {
+/// #       let handler = |state, req| {
+/// #           let m = nm.new_middleware().unwrap();
+/// #           let chain = |state, req| future::ok(my_handler(state, req)).boxed();
+/// #
+/// #           m.call(state, req, chain)
+/// #       };
+/// #
+/// #       Ok(handler)
+/// #   });
+/// #
+/// #   let response = service.call(req).wait().unwrap();
 /// #
 /// #   let response_bytes = response
 /// #       .body()
