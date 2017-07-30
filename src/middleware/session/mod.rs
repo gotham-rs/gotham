@@ -445,6 +445,40 @@ impl<B, T> NewSessionMiddleware<B, T>
         }
     }
 
+    /// Configures the `NewSessionMiddleware` to use an alternate cookie name.
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
+    /// #
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct MySessionType {
+    /// #   items: Vec<String>,
+    /// # }
+    /// #
+    /// # fn main() {
+    /// NewSessionMiddleware::default()
+    ///     .with_session_type::<MySessionType>()
+    ///     .with_cookie_name("_myapp_session")
+    /// # ;}
+    /// ```
+    pub fn with_cookie_name<S>(self, name: S) -> NewSessionMiddleware<B, T>
+        where S: AsRef<str>
+    {
+        let cookie_config = SessionCookieConfig {
+            name: name.as_ref().to_owned(),
+            ..(*self.cookie_config).clone()
+        };
+
+        NewSessionMiddleware {
+            cookie_config: Arc::new(cookie_config),
+            ..self
+        }
+    }
+
     /// Changes the session type to the provided type parameter. This is required to override the
     /// default (unusable) session type of `()`.
     ///
