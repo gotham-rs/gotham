@@ -32,7 +32,7 @@ pub struct SessionIdentifier {
 /// The kind of failure which occurred trying to perform a session operation.
 #[derive(Debug)]
 pub enum SessionError {
-    /// The backend failed, and a message describes why
+    /// The backend failed, and the included message describes the problem
     Backend(String),
     /// The session was unable to be deserialized
     Deserialize,
