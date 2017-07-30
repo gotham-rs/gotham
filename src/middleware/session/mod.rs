@@ -15,6 +15,7 @@ use rmp_serde;
 use super::{NewMiddleware, Middleware};
 use handler::HandlerFuture;
 use state::{self, State, StateData, FromState};
+use http::response::create_response;
 
 mod backend;
 
@@ -542,14 +543,16 @@ fn write_session<T>(state: State,
                     -> future::FutureResult<(State, Response), (State, hyper::Error)>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    let ise_response = || Response::new().with_status(StatusCode::InternalServerError);
     let mut bytes = Vec::new();
 
     {
         let mut serializer = rmp_serde::Serializer::new(&mut bytes);
 
         match session_data.value.serialize(&mut serializer) {
-            Err(_) => return future::ok((state, ise_response())),
+            Err(_) => {
+                let response = create_response(&state, StatusCode::InternalServerError, None);
+                return future::ok((state, response));
+            }
             Ok(_) => {}
         }
     }
@@ -569,7 +572,10 @@ fn write_session<T>(state: State,
 
             future::ok((state, response))
         }
-        Err(_) => future::ok((state, ise_response())),
+        Err(_) => {
+            let response = create_response(&state, StatusCode::InternalServerError, None);
+            return future::ok((state, response));
+        }
     }
 }
 
