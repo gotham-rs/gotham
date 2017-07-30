@@ -527,7 +527,7 @@ impl<B, T> Middleware for SessionMiddleware<B, T>
             Some(id) => {
                 self.backend
                     .read_session(id.clone())
-                    .then(move |r| self.load_session(state, id, r))
+                    .then(move |r| self.load_session_into_state(state, id, r))
                     .and_then(|state| chain(state, request))
                     .and_then(persist_session::<T>)
                     .boxed()
@@ -629,11 +629,11 @@ impl<B, T> SessionMiddleware<B, T>
     where B: Backend + Send + 'static,
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    fn load_session(self,
-                    mut state: State,
-                    identifier: SessionIdentifier,
-                    result: Result<Option<Vec<u8>>, SessionError>)
-                    -> future::FutureResult<State, (State, hyper::Error)> {
+    fn load_session_into_state(self,
+                               mut state: State,
+                               identifier: SessionIdentifier,
+                               result: Result<Option<Vec<u8>>, SessionError>)
+                               -> future::FutureResult<State, (State, hyper::Error)> {
         match result {
             Ok(v) => {
                 trace!("[{}] retrieved session ({}) from backend successfully",
