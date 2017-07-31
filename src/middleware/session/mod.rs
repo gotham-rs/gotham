@@ -1,10 +1,12 @@
 //! Defines a default session middleware supporting multiple backends
 
 use std::{io, fmt};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, PoisonError};
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
 
+use base64;
+use rand::Rng;
 use hyper::{self, StatusCode};
 use hyper::server::{Request, Response};
 use hyper::header::{Cookie, SetCookie};
@@ -18,6 +20,7 @@ use state::{self, State, StateData, FromState};
 use http::response::create_response;
 
 mod backend;
+mod rng;
 
 pub use self::backend::{NewBackend, Backend};
 pub use self::backend::memory::MemoryBackend;
@@ -211,13 +214,15 @@ impl<T> SessionData<T>
     }
 
     // Create a new, blank `SessionData<T>`
-    fn new(backend: Box<Backend + Send>,
-           cookie_config: Arc<SessionCookieConfig>)
-           -> SessionData<T> {
+    fn new<B>(middleware: SessionMiddleware<B, T>) -> SessionData<T>
+        where B: Backend + 'static
+    {
         let state = SessionDataState::Dirty; // Always persist a new session
         let cookie_state = SessionCookieState::New;
-        let identifier = backend.random_identifier();
+        let identifier = middleware.random_identifier();
         let value = T::default();
+        let backend = Box::new(middleware.backend);
+        let cookie_config = middleware.cookie_config.clone();
 
         trace!(" no existing session, assigning new identifier ({})",
                identifier.value);
@@ -233,11 +238,12 @@ impl<T> SessionData<T>
     }
 
     // Load an existing, serialized session into a `SessionData<T>`
-    fn construct(backend: Box<Backend + Send>,
-                 cookie_config: Arc<SessionCookieConfig>,
-                 identifier: SessionIdentifier,
-                 val: Option<Vec<u8>>)
-                 -> SessionData<T> {
+    fn construct<B>(middleware: SessionMiddleware<B, T>,
+                    identifier: SessionIdentifier,
+                    val: Option<Vec<u8>>)
+                    -> SessionData<T>
+        where B: Backend + 'static
+    {
         let cookie_state = SessionCookieState::Existing;
         let state = SessionDataState::Clean;
 
@@ -245,8 +251,12 @@ impl<T> SessionData<T>
             Some(val) => {
                 match T::deserialize(&mut rmp_serde::Deserializer::new(&val[..])) {
                     Ok(value) => {
+                        let backend = Box::new(middleware.backend);
+                        let cookie_config = middleware.cookie_config.clone();
+
                         trace!(" successfully deserialized session data ({})",
                                identifier.value);
+
                         SessionData {
                             value,
                             cookie_state,
@@ -261,11 +271,11 @@ impl<T> SessionData<T>
                         // struct but the backend not being purged of sessions.
                         warn!(" failed to deserialize session data ({}), falling back to new session",
                               identifier.value);
-                        SessionData::new(backend, cookie_config)
+                        SessionData::new(middleware)
                     }
                 }
             }
-            None => SessionData::<T>::new(backend, cookie_config),
+            None => SessionData::new(middleware),
         }
     }
 }
@@ -385,6 +395,7 @@ pub struct NewSessionMiddleware<B, T>
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     new_backend: B,
+    identifier_rng: Arc<Mutex<rng::SessionIdentifierRng>>,
     cookie_config: Arc<SessionCookieConfig>,
     phantom: PhantomData<SessionTypePhantom<T>>,
 }
@@ -397,6 +408,7 @@ pub struct SessionMiddleware<B, T>
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     backend: B,
+    identifier_rng: Arc<Mutex<rng::SessionIdentifierRng>>,
     cookie_config: Arc<SessionCookieConfig>,
     phantom: PhantomData<T>,
 }
@@ -413,6 +425,7 @@ impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
             .map(|backend| {
                      SessionMiddleware {
                          backend,
+                         identifier_rng: self.identifier_rng.clone(),
                          cookie_config: self.cookie_config.clone(),
                          phantom: PhantomData,
                      }
@@ -434,6 +447,7 @@ impl<B> NewSessionMiddleware<B, ()>
     pub fn new(b: B) -> NewSessionMiddleware<B, ()> {
         NewSessionMiddleware {
             new_backend: b,
+            identifier_rng: Arc::new(Mutex::new(rng::session_identifier_rng())),
             cookie_config: Arc::new(SessionCookieConfig {
                                         name: "_gotham_session".to_owned(),
                                         options: default_cookie_options(),
@@ -649,6 +663,7 @@ impl<B, T> NewSessionMiddleware<B, T>
     {
         NewSessionMiddleware {
             new_backend: self.new_backend,
+            identifier_rng: self.identifier_rng,
             cookie_config: self.cookie_config,
             phantom: PhantomData,
         }
@@ -685,6 +700,22 @@ impl<B, T> Middleware for SessionMiddleware<B, T>
                     .boxed()
             }
         }
+    }
+}
+
+impl<B, T> SessionMiddleware<B, T>
+    where B: Backend + Send + 'static,
+          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    fn random_identifier(&self) -> SessionIdentifier {
+        let mut bytes: Vec<u8> = Vec::with_capacity(64);
+
+        match self.identifier_rng.lock() {
+            Ok(mut rng) => rng.fill_bytes(bytes.as_mut_slice()),
+            Err(PoisonError { .. }) => unreachable!("identifier_rng lock poisoned. Rng panicked?"),
+        };
+
+        SessionIdentifier { value: base64::encode_config(&bytes, base64::URL_SAFE_NO_PAD) }
     }
 }
 
@@ -805,10 +836,7 @@ impl<B, T> SessionMiddleware<B, T>
                        state::request_id(&state),
                        identifier.value);
 
-                let session_data = SessionData::<T>::construct(Box::new(self.backend),
-                                                               self.cookie_config.clone(),
-                                                               identifier,
-                                                               v);
+                let session_data = SessionData::<T>::construct(self, identifier, v);
 
                 state.put(session_data);
                 future::ok(state)
@@ -828,8 +856,7 @@ impl<B, T> SessionMiddleware<B, T>
     }
 
     fn new_session(self, mut state: State) -> future::FutureResult<State, (State, hyper::Error)> {
-        let session_data = SessionData::<T>::new(Box::new(self.backend),
-                                                 self.cookie_config.clone());
+        let session_data = SessionData::<T>::new(self);
 
         trace!("[{}] created new session ({})",
                state::request_id(&state),
