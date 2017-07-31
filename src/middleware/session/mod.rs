@@ -2,6 +2,7 @@
 
 use std::{io, fmt};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
 
@@ -56,6 +57,8 @@ enum SameSiteEnforcement {
 
 #[derive(Clone, PartialEq)]
 enum CookieOption {
+    // If `Expires` / `Max-Age` are ever added here, be sure to update `reset_session` to allow
+    // for them.
     Secure,
     HttpOnly,
     SameSite(SameSiteEnforcement),
@@ -192,6 +195,12 @@ pub struct SessionData<T>
     identifier: SessionIdentifier,
     backend: Box<Backend + Send>,
     cookie_config: Arc<SessionCookieConfig>,
+    drop_session: Arc<AtomicBool>,
+}
+
+struct SessionDropData {
+    cookie_config: Arc<SessionCookieConfig>,
+    drop_session: Arc<AtomicBool>,
 }
 
 impl<T> SessionData<T>
@@ -200,6 +209,7 @@ impl<T> SessionData<T>
     /// Discards the session, invalidating it for future use and removing the data from the
     /// `Backend`.
     pub fn discard(self) -> Result<(), SessionError> {
+        self.drop_session.store(true, Ordering::Relaxed);
         self.backend.drop_session(self.identifier)
     }
 
@@ -211,6 +221,7 @@ impl<T> SessionData<T>
         let cookie_state = SessionCookieState::New;
         let identifier = backend.random_identifier();
         let value = T::default();
+        let drop_session = Arc::new(AtomicBool::new(false));
 
         trace!(" no existing session, assigning new identifier ({})",
                identifier.value);
@@ -222,6 +233,7 @@ impl<T> SessionData<T>
             identifier,
             backend,
             cookie_config,
+            drop_session,
         }
     }
 
@@ -233,6 +245,7 @@ impl<T> SessionData<T>
                  -> SessionData<T> {
         let cookie_state = SessionCookieState::Existing;
         let state = SessionDataState::Clean;
+        let drop_session = Arc::new(AtomicBool::new(false));
 
         match val {
             Some(val) => {
@@ -247,6 +260,7 @@ impl<T> SessionData<T>
                             identifier,
                             backend,
                             cookie_config,
+                            drop_session,
                         }
                     }
                     Err(_) => {
@@ -316,6 +330,14 @@ impl<T> DerefMut for SessionData<T>
     fn deref_mut(&mut self) -> &mut T {
         self.state = SessionDataState::Dirty;
         &mut self.value
+    }
+}
+
+impl StateData for SessionDropData {}
+
+impl SessionDropData {
+    fn is_dropped(&self) -> bool {
+        self.drop_session.load(Ordering::Relaxed)
     }
 }
 
@@ -683,6 +705,18 @@ fn persist_session<T>((mut state, mut response): (State, Response))
                       -> future::FutureResult<(State, Response), (State, hyper::Error)>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
+    match state.take::<SessionDropData>() {
+        Some(ref session_drop_data) if session_drop_data.is_dropped() => {
+            reset_cookie(&mut response, session_drop_data);
+            return future::ok((state, response));
+        }
+        Some(_) => {}
+        None => {
+            error!("[{}] SessionDropData is not present after serving request",
+                   state::request_id(&state))
+        }
+    }
+
     match state.take::<SessionData<T>>() {
         Some(session_data) => {
             if let SessionCookieState::New = session_data.cookie_state {
@@ -699,18 +733,28 @@ fn persist_session<T>((mut state, mut response): (State, Response))
     }
 }
 
+fn cookie_string(cookie_config: &SessionCookieConfig, value: &str) -> String {
+    let cookie_value = format!("{}={}", cookie_config.name, value);
+
+    cookie_config
+        .options
+        .iter()
+        .fold(cookie_value, |acc, opt| format!("{}; {}", acc, opt))
+}
+
 fn send_cookie<T>(response: &mut Response, session_data: &SessionData<T>)
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
-    let cookie_value = format!("{}={}",
-                               session_data.cookie_config.name,
-                               session_data.identifier.value);
+    let cookie_string = cookie_string(&*session_data.cookie_config, &session_data.identifier.value);
 
-    let cookie_string = session_data
-        .cookie_config
-        .options
-        .iter()
-        .fold(cookie_value, |acc, opt| format!("{}; {}", acc, opt));
+    let set_cookie = SetCookie(vec![cookie_string]);
+    response.headers_mut().set(set_cookie);
+}
+
+fn reset_cookie(response: &mut Response, session_drop_data: &SessionDropData) {
+    let cookie_string = cookie_string(&*session_drop_data.cookie_config, "discarded");
+    let cookie_string = format!("{}; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0",
+                                cookie_string);
 
     let set_cookie = SetCookie(vec![cookie_string]);
     response.headers_mut().set(set_cookie);
@@ -778,6 +822,7 @@ impl<B, T> SessionMiddleware<B, T>
                                                                identifier,
                                                                v);
 
+                populate_session_drop_data(&mut state, &session_data);
                 state.put(session_data);
                 future::ok(state)
             }
@@ -803,9 +848,22 @@ impl<B, T> SessionMiddleware<B, T>
                state::request_id(&state),
                session_data.identifier.value);
 
+        populate_session_drop_data(&mut state, &session_data);
         state.put(session_data);
+
         future::ok(state)
     }
+}
+
+fn populate_session_drop_data<T>(state: &mut State, session_data: &SessionData<T>)
+    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{
+    let cookie_config = session_data.cookie_config.clone();
+    let drop_session = session_data.drop_session.clone();
+    state.put(SessionDropData {
+                  cookie_config,
+                  drop_session,
+              });
 }
 
 #[cfg(test)]
