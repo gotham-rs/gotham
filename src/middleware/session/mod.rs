@@ -118,7 +118,8 @@ pub struct SessionCookieConfig {
 /// # use gotham::handler::NewHandlerService;
 /// # use gotham::state::State;
 /// # use gotham::middleware::{NewMiddleware, Middleware};
-/// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend};
+/// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
+/// #                                   SessionIdentifier};
 /// # use gotham::http::response::create_response;
 /// # use hyper::header::Cookie;
 /// # use hyper::server::{Request, Response, Service};
@@ -147,7 +148,7 @@ pub struct SessionCookieConfig {
 /// #
 /// # fn main() {
 /// #   let backend = MemoryBackend::new(Duration::from_secs(1));
-/// #   let identifier = backend.random_identifier();
+/// #   let identifier = SessionIdentifier { value: "u0G6KdfckQgkV0qLANZjjNkEHBU".to_owned() };
 /// #   let mut bytes = Vec::new();
 /// #   let session = MySessionType {
 /// #       items: vec!["a".into(), "b".into(), "c".into()],
@@ -885,7 +886,7 @@ mod tests {
         let nm = NewSessionMiddleware::default().with_session_type::<TestSession>();
         let m = nm.new_middleware().unwrap();
 
-        let identifier = m.backend.random_identifier();
+        let identifier = m.random_identifier();
 
         let session = TestSession { val: rand::random() };
         let mut bytes = Vec::new();

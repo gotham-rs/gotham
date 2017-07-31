@@ -214,7 +214,7 @@ mod tests {
     fn memory_backend_test() {
         let new_backend = MemoryBackend::new(Duration::from_millis(100));
         let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
-        let identifier = new_backend.new_backend().unwrap().random_identifier();
+        let identifier = SessionIdentifier { value: "totally_random_identifier".to_owned() };
 
         new_backend
             .new_backend()
@@ -237,9 +237,10 @@ mod tests {
     fn memory_backend_refresh_test() {
         let new_backend = MemoryBackend::new(Duration::from_millis(100));
         let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
-        let identifier = new_backend.new_backend().unwrap().random_identifier();
+        let identifier = SessionIdentifier { value: "totally_random_identifier".to_owned() };
         let bytes2: Vec<u8> = (0..64).map(|_| rand::random()).collect();
-        let identifier2 = new_backend.new_backend().unwrap().random_identifier();
+        let identifier2 =
+            SessionIdentifier { value: "another_totally_random_identifier".to_owned() };
 
         let backend = new_backend
             .new_backend()
