@@ -11,7 +11,7 @@ use std::sync::Arc;
 use futures::{future, Future};
 use hyper::{Request, Response, StatusCode};
 
-use handler::{NewHandler, Handler, HandlerFuture};
+use handler::{NewHandler, Handler, HandlerFuture, IntoResponse};
 use http::request::path::RequestPathSegments;
 use http::response::create_response;
 use router::response::finalizer::ResponseFinalizer;
@@ -181,6 +181,7 @@ impl Router {
     fn finalize_response(&self, result: Box<HandlerFuture>) -> Box<HandlerFuture> {
         let response_finalizer = self.data.response_finalizer.clone();
         result
+            .or_else(|(state, err)| future::ok((state, err.into_response())))
             .and_then(move |(state, res)| {
                           trace!("[{}] handler complete", request_id(&state));
                           response_finalizer.finalize(state, res)
