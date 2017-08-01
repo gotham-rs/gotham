@@ -181,7 +181,10 @@ impl Router {
     fn finalize_response(&self, result: Box<HandlerFuture>) -> Box<HandlerFuture> {
         let response_finalizer = self.data.response_finalizer.clone();
         result
-            .or_else(|(state, err)| future::ok((state, err.into_response())))
+            .or_else(|(state, err)| {
+                         let response = err.into_response(&state);
+                         future::ok((state, response))
+                     })
             .and_then(move |(state, res)| {
                           trace!("[{}] handler complete", request_id(&state));
                           response_finalizer.finalize(state, res)

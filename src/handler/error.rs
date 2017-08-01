@@ -4,6 +4,8 @@ use std::fmt::{self, Debug, Display, Formatter};
 use hyper::{StatusCode, Response};
 
 use handler::IntoResponse;
+use state::State;
+use http::response::create_response;
 
 /// Describes an error which occurred during handler execution, and allows the creation of a HTTP
 /// `Response`.
@@ -64,12 +66,19 @@ impl HandlerError {
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::StatusCode;
+    /// # use hyper::{StatusCode, Request, Method};
+    /// # use gotham::state::State;
     /// # use gotham::handler::{IntoResponse, IntoHandlerError};
+    /// # use gotham::state::request_id::set_request_id;
     /// # fn main() {
+    /// # let mut state = State::new();
+    /// # set_request_id(&mut state, &Request::new(Method::Get, "/".parse().unwrap()));
     /// let io_error = std::io::Error::last_os_error();
-    /// let handler_error = io_error.into_handler_error().with_status(StatusCode::ImATeapot);
-    /// assert_eq!(handler_error.into_response().status(),
+    /// let handler_error = io_error
+    ///     .into_handler_error()
+    ///     .with_status(StatusCode::ImATeapot);
+    ///
+    /// assert_eq!(handler_error.into_response(&state).status(),
     ///            StatusCode::ImATeapot);
     /// # }
     /// ```
@@ -82,13 +91,13 @@ impl HandlerError {
 }
 
 impl IntoResponse for HandlerError {
-    fn into_response(self) -> Response {
+    fn into_response(self, state: &State) -> Response {
         trace!(" HandlerError generating HTTP response with status: {} {}",
                self.status_code.as_u16(),
                self.status_code
                    .canonical_reason()
                    .unwrap_or("(unregistered)"));
 
-        Response::new().with_status(self.status_code)
+        create_response(state, self.status_code, None)
     }
 }

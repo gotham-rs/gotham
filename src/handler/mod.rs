@@ -213,7 +213,7 @@ impl<T> Service for NewHandlerService<T>
                                                err.description());
                                     }
                                 }
-                                future::ok(err.into_response())
+                                future::ok(err.into_response(&state))
                             })
                             .boxed()
                     })
@@ -273,7 +273,8 @@ impl<T> IntoHandlerFuture for (State, T)
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;
-        future::ok((state, t.into_response())).boxed()
+        let response = t.into_response(&state);
+        future::ok((state, response)).boxed()
     }
 }
 
@@ -322,7 +323,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// }
 ///
 /// impl IntoResponse for MyStruct {
-///     fn into_response(self) -> Response {
+///     fn into_response(self, _state: &State) -> Response {
 ///         Response::new()
 ///             .with_status(StatusCode::Ok)
 ///             .with_body(self.value)
@@ -353,11 +354,11 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// * `Box<HandlerFuture>` &ndash; The boxed future is returned directly
 pub trait IntoResponse {
     /// Converts this value into a `hyper::Response`
-    fn into_response(self) -> Response;
+    fn into_response(self, state: &State) -> Response;
 }
 
 impl IntoResponse for Response {
-    fn into_response(self) -> Response {
+    fn into_response(self, _state: &State) -> Response {
         self
     }
 }
