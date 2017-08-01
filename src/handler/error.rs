@@ -4,7 +4,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use hyper::{StatusCode, Response};
 
 use handler::IntoResponse;
-use state::State;
+use state::{State, request_id};
 use http::response::create_response;
 
 /// Describes an error which occurred during handler execution, and allows the creation of a HTTP
@@ -92,7 +92,8 @@ impl HandlerError {
 
 impl IntoResponse for HandlerError {
     fn into_response(self, state: &State) -> Response {
-        trace!(" HandlerError generating HTTP response with status: {} {}",
+        trace!("[{}] HandlerError generating HTTP response with status: {} {}",
+               request_id(state),
                self.status_code.as_u16(),
                self.status_code
                    .canonical_reason()
