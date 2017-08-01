@@ -200,19 +200,30 @@ impl<T> Service for NewHandlerService<T>
                             })
                             .or_else(move |(state, err)| {
                                 let f = chrono::UTC::now();
-                                match f.signed_duration_since(s).num_microseconds() {
-                                    Some(dur) => {
-                                        error!("[ERROR][{}][Error: {}][{}]",
-                                               request_id(&state),
-                                               err.description(),
-                                               dur);
-                                    }
-                                    None => {
-                                        error!("[ERROR][{}][Error: {}][invalid]",
-                                               request_id(&state),
-                                               err.description());
+
+                                {
+                                    // HandlerError::cause() is far more interesting for logging,
+                                    // but the API doesn't guarantee its presence (even though it
+                                    // always is).
+                                    let err_description = err.cause()
+                                        .map(Error::description)
+                                        .unwrap_or(err.description());
+
+                                    match f.signed_duration_since(s).num_microseconds() {
+                                        Some(dur) => {
+                                            error!("[ERROR][{}][Error: {}][{}]",
+                                                   request_id(&state),
+                                                   err_description,
+                                                   dur);
+                                        }
+                                        None => {
+                                            error!("[ERROR][{}][Error: {}][invalid]",
+                                                   request_id(&state),
+                                                   err_description);
+                                        }
                                     }
                                 }
+
                                 future::ok(err.into_response(&state))
                             })
                             .boxed()

@@ -182,6 +182,10 @@ impl Router {
         let response_finalizer = self.data.response_finalizer.clone();
         result
             .or_else(|(state, err)| {
+                         trace!("[{}] converting error into http response \
+                                 during finalization: {:?}",
+                                request_id(&state),
+                                err);
                          let response = err.into_response(&state);
                          future::ok((state, response))
                      })
