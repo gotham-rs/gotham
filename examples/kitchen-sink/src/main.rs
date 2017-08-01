@@ -30,7 +30,7 @@ use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, P
 use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 use gotham::router::tree::TreeBuilder;
 use gotham::router::tree::node::{NodeBuilder, SegmentType};
-use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService};
+use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService, IntoHandlerError};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::state::{State, FromState};
 use gotham::http::response::create_response;
@@ -196,7 +196,7 @@ impl Echo {
                                                     Some((valid_body.to_vec(), mime::TEXT_PLAIN)));
                           future::ok((state, res))
                       }
-                      Err(e) => future::err((state, e)),
+                      Err(e) => future::err((state, e.into_handler_error())),
                   })
             .boxed()
     }
