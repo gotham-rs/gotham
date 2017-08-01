@@ -22,10 +22,10 @@ use http::header::XRuntimeMicroseconds;
 
 mod error;
 
-pub use self::error::HandlerError;
+pub use self::error::{HandlerError, IntoHandlerError};
 
 /// A type alias for the trait objects returned by `HandlerService`
-pub type HandlerFuture = Future<Item = (State, Response), Error = (State, hyper::Error)> + Send;
+pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)> + Send;
 
 /// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
 /// handlers.
@@ -213,7 +213,7 @@ impl<T> Service for NewHandlerService<T>
                                                err.description());
                                     }
                                 }
-                                future::err(err)
+                                future::ok(err.into_response())
                             })
                             .boxed()
                     })

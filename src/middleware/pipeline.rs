@@ -430,7 +430,7 @@ unsafe impl<T, U> MiddlewareChain for (T, U)
 mod tests {
     use super::*;
     use test::TestServer;
-    use handler::{Handler, NewHandlerService};
+    use handler::{Handler, NewHandlerService, IntoHandlerError};
     use state::StateData;
     use hyper::Response;
     use hyper::StatusCode;
@@ -528,7 +528,7 @@ mod tests {
 
             Ok(move |state, req| match pipeline.construct() {
                    Ok(p) => p.call(state, req, |state, req| handler.handle(state, req)),
-                   Err(e) => future::err((state, e.into())).boxed(),
+                   Err(e) => future::err((state, e.into_handler_error())).boxed(),
                })
         });
 

@@ -193,7 +193,7 @@ impl Router {
 mod tests {
     use super::*;
     use std::str::FromStr;
-    use hyper::{Error, Request, Method, Uri, Body};
+    use hyper::{Request, Method, Uri, Body};
     use hyper::header::ContentLength;
 
     use router::tree::TreeBuilder;
@@ -205,12 +205,16 @@ mod tests {
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;
     use state::set_request_id;
+    use handler::HandlerError;
 
     fn handler(state: State, _req: Request) -> (State, Response) {
         (state, Response::new())
     }
 
-    fn send_request(r: Router, m: Method, uri: &str) -> Result<(State, Response), (State, Error)> {
+    fn send_request(r: Router,
+                    m: Method,
+                    uri: &str)
+                    -> Result<(State, Response), (State, HandlerError)> {
         let uri = Uri::from_str(uri).unwrap();
         let request: Request<Body> = Request::new(m, uri);
 
