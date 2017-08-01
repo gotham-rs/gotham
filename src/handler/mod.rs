@@ -20,6 +20,10 @@ use state::{State, set_request_id, request_id};
 use http::request::path::RequestPathSegments;
 use http::header::XRuntimeMicroseconds;
 
+mod error;
+
+pub use self::error::HandlerError;
+
 /// A type alias for the trait objects returned by `HandlerService`
 pub type HandlerFuture = Future<Item = (State, Response), Error = (State, hyper::Error)> + Send;
 
