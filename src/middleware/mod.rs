@@ -8,6 +8,7 @@ use handler::HandlerFuture;
 use state::State;
 
 pub mod pipeline;
+pub mod session;
 
 /// `Middleware` has the opportunity to provide additional behaviour to the request / response
 /// interaction. Middleware-specific state data can be recorded in the [`State`][State] struct for
@@ -158,7 +159,7 @@ pub trait Middleware {
 }
 
 /// Creates new `Middleware` values.
-pub trait NewMiddleware {
+pub trait NewMiddleware: Sync {
     /// The type of `Middleware` created by the implementor.
     type Instance: Middleware;
 

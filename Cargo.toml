@@ -9,6 +9,9 @@ version = "0.1.0"
 [dependencies]
 log = "0.3"
 hyper = "~0.11.2"
+serde = "~1.0"
+serde_derive = "*"
+rmp-serde = "~0.13.4"
 mime = "0.3"
 futures = "~0.1.11"
 futures-cpupool = "0.1"
@@ -19,6 +22,9 @@ borrow-bag = "0.3"
 url = "1.4.0"
 uuid = { version = "0.5", features = ["v4"] }
 chrono = "0.3"
+base64 = "0.4"
+rand = "0.3"
+linked-hash-map = "0.4"
 
 [dev-dependencies]
 gotham_derive = { path = "gotham_derive" }

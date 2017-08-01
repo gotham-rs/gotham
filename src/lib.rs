@@ -29,6 +29,15 @@ extern crate uuid;
 extern crate log;
 extern crate chrono;
 extern crate mime;
+extern crate serde;
+extern crate rand;
+extern crate base64;
+extern crate rmp_serde;
+extern crate linked_hash_map;
+
+#[cfg(test)]
+#[macro_use]
+extern crate serde_derive;
 
 pub mod handler;
 pub mod middleware;
