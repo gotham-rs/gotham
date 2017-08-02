@@ -6,7 +6,7 @@ use borrow_bag::{new_borrow_bag, BorrowBag, Handle, Lookup};
 use hyper::Request;
 use futures::{future, Future};
 
-use handler::{Handler, NewHandler, HandlerFuture};
+use handler::{Handler, NewHandler, HandlerFuture, IntoHandlerError};
 use middleware::pipeline::{NewMiddlewareChain, Pipeline};
 use state::{State, request_id};
 
@@ -82,7 +82,7 @@ impl<H, C, P> Dispatcher for DispatcherImpl<H, C, P>
             }
             Err(e) => {
                 trace!("[{}] error cloning handler", request_id(&state));
-                future::err((state, e.into())).boxed()
+                future::err((state, e.into_handler_error())).boxed()
             }
         }
     }
@@ -138,7 +138,7 @@ impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
             }
             Err(e) => {
                 trace!("[{}] error borrowing pipeline", request_id(&state));
-                future::err((state, e.into())).boxed()
+                future::err((state, e.into_handler_error())).boxed()
             }
         }
     }

@@ -20,8 +20,12 @@ use state::{State, set_request_id, request_id};
 use http::request::path::RequestPathSegments;
 use http::header::XRuntimeMicroseconds;
 
+mod error;
+
+pub use self::error::{HandlerError, IntoHandlerError};
+
 /// A type alias for the trait objects returned by `HandlerService`
-pub type HandlerFuture = Future<Item = (State, Response), Error = (State, hyper::Error)> + Send;
+pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)> + Send;
 
 /// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
 /// handlers.
@@ -196,20 +200,31 @@ impl<T> Service for NewHandlerService<T>
                             })
                             .or_else(move |(state, err)| {
                                 let f = chrono::UTC::now();
-                                match f.signed_duration_since(s).num_microseconds() {
-                                    Some(dur) => {
-                                        error!("[ERROR][{}][Error: {}][{}]",
-                                               request_id(&state),
-                                               err.description(),
-                                               dur);
-                                    }
-                                    None => {
-                                        error!("[ERROR][{}][Error: {}][invalid]",
-                                               request_id(&state),
-                                               err.description());
+
+                                {
+                                    // HandlerError::cause() is far more interesting for logging,
+                                    // but the API doesn't guarantee its presence (even though it
+                                    // always is).
+                                    let err_description = err.cause()
+                                        .map(Error::description)
+                                        .unwrap_or(err.description());
+
+                                    match f.signed_duration_since(s).num_microseconds() {
+                                        Some(dur) => {
+                                            error!("[ERROR][{}][Error: {}][{}]",
+                                                   request_id(&state),
+                                                   err_description,
+                                                   dur);
+                                        }
+                                        None => {
+                                            error!("[ERROR][{}][Error: {}][invalid]",
+                                                   request_id(&state),
+                                                   err_description);
+                                        }
                                     }
                                 }
-                                future::err(err)
+
+                                future::ok(err.into_response(&state))
                             })
                             .boxed()
                     })
@@ -269,7 +284,8 @@ impl<T> IntoHandlerFuture for (State, T)
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;
-        future::ok((state, t.into_response())).boxed()
+        let response = t.into_response(&state);
+        future::ok((state, response)).boxed()
     }
 }
 
@@ -318,7 +334,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// }
 ///
 /// impl IntoResponse for MyStruct {
-///     fn into_response(self) -> Response {
+///     fn into_response(self, _state: &State) -> Response {
 ///         Response::new()
 ///             .with_status(StatusCode::Ok)
 ///             .with_body(self.value)
@@ -349,11 +365,11 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// * `Box<HandlerFuture>` &ndash; The boxed future is returned directly
 pub trait IntoResponse {
     /// Converts this value into a `hyper::Response`
-    fn into_response(self) -> Response;
+    fn into_response(self, state: &State) -> Response;
 }
 
 impl IntoResponse for Response {
-    fn into_response(self) -> Response {
+    fn into_response(self, _state: &State) -> Response {
         self
     }
 }

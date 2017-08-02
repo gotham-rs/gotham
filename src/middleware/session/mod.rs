@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 
 use base64;
 use rand::Rng;
-use hyper::{self, StatusCode};
+use hyper::StatusCode;
 use hyper::server::{Request, Response};
 use hyper::header::{Cookie, SetCookie};
 use futures::{future, Future};
@@ -15,7 +15,7 @@ use serde::{Serialize, Deserialize};
 use rmp_serde;
 
 use super::{NewMiddleware, Middleware};
-use handler::HandlerFuture;
+use handler::{HandlerFuture, HandlerError, IntoHandlerError};
 use state::{self, State, StateData, FromState};
 use http::response::create_response;
 
@@ -721,7 +721,7 @@ impl<B, T> SessionMiddleware<B, T>
 }
 
 fn persist_session<T>((mut state, mut response): (State, Response))
-                      -> future::FutureResult<(State, Response), (State, hyper::Error)>
+                      -> future::FutureResult<(State, Response), (State, HandlerError)>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     match state.take::<SessionDropData>() {
@@ -783,7 +783,7 @@ fn reset_cookie(response: &mut Response, session_drop_data: &SessionDropData) {
 fn write_session<T>(state: State,
                     response: Response,
                     session_data: SessionData<T>)
-                    -> future::FutureResult<(State, Response), (State, hyper::Error)>
+                    -> future::FutureResult<(State, Response), (State, HandlerError)>
     where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     let mut bytes = Vec::new();
@@ -830,7 +830,7 @@ impl<B, T> SessionMiddleware<B, T>
                                mut state: State,
                                identifier: SessionIdentifier,
                                result: Result<Option<Vec<u8>>, SessionError>)
-                               -> future::FutureResult<State, (State, hyper::Error)> {
+                               -> future::FutureResult<State, (State, HandlerError)> {
         match result {
             Ok(v) => {
                 trace!("[{}] retrieved session ({}) from backend successfully",
@@ -851,12 +851,12 @@ impl<B, T> SessionMiddleware<B, T>
                 let e = io::Error::new(io::ErrorKind::Other,
                                        format!("backend failed to return session: {:?}", e));
 
-                future::err((state, e.into()))
+                future::err((state, e.into_handler_error()))
             }
         }
     }
 
-    fn new_session(self, mut state: State) -> future::FutureResult<State, (State, hyper::Error)> {
+    fn new_session(self, mut state: State) -> future::FutureResult<State, (State, HandlerError)> {
         let session_data = SessionData::<T>::new(self);
 
         trace!("[{}] created new session ({})",
@@ -874,7 +874,7 @@ mod tests {
     use super::*;
     use std::sync::Mutex;
     use rand;
-    use hyper::{Method, StatusCode, Response};
+    use hyper::{self, Method, StatusCode, Response};
 
     #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
     struct TestSession {
