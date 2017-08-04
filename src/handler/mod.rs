@@ -245,7 +245,7 @@ impl<T> Service for NewHandlerService<T>
 /// `Service`][tokio-simple-server]
 ///
 /// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
-pub trait Handler: Send + Sync {
+pub trait Handler: Send {
     /// Handles the request, returning a boxed future which resolves to a response.
     fn handle(self, State, Request) -> Box<HandlerFuture>;
 }
@@ -375,7 +375,7 @@ impl IntoResponse for Response {
 }
 
 impl<F, R> Handler for F
-    where F: FnOnce(State, Request) -> R + Send + Sync,
+    where F: FnOnce(State, Request) -> R + Send,
           R: IntoHandlerFuture
 {
     fn handle(self, state: State, req: Request) -> Box<HandlerFuture> {
