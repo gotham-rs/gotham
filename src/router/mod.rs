@@ -37,11 +37,11 @@ impl RouterData {
 /// dispatching error states when a valid `Route` is unable to be determined.
 ///
 /// The `Router` is capable of delegating `Requests` to secondary `Router` instances which allows it
-/// to support "Umbrella Applications". An umbrella application contains multiple
+/// to support "Modular Applications". An modular application contains multiple
 /// applications that are run together but have clear boundaries between them, via module
-/// seperation. Umbrella applications live within a single repository. This style of application
+/// seperation. Modular applications live within a single repository. This style of application
 /// is roughly a halfway point between monolithic application design and
-/// microservice application design. Umbrella Applications may also share modules.
+/// microservice application design. Modular Applications may also share modules.
 /// e.g. Authentication/Authorization/Identity.
 ///
 /// Please see the documentation for `Route` in order to create routes that delegate to secondary
