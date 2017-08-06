@@ -1,10 +1,15 @@
 [package]
-authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
-           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
-description = "Work in progress library with no initial release yet"
-license = "MIT"
 name = "gotham"
 version = "0.1.0"
+authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
+           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
+description = "A flexible web framework that does not sacrifice safety, security or speed."
+license = "MIT"
+homepage = "https://gotham.rs"
+repository = "https://github.com/gotham-rs/gotham"
+readme = "README.md"
+categories = ["web-programming::http-server"]
+keywords = ["server", "http", "async", "web", "api", "json", "framework", "gotham"]
 
 [dependencies]
 log = "0.3"
