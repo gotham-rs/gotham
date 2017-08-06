@@ -28,7 +28,7 @@ pub enum Delegation {
     Internal,
 
     /// Invokes an external `Router` as the handler for requests handled by this `Route`. This is
-    /// useful when supporting "Umbrella Applications". The external `Router` will not have access to
+    /// useful when supporting "Modular Applications". The external `Router` will not have access to
     /// any `Request` path segment processed in order to arrive at the current `Route`.
     External,
 }
@@ -36,7 +36,7 @@ pub enum Delegation {
 /// A type that determines if its associated logic can be exposed by the `Router`
 /// in response to an external request.
 ///
-/// Capable of delegating requests to secondary `Router` instances in order to support "Umbrella
+/// Capable of delegating requests to secondary `Router` instances in order to support "Modular
 /// Applications".
 pub trait Route {
     /// Determines if this `Route` can be invoked, based on the `Request`.
