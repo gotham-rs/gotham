@@ -24,7 +24,10 @@ mod error;
 
 pub use self::error::{HandlerError, IntoHandlerError};
 
-/// A type alias for the trait objects returned by `HandlerService`
+/// A type alias for the trait objects returned by `HandlerService`.
+///
+/// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate
+/// an appropriate HTTP error response.
 pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)> + Send;
 
 /// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
@@ -247,7 +250,7 @@ impl<T> Service for NewHandlerService<T>
 /// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
 pub trait Handler: Send {
     /// Handles the request, returning a boxed future which resolves to a response.
-    fn handle(self, State, Request) -> Box<HandlerFuture>;
+    fn handle(self, state: State, request: Request) -> Box<HandlerFuture>;
 }
 
 /// Creates new `Handler` values.
@@ -271,6 +274,9 @@ impl<F, H> NewHandler for F
 }
 
 /// Represents a type which can be converted into the future type returned by a `Handler`.
+///
+/// This is used to allow functions with different return types to satisfy the `Handler` trait
+/// bound via the generic function implementation.
 pub trait IntoHandlerFuture {
     /// Converts this value into a boxed future resolving to a state and response.
     fn into_handler_future(self) -> Box<HandlerFuture>;

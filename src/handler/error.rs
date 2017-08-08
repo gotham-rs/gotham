@@ -15,6 +15,31 @@ pub struct HandlerError {
 }
 
 /// Allows conversion into a HandlerError from an implementing type.
+///
+/// Futures returned from handlers can resolve to an error type with a value of `(State,
+/// HandlerError)`.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// # extern crate futures;
+/// #
+/// # use std::fs::File;
+/// # use gotham::state::State;
+/// # use gotham::handler::{IntoHandlerError, HandlerFuture};
+/// # use hyper::Request;
+/// # use futures::{future, Future};
+/// #
+/// # #[allow(dead_code)]
+/// fn my_handler(state: State, _request: Request) -> Box<HandlerFuture> {
+///     match File::open("config.toml") {
+///         Err(e) => future::err((state, e.into_handler_error())).boxed(),
+///         Ok(_) => // Create and return a response
+/// #                unimplemented!(),
+///     }
+/// }
+/// #
+/// # fn main() {}
 pub trait IntoHandlerError {
     /// Convert `self` into a `HandlerError`.
     ///
