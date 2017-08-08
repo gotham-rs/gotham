@@ -6,6 +6,9 @@ use http::request::path::RequestPathSegments;
 use state::request_id::RequestId;
 
 /// A marker trait for types that can be stored in `State`.
+///
+/// Typically implemented using `#[derive(StateData)]`, which is provided by the `gotham_derive`
+/// crate.
 pub trait StateData: Any + Send {}
 
 impl StateData for Method {}
