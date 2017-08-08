@@ -18,10 +18,10 @@ use router::response::extender::StaticResponseExtender;
 /// to indicate why the extraction process failed.
 ///
 /// This functionality can be simply derived for application structs via `QueryStringExtractor`,
-/// which will attempt to populate the associated struct and simply set "400 Bad Request"
-/// on failure.
+/// which will attempt to populate the associated struct. Combine with the derive
+/// `StaticResponseExtender` to have invalid query string data result in "400 Bad Request".
 ///
-/// Custom responses can be written by using the `BaseQueryStringExtractor` derive and then
+/// Custom responses can be created by using the `QueryStringExtractor` derive and then
 /// implementing `StaticResponseExtender` independently.
 pub trait QueryStringExtractor: StaticResponseExtender {
     /// Populates the struct with data from the `Request` query string and adds it to `State`
