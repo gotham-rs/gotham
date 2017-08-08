@@ -8,7 +8,7 @@ use hyper::{Headers, Uri, HttpVersion, Method};
 /// path and query strings.
 ///
 /// # Panics
-/// All functions MUST panic if the value is a None when retrieved from `State`.
+/// All functions panic if the value is a None when retrieved from `State`.
 pub trait FromState<T> {
     /// Moves out of `State` and returns ownership
     ///
