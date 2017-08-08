@@ -6,7 +6,7 @@ use http::PercentDecoded;
 
 const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 
-/// Holder for `Request` uri path segments that have been split into individual segments. i
+/// Holder for `Request` uri path segments that have been split into individual segments.
 ///
 /// Used with `Tree` traversal.
 #[derive(Clone, PartialEq)]
