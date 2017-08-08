@@ -46,8 +46,6 @@ impl StaticResponseExtender for NoopQueryStringExtractor {
 #[derive(Debug)]
 /// Represents an error in coverting a key=value pair from a `Request` query string into a
 /// type safe value.
-///
-/// Deliberately kept generic as implementations of FromQueryString cannot be known in advance.
 pub struct FromQueryStringError {
     description: String,
 }
