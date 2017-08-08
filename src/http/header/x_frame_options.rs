@@ -50,18 +50,16 @@ static NAME: &'static str = "X-Frame-Options";
 /// ```
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum XFrameOptions {
-    /// DENY: A browser receiving content with this header field MUST NOT
-    ///       display this content in any frame.
+    /// A browser receiving content with this header field MUST NOT display this content in any
+    /// frame.
     Deny,
 
-    /// SAMEORIGIN: A browser receiving content with this header field MUST NOT
-    ///             display this content in any frame from a page of different origin
-    ///             than the content itself.
+    /// A browser receiving content with this header field MUST NOT display this content in any
+    /// frame from a page of different origin than the content itself.
     SameOrigin,
 
-    /// ALLOW-FROM:  A browser receiving content with this header MUST NOT display this
-    ///              content in a frame from any page with a top-level browsing context
-    ///              of different origin than the specified origin.
+    /// A browser receiving content with this header MUST NOT display this content in a frame from
+    /// any page with a top-level browsing context of different origin than the specified origin.
     AllowFrom(String),
 }
 
