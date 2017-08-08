@@ -1,7 +1,6 @@
 //! Defines types for Gotham middleware
 
 use std::io;
-
 use hyper::Request;
 
 use handler::HandlerFuture;
@@ -10,15 +9,13 @@ use state::State;
 pub mod pipeline;
 pub mod session;
 
-/// `Middleware` has the opportunity to provide additional behaviour to the request / response
-/// interaction. Middleware-specific state data can be recorded in the [`State`][State] struct for
+/// `Middleware` has the opportunity to provide additional behaviour to the `Request` / `Response`
+/// interaction. Middleware-specific state data can be recorded in the `State` struct for
 /// use elsewhere.
-///
-/// [State]: ../state/struct.State.html
 ///
 /// # Examples
 ///
-/// Taking no action, and immediately passing the request through to the rest of the application:
+/// Taking no action, and immediately passing the `Request` through to the rest of the application:
 ///
 /// ```rust,no_run
 /// # extern crate gotham;
@@ -141,7 +138,7 @@ pub mod session;
 /// }
 /// #
 /// # fn main() {
-///     AsyncMiddleware {};
+/// #    AsyncMiddleware {};
 /// # }
 /// ```
 pub trait Middleware {
