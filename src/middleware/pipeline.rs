@@ -116,7 +116,9 @@ use state::{State, request_id};
 ///        format!("{:?}", data.vec)
 ///     };
 ///
-///     let res = create_response(&state, StatusCode::Ok, Some((body.into_bytes(), mime::TEXT_PLAIN)));
+///     let res = create_response(&state,
+///                               StatusCode::Ok,
+///                               Some((body.into_bytes(), mime::TEXT_PLAIN)));
 ///
 ///     (state, res)
 /// }
@@ -128,25 +130,26 @@ use state::{State, request_id};
 ///         .add(MiddlewareTwo)
 ///         .add(MiddlewareThree)
 ///         .build());
+///
 ///     let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
 ///
-///     let mut tree_builder = TreeBuilder::new();
-///
-///     let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
-///     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
-///     let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-///     tree_builder.add_route(Box::new(route));
-///     let tree = tree_builder.finalize();
-///
-///
-///     let response_finalizer = ResponseFinalizerBuilder::new().finalize();
-///     let router = Router::new(tree, response_finalizer);
-///
-///     let new_service = NewHandlerService::new(router);
-///     let mut test_server = TestServer::new(new_service).unwrap();
-///     let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
-///     let uri = "http://example.com/".parse().unwrap();
+///     // Router / TestServer definitions elided
+/// #   let mut tree_builder = TreeBuilder::new();
+/// #
+/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
+/// #   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
+/// #   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+/// #   let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
+/// #   tree_builder.add_route(Box::new(route));
+/// #   let tree = tree_builder.finalize();
+/// #
+/// #   let response_finalizer = ResponseFinalizerBuilder::new().finalize();
+/// #   let router = Router::new(tree, response_finalizer);
+/// #
+/// #   let new_service = NewHandlerService::new(router);
+/// #   let mut test_server = TestServer::new(new_service).unwrap();
+/// #   let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
+/// #   let uri = "http://example.com/".parse().unwrap();
 ///     let response = test_server.run_request(client.get(uri)).unwrap();
 ///     assert_eq!(response.status(), StatusCode::Ok);
 ///     assert_eq!(test_server.read_body(response).unwrap(), "[1, 2, 3]".as_bytes());
