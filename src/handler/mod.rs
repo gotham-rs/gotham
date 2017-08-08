@@ -270,10 +270,7 @@ impl<F, H> NewHandler for F
     }
 }
 
-/// Represents a type which can be converted into the future type returned by a
-/// [`Handler`][Handler].
-///
-/// [Handler]: trait.Handler.html
+/// Represents a type which can be converted into the future type returned by a `Handler`.
 pub trait IntoHandlerFuture {
     /// Converts this value into a boxed future resolving to a state and response.
     fn into_handler_future(self) -> Box<HandlerFuture>;
