@@ -6,8 +6,9 @@ use http::PercentDecoded;
 
 const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 
-/// Holder for `Request` uri path segments that have been split into individual segments that are
-/// suitable for use with `Tree` traversal.
+/// Holder for `Request` uri path segments that have been split into individual segments. i
+///
+/// Used with `Tree` traversal.
 #[derive(Clone, PartialEq)]
 pub struct RequestPathSegments {
     offset: usize,
@@ -28,10 +29,10 @@ impl RequestPathSegments {
     /// # use gotham::http::request::path::RequestPathSegments;
     /// #
     /// # pub fn main() {
-    ///     let srp = RequestPathSegments::new("/%61ctiv%61te//batsignal");
+    ///     let srp = RequestPathSegments::new("/%61ctiv%61te//workflow");
     ///     assert_eq!("/", srp.segments()[0].val());
     ///     assert_eq!("activate", srp.segments()[1].val());
-    ///     assert_eq!("batsignal", srp.segments()[2].val());
+    ///     assert_eq!("workflow", srp.segments()[2].val());
     /// # }
     /// ```
     pub fn new<'r>(path: &'r str) -> Self {
@@ -56,8 +57,8 @@ impl RequestPathSegments {
     /// This will always include a "/" node to represent the root as well as all segments
     /// that remain as of the current offset.
     ///
-    /// The offset starts at 0 meaning all segments off the Request path will be provided until
-    /// the offset is updated.
+    /// The offset starts at 0 meaning all segments of the initial Request path will be provided
+    /// until the offset is updated.
     ///
     /// ```rust
     /// # extern crate gotham;
@@ -65,13 +66,13 @@ impl RequestPathSegments {
     /// # use gotham::http::request::path::RequestPathSegments;
     /// #
     /// # pub fn main() {
-    ///     let mut srp = RequestPathSegments::new("/activate/batsignal");
+    ///     let mut srp = RequestPathSegments::new("/activate/workflow");
     ///     assert_eq!("/", srp.segments()[0].val());
     ///     assert_eq!("activate", srp.segments()[1].val());
-    ///     assert_eq!("batsignal", srp.segments()[2].val());
+    ///     assert_eq!("workflow", srp.segments()[2].val());
     ///     srp.increase_offset(1);
     ///     assert_eq!("/", srp.segments()[0].val());
-    ///     assert_eq!("batsignal", srp.segments()[1].val());
+    ///     assert_eq!("workflow", srp.segments()[1].val());
     /// # }
     pub fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
         self.segments
@@ -85,16 +86,14 @@ impl RequestPathSegments {
             .collect::<Vec<&PercentDecoded>>()
     }
 
-    /// Increases the offset for the original Request path that should be considered the
-    /// first segment following the root.
+    /// Increases the current offset value.
     ///
     /// * add: Indicates how much the offset should be increased by
     pub fn increase_offset(&mut self, add: usize) {
         self.offset += add;
     }
 
-    /// Sets the offset for the original Request path that should be considered the
-    /// first segment following the root.
+    /// Sets the offset.
     ///
     /// * offset: Sets the offset to the supplied value
     pub fn set_offset(&mut self, offset: usize) {

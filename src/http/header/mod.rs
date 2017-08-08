@@ -1,5 +1,4 @@
-//! Defines HTTP headers which are set by Gotham for various (often security) purposes that are not
-//! defined in Hyper.
+//! Defines HTTP headers which are set by Gotham but not provided by Hyper.
 
 mod x_request_id;
 mod x_frame_options;

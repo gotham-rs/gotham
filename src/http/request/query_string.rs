@@ -39,10 +39,10 @@ impl QueryStringMapping {
 
 /// Splits a query string into pairs and provides a mapping of keys to values.
 ///
-/// For keys which are represented 1..n times in the query string the resultant Vec will be
+/// For keys which are represented 1..n times in the query string the mapped Vec will be
 /// populated with each value provided.
 ///
-/// For keys that are provided but don't have a value associated an empty String will be stored.
+/// For keys that are provided but don't have a value associated an empty string will be stored.
 ///
 /// #Examples
 ///

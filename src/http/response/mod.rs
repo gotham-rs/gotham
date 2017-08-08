@@ -12,7 +12,7 @@ type Body = (Vec<u8>, Mime);
 /// Creates a `Response` object and populates it with a set of default headers that ensure
 /// security and conformance to best practice.
 ///
-/// Internally utilises `extend_response` so outputs match the documented examples for that
+/// Internally utilises `extend_response`. Output matches the documented examples for that
 /// function.
 ///
 /// The created `Response` should be extended by `Middleware` and `Handler` developers as
