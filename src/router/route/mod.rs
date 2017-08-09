@@ -1,7 +1,7 @@
 //! Defines types that support individual application routes.
 //!
-//! The Gotham `Router` having identified one or more potential `Route` instances to service a
-//! request via route `Tree` traversal will attempt to identify a matching `Route` and
+//! The Gotham `Router` having identified `1..n` potential `Route` instances to service a
+//! request via route `Tree` traversal will attempt to identify a matching `Route` instance and
 //! dispatch to it when it does so.
 
 pub mod matcher;
@@ -23,18 +23,20 @@ use state::State;
 #[derive(Clone, Copy, PartialEq)]
 /// Indicates how this Route behaves in relation to external `Router` instances.
 pub enum Delegation {
-    /// Invokes a handler that is considered 'Internal' to the current `Router`+`Route` instance,
+    /// Invokes a `Handler` that is considered 'internal' to the current `Router`+`Route` instance,
     /// this is generally true of all application implemented handlers.
     Internal,
 
-    /// Invokes an external `Router` as the handler for requests handled by this `Route`. This is
+    /// Invokes an external `Router` as the `Handler` for `Requests` matched by this `Route`. This is
     /// useful when supporting "Modular Applications". The external `Router` will not have access to
-    /// any `Request` path segment processed in order to arrive at the current `Route`.
+    /// any `Request` path segments processed in order to arrive at the current `Route`.
     External,
 }
 
 /// A type that determines if its associated logic can be exposed by the `Router`
-/// in response to an external request.
+/// in response to an external request. If it determines that it can the `Route` runs extractors on
+/// the `Request`, potentially extending `State` before dispatching to the `Dispatcher` assigned
+/// to this `Route`.
 ///
 /// Capable of delegating requests to secondary `Router` instances in order to support "Modular
 /// Applications".

@@ -29,7 +29,8 @@ pub fn finalize_pipeline_set<P>(eps: EditablePipelineSet<P>) -> PipelineSet<P> {
     Arc::new(eps)
 }
 
-/// Used by `Router` to dispatch requests via `Pipeline`(s) and into the correct `Handler`.
+/// Used by `Router` to dispatch requests via `Pipeline`(s), through `Middleware`(s)
+/// and finally into the configured `Handler`.
 pub trait Dispatcher {
     /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
     fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture>;

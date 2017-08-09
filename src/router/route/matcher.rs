@@ -22,10 +22,19 @@ pub trait RouteMatcher {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # fn main() {
-/// # use hyper::Method;
-/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
+/// # use hyper::{Method, Request, Uri};
+/// # use std::str::FromStr;
+/// # use gotham::state::State;
+/// # use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
 ///   let methods = vec![Method::Get, Method::Head];
-///   MethodOnlyRouteMatcher::new(methods);
+///   let matcher = MethodOnlyRouteMatcher::new(methods);
+///   let state = State::new();
+///   let uri = Uri::from_str("https://example.com").unwrap();
+///   let get_request = Request::new(Method::Get, uri.clone());
+///   let post_request = Request::new(Method::Post, uri.clone());
+///
+///   assert!(matcher.is_match(&state, &get_request).is_ok());
+///   assert!(matcher.is_match(&state, &post_request).is_err());
 /// # }
 /// ```
 pub struct MethodOnlyRouteMatcher {

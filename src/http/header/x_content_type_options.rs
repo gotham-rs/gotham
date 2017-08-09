@@ -23,11 +23,11 @@ static NAME: &'static str = "X-Content-Type-Options";
 /// ```
 /// # extern crate hyper;
 /// # extern crate gotham;
-///
+/// #
+/// # fn main () {
 /// use hyper::header::Headers;
 /// use gotham::http::header::XContentTypeOptions;
 ///
-/// # fn main () {
 /// let mut headers = Headers::new();
 /// headers.set(XContentTypeOptions::NoSniff);
 /// # }

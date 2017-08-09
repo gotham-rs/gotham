@@ -1,4 +1,4 @@
-//! Defines a `Router` and supporting types.
+//! Defines the Gotham `Router` and supporting types.
 
 pub mod tree;
 pub mod route;
@@ -34,15 +34,16 @@ impl RouterData {
 }
 
 /// Responsible for dispatching `Requests` to a linked `Route` and
-/// dispatching error states when a valid `Route` is unable to be determined.
+/// dispatching error states when a valid `Route` is unable to be determined or internal error
+/// states occur.
 ///
 /// The `Router` is capable of delegating `Requests` to secondary `Router` instances which allows it
-/// to support "Modular Applications". An modular application contains multiple
-/// applications that are run together but have clear boundaries between them, via module
-/// seperation. Modular applications live within a single repository. This style of application
-/// is roughly a halfway point between monolithic application design and
-/// microservice application design. Modular Applications may also share modules.
-/// e.g. Authentication/Authorization/Identity.
+/// to support "Modular Applications". A modular application contains multiple
+/// applications within a single binary but have clear boundaries between them, via Rust module
+/// seperation. Modular applications live within a single repository. Modular applications
+/// are roughly a halfway point between monolithic application design and
+/// microservice application design. Modular Applications may share modules that are not
+/// specifically asigned to any one application e.g. Authentication/Authorization/Identity.
 ///
 /// Please see the documentation for `Route` in order to create routes that delegate to secondary
 /// `Routers`.
@@ -82,9 +83,8 @@ impl NewHandler for Router {
 }
 
 impl Handler for Router {
-    /// Handles the request by determining the correct `Route` from the internal
-    /// `Tree`, storing any path related variables in `State` and dispatching
-    /// appropriately to the configured `Handler`.
+    /// Handles the `Request` by determining the correct `Route` from the internal `Tree`, storing
+    /// any path related variables in `State` and dispatching to the associated `Handler`.
     fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
         trace!("[{}] starting", request_id(&state));
 

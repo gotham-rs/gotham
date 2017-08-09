@@ -13,28 +13,29 @@ pub use state::request_id::request_id;
 pub use state::request_id::set_request_id;
 
 /// Provides storage for request state, and stores one item of each type. The types used for
-/// storage must implement the `gotham::state::StateData` trait to allow its storage. Gotham
-/// provides `StateData` to ease this implementation via `derive`.
+/// storage must implement the `gotham::state::StateData` trait to allow its storage.
+///
+/// Gotham provides `StateData` to ease this implementation via `derive`.
 ///
 /// # Examples
 ///
 /// ```rust
-///  extern crate gotham;
-///  #[macro_use]
-///  extern crate gotham_derive;
+/// extern crate gotham;
+/// #[macro_use]
+/// extern crate gotham_derive;
 ///
-///  use gotham::state::State;
+/// use gotham::state::State;
 ///
-///  #[derive(StateData)]
-///  struct MyStruct {
-///    value: i32
-///  }
+/// #[derive(StateData)]
+/// struct MyStruct {
+///   value: i32
+/// }
 ///
-///  # fn main() {
-///  let mut state = State::new();
+/// # fn main() {
+/// let mut state = State::new();
 ///
-///  state.put(MyStruct { value: 1 });
-///  assert_eq!(state.borrow::<MyStruct>().unwrap().value, 1);
+/// state.put(MyStruct { value: 1 });
+/// assert_eq!(state.borrow::<MyStruct>().unwrap().value, 1);
 /// # }
 /// ```
 pub struct State {
@@ -48,7 +49,7 @@ impl State {
     }
 
     /// Puts a value into the `State` storage. One value of each type is retained. Successive calls
-    /// to `put` will overwrite the existing object of the same type.
+    /// to `put` will overwrite the existing value of the same type.
     ///
     /// # Examples
     ///

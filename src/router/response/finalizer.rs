@@ -1,5 +1,5 @@
-//! Defines functionality for finalizing a Response after all Pipelines, Middlewares and Handlers
-//! have completed.
+//! Defines functionality for finalizing a Response after all Pipelines, Middlewares, Handlers
+//! and interal Extenders have completed.
 
 use std::sync::Arc;
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ use state::{State, request_id};
 
 use router::response::extender::ResponseExtender;
 
-/// Invokes a response finalizer if an finalizer has been associated with the status code of the
+/// Invokes a response finalizer if a finalizer has been associated with the status code of the
 /// response and the body of the response has not yet been populated.
 #[derive(Clone)]
 pub struct ResponseFinalizer {

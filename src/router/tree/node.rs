@@ -13,8 +13,9 @@ use state::{State, request_id};
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub enum SegmentType {
-    /// Is matched exactly to the corresponding segment for incoming request paths. Unlike all
-    /// other `NodeSegmentTypes` values determined to be associated with this segment
+    /// Is matched exactly (string equality) to the corresponding segment for incoming request paths.
+    ///
+    /// Unlike all other `NodeSegmentTypes` values determined to be associated with this segment
     /// within a `Request` path are **not** stored within `State`.
     Static,
 
@@ -39,7 +40,7 @@ pub enum SegmentType {
 ///
 /// # Examples
 ///
-/// Representing the path `/activate/batsignal`.
+/// Representing the path `/activate/workflow`.
 ///
 /// ```rust
 /// # extern crate gotham;
@@ -67,7 +68,7 @@ pub enum SegmentType {
 ///   let mut root_node_builder = NodeBuilder::new("/", SegmentType::Static);
 ///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
 ///
-///   let mut batsignal_node = NodeBuilder::new("batsignal", SegmentType::Static);
+///   let mut workflow_node = NodeBuilder::new("workflow", SegmentType::Static);
 ///   let route = {
 ///       // elided ..
 /// #     let methods = vec![Method::Get];
@@ -77,15 +78,15 @@ pub enum SegmentType {
 ///       let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 ///       Box::new(route)
 ///   };
-///   batsignal_node.add_route(route);
+///   workflow_node.add_route(route);
 ///
-///   activate_node_builder.add_child(batsignal_node);
+///   activate_node_builder.add_child(workflow_node);
 ///   root_node_builder.add_child(activate_node_builder);
 ///
 ///   let root_node = root_node_builder.finalize();
 ///   match root_node.traverse(&[&PercentDecoded::new("/").unwrap(),
 ///                              &PercentDecoded::new("activate").unwrap(),
-///                              &PercentDecoded::new("batsignal").unwrap()])
+///                              &PercentDecoded::new("workflow").unwrap()])
 ///   {
 ///       Some((path, _leaf, segments_processed, _segment_mapping)) =>  {
 ///         assert!(path.last().unwrap().is_routable());
@@ -116,8 +117,8 @@ impl Node {
         &self.segment_type
     }
 
-    /// Determines if a `Route` instance associated with this `Node` is willing to handle the
-    /// request.
+    /// Determines if a `Route` instance associated with this `Node` is willing to `Handle` the
+    /// `Request`.
     ///
     /// Where multiple `Route` instances could possibly handle the `Request` only the first, ordered
     /// per creation, is invoked.
@@ -265,7 +266,8 @@ impl Node {
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
         match self.segment_type {
             SegmentType::Static => self.segment == req_path_segment.val(),
-            SegmentType::Constrained { regex: _ } => unimplemented!(), // TODO
+            // TODO #10, address Constrained type
+            SegmentType::Constrained { regex: _ } => unimplemented!(),
             SegmentType::Dynamic | SegmentType::Glob => true,
         }
     }

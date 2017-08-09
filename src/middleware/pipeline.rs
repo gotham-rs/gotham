@@ -8,18 +8,12 @@ use handler::HandlerFuture;
 use middleware::{Middleware, NewMiddleware};
 use state::{State, request_id};
 
-/// When using middleware, one or more [`Middleware`][Middleware] are combined to form a
-/// `Pipeline`. `Middleware` are invoked strictly in the order they're added to the `Pipeline`.
+/// When using middleware, one or more `Middleware` are combined to form a `Pipeline`.
+/// `Middleware` are invoked strictly in the order they're added to the `Pipeline`.
 ///
-/// At request dispatch time, the `Middleware` are created from the
-/// [`NewMiddleware`][NewMiddleware] values given to the `PipelineBuilder`, and combined with a
-/// [`Handler`][Handler] created from the [`NewHandler`][NewHandler] provided to `Pipeline::call`.
-/// These `Middleware` and `Handler` values are used for a single request.
-///
-/// [Middleware]: ../trait.Middleware.html
-/// [NewMiddleware]: ../trait.NewMiddleware.html
-/// [Handler]: ../../handler/trait.Handler.html
-/// [NewHandler]: ../../handler/trait.NewHandler.html
+/// At `Request` dispatch time, the `Middleware` are created from the `NewMiddleware` values given
+/// to the `PipelineBuilder`, and combined with a `Handler` created from the `NewHandler` provided
+/// to `Pipeline::call`.  These `Middleware` and `Handler` values are used for a single `Request`.
 ///
 /// # Examples
 ///
@@ -122,7 +116,9 @@ use state::{State, request_id};
 ///        format!("{:?}", data.vec)
 ///     };
 ///
-///     let res = create_response(&state, StatusCode::Ok, Some((body.into_bytes(), mime::TEXT_PLAIN)));
+///     let res = create_response(&state,
+///                               StatusCode::Ok,
+///                               Some((body.into_bytes(), mime::TEXT_PLAIN)));
 ///
 ///     (state, res)
 /// }
@@ -134,25 +130,26 @@ use state::{State, request_id};
 ///         .add(MiddlewareTwo)
 ///         .add(MiddlewareThree)
 ///         .build());
+///
 ///     let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
 ///
-///     let mut tree_builder = TreeBuilder::new();
-///
-///     let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
-///     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
-///     let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-///     tree_builder.add_route(Box::new(route));
-///     let tree = tree_builder.finalize();
-///
-///
-///     let response_finalizer = ResponseFinalizerBuilder::new().finalize();
-///     let router = Router::new(tree, response_finalizer);
-///
-///     let new_service = NewHandlerService::new(router);
-///     let mut test_server = TestServer::new(new_service).unwrap();
-///     let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
-///     let uri = "http://example.com/".parse().unwrap();
+///     // Router / TestServer definitions elided
+/// #   let mut tree_builder = TreeBuilder::new();
+/// #
+/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
+/// #   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
+/// #   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+/// #   let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
+/// #   tree_builder.add_route(Box::new(route));
+/// #   let tree = tree_builder.finalize();
+/// #
+/// #   let response_finalizer = ResponseFinalizerBuilder::new().finalize();
+/// #   let router = Router::new(tree, response_finalizer);
+/// #
+/// #   let new_service = NewHandlerService::new(router);
+/// #   let mut test_server = TestServer::new(new_service).unwrap();
+/// #   let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
+/// #   let uri = "http://example.com/".parse().unwrap();
 ///     let response = test_server.run_request(client.get(uri)).unwrap();
 ///     assert_eq!(response.status(), StatusCode::Ok);
 ///     assert_eq!(test_server.read_body(response).unwrap(), "[1, 2, 3]".as_bytes());
@@ -164,10 +161,7 @@ pub struct Pipeline<T>
     chain: T,
 }
 
-/// Represents an instance of a `Pipeline`. Returned from
-/// [`Pipeline::construct`][Pipeline::construct]
-///
-/// [Pipeline::construct]: struct.Pipeline.html#method.construct
+/// Represents an instance of a `Pipeline`. Returned from `Pipeline::construct()`.
 pub struct PipelineInstance<T>
     where T: MiddlewareChain
 {
@@ -199,9 +193,7 @@ impl<T> PipelineInstance<T>
 
 /// Begins defining a new pipeline.
 ///
-/// See [`PipelineBuilder`][PipelineBuilder] for information on using `new_pipeline()`
-///
-/// [PipelineBuilder]: struct.PipelineBuilder.html
+/// See `PipelineBuilder` for information on using `new_pipeline()`.
 pub fn new_pipeline() -> PipelineBuilder<()> {
     trace!(" starting pipeline construction");
     // See: `impl NewMiddlewareChain for ()`

@@ -15,7 +15,7 @@ pub type Path<'a> = Vec<&'a Node>;
 /// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
 /// which have been matched against the `Request` path.
 ///
-/// Data is percent and utf8 decoded.
+/// Data is Percent and UTF8 decoded.
 #[derive(Debug)]
 pub struct SegmentMapping<'a, 'b> {
     data: HashMap<&'a str, Vec<&'b PercentDecoded>>,
@@ -61,9 +61,9 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// Desired tree:
 ///
 /// ```text
-///    /
-///    | -- activate
-///         | -- batsignal      (Routable)
+///    /                       (Static Match)
+///    | -- activate           (Static Match)
+///         | -- workflow      (Dynamic Match, Routable)
 /// ```
 ///
 /// Code:
@@ -98,8 +98,8 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///
 ///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
 ///
-///   let mut thing_node_builder = NodeBuilder::new("thing", SegmentType::Dynamic);
-///   let batsignal_route = {
+///   let mut thing_node_builder = NodeBuilder::new(":thing", SegmentType::Dynamic);
+///   let thing_route = {
 ///       // elided ...
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRouteMatcher::new(methods);
@@ -108,19 +108,19 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 /// #     Box::new(route)
 ///   };
-///   thing_node_builder.add_route(batsignal_route);
+///   thing_node_builder.add_route(thing_route);
 ///
 ///   activate_node_builder.add_child(thing_node_builder);
 ///   tree_builder.add_child(activate_node_builder);
 ///
 ///   let tree = tree_builder.finalize();
 ///
-///   match tree.traverse(RequestPathSegments::new("/%61ctiv%61te/batsignal").segments().as_slice()) {
+///   match tree.traverse(RequestPathSegments::new("/%61ctiv%61te/workflow5").segments().as_slice()) {
 ///       Some((path, leaf, segments_processed, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(path.last().unwrap().segment(), leaf.segment());
 ///         assert_eq!(segments_processed, 2);
-///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap().val(), "batsignal");
+///         assert_eq!(segment_mapping.get(":thing").unwrap().last().unwrap().val(), "workflow5");
 ///       }
 ///       None => panic!(),
 ///   }

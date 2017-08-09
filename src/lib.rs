@@ -1,14 +1,8 @@
-//! A fast and safe web application framework
+//! Gotham - A flexible web framework that does not sacrifice safety, security or speed.
 //!
-//! This crate builds on the [hyper][], [tokio][], [futures][], and [mio][] libraries to provide an
-//! ergonomic API for routing requests and structuring a web application without sacrificing type
-//! safety.
+//! You can find out more about Gotham, including where to get help,  at https://gotham.rs.
 //!
-//! [hyper]: https://github.com/hyperium/hyper
-//! [tokio]: https://github.com/tokio-rs/tokio
-//! [futures]: https://github.com/alexcrichton/futures-rs
-//! [mio]: https://github.com/carllerche/mio
-
+//! We look forward to welcoming you into the Gotham community!
 #![doc(html_root_url = "https://docs.rs/gotham/0.1.0")] // Update when changed in Cargo.toml
 #![warn(missing_docs, deprecated)]
 #![doc(test(no_crate_inject, attr(deny(warnings))))]

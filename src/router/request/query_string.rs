@@ -18,10 +18,10 @@ use router::response::extender::StaticResponseExtender;
 /// to indicate why the extraction process failed.
 ///
 /// This functionality can be simply derived for application structs via `QueryStringExtractor`,
-/// which will attempt to populate the associated struct and simply set "400 Bad Request"
-/// on failure.
+/// which will attempt to populate the associated struct. Combine with the derive
+/// `StaticResponseExtender` to have invalid query string data result in "400 Bad Request".
 ///
-/// Custom responses can be written by using the `BaseQueryStringExtractor` derive and then
+/// Custom responses can be created by using the `QueryStringExtractor` derive and then
 /// implementing `StaticResponseExtender` independently.
 pub trait QueryStringExtractor: StaticResponseExtender {
     /// Populates the struct with data from the `Request` query string and adds it to `State`
@@ -46,8 +46,6 @@ impl StaticResponseExtender for NoopQueryStringExtractor {
 #[derive(Debug)]
 /// Represents an error in coverting a key=value pair from a `Request` query string into a
 /// type safe value.
-///
-/// Deliberately kept generic as implementations of FromQueryString cannot be known in advance.
 pub struct FromQueryStringError {
     description: String,
 }
