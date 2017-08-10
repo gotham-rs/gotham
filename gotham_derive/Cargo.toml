@@ -1,6 +1,6 @@
 [package]
 name = "gotham_derive"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
            "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
 
