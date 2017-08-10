@@ -28,7 +28,8 @@ impl NewMiddleware for KitchenSinkMiddleware {
 
 impl Middleware for KitchenSinkMiddleware {
     fn call<Chain>(self, mut state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
-        where Chain: FnOnce(State, Request) -> Box<HandlerFuture>
+    where
+        Chain: FnOnce(State, Request) -> Box<HandlerFuture>,
     {
         state.put(KitchenSinkData { header_value: "default value".to_owned() });
 

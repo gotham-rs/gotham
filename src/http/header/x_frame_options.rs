@@ -119,9 +119,13 @@ mod tests {
     fn valid_display_formatting() {
         assert_eq!(format!("{}", XFrameOptions::Deny), "DENY");
         assert_eq!(format!("{}", XFrameOptions::SameOrigin), "SAMEORIGIN");
-        assert_eq!(format!("{}",
-                           XFrameOptions::AllowFrom(String::from("https://example.com"))),
-                   "ALLOW-FROM https://example.com");
+        assert_eq!(
+            format!(
+                "{}",
+                XFrameOptions::AllowFrom(String::from("https://example.com"))
+            ),
+            "ALLOW-FROM https://example.com"
+        );
     }
 
     #[test]
@@ -145,8 +149,8 @@ mod tests {
         let b = XFrameOptions::AllowFrom(String::from("https://example.com"));
         assert_eq!(a, b);
 
-        let e: hyper::error::Result<XFrameOptions> = Header::parse_header(&"allow-FROM https://"
-                                                                               .into());
+        let e: hyper::error::Result<XFrameOptions> =
+            Header::parse_header(&"allow-FROM https://".into());
         assert!(e.is_err());
 
         let e: hyper::error::Result<XFrameOptions> = Header::parse_header(&"allow-FROM".into());

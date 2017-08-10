@@ -38,8 +38,9 @@ pub trait Dispatcher {
 
 /// Default implementation of the `Dispatcher` trait.
 pub struct DispatcherImpl<H, C, P>
-    where H: NewHandler,
-          C: PipelineHandleChain<P>
+where
+    H: NewHandler,
+    C: PipelineHandleChain<P>,
 {
     new_handler: H,
     pipeline_chain: C,
@@ -47,9 +48,10 @@ pub struct DispatcherImpl<H, C, P>
 }
 
 impl<H, C, P> DispatcherImpl<H, C, P>
-    where H: NewHandler,
-          H::Instance: 'static,
-          C: PipelineHandleChain<P>
+where
+    H: NewHandler,
+    H::Instance: 'static,
+    C: PipelineHandleChain<P>,
 {
     /// Creates a new `DispatcherImpl`.
     ///
@@ -67,19 +69,21 @@ impl<H, C, P> DispatcherImpl<H, C, P>
 }
 
 impl<H, C, P> Dispatcher for DispatcherImpl<H, C, P>
-    where H: NewHandler,
-          H::Instance: 'static,
-          C: PipelineHandleChain<P>
+where
+    H: NewHandler,
+    H::Instance: 'static,
+    C: PipelineHandleChain<P>,
 {
     fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture> {
         match self.new_handler.new_handler() {
             Ok(h) => {
                 trace!("[{}] cloning handler", request_id(&state));
-                self.pipeline_chain
-                    .call(&self.pipelines,
-                          state,
-                          req,
-                          move |state, req| h.handle(state, req))
+                self.pipeline_chain.call(
+                    &self.pipelines,
+                    state,
+                    req,
+                    move |state, req| h.handle(state, req),
+                )
             }
             Err(e) => {
                 trace!("[{}] error cloning handler", request_id(&state));
@@ -105,13 +109,15 @@ impl<H, C, P> Dispatcher for DispatcherImpl<H, C, P>
 pub trait PipelineHandleChain<P> {
     /// Invokes this part of the `PipelineHandleChain`, with requests being passed through to `f`
     /// once all `Middleware` in the `Pipeline` have passed the request through.
-    fn call<F>(&self,
-               pipelines: &PipelineSet<P>,
-               state: State,
-               req: Request,
-               f: F)
-               -> Box<HandlerFuture>
-        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static;
+    fn call<F>(
+        &self,
+        pipelines: &PipelineSet<P>,
+        state: State,
+        req: Request,
+        f: F,
+    ) -> Box<HandlerFuture>
+    where
+        F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static;
 }
 
 /// Part of a `PipelineHandleChain` which references a `Pipeline` and continues with a tail element.
@@ -148,7 +154,8 @@ impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
 /// The marker for the end of a `PipelineHandleChain`.
 impl<P> PipelineHandleChain<P> for () {
     fn call<F>(&self, _: &PipelineSet<P>, state: State, req: Request, f: F) -> Box<HandlerFuture>
-        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+    where
+        F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
     {
         trace!("[{}] start pipeline", request_id(&state));
         f(state, req)
@@ -169,10 +176,15 @@ mod tests {
 
     fn handler(state: State, _req: Request) -> (State, Response) {
         let number = state.borrow::<Number>().unwrap().value;
-        (state,
-         Response::new()
-             .with_status(StatusCode::Ok)
-             .with_body(format!("{}", number)))
+        (
+            state,
+            Response::new().with_status(StatusCode::Ok).with_body(
+                format!(
+                    "{}",
+                    number
+                ),
+            ),
+        )
     }
 
     #[derive(Clone)]
@@ -190,8 +202,9 @@ mod tests {
 
     impl Middleware for Number {
         fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-            where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
-                  Self: Sized
+        where
+            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
+            Self: Sized,
         {
             state.put(self.clone());
             chain(state, req)
@@ -214,8 +227,9 @@ mod tests {
 
     impl Middleware for Addition {
         fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-            where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
-                  Self: Sized
+        where
+            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
+            Self: Sized,
         {
             state.borrow_mut::<Number>().unwrap().value += self.value;
             chain(state, req)
@@ -236,8 +250,9 @@ mod tests {
 
     impl Middleware for Multiplication {
         fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-            where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
-                  Self: Sized
+        where
+            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
+            Self: Sized,
         {
             state.borrow_mut::<Number>().unwrap().value *= self.value;
             chain(state, req)
@@ -250,21 +265,27 @@ mod tests {
             Ok(move |state, req| {
                 let pipelines = new_pipeline_set();
 
-                let (pipelines, p1) = pipelines.add(new_pipeline()
+                let (pipelines, p1) = pipelines.add(
+                    new_pipeline()
                     .add(Number { value: 0 }) // 0
                     .add(Addition { value: 1 }) // 1
                     .add(Multiplication { value: 2 }) // 2
-                    .build());
+                    .build(),
+                );
 
-                let (pipelines, p2) = pipelines.add(new_pipeline()
+                let (pipelines, p2) = pipelines.add(
+                    new_pipeline()
                     .add(Addition { value: 1 }) // 3
                     .add(Multiplication { value: 2 }) // 6
-                    .build());
+                    .build(),
+                );
 
-                let (pipelines, p3) = pipelines.add(new_pipeline()
+                let (pipelines, p3) = pipelines.add(
+                    new_pipeline()
                     .add(Addition { value: 2 }) // 8
                     .add(Multiplication { value: 3 }) // 24
-                    .build());
+                    .build(),
+                );
 
                 let pipelines = Arc::new(pipelines);
 

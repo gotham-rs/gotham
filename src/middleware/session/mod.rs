@@ -190,7 +190,8 @@ pub struct SessionCookieConfig {
 /// # }
 /// ```
 pub struct SessionData<T>
-    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     value: T,
     cookie_state: SessionCookieState,
@@ -205,7 +206,8 @@ struct SessionDropData {
 }
 
 impl<T> SessionData<T>
-    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     /// Discards the session, invalidating it for future use and removing the data from the
     /// `Backend`.
@@ -216,7 +218,8 @@ impl<T> SessionData<T>
 
     // Create a new, blank `SessionData<T>`
     fn new<B>(middleware: SessionMiddleware<B, T>) -> SessionData<T>
-        where B: Backend + 'static
+    where
+        B: Backend + 'static,
     {
         let state = SessionDataState::Dirty; // Always persist a new session
         let cookie_state = SessionCookieState::New;
@@ -225,8 +228,10 @@ impl<T> SessionData<T>
         let backend = Box::new(middleware.backend);
         let cookie_config = middleware.cookie_config.clone();
 
-        trace!(" no existing session, assigning new identifier ({})",
-               identifier.value);
+        trace!(
+            " no existing session, assigning new identifier ({})",
+            identifier.value
+        );
 
         SessionData {
             value,
@@ -239,11 +244,13 @@ impl<T> SessionData<T>
     }
 
     // Load an existing, serialized session into a `SessionData<T>`
-    fn construct<B>(middleware: SessionMiddleware<B, T>,
-                    identifier: SessionIdentifier,
-                    val: Option<Vec<u8>>)
-                    -> SessionData<T>
-        where B: Backend + 'static
+    fn construct<B>(
+        middleware: SessionMiddleware<B, T>,
+        identifier: SessionIdentifier,
+        val: Option<Vec<u8>>,
+    ) -> SessionData<T>
+    where
+        B: Backend + 'static,
     {
         let cookie_state = SessionCookieState::Existing;
         let state = SessionDataState::Clean;
@@ -255,8 +262,10 @@ impl<T> SessionData<T>
                         let backend = Box::new(middleware.backend);
                         let cookie_config = middleware.cookie_config.clone();
 
-                        trace!(" successfully deserialized session data ({})",
-                               identifier.value);
+                        trace!(
+                            " successfully deserialized session data ({})",
+                            identifier.value
+                        );
 
                         SessionData {
                             value,
@@ -270,8 +279,10 @@ impl<T> SessionData<T>
                     Err(_) => {
                         // This is most likely caused by the application changing their session
                         // struct but the backend not being purged of sessions.
-                        warn!(" failed to deserialize session data ({}), falling back to new session",
-                              identifier.value);
+                        warn!(
+                            " failed to deserialize session data ({}), falling back to new session",
+                            identifier.value
+                        );
                         SessionData::new(middleware)
                     }
                 }
@@ -287,39 +298,48 @@ impl<T> StateData for SessionData<T>
 }
 
 impl<T> FromState<SessionData<T>> for SessionData<T>
-    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    T: Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + Send
+        + 'static,
 {
     fn take_from(s: &mut State) -> SessionData<T> {
-        s.take::<SessionData<T>>()
-            .unwrap_or_else(|| {
-                                panic!("[{}] [take] SessionData<T> is not stored in State, \
+        s.take::<SessionData<T>>().unwrap_or_else(|| {
+            panic!(
+                "[{}] [take] SessionData<T> is not stored in State, \
                                         is NewSessionMiddleware configured correctly?",
-                                       state::request_id(s))
-                            })
+                state::request_id(s)
+            )
+        })
     }
 
     fn borrow_from(s: &State) -> &SessionData<T> {
-        s.borrow::<SessionData<T>>()
-            .unwrap_or_else(|| {
-                                panic!("[{}] [borrow] SessionData<T> is not stored in State, \
+        s.borrow::<SessionData<T>>().unwrap_or_else(|| {
+            panic!(
+                "[{}] [borrow] SessionData<T> is not stored in State, \
                                         is NewSessionMiddleware configured correctly?",
-                                       state::request_id(s))
-                            })
+                state::request_id(s)
+            )
+        })
     }
 
     fn borrow_mut_from(s: &mut State) -> &mut SessionData<T> {
         let req_id = String::from(state::request_id(s));
-        s.borrow_mut::<SessionData<T>>()
-            .unwrap_or_else(|| {
-                                panic!("[{}] [borrow_mut] SessionData<T> is not stored in State, \
+        s.borrow_mut::<SessionData<T>>().unwrap_or_else(|| {
+            panic!(
+                "[{}] [borrow_mut] SessionData<T> is not stored in State, \
                                         is NewSessionMiddleware configured correctly?",
-                                       req_id)
-                            })
+                req_id
+            )
+        })
     }
 }
 
 impl<T> Deref for SessionData<T>
-    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     type Target = T;
 
@@ -339,7 +359,11 @@ impl<T> DerefMut for SessionData<T>
 
 impl StateData for SessionDropData {}
 
-trait SessionTypePhantom<T>: Send + Sync where T: Send {}
+trait SessionTypePhantom<T>: Send + Sync
+where
+    T: Send
+{
+}
 
 /// Added to a `Pipeline`, this spawns the per-request `SessionMiddleware`
 ///
@@ -392,8 +416,9 @@ trait SessionTypePhantom<T>: Send + Sync where T: Send {}
 /// For plaintext HTTP servers, the `insecure` method must also be called to instruct the
 /// middleware not to set the `secure` flag on the cookie.
 pub struct NewSessionMiddleware<B, T>
-    where B: NewBackend,
-          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    B: NewBackend,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     new_backend: B,
     identifier_rng: Arc<Mutex<rng::SessionIdentifierRng>>,
@@ -405,8 +430,9 @@ pub struct NewSessionMiddleware<B, T>
 ///
 /// See `NewSessionMiddleware` for usage details.
 pub struct SessionMiddleware<B, T>
-    where B: Backend,
-          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    B: Backend,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     backend: B,
     identifier_rng: Arc<Mutex<rng::SessionIdentifierRng>>,
@@ -415,22 +441,25 @@ pub struct SessionMiddleware<B, T>
 }
 
 impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
-    where B: NewBackend,
-          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    B: NewBackend,
+    T: Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + Send
+        + 'static,
 {
     type Instance = SessionMiddleware<B::Instance, T>;
 
     fn new_middleware(&self) -> io::Result<Self::Instance> {
-        self.new_backend
-            .new_backend()
-            .map(|backend| {
-                     SessionMiddleware {
-                         backend,
-                         identifier_rng: self.identifier_rng.clone(),
-                         cookie_config: self.cookie_config.clone(),
-                         phantom: PhantomData,
-                     }
-                 })
+        self.new_backend.new_backend().map(|backend| {
+            SessionMiddleware {
+                backend,
+                identifier_rng: self.identifier_rng.clone(),
+                cookie_config: self.cookie_config.clone(),
+                phantom: PhantomData,
+            }
+        })
     }
 }
 
@@ -441,7 +470,8 @@ impl Default for NewSessionMiddleware<MemoryBackend, ()> {
 }
 
 impl<B> NewSessionMiddleware<B, ()>
-    where B: NewBackend
+where
+    B: NewBackend,
 {
     /// Create a `NewSessionMiddleware` value for the provided backend and with a blank session
     /// type. `with_session_type` **must** be called before the result is useful.
@@ -450,23 +480,30 @@ impl<B> NewSessionMiddleware<B, ()>
             new_backend: b,
             identifier_rng: Arc::new(Mutex::new(rng::session_identifier_rng())),
             cookie_config: Arc::new(SessionCookieConfig {
-                                        name: "_gotham_session".to_owned(),
-                                        options: default_cookie_options(),
-                                    }),
+                name: "_gotham_session".to_owned(),
+                options: default_cookie_options(),
+            }),
             phantom: PhantomData,
         }
     }
 }
 
 fn default_cookie_options() -> Vec<CookieOption> {
-    vec![CookieOption::HttpOnly,
-         CookieOption::Secure,
-         CookieOption::SameSite(SameSiteEnforcement::Lax)]
+    vec![
+        CookieOption::HttpOnly,
+        CookieOption::Secure,
+        CookieOption::SameSite(SameSiteEnforcement::Lax),
+    ]
 }
 
 impl<B, T> NewSessionMiddleware<B, T>
-    where B: NewBackend,
-          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    B: NewBackend,
+    T: Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + Send
+        + 'static,
 {
     fn add_cookie_option(self, opt: CookieOption) -> NewSessionMiddleware<B, T> {
         let mut cookie_config = (*self.cookie_config).clone();
@@ -539,7 +576,8 @@ impl<B, T> NewSessionMiddleware<B, T>
     /// # ;}
     /// ```
     pub fn with_cookie_name<S>(self, name: S) -> NewSessionMiddleware<B, T>
-        where S: AsRef<str>
+    where
+        S: AsRef<str>,
     {
         let cookie_config = SessionCookieConfig {
             name: name.as_ref().to_owned(),
@@ -573,7 +611,8 @@ impl<B, T> NewSessionMiddleware<B, T>
     /// # ;}
     /// ```
     pub fn with_cookie_domain<S>(self, name: S) -> NewSessionMiddleware<B, T>
-        where S: AsRef<str>
+    where
+        S: AsRef<str>,
     {
         self.add_cookie_option(CookieOption::Domain(name.as_ref().to_owned()))
     }
@@ -660,7 +699,8 @@ impl<B, T> NewSessionMiddleware<B, T>
     /// # ;}
     /// ```
     pub fn with_session_type<U>(self) -> NewSessionMiddleware<B, U>
-        where U: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+    where
+        U: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
     {
         NewSessionMiddleware {
             new_backend: self.new_backend,
@@ -672,12 +712,18 @@ impl<B, T> NewSessionMiddleware<B, T>
 }
 
 impl<B, T> Middleware for SessionMiddleware<B, T>
-    where B: Backend + Send + 'static,
-          T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    B: Backend + Send + 'static,
+    T: Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + Send
+        + 'static,
 {
     fn call<Chain>(self, state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
-        where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
-              Self: Sized
+    where
+        Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
+        Self: Sized,
     {
         let session_identifier = request
             .headers()
@@ -720,20 +766,26 @@ impl<B, T> SessionMiddleware<B, T>
     }
 }
 
-fn persist_session<T>((mut state, mut response): (State, Response))
-                      -> future::FutureResult<(State, Response), (State, HandlerError)>
-    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+fn persist_session<T>(
+    (mut state, mut response): (State, Response),
+) -> future::FutureResult<(State, Response), (State, HandlerError)>
+where
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     match state.take::<SessionDropData>() {
         Some(ref session_drop_data) => {
-            trace!("[{}] SessionDropData found in state, removing session cookie from user agent",
-                   state::request_id(&state));
+            trace!(
+                "[{}] SessionDropData found in state, removing session cookie from user agent",
+                state::request_id(&state)
+            );
             reset_cookie(&mut response, session_drop_data);
             return future::ok((state, response));
         }
         None => {
-            trace!("[{}] SessionDropData is not present, retaining session cookie",
-                   state::request_id(&state));
+            trace!(
+                "[{}] SessionDropData is not present, retaining session cookie",
+                state::request_id(&state)
+            );
         }
     }
 
@@ -756,14 +808,17 @@ fn persist_session<T>((mut state, mut response): (State, Response))
 fn cookie_string(cookie_config: &SessionCookieConfig, value: &str) -> String {
     let cookie_value = format!("{}={}", cookie_config.name, value);
 
-    cookie_config
-        .options
-        .iter()
-        .fold(cookie_value, |acc, opt| format!("{}; {}", acc, opt))
+    cookie_config.options.iter().fold(
+        cookie_value,
+        |acc, opt| {
+            format!("{}; {}", acc, opt)
+        },
+    )
 }
 
 fn send_cookie<T>(response: &mut Response, session_data: &SessionData<T>)
-    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+where
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     let cookie_string = cookie_string(&*session_data.cookie_config, &session_data.identifier.value);
 
@@ -773,18 +828,22 @@ fn send_cookie<T>(response: &mut Response, session_data: &SessionData<T>)
 
 fn reset_cookie(response: &mut Response, session_drop_data: &SessionDropData) {
     let cookie_string = cookie_string(&*session_drop_data.cookie_config, "discarded");
-    let cookie_string = format!("{}; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0",
-                                cookie_string);
+    let cookie_string = format!(
+        "{}; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0",
+        cookie_string
+    );
 
     let set_cookie = SetCookie(vec![cookie_string]);
     response.headers_mut().set(set_cookie);
 }
 
-fn write_session<T>(state: State,
-                    response: Response,
-                    session_data: SessionData<T>)
-                    -> future::FutureResult<(State, Response), (State, HandlerError)>
-    where T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+fn write_session<T>(
+    state: State,
+    response: Response,
+    session_data: SessionData<T>,
+) -> future::FutureResult<(State, Response), (State, HandlerError)>
+where
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     let mut bytes = Vec::new();
 
@@ -803,15 +862,18 @@ fn write_session<T>(state: State,
     let identifier = session_data.identifier;
     let slice = &bytes[..];
 
-    let result = session_data
-        .backend
-        .persist_session(identifier.clone(), slice);
+    let result = session_data.backend.persist_session(
+        identifier.clone(),
+        slice,
+    );
 
     match result {
         Ok(_) => {
-            trace!("[{}] persisted session ({}) successfully",
-                   state::request_id(&state),
-                   identifier.value);
+            trace!(
+                "[{}] persisted session ({}) successfully",
+                state::request_id(&state),
+                identifier.value
+            );
 
             future::ok((state, response))
         }
@@ -909,9 +971,9 @@ mod tests {
 
         let handler = move |mut state: State, _req: Request| {
             {
-                let session_data = state
-                    .borrow_mut::<SessionData<TestSession>>()
-                    .expect("no session data??");
+                let session_data = state.borrow_mut::<SessionData<TestSession>>().expect(
+                    "no session data??",
+                );
 
                 *r.lock().unwrap() = Some(session_data.val);
                 session_data.val += 1;

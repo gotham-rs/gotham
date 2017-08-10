@@ -52,14 +52,18 @@ impl RouteMatcher for MethodOnlyRouteMatcher {
     /// Determines if the `Request` was made using a `Method` the instance contains.
     fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode> {
         if self.methods.iter().any(|m| m == req.method()) {
-            trace!("[{}] matched request method {} to permitted method",
-                   request_id(&state),
-                   req.method());
+            trace!(
+                "[{}] matched request method {} to permitted method",
+                request_id(&state),
+                req.method()
+            );
             Ok(())
         } else {
-            trace!("[{}] did not match request method {}",
-                   request_id(&state),
-                   req.method());
+            trace!(
+                "[{}] did not match request method {}",
+                request_id(&state),
+                req.method()
+            );
             Err(StatusCode::MethodNotAllowed)
         }
     }

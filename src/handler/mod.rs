@@ -33,14 +33,16 @@ pub type HandlerFuture = Future<Item = (State, Response), Error = (State, Handle
 /// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
 /// handlers.
 pub struct NewHandlerService<T>
-    where T: NewHandler + 'static
+where
+    T: NewHandler + 'static,
 {
     t: Arc<T>,
     pool: Arc<CpuPool>,
 }
 
 impl<T> Clone for NewHandlerService<T>
-    where T: NewHandler + 'static
+where
+    T: NewHandler + 'static,
 {
     fn clone(&self) -> Self {
         NewHandlerService {
@@ -51,7 +53,8 @@ impl<T> Clone for NewHandlerService<T>
 }
 
 impl<T> NewHandlerService<T>
-    where T: NewHandler + 'static
+where
+    T: NewHandler + 'static,
 {
     /// Creates a `NewHandlerService` for the given `NewHandler`.
     ///
@@ -131,7 +134,8 @@ impl<T> NewHandlerService<T>
 }
 
 impl<T> NewService for NewHandlerService<T>
-    where T: NewHandler + 'static
+where
+    T: NewHandler + 'static,
 {
     type Request = Request;
     type Response = Response;
@@ -144,7 +148,8 @@ impl<T> NewService for NewHandlerService<T>
 }
 
 impl<T> Service for NewHandlerService<T>
-    where T: NewHandler
+where
+    T: NewHandler,
 {
     type Request = Request;
     type Response = Response;
@@ -156,81 +161,92 @@ impl<T> Service for NewHandlerService<T>
         let mut state = State::new();
         set_request_id(&mut state, &req);
 
-        trace!("[{}] populating immutable request data into state",
-               request_id(&state));
+        trace!(
+            "[{}] populating immutable request data into state",
+            request_id(&state)
+        );
         state.put(req.method().clone());
         state.put(req.uri().clone());
         state.put(req.version().clone());
         state.put(req.headers().clone());
         state.put(RequestPathSegments::new(req.uri().path().clone()));
 
-        info!("[REQUEST][{}][{}][{}]",
-              request_id(&state),
-              req.method(),
-              req.path());
+        info!(
+            "[REQUEST][{}][{}][{}]",
+            request_id(&state),
+            req.method(),
+            req.path()
+        );
 
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
         // immediately consuming it.
         match self.t.new_handler() {
             Ok(handler) => {
-                self.pool
-                    .spawn_fn(move || {
-                        handler
-                            .handle(state, req)
-                            .and_then(move |(state, res)| {
-                                let f = chrono::UTC::now();
+                self.pool.spawn_fn(move || {
+                    handler
+                        .handle(state, req)
+                        .and_then(move |(state, res)| {
+                            let f = chrono::UTC::now();
+                            match f.signed_duration_since(s).num_microseconds() {
+                                Some(dur) => {
+                                    info!(
+                                        "[RESPONSE][{}][{}][{}][{}µs]",
+                                        request_id(&state),
+                                        res.version(),
+                                        res.status(),
+                                        dur
+                                    );
+
+                                    future::ok(res.with_header(XRuntimeMicroseconds(dur)))
+                                }
+                                None => {
+                                    // Valid response is still sent to client in this case but
+                                    // timing has failed and should be looked into.
+                                    error!(
+                                        "[RESPONSE][{}][{}][{}][invalid]",
+                                        request_id(&state),
+                                        res.version(),
+                                        res.status()
+                                    );
+                                    future::ok(res)
+                                }
+                            }
+                        })
+                        .or_else(move |(state, err)| {
+                            let f = chrono::UTC::now();
+
+                            {
+                                // HandlerError::cause() is far more interesting for logging,
+                                // but the API doesn't guarantee its presence (even though it
+                                // always is).
+                                let err_description = err.cause()
+                                    .map(Error::description)
+                                    .unwrap_or(err.description());
+
                                 match f.signed_duration_since(s).num_microseconds() {
                                     Some(dur) => {
-                                        info!("[RESPONSE][{}][{}][{}][{}µs]",
-                                              request_id(&state),
-                                              res.version(),
-                                              res.status(),
-                                              dur);
-
-                                        future::ok(res.with_header(XRuntimeMicroseconds(dur)))
+                                        error!(
+                                            "[ERROR][{}][Error: {}][{}]",
+                                            request_id(&state),
+                                            err_description,
+                                            dur
+                                        );
                                     }
                                     None => {
-                                        // Valid response is still sent to client in this case but
-                                        // timing has failed and should be looked into.
-                                        error!("[RESPONSE][{}][{}][{}][invalid]",
-                                               request_id(&state),
-                                               res.version(),
-                                               res.status());
-                                        future::ok(res)
+                                        error!(
+                                            "[ERROR][{}][Error: {}][invalid]",
+                                            request_id(&state),
+                                            err_description
+                                        );
                                     }
                                 }
-                            })
-                            .or_else(move |(state, err)| {
-                                let f = chrono::UTC::now();
+                            }
 
-                                {
-                                    // HandlerError::cause() is far more interesting for logging,
-                                    // but the API doesn't guarantee its presence (even though it
-                                    // always is).
-                                    let err_description = err.cause()
-                                        .map(Error::description)
-                                        .unwrap_or(err.description());
-
-                                    match f.signed_duration_since(s).num_microseconds() {
-                                        Some(dur) => {
-                                            error!("[ERROR][{}][Error: {}][{}]",
-                                                   request_id(&state),
-                                                   err_description,
-                                                   dur);
-                                        }
-                                        None => {
-                                            error!("[ERROR][{}][Error: {}][invalid]",
-                                                   request_id(&state),
-                                                   err_description);
-                                        }
-                                    }
-                                }
-
-                                future::ok(err.into_response(&state))
-                            })
-                            .boxed()
-                    })
+                            future::ok(err.into_response(&state))
+                        })
+                        .boxed()
+                })
             }
             Err(e) => self.pool.spawn(future::err(e.into())),
         }
@@ -263,8 +279,9 @@ pub trait NewHandler: Send + Sync {
 }
 
 impl<F, H> NewHandler for F
-    where F: Fn() -> io::Result<H> + Send + Sync,
-          H: Handler
+where
+    F: Fn() -> io::Result<H> + Send + Sync,
+    H: Handler,
 {
     type Instance = H;
 
@@ -283,7 +300,8 @@ pub trait IntoHandlerFuture {
 }
 
 impl<T> IntoHandlerFuture for (State, T)
-    where T: IntoResponse
+where
+    T: IntoResponse,
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;
@@ -378,8 +396,9 @@ impl IntoResponse for Response {
 }
 
 impl<F, R> Handler for F
-    where F: FnOnce(State, Request) -> R + Send,
-          R: IntoHandlerFuture
+where
+    F: FnOnce(State, Request) -> R + Send,
+    R: IntoHandlerFuture,
 {
     fn handle(self, state: State, req: Request) -> Box<HandlerFuture> {
         self(state, req).into_handler_future()

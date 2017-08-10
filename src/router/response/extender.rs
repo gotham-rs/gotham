@@ -16,11 +16,14 @@ pub trait ResponseExtender {
 }
 
 impl<F> ResponseExtender for F
-    where F: Fn(&mut State, &mut Response) + Send + Sync
+where
+    F: Fn(&mut State, &mut Response) + Send + Sync,
 {
     fn extend(&self, state: &mut State, res: &mut Response) {
-        trace!("[{}] running closure based response extender",
-               request_id(&state));
+        trace!(
+            "[{}] running closure based response extender",
+            request_id(&state)
+        );
         self(state, res);
     }
 }
@@ -39,13 +42,17 @@ impl NoopResponseExtender {
 
 impl StaticResponseExtender for NoopResponseExtender {
     fn extend(state: &mut State, res: &mut Response) {
-        trace!("[{}] NoopResponseExtender invoked, does not make any changes to Response",
-               request_id(&state));
+        trace!(
+            "[{}] NoopResponseExtender invoked, does not make any changes to Response",
+            request_id(&state)
+        );
         match res.body_ref() {
             Some(_) => {
                 // Full implementations should not make extensions if they find this state
-                trace!("[{}] found response body, no change made",
-                       request_id(&state));
+                trace!(
+                    "[{}] found response body, no change made",
+                    request_id(&state)
+                );
             }
             None => {
                 // Full implementations should make extensions if they find this state
@@ -57,13 +64,17 @@ impl StaticResponseExtender for NoopResponseExtender {
 
 impl ResponseExtender for NoopResponseExtender {
     fn extend(&self, state: &mut State, res: &mut Response) {
-        trace!("[{}] NoopResponseExtender invoked on instance, does not make any changes to Response",
-               request_id(&state));
+        trace!(
+            "[{}] NoopResponseExtender invoked on instance, does not make any changes to Response",
+            request_id(&state)
+        );
         match res.body_ref() {
             Some(_) => {
                 // Full implementations should not make extensions if they find this state
-                trace!("[{}] found response body, no change made",
-                       request_id(&state));
+                trace!(
+                    "[{}] found response body, no change made",
+                    request_id(&state)
+                );
             }
             None => {
                 // Full implementations should make extensions if they find this state

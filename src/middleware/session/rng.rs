@@ -24,9 +24,11 @@ pub fn session_identifier_rng() -> SessionIdentifierRng {
     let os_rng = match OsRng::new() {
         Ok(rng) => rng,
         Err(e) => {
-            error!("Backend::random_identifier failed at rand::OsRng::new(), \
+            error!(
+                "Backend::random_identifier failed at rand::OsRng::new(), \
                     is the system RNG missing? {:?}",
-                   e);
+                e
+            );
             unreachable!("no rng available, this should never happen");
         }
     };

@@ -84,7 +84,8 @@ impl State {
     /// # }
     /// ```
     pub fn put<T>(&mut self, t: T)
-        where T: StateData
+    where
+        T: StateData,
     {
         let type_id = TypeId::of::<T>();
         trace!(" inserting record to state for type_id `{:?}`", type_id);
@@ -122,7 +123,8 @@ impl State {
     /// # }
     /// ```
     pub fn has<T>(&self) -> bool
-        where T: StateData
+    where
+        T: StateData,
     {
         let type_id = TypeId::of::<T>();
         self.data.get(&type_id).is_some()
@@ -159,7 +161,8 @@ impl State {
     /// # }
     /// ```
     pub fn borrow<T>(&self) -> Option<&T>
-        where T: StateData
+    where
+        T: StateData,
     {
         let type_id = TypeId::of::<T>();
         trace!(" borrowing state data for type_id `{:?}`", type_id);
@@ -201,13 +204,14 @@ impl State {
     /// assert!(state.borrow_mut::<AnotherStruct>().is_none());
     /// # }
     pub fn borrow_mut<T>(&mut self) -> Option<&mut T>
-        where T: StateData
+    where
+        T: StateData,
     {
         let type_id = TypeId::of::<T>();
         trace!(" mutably borrowing state data for type_id `{:?}`", type_id);
-        self.data
-            .get_mut(&type_id)
-            .and_then(|b| b.downcast_mut::<T>())
+        self.data.get_mut(&type_id).and_then(
+            |b| b.downcast_mut::<T>(),
+        )
     }
 
     /// Moves a value out of the `State` storage, and returns ownership.
@@ -244,11 +248,14 @@ impl State {
     /// assert!(state.take::<AnotherStruct>().is_none());
     /// # }
     pub fn take<T>(&mut self) -> Option<T>
-        where T: StateData
+    where
+        T: StateData,
     {
         let type_id = TypeId::of::<T>();
-        trace!(" taking ownership from state data for type_id `{:?}`",
-               type_id);
+        trace!(
+            " taking ownership from state data for type_id `{:?}`",
+            type_id
+        );
         self.data
             .remove(&type_id)
             .and_then(|b| b.downcast::<T>().ok())

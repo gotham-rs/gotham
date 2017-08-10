@@ -95,8 +95,10 @@ impl Handler for Router {
                         Ok(route) => {
                             match route.delegation() {
                                 Delegation::External => {
-                                    trace!("[{}] delegating to secondary router",
-                                           request_id(&state));
+                                    trace!(
+                                        "[{}] delegating to secondary router",
+                                        request_id(&state)
+                                    );
 
                                     let mut rps = rps.clone();
                                     rps.increase_offset(sp);
@@ -141,12 +143,13 @@ impl Router {
         Router { data: Arc::new(router_data) }
     }
 
-    fn dispatch(&self,
-                mut state: State,
-                req: Request,
-                sm: SegmentMapping,
-                route: &Box<Route + Send + Sync>)
-                -> Box<HandlerFuture> {
+    fn dispatch(
+        &self,
+        mut state: State,
+        req: Request,
+        sm: SegmentMapping,
+        route: &Box<Route + Send + Sync>,
+    ) -> Box<HandlerFuture> {
         match route.extract_request_path(&mut state, sm) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
@@ -169,8 +172,10 @@ impl Router {
             }
             Err(e) => {
                 trace!("[{}] {}", request_id(&state), e);
-                error!("[{}] the server cannot or will not process the request due to a client error on the request path",
-                       request_id(&state));
+                error!(
+                    "[{}] the server cannot or will not process the request due to a client error on the request path",
+                    request_id(&state)
+                );
                 let mut res = Response::new();
                 route.extend_response_on_path_error(&mut state, &mut res);
                 future::ok((state, res)).boxed()
@@ -182,17 +187,19 @@ impl Router {
         let response_finalizer = self.data.response_finalizer.clone();
         result
             .or_else(|(state, err)| {
-                         trace!("[{}] converting error into http response \
+                trace!(
+                    "[{}] converting error into http response \
                                  during finalization: {:?}",
-                                request_id(&state),
-                                err);
-                         let response = err.into_response(&state);
-                         future::ok((state, response))
-                     })
+                    request_id(&state),
+                    err
+                );
+                let response = err.into_response(&state);
+                future::ok((state, response))
+            })
             .and_then(move |(state, res)| {
-                          trace!("[{}] handler complete", request_id(&state));
-                          response_finalizer.finalize(state, res)
-                      })
+                trace!("[{}] handler complete", request_id(&state));
+                response_finalizer.finalize(state, res)
+            })
             .boxed()
     }
 }
@@ -219,10 +226,11 @@ mod tests {
         (state, Response::new())
     }
 
-    fn send_request(r: Router,
-                    m: Method,
-                    uri: &str)
-                    -> Result<(State, Response), (State, HandlerError)> {
+    fn send_request(
+        r: Router,
+        m: Method,
+        uri: &str,
+    ) -> Result<(State, Response), (State, HandlerError)> {
         let uri = Uri::from_str(uri).unwrap();
         let request: Request<Body> = Request::new(m, uri);
 
@@ -330,8 +338,10 @@ mod tests {
                 let methods = vec![Method::Get];
                 let matcher = MethodOnlyRouteMatcher::new(methods);
                 let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-                let extractors: Extractors<NoopPathExtractor,
-                                           NoopQueryStringExtractor> = Extractors::new();
+                let extractors: Extractors<
+                    NoopPathExtractor,
+                    NoopQueryStringExtractor,
+                > = Extractors::new();
                 let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
                 Box::new(route)
             };
@@ -391,8 +401,10 @@ mod tests {
 
         match send_request(router, Method::Get, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
-                assert_eq!(*res.headers().get::<ContentLength>().unwrap(),
-                           ContentLength(3u64));
+                assert_eq!(
+                    *res.headers().get::<ContentLength>().unwrap(),
+                    ContentLength(3u64)
+                );
             }
             Err(_) => panic!("Router should have correctly handled request"),
         };

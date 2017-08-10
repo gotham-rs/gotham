@@ -81,23 +81,26 @@ pub enum TestRequestError {
 }
 
 impl<S> TestServer<S>
-    where S: server::NewService<Request = server::Request,
-                                Response = server::Response,
-                                Error = hyper::Error>,
-          S::Instance: 'static
+where
+    S: server::NewService<
+        Request = server::Request,
+        Response = server::Response,
+        Error = hyper::Error,
+    >,
+    S::Instance: 'static,
 {
     /// Creates a `TestServer` instance for the service spawned by `new_service`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
     /// for each connection.
     pub fn new(new_service: S) -> Result<TestServer<S>, io::Error> {
         reactor::Core::new().map(|core| {
-                                     TestServer {
-                                         core: core,
-                                         http: server::Http::new(),
-                                         timeout: 10,
-                                         new_service: new_service,
-                                     }
-                                 })
+            TestServer {
+                core: core,
+                http: server::Http::new(),
+                timeout: 10,
+                new_service: new_service,
+            }
+        })
     }
 
     /// Sets the request timeout to `t` seconds and returns a new `TestServer`. The default timeout
@@ -118,9 +121,11 @@ impl<S> TestServer<S>
 
         let service = self.new_service.new_service()?;
         self.http.bind_connection(&handle, ss, client_addr, service);
-        Ok(client::Client::configure()
-               .connector(TestConnect { stream: cell::RefCell::new(Some(cs)) })
-               .build(&self.core.handle()))
+        Ok(
+            client::Client::configure()
+                .connector(TestConnect { stream: cell::RefCell::new(Some(cs)) })
+                .build(&self.core.handle()),
+        )
     }
 
     /// Runs the event loop until the response future is completed.
@@ -130,7 +135,8 @@ impl<S> TestServer<S>
     // TODO: Ensure this is impossible to trigger in the more ergonomic client interface to
     // `TestServer`, when such a thing is written.
     pub fn run_request<F>(&mut self, f: F) -> Result<F::Item, TestRequestError>
-        where F: Future<Error = hyper::Error>
+    where
+        F: Future<Error = hyper::Error>,
     {
         let timeout_duration = time::Duration::from_secs(self.timeout);
         let timeout = reactor::Timeout::new(timeout_duration, &self.core.handle())
@@ -177,7 +183,10 @@ impl client::Service for TestConnect {
             Ok(Some(stream)) => future::ok(stream),
             Ok(None) => future::err(io::Error::new(io::ErrorKind::Other, "stream already taken")),
             Err(_) => {
-                future::err(io::Error::new(io::ErrorKind::Other, "stream.try_borrow_mut() failed"))
+                future::err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "stream.try_borrow_mut() failed",
+                ))
             }
         }
     }
@@ -216,9 +225,9 @@ fn io_error_to_async_io_error<T>(r: Result<T, io::Error>) -> Result<T, io::Error
     // * When a WouldBlock error is returned, the current future task is scheduled to receive a
     //   notification when the I/O object would otherwise be ready.
     r.map_err(|e| match e.raw_os_error() {
-                  Some(35) => io::Error::new(io::ErrorKind::WouldBlock, "test socket would block"),
-                  _ => e,
-              })
+        Some(35) => io::Error::new(io::ErrorKind::WouldBlock, "test socket would block"),
+        _ => e,
+    })
 }
 
 impl io::Read for AsyncUnixStream {
@@ -244,28 +253,30 @@ impl io::Write for AsyncUnixStream {
 
 impl AsyncWrite for AsyncUnixStream {
     fn shutdown(&mut self) -> Result<Async<()>, io::Error> {
-        self.stream
-            .shutdown(net::Shutdown::Both)
-            .map(|_| Async::Ready(()))
+        self.stream.shutdown(net::Shutdown::Both).map(|_| {
+            Async::Ready(())
+        })
     }
 }
 
 impl mio::event::Evented for AsyncUnixStream {
-    fn register(&self,
-                poll: &mio::Poll,
-                token: mio::Token,
-                ready: mio::Ready,
-                poll_opt: mio::PollOpt)
-                -> Result<(), io::Error> {
+    fn register(
+        &self,
+        poll: &mio::Poll,
+        token: mio::Token,
+        ready: mio::Ready,
+        poll_opt: mio::PollOpt,
+    ) -> Result<(), io::Error> {
         mio::unix::EventedFd(&self.stream.as_raw_fd()).register(poll, token, ready, poll_opt)
     }
 
-    fn reregister(&self,
-                  poll: &mio::Poll,
-                  token: mio::Token,
-                  ready: mio::Ready,
-                  poll_opt: mio::PollOpt)
-                  -> Result<(), io::Error> {
+    fn reregister(
+        &self,
+        poll: &mio::Poll,
+        token: mio::Token,
+        ready: mio::Ready,
+        poll_opt: mio::PollOpt,
+    ) -> Result<(), io::Error> {
         mio::unix::EventedFd(&self.stream.as_raw_fd()).reregister(poll, token, ready, poll_opt)
     }
 

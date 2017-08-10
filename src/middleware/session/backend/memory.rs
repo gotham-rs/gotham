@@ -73,10 +73,11 @@ impl NewBackend for MemoryBackend {
 }
 
 impl Backend for MemoryBackend {
-    fn persist_session(&self,
-                       identifier: SessionIdentifier,
-                       content: &[u8])
-                       -> Result<(), SessionError> {
+    fn persist_session(
+        &self,
+        identifier: SessionIdentifier,
+        content: &[u8],
+    ) -> Result<(), SessionError> {
         match self.storage.lock() {
             Ok(mut storage) => {
                 storage.insert(identifier.value, (Instant::now(), Vec::from(content)));
@@ -138,9 +139,10 @@ fn cleanup_loop(storage: Weak<Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>>,
     }
 }
 
-fn cleanup_once(storage: &mut LinkedHashMap<String, (Instant, Vec<u8>)>,
-                ttl: Duration)
-                -> Option<Duration> {
+fn cleanup_once(
+    storage: &mut LinkedHashMap<String, (Instant, Vec<u8>)>,
+    ttl: Duration,
+) -> Option<Duration> {
     match storage.front() {
         Some((_, &(instant, _))) => {
             let age = instant.elapsed();
@@ -167,10 +169,12 @@ fn cleanup_once(storage: &mut LinkedHashMap<String, (Instant, Vec<u8>)>,
                 if cap >= 65536 && cap / 8 > len {
                     storage.shrink_to_fit();
 
-                    trace!(" session backend had capacity {} and {} sessions, new capacity: {}",
-                           cap,
-                           len,
-                           storage.capacity());
+                    trace!(
+                        " session backend had capacity {} and {} sessions, new capacity: {}",
+                        cap,
+                        len,
+                        storage.capacity()
+                    );
                 }
 
                 // Sleep until the next entry expires, but for at least 1 second
@@ -192,8 +196,10 @@ mod tests {
     fn cleanup_test() {
         let mut storage = LinkedHashMap::new();
 
-        storage.insert("abcd".to_owned(),
-                       (Instant::now() - Duration::from_secs(2), vec![]));
+        storage.insert("abcd".to_owned(), (
+            Instant::now() - Duration::from_secs(2),
+            vec![],
+        ));
 
         cleanup_once(&mut storage, Duration::from_secs(1));
         assert!(storage.is_empty());
@@ -242,9 +248,9 @@ mod tests {
         let identifier2 =
             SessionIdentifier { value: "another_totally_random_identifier".to_owned() };
 
-        let backend = new_backend
-            .new_backend()
-            .expect("can't create backend for write");
+        let backend = new_backend.new_backend().expect(
+            "can't create backend for write",
+        );
 
         backend
             .persist_session(identifier.clone(), &bytes[..])
@@ -256,26 +262,33 @@ mod tests {
 
         {
             let mut storage = backend.storage.lock().expect("couldn't lock storage");
-            assert_eq!(storage.front().expect("no front element").0,
-                       &identifier.value);
+            assert_eq!(
+                storage.front().expect("no front element").0,
+                &identifier.value
+            );
 
-            assert_eq!(storage.back().expect("no back element").0,
-                       &identifier2.value);
+            assert_eq!(
+                storage.back().expect("no back element").0,
+                &identifier2.value
+            );
         }
 
-        backend
-            .read_session(identifier.clone())
-            .wait()
-            .expect("failed to read session");
+        backend.read_session(identifier.clone()).wait().expect(
+            "failed to read session",
+        );
 
         {
             // Identifiers have swapped
             let mut storage = backend.storage.lock().expect("couldn't lock storage");
-            assert_eq!(storage.front().expect("no front element").0,
-                       &identifier2.value);
+            assert_eq!(
+                storage.front().expect("no front element").0,
+                &identifier2.value
+            );
 
-            assert_eq!(storage.back().expect("no back element").0,
-                       &identifier.value);
+            assert_eq!(
+                storage.back().expect("no back element").0,
+                &identifier.value
+            );
         }
     }
 }

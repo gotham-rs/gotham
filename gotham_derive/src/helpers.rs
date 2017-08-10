@@ -17,15 +17,12 @@ pub fn ty_params<'a>(ast: &'a syn::DeriveInput) -> (&'a syn::Ident, quote::Token
         quote! { < #(#borrowed_params),* > }
     };
 
-    let type_constraints = ast.generics
-        .ty_params
-        .iter()
-        .map(|ty| quote! { #ty: PathExtractor });
-    let where_clause_predicates = ast.generics
-        .where_clause
-        .predicates
-        .iter()
-        .map(|pred| quote! { #pred });
+    let type_constraints = ast.generics.ty_params.iter().map(|ty| {
+        quote! { #ty: PathExtractor }
+    });
+    let where_clause_predicates = ast.generics.where_clause.predicates.iter().map(|pred| {
+        quote! { #pred }
+    });
     let where_clause_items = type_constraints
         .chain(where_clause_predicates)
         .collect::<Vec<_>>();
@@ -53,10 +50,10 @@ pub fn ty_fields<'a>(ast: &'a syn::DeriveInput) -> (Vec<&syn::Ident>, Vec<&syn::
         syn::Body::Struct(syn::VariantData::Struct(ref body)) => {
             body.iter()
                 .filter_map(|field| if is_option(&field.ty) {
-                                field.ident.as_ref()
-                            } else {
-                                None
-                            })
+                    field.ident.as_ref()
+                } else {
+                    None
+                })
                 .collect::<Vec<_>>()
         }
         _ => panic!("Not implemented for tuple or unit like structs"),

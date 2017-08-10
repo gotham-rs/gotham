@@ -24,8 +24,10 @@ pub fn set_request_id<'a>(state: &'a mut State, req: &Request) -> &'a str {
     if !state.has::<RequestId>() {
         match req.headers().get::<XRequestId>() {
             Some(ex_req_id) => {
-                trace!("[{}] RequestId set from external source via X-Request-ID header",
-                       ex_req_id.0.clone());
+                trace!(
+                    "[{}] RequestId set from external source via X-Request-ID header",
+                    ex_req_id.0.clone()
+                );
                 state.put(RequestId { val: ex_req_id.0.clone() })
             }
             None => {
@@ -71,8 +73,10 @@ mod tests {
     #[test]
     fn uses_an_external_request_id() {
         let mut state = State::new();
-        let mut req = Request::new(Method::Get,
-                                   Uri::from_str("https://test.gotham.rs").unwrap());
+        let mut req = Request::new(
+            Method::Get,
+            Uri::from_str("https://test.gotham.rs").unwrap(),
+        );
         req.headers_mut().set(XRequestId("1-2-3-4".to_string()));
 
         {
@@ -85,17 +89,21 @@ mod tests {
     #[test]
     fn sets_a_unique_request_id() {
         let mut state = State::new();
-        let req = Request::new(Method::Get,
-                               Uri::from_str("https://test.gotham.rs").unwrap());
+        let req = Request::new(
+            Method::Get,
+            Uri::from_str("https://test.gotham.rs").unwrap(),
+        );
 
         {
             let r = set_request_id(&mut state, &req);
             assert_eq!(4, Uuid::parse_str(r).unwrap().get_version_num());
         };
-        assert_eq!(4,
-                   Uuid::parse_str(request_id(&state))
-                       .unwrap()
-                       .get_version_num());
+        assert_eq!(
+            4,
+            Uuid::parse_str(request_id(&state))
+                .unwrap()
+                .get_version_num()
+        );
     }
 
     #[test]
@@ -103,8 +111,10 @@ mod tests {
         let mut state = State::new();
         state.put(RequestId { val: "1-2-3-4".to_string() });
 
-        let req = Request::new(Method::Get,
-                               Uri::from_str("https://test.gotham.rs").unwrap());
+        let req = Request::new(
+            Method::Get,
+            Uri::from_str("https://test.gotham.rs").unwrap(),
+        );
 
         {
             set_request_id(&mut state, &req);

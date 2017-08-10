@@ -66,10 +66,14 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// ```
 pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, body: Option<Body>) {
     if usize::max_value() > u64::max_value() as usize {
-        error!("[{}] unable to handle content_length of response, outside u64 bounds",
-               request_id(state));
-        panic!("[{}] unable to handle content_length of response, outside u64 bounds",
-               request_id(state));
+        error!(
+            "[{}] unable to handle content_length of response, outside u64 bounds",
+            request_id(state)
+        );
+        panic!(
+            "[{}] unable to handle content_length of response, outside u64 bounds",
+            request_id(state)
+        );
     }
 
     match body {

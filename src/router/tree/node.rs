@@ -128,10 +128,11 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub fn select_route(&self,
-                        state: &State,
-                        req: &Request)
-                        -> Result<&Box<Route + Send + Sync>, StatusCode> {
+    pub fn select_route(
+        &self,
+        state: &State,
+        req: &Request,
+    ) -> Result<&Box<Route + Send + Sync>, StatusCode> {
         match self.routes.iter().find(|r| r.is_match(state, req).is_ok()) {
             Some(route) => {
                 trace!("[{}] found matching route", request_id(state));
@@ -177,10 +178,10 @@ impl Node {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'r, 'n>
-        (&'n self,
-         req_path_segments: &'r [&PercentDecoded])
-         -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
+    pub fn traverse<'r, 'n>(
+        &'n self,
+        req_path_segments: &'r [&PercentDecoded],
+    ) -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, leaf, c, sm)) => {
                 path.reverse();
@@ -192,11 +193,11 @@ impl Node {
     }
 
     #[allow(unknown_lints, type_complexity)]
-    fn inner_traverse<'r>
-        (&self,
-         req_path_segments: &'r [&PercentDecoded],
-         mut consumed_segments: Vec<&'r PercentDecoded>)
-         -> Option<(Vec<&Node>, &Node, SegmentsProcessed, HashMap<&str, Vec<&'r PercentDecoded>>)> {
+    fn inner_traverse<'r>(
+        &self,
+        req_path_segments: &'r [&PercentDecoded],
+        mut consumed_segments: Vec<&'r PercentDecoded>,
+    ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, HashMap<&str, Vec<&'r PercentDecoded>>)> {
         match req_path_segments.split_first() {
             Some((x, _)) if self.is_delegating(x) => {
                 // A delegated node terminates processing, start building result
@@ -290,7 +291,8 @@ pub struct NodeBuilder {
 impl NodeBuilder {
     /// Creates new `NodeBuilder` for the given segment.
     pub fn new<S>(segment: S, segment_type: SegmentType) -> Self
-        where S: Borrow<str>
+    where
+        S: Borrow<str>,
     {
         let segment = segment.borrow().to_owned();
         NodeBuilder {
@@ -333,9 +335,11 @@ impl NodeBuilder {
             panic!("Node which is externally delegating must not have existing children")
         }
 
-        trace!(" adding child `{}` to `{}`",
-               child.segment(),
-               self.segment());
+        trace!(
+            " adding child `{}` to `{}`",
+            child.segment(),
+            self.segment()
+        );
         self.children.push(child);
     }
 
@@ -436,30 +440,36 @@ mod tests {
     }
 
     fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
-        where P: Send + Sync + 'static
+    where
+        P: Send + Sync + 'static,
     {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-        let route = RouteImpl::new(matcher,
-                                   Box::new(dispatcher),
-                                   extractors,
-                                   Delegation::Internal);
+        let route = RouteImpl::new(
+            matcher,
+            Box::new(dispatcher),
+            extractors,
+            Delegation::Internal,
+        );
         Box::new(route)
     }
 
     fn get_delegated_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
-        where P: Send + Sync + 'static
+    where
+        P: Send + Sync + 'static,
     {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-        let route = RouteImpl::new(matcher,
-                                   Box::new(dispatcher),
-                                   extractors,
-                                   Delegation::External);
+        let route = RouteImpl::new(
+            matcher,
+            Box::new(dispatcher),
+            extractors,
+            Delegation::External,
+        );
         Box::new(route)
     }
 
@@ -474,10 +484,12 @@ mod tests {
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-        let route = RouteImpl::new(matcher,
-                                   Box::new(dispatcher),
-                                   extractors,
-                                   Delegation::Internal);
+        let route = RouteImpl::new(
+            matcher,
+            Box::new(dispatcher),
+            extractors,
+            Delegation::Internal,
+        );
         seg1.add_route(Box::new(route));
         root.add_child(seg1);
 
@@ -488,10 +500,12 @@ mod tests {
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-        let route = RouteImpl::new(matcher,
-                                   Box::new(dispatcher),
-                                   extractors,
-                                   Delegation::Internal);
+        let route = RouteImpl::new(
+            matcher,
+            Box::new(dispatcher),
+            extractors,
+            Delegation::Internal,
+        );
         seg2.add_route(Box::new(route));
 
         // Patch: /seg2
@@ -499,10 +513,12 @@ mod tests {
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-        let route = RouteImpl::new(matcher,
-                                   Box::new(dispatcher),
-                                   extractors,
-                                   Delegation::Internal);
+        let route = RouteImpl::new(
+            matcher,
+            Box::new(dispatcher),
+            extractors,
+            Delegation::Internal,
+        );
         seg2.add_route(Box::new(route));
         root.add_child(seg2);
 

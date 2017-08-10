@@ -74,11 +74,14 @@ pub trait FromRequestPath {
     ///
     /// e.g. Multiple segments due to usage of a Glob are provided for a value that should
     /// only be generated from a single segment, such as a `u8`.
-    fn from_request_path(&[&PercentDecoded]) -> Result<Self, FromRequestPathError> where Self: Sized;
+    fn from_request_path(&[&PercentDecoded]) -> Result<Self, FromRequestPathError>
+    where
+        Self: Sized;
 }
 
 impl<T> FromRequestPath for Option<T>
-    where T: FromRequestPath
+where
+    T: FromRequestPath,
 {
     fn from_request_path(segments: &[&PercentDecoded]) -> Result<Self, FromRequestPathError> {
         if segments.len() == 0 {
@@ -132,17 +135,19 @@ macro_rules! fstr {
     )+ }
 }
 
-fstr!(String,
-      bool,
-      f32,
-      f64,
-      isize,
-      i8,
-      i16,
-      i32,
-      i64,
-      usize,
-      u8,
-      u16,
-      u32,
-      u64);
+fstr!(
+    String,
+    bool,
+    f32,
+    f64,
+    isize,
+    i8,
+    i16,
+    i32,
+    i64,
+    usize,
+    u8,
+    u16,
+    u32,
+    u64
+);
