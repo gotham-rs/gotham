@@ -30,8 +30,10 @@ impl QueryStringMapping {
                 self.data.insert(key, Vec::new());
             }
             Err(_) => {
-                trace!(" unmapped segment {} was unable to be decoded and will not be added to QueryStringMapping",
-                       key)
+                trace!(
+                    " unmapped segment {} was unable to be decoded and will not be added to QueryStringMapping",
+                    key
+                )
             }
         };
     }

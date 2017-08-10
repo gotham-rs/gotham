@@ -70,15 +70,18 @@ pub trait FromQueryString {
     /// # Panic
     /// If the input data is not of the expected format or size a panic will occur.
     fn from_query_string(&str, &[FormUrlDecoded]) -> Result<Self, FromQueryStringError>
-        where Self: Sized;
+    where
+        Self: Sized;
 }
 
 impl<T> FromQueryString for Option<T>
-    where T: FromQueryString
+where
+    T: FromQueryString,
 {
-    fn from_query_string(key: &str,
-                         values: &[FormUrlDecoded])
-                         -> Result<Self, FromQueryStringError> {
+    fn from_query_string(
+        key: &str,
+        values: &[FormUrlDecoded],
+    ) -> Result<Self, FromQueryStringError> {
         if values.len() == 0 {
             Ok(None)
         } else {
@@ -91,11 +94,13 @@ impl<T> FromQueryString for Option<T>
 }
 
 impl<T> FromQueryString for Vec<T>
-    where T: FromQueryString
+where
+    T: FromQueryString,
 {
-    fn from_query_string(key: &str,
-                         values: &[FormUrlDecoded])
-                         -> Result<Self, FromQueryStringError> {
+    fn from_query_string(
+        key: &str,
+        values: &[FormUrlDecoded],
+    ) -> Result<Self, FromQueryStringError> {
         values
             .windows(1)
             .map(|value| T::from_query_string(key, value))
@@ -144,17 +149,19 @@ macro_rules! fstr {
     )+}
 }
 
-fstr!(String,
-      bool,
-      f32,
-      f64,
-      isize,
-      i8,
-      i16,
-      i32,
-      i64,
-      usize,
-      u8,
-      u16,
-      u32,
-      u64);
+fstr!(
+    String,
+    bool,
+    f32,
+    f64,
+    isize,
+    i8,
+    i16,
+    i32,
+    i64,
+    usize,
+    u8,
+    u16,
+    u32,
+    u64
+);

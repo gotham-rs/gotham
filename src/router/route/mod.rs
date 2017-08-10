@@ -48,10 +48,11 @@ pub trait Route {
     fn delegation(&self) -> Delegation;
 
     /// Extracts the `Request` path and stores it in `State`
-    fn extract_request_path(&self,
-                            state: &mut State,
-                            segment_mapping: SegmentMapping)
-                            -> Result<(), String>;
+    fn extract_request_path(
+        &self,
+        state: &mut State,
+        segment_mapping: SegmentMapping,
+    ) -> Result<(), String>;
 
     /// Extends the `Response` object when path extraction fails
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response);
@@ -155,9 +156,10 @@ pub trait Route {
 /// # }
 /// ```
 pub struct RouteImpl<RM, RE, QSE>
-    where RM: RouteMatcher,
-          RE: PathExtractor,
-          QSE: QueryStringExtractor
+where
+    RM: RouteMatcher,
+    RE: PathExtractor,
+    QSE: QueryStringExtractor,
 {
     matcher: RM,
     dispatcher: Box<Dispatcher + Send + Sync>,
@@ -168,24 +170,27 @@ pub struct RouteImpl<RM, RE, QSE>
 /// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
 /// for use by custom `Middleware` and `Handler` implementations.
 pub struct Extractors<RE, QSE>
-    where RE: PathExtractor,
-          QSE: QueryStringExtractor
+where
+    RE: PathExtractor,
+    QSE: QueryStringExtractor,
 {
     rpe_phantom: PhantomData<RE>,
     qse_phantom: PhantomData<QSE>,
 }
 
 impl<RM, RE, QSE> RouteImpl<RM, RE, QSE>
-    where RM: RouteMatcher,
-          RE: PathExtractor,
-          QSE: QueryStringExtractor
+where
+    RM: RouteMatcher,
+    RE: PathExtractor,
+    QSE: QueryStringExtractor,
 {
     /// Creates a new `RouteImpl`
-    pub fn new(matcher: RM,
-               dispatcher: Box<Dispatcher + Send + Sync>,
-               _extractors: Extractors<RE, QSE>,
-               delegation: Delegation)
-               -> Self {
+    pub fn new(
+        matcher: RM,
+        dispatcher: Box<Dispatcher + Send + Sync>,
+        _extractors: Extractors<RE, QSE>,
+        delegation: Delegation,
+    ) -> Self {
         RouteImpl {
             matcher,
             dispatcher,
@@ -196,8 +201,9 @@ impl<RM, RE, QSE> RouteImpl<RM, RE, QSE>
 }
 
 impl<RE, QSE> Extractors<RE, QSE>
-    where RE: PathExtractor,
-          QSE: QueryStringExtractor
+where
+    RE: PathExtractor,
+    QSE: QueryStringExtractor,
 {
     /// Creates a new set of Extractors for use with a `RouteImpl`
     pub fn new() -> Self {
@@ -209,9 +215,10 @@ impl<RE, QSE> Extractors<RE, QSE>
 }
 
 impl<RM, RE, QSE> Route for RouteImpl<RM, RE, QSE>
-    where RM: RouteMatcher,
-          RE: PathExtractor,
-          QSE: QueryStringExtractor
+where
+    RM: RouteMatcher,
+    RE: PathExtractor,
+    QSE: QueryStringExtractor,
 {
     fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode> {
         self.matcher.is_match(state, req)
@@ -225,10 +232,11 @@ impl<RM, RE, QSE> Route for RouteImpl<RM, RE, QSE>
         self.dispatcher.dispatch(state, req)
     }
 
-    fn extract_request_path(&self,
-                            state: &mut State,
-                            segment_mapping: SegmentMapping)
-                            -> Result<(), String> {
+    fn extract_request_path(
+        &self,
+        state: &mut State,
+        segment_mapping: SegmentMapping,
+    ) -> Result<(), String> {
         RE::extract(state, segment_mapping)
     }
 

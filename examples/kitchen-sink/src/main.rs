@@ -60,41 +60,49 @@ struct SharedQueryString {
 static INDEX: &'static str = "Try POST /echo";
 static ASYNC: &'static str = "Got async response";
 
-fn static_route<NH, P, C>(methods: Vec<Method>,
-                          new_handler: NH,
-                          active_pipelines: C,
-                          pipeline_set: PipelineSet<P>)
-                          -> Box<Route + Send + Sync>
-    where NH: NewHandler + 'static,
-          C: PipelineHandleChain<P> + Send + Sync + 'static,
-          P: Send + Sync + 'static
+fn static_route<NH, P, C>(
+    methods: Vec<Method>,
+    new_handler: NH,
+    active_pipelines: C,
+    pipeline_set: PipelineSet<P>,
+) -> Box<Route + Send + Sync>
+where
+    NH: NewHandler + 'static,
+    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    P: Send + Sync + 'static,
 {
     let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-    let route = RouteImpl::new(matcher,
-                               Box::new(dispatcher),
-                               extractors,
-                               Delegation::Internal);
+    let route = RouteImpl::new(
+        matcher,
+        Box::new(dispatcher),
+        extractors,
+        Delegation::Internal,
+    );
     Box::new(route)
 }
 
-fn dynamic_route<NH, P, C>(methods: Vec<Method>,
-                           new_handler: NH,
-                           active_pipelines: C,
-                           pipeline_set: PipelineSet<P>)
-                           -> Box<Route + Send + Sync>
-    where NH: NewHandler + 'static,
-          C: PipelineHandleChain<P> + Send + Sync + 'static,
-          P: Send + Sync + 'static
+fn dynamic_route<NH, P, C>(
+    methods: Vec<Method>,
+    new_handler: NH,
+    active_pipelines: C,
+    pipeline_set: PipelineSet<P>,
+) -> Box<Route + Send + Sync>
+where
+    NH: NewHandler + 'static,
+    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    P: Send + Sync + 'static,
 {
     let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
     let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
-    let route = RouteImpl::new(matcher,
-                               Box::new(dispatcher),
-                               extractors,
-                               Delegation::Internal);
+    let route = RouteImpl::new(
+        matcher,
+        Box::new(dispatcher),
+        extractors,
+        Delegation::Internal,
+    );
     Box::new(route)
 }
 
@@ -111,56 +119,71 @@ fn build_router() -> Router {
     let mut tree_builder = TreeBuilder::new();
 
     let editable_pipeline_set = new_pipeline_set();
-    let (editable_pipeline_set, global) = editable_pipeline_set
-        .add(new_pipeline()
-                 .add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" })
-                 .build());
+    let (editable_pipeline_set, global) = editable_pipeline_set.add(
+        new_pipeline()
+            .add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" })
+            .build(),
+    );
 
     let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
 
-    tree_builder.add_route(static_route(vec![Method::Get],
-                                        || Ok(Echo::get),
-                                        (global, ()),
-                                        pipeline_set.clone()));
+    tree_builder.add_route(static_route(
+        vec![Method::Get],
+        || Ok(Echo::get),
+        (global, ()),
+        pipeline_set.clone(),
+    ));
 
     let mut echo = NodeBuilder::new("echo", SegmentType::Static);
-    echo.add_route(static_route(vec![Method::Get, Method::Head],
-                                || Ok(Echo::get),
-                                (global, ()),
-                                pipeline_set.clone()));
-    echo.add_route(static_route(vec![Method::Post],
-                                || Ok(Echo::post),
-                                (global, ()),
-                                pipeline_set.clone()));
+    echo.add_route(static_route(
+        vec![Method::Get, Method::Head],
+        || Ok(Echo::get),
+        (global, ()),
+        pipeline_set.clone(),
+    ));
+    echo.add_route(static_route(
+        vec![Method::Post],
+        || Ok(Echo::post),
+        (global, ()),
+        pipeline_set.clone(),
+    ));
     tree_builder.add_child(echo);
 
     let mut async = NodeBuilder::new("async", SegmentType::Static);
-    async.add_route(static_route(vec![Method::Get],
-                                 || Ok(Echo::async),
-                                 (global, ()),
-                                 pipeline_set.clone()));
+    async.add_route(static_route(
+        vec![Method::Get],
+        || Ok(Echo::async),
+        (global, ()),
+        pipeline_set.clone(),
+    ));
     tree_builder.add_child(async);
 
     let mut header_value = NodeBuilder::new("header_value", SegmentType::Static);
-    header_value.add_route(static_route(vec![Method::Get],
-                                        || Ok(Echo::header_value),
-                                        (global, ()),
-                                        pipeline_set.clone()));
+    header_value.add_route(static_route(
+        vec![Method::Get],
+        || Ok(Echo::header_value),
+        (global, ()),
+        pipeline_set.clone(),
+    ));
     tree_builder.add_child(header_value);
 
     let mut hello = NodeBuilder::new("hello", SegmentType::Static);
 
     let mut name = NodeBuilder::new("name", SegmentType::Dynamic);
-    name.add_route(dynamic_route(vec![Method::Get],
-                                 || Ok(Echo::hello),
-                                 (global, ()),
-                                 pipeline_set.clone()));
+    name.add_route(dynamic_route(
+        vec![Method::Get],
+        || Ok(Echo::hello),
+        (global, ()),
+        pipeline_set.clone(),
+    ));
 
     let mut from = NodeBuilder::new("from", SegmentType::Dynamic);
-    from.add_route(dynamic_route(vec![Method::Get],
-                                 || Ok(Echo::greeting),
-                                 (global, ()),
-                                 pipeline_set.clone()));
+    from.add_route(dynamic_route(
+        vec![Method::Get],
+        || Ok(Echo::greeting),
+        (global, ()),
+        pipeline_set.clone(),
+    ));
 
     name.add_child(from);
     hello.add_child(name);
@@ -180,9 +203,11 @@ fn build_router() -> Router {
 
 impl Echo {
     fn get(state: State, _req: Request) -> (State, Response) {
-        let res = create_response(&state,
-                                  StatusCode::Ok,
-                                  Some((String::from(INDEX).into_bytes(), mime::TEXT_PLAIN)));
+        let res = create_response(
+            &state,
+            StatusCode::Ok,
+            Some((String::from(INDEX).into_bytes(), mime::TEXT_PLAIN)),
+        );
         (state, res)
     }
 
@@ -190,39 +215,47 @@ impl Echo {
         req.body()
             .concat2()
             .then(move |full_body| match full_body {
-                      Ok(valid_body) => {
-                          let res = create_response(&state,
-                                                    StatusCode::Ok,
-                                                    Some((valid_body.to_vec(), mime::TEXT_PLAIN)));
-                          future::ok((state, res))
-                      }
-                      Err(e) => future::err((state, e.into_handler_error())),
-                  })
+                Ok(valid_body) => {
+                    let res = create_response(
+                        &state,
+                        StatusCode::Ok,
+                        Some((valid_body.to_vec(), mime::TEXT_PLAIN)),
+                    );
+                    future::ok((state, res))
+                }
+                Err(e) => future::err((state, e.into_handler_error())),
+            })
             .boxed()
     }
 
     fn async(state: State, _req: Request) -> Box<HandlerFuture> {
-        let res = create_response(&state,
-                                  StatusCode::Ok,
-                                  Some((String::from(ASYNC).into_bytes(), mime::TEXT_PLAIN)));
+        let res = create_response(
+            &state,
+            StatusCode::Ok,
+            Some((String::from(ASYNC).into_bytes(), mime::TEXT_PLAIN)),
+        );
         future::lazy(move || future::ok((state, res))).boxed()
     }
 
     fn header_value(mut state: State, _req: Request) -> (State, Response) {
         state.borrow_mut::<KitchenSinkData>().unwrap().header_value = "different value!".to_owned();
 
-        let res = create_response(&state,
-                                  StatusCode::Ok,
-                                  Some((String::from(INDEX).into_bytes(), mime::TEXT_PLAIN)));
+        let res = create_response(
+            &state,
+            StatusCode::Ok,
+            Some((String::from(INDEX).into_bytes(), mime::TEXT_PLAIN)),
+        );
         (state, res)
     }
 
     fn hello(mut state: State, _req: Request) -> (State, Response) {
         let hello = format!("Hello, {}\n", SharedRequestPath::take_from(&mut state).name);
 
-        let res = create_response(&state,
-                                  StatusCode::Ok,
-                                  Some((hello.into_bytes(), mime::TEXT_PLAIN)));
+        let res = create_response(
+            &state,
+            StatusCode::Ok,
+            Some((hello.into_bytes(), mime::TEXT_PLAIN)),
+        );
         (state, res)
     }
 
@@ -236,19 +269,23 @@ impl Echo {
             };
 
             if let Some(srq) = state.borrow::<SharedQueryString>() {
-                format!("Greetings, {} from {}. [i: {}, q: {:?}]\n",
-                        name,
-                        from,
-                        srq.i,
-                        srq.q)
+                format!(
+                    "Greetings, {} from {}. [i: {}, q: {:?}]\n",
+                    name,
+                    from,
+                    srq.i,
+                    srq.q
+                )
             } else {
                 format!("Greetings, {} from {}.\n", name, from)
             }
         };
 
-        let res = create_response(&state,
-                                  StatusCode::Ok,
-                                  Some((g.into_bytes(), mime::TEXT_PLAIN)));
+        let res = create_response(
+            &state,
+            StatusCode::Ok,
+            Some((g.into_bytes(), mime::TEXT_PLAIN)),
+        );
         (state, res)
     }
 }
@@ -261,12 +298,14 @@ fn main() {
         .level_for("kitchen_sink", log::LogLevelFilter::Error)
         .chain(std::io::stdout())
         .format(|out, message, record| {
-                    out.finish(format_args!("{}[{}][{}]{}",
-                                            chrono::UTC::now().format("[%Y-%m-%d %H:%M:%S%.9f]"),
-                                            record.target(),
-                                            record.level(),
-                                            message))
-                })
+            out.finish(format_args!(
+                "{}[{}][{}]{}",
+                chrono::UTC::now().format("[%Y-%m-%d %H:%M:%S%.9f]"),
+                record.target(),
+                record.level(),
+                message
+            ))
+        })
         .apply()
         .unwrap();
 
@@ -276,7 +315,9 @@ fn main() {
         .bind(&addr, NewHandlerService::new(build_router()))
         .unwrap();
 
-    println!("Listening on http://{} with 1 thread.",
-             server.local_addr().unwrap());
+    println!(
+        "Listening on http://{} with 1 thread.",
+        server.local_addr().unwrap()
+    );
     server.run().unwrap();
 }

@@ -24,10 +24,11 @@ pub type SessionFuture = Future<Item = Option<Vec<u8>>, Error = SessionError> + 
 /// serialization format is subject to change and must not be relied upon by the `Backend`.
 pub trait Backend: Send {
     /// Persists a session, either creating a new session or updating an existing session.
-    fn persist_session(&self,
-                       identifier: SessionIdentifier,
-                       content: &[u8])
-                       -> Result<(), SessionError>;
+    fn persist_session(
+        &self,
+        identifier: SessionIdentifier,
+        content: &[u8],
+    ) -> Result<(), SessionError>;
 
     /// Retrieves a session from the underlying storage.
     ///

@@ -37,14 +37,18 @@ impl RequestPathSegments {
     /// ```
     pub fn new<'r>(path: &'r str) -> Self {
         let mut segments = vec!["/"];
-        segments.extend(path.split('/')
-                            .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
-                            .collect::<Vec<&'r str>>());
+        segments.extend(
+            path.split('/')
+                .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
+                .collect::<Vec<&'r str>>(),
+        );
 
-        let segments = Arc::new(segments
-                                    .iter()
-                                    .filter_map(|s| PercentDecoded::new(s))
-                                    .collect::<Vec<PercentDecoded>>());
+        let segments = Arc::new(
+            segments
+                .iter()
+                .filter_map(|s| PercentDecoded::new(s))
+                .collect::<Vec<PercentDecoded>>(),
+        );
 
         RequestPathSegments {
             offset: 0,
@@ -79,10 +83,10 @@ impl RequestPathSegments {
             .iter()
             .enumerate()
             .filter_map(|(i, v)| if i == 0 || i > self.offset {
-                            Some(v)
-                        } else {
-                            None
-                        })
+                Some(v)
+            } else {
+                None
+            })
             .collect::<Vec<&PercentDecoded>>()
     }
 

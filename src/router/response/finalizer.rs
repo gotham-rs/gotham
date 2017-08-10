@@ -49,16 +49,20 @@ impl ResponseFinalizer {
     pub fn finalize(&self, mut state: State, mut res: Response) -> Box<HandlerFuture> {
         match self.data.get(&res.status()) {
             Some(extender) => {
-                trace!("[{}] invoking {} response extender",
-                       request_id(&state),
-                       res.status());
+                trace!(
+                    "[{}] invoking {} response extender",
+                    request_id(&state),
+                    res.status()
+                );
                 extender.extend(&mut state, &mut res);
 
             }
             None => {
-                trace!("[{}] no response extender for {}",
-                       request_id(&state),
-                       res.status());
+                trace!(
+                    "[{}] no response extender for {}",
+                    request_id(&state),
+                    res.status()
+                );
             }
         }
 

@@ -49,7 +49,8 @@ pub trait IntoHandlerError {
 }
 
 impl<E> IntoHandlerError for E
-    where E: Error + Send + 'static
+where
+    E: Error + Send + 'static,
 {
     fn into_handler_error(self) -> HandlerError {
         HandlerError {
@@ -117,12 +118,14 @@ impl HandlerError {
 
 impl IntoResponse for HandlerError {
     fn into_response(self, state: &State) -> Response {
-        trace!("[{}] HandlerError generating HTTP response with status: {} {}",
-               request_id(state),
-               self.status_code.as_u16(),
-               self.status_code
-                   .canonical_reason()
-                   .unwrap_or("(unregistered)"));
+        trace!(
+            "[{}] HandlerError generating HTTP response with status: {} {}",
+            request_id(state),
+            self.status_code.as_u16(),
+            self.status_code.canonical_reason().unwrap_or(
+                "(unregistered)",
+            )
+        );
 
         create_response(state, self.status_code, None)
     }

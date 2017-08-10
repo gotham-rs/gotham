@@ -32,12 +32,14 @@ pub fn from_rws_delimited_raw_str<T: str::FromStr>(raw: &Raw) -> hyper::error::R
     let mut result = Vec::new();
     for line in raw {
         let line = try!(str::from_utf8(line.as_ref()));
-        result.extend(line.split(' ')
-                          .filter_map(|header| match header.trim() {
-                                          "" => None,
-                                          header => Some(header),
-                                      })
-                          .filter_map(|header| header.trim().parse().ok()))
+        result.extend(
+            line.split(' ')
+                .filter_map(|header| match header.trim() {
+                    "" => None,
+                    header => Some(header),
+                })
+                .filter_map(|header| header.trim().parse().ok()),
+        )
     }
     Ok(result)
 }
