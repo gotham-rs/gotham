@@ -40,4 +40,3 @@ You can keep up with Gotham at:
 
 * [Our blog](https://staging.gotham.rs/blog)
 * [On Twitter](https://twitter.com/gotham_rs)
-

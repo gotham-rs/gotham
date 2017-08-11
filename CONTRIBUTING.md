@@ -10,11 +10,8 @@ consider them.
 
 ## License
 
-By contributing code, you agree to license your contribution under the 
+You agree to license your contribution under the 
 [MIT License](LICENSE-MIT) **AND** the [Apache License 2.0](LICENSE-APACHE).
-
-By contributing documentation you agree to license your contribution under the 
-[CC0 1.0 Universal Public Domain Dedication](LICENSE-CC0).
 
 ## Submission guidelines
 
