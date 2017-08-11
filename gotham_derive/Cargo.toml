@@ -3,6 +3,8 @@ name = "gotham_derive"
 version = "0.1.0"
 authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
            "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
+description = "Macros 1.1 implementation for Gotham traits"
+license = "MIT"
 
 [dependencies]
 syn = "0.11.11"
