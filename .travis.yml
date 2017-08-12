@@ -3,7 +3,7 @@ rust:
   - stable
   - beta
   - nightly
-# necessary for travis-cargo coveralls
+# dependencies of kcov, used by coverage
 addons:
   apt:
     packages:
@@ -11,14 +11,17 @@ addons:
       - libelf-dev
       - libdw-dev
       - binutils-dev
+      - cmake
+    sources:
+      - kalakris-cmake
 env:
-  - PATH=$HOME/.local/bin:$PATH
+  - PATH=$HOME/.cargo/bin:$PATH
 before_script:
-  - pip install 'travis-cargo<0.2' --user
+  - cargo install cargo-travis
 script:
-  - travis-cargo test
+  - cargo test
 after_success:
-  - travis-cargo coveralls --no-sudo --verify
+  - cargo coveralls
 matrix:
   allow_failures:
     - rust: nightly
