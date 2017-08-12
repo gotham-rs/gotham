@@ -3,6 +3,22 @@ rust:
   - stable
   - beta
   - nightly
+# necessary for travis-cargo coveralls
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev
+env:
+  - PATH=$HOME/.local/bin:$PATH
+before_script:
+  - pip install 'travis-cargo<0.2' --user
+script:
+  - travis-cargo test
+after_success:
+  - travis-cargo coveralls --no-sudo --verify
 matrix:
   allow_failures:
     - rust: nightly
