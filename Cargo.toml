@@ -33,3 +33,6 @@ linked-hash-map = "0.4"
 
 [dev-dependencies]
 gotham_derive = { version = "0.1.0", path = "gotham_derive" }
+
+[badges]
+travis-ci = { repository = "gotham-rs/gotham", branch = "master" }

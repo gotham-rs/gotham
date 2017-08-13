@@ -1,5 +1,7 @@
 # Gotham
 
+[![Linux build status](https://travis-ci.org/gotham-rs/gotham.svg?branch=master)](https://travis-ci.org/gotham-rs/gotham)
+
 A flexible web framework that does not sacrifice safety, security or speed.
 
 The Gotham core team loves many of the elegant concepts that are found in dynamically typed web application frameworks, such as Rails, Phoenix and Django and aspire to achieve them with the type and memory safety guarantees provided by Rust.
