@@ -4,7 +4,7 @@ version = "0.1.0" # Alter html_root_url in lib.rs also
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
            "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 description = "A flexible web framework that does not sacrifice safety, security or speed."
-license = "MIT"
+license = "MIT/Apache-2.0"
 homepage = "https://gotham.rs"
 repository = "https://github.com/gotham-rs/gotham"
 readme = "README.md"
