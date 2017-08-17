@@ -41,5 +41,5 @@ These policies are in effect for any environment or tool that supports the Gotha
 ## News
 You can keep up with Gotham at:
 
-* [Our blog](https://staging.gotham.rs/blog)
+* [Our blog](https://gotham.rs/blog)
 * [On Twitter](https://twitter.com/gotham_rs)
