@@ -12,7 +12,7 @@ use router::tree::regex::ConstrainedSegmentRegex;
 use state::{State, request_id};
 
 /// Indicates the type of segment which is being represented by this Node.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum SegmentType {
     /// Is matched exactly (string equality) to the corresponding segment for incoming request paths.
     ///
@@ -342,21 +342,29 @@ impl NodeBuilder {
     }
 
     /// Determines if a child representing the exact segment provided exists.
-    pub fn has_child(&self, segment: &str) -> bool {
+    pub fn has_child(&self, segment: &str, segment_type: SegmentType) -> bool {
         self.children
             .iter()
-            .find(|n| n.segment == segment)
+            .find(|n| n.segment_type == segment_type && n.segment == segment)
             .is_some()
     }
 
     /// Borrow a child that represents the exact segment provided here.
-    pub fn borrow_child(&self, segment: &str) -> Option<&NodeBuilder> {
-        self.children.iter().find(|n| n.segment == segment)
+    pub fn borrow_child(&self, segment: &str, segment_type: SegmentType) -> Option<&NodeBuilder> {
+        self.children.iter().find(|n| {
+            n.segment_type == segment_type && n.segment == segment
+        })
     }
 
     /// Mutably borrow a child that represents the exact segment provided here.
-    pub fn borrow_mut_child(&mut self, segment: &str) -> Option<&mut NodeBuilder> {
-        self.children.iter_mut().find(|n| n.segment == segment)
+    pub fn borrow_mut_child(
+        &mut self,
+        segment: &str,
+        segment_type: SegmentType,
+    ) -> Option<&mut NodeBuilder> {
+        self.children.iter_mut().find(|n| {
+            n.segment_type == segment_type && n.segment == segment
+        })
     }
 
     /// Finalizes and sorts all internal data, including all children.
@@ -579,9 +587,26 @@ mod tests {
     fn manages_children() {
         let root_node_builder = test_structure();
 
-        assert!(root_node_builder.borrow_child("seg1").is_some());
-        assert!(root_node_builder.borrow_child("seg2").is_some());
-        assert!(root_node_builder.borrow_child("seg0").is_none());
+        assert!(
+            root_node_builder
+                .borrow_child("seg1", SegmentType::Static)
+                .is_some()
+        );
+        assert!(
+            root_node_builder
+                .borrow_child("seg2", SegmentType::Static)
+                .is_some()
+        );
+        assert!(
+            root_node_builder
+                .borrow_child("seg1", SegmentType::Dynamic)
+                .is_none()
+        );
+        assert!(
+            root_node_builder
+                .borrow_child("seg0", SegmentType::Static)
+                .is_none()
+        );
     }
 
     #[test]
