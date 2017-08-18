@@ -4,6 +4,9 @@
 //!
 //! [TestServer::new]: struct.TestServer.html#method.new
 
+// Workaround for std::os::unix stuff below. Would allow Gotham to be at least used on Windows
+#![cfg(test)]
+
 use std::{cell, io, net, time};
 // TODO: Cross platform
 use std::os::unix::net::UnixStream;
