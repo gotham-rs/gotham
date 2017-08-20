@@ -7,9 +7,8 @@
 use std::{cell, io, net, time};
 use std::net::{TcpListener, TcpStream};
 use hyper::{self, client, server};
-use futures::{future, Future, Async, Stream};
+use futures::{future, Future, Stream};
 use tokio_core::reactor;
-use tokio_io::{AsyncRead, AsyncWrite};
 use mio;
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
