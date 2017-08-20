@@ -5,9 +5,7 @@
 //! [TestServer::new]: struct.TestServer.html#method.new
 
 use std::{cell, io, net, time};
-// TODO: Cross platform
-use std::os::unix::net::UnixStream;
-use std::os::unix::io::AsRawFd;
+use std::net::{TcpListener, TcpStream};
 use hyper::{self, client, server};
 use futures::{future, Future, Async, Stream};
 use tokio_core::reactor;
@@ -115,8 +113,20 @@ where
     pub fn client(&self, client_addr: net::SocketAddr) -> io::Result<client::Client<TestConnect>> {
         let handle = self.core.handle();
 
-        let (cs, ss) = AsyncUnixStream::pair()?;
+        let (cs, ss) = {
+            // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
+            // it and then immediately discard the listener.
+            let listener = TcpListener::bind("localhost:0")?;
+            let listener_addr = listener.local_addr()?;
+            let client = TcpStream::connect(listener_addr)?;
+            let (server, _client_addr) = listener.accept()?;
+            (client, server)
+        };
+
+        let cs = mio::net::TcpStream::from_stream(cs)?;
         let cs = reactor::PollEvented::new(cs, &handle)?;
+
+        let ss = mio::net::TcpStream::from_stream(ss)?;
         let ss = reactor::PollEvented::new(ss, &handle)?;
 
         let service = self.new_service.new_service()?;
@@ -169,13 +179,13 @@ where
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
 pub struct TestConnect {
-    stream: cell::RefCell<Option<reactor::PollEvented<AsyncUnixStream>>>,
+    stream: cell::RefCell<Option<reactor::PollEvented<mio::net::TcpStream>>>,
 }
 
 impl client::Service for TestConnect {
     type Request = hyper::Uri;
     type Error = io::Error;
-    type Response = reactor::PollEvented<AsyncUnixStream>;
+    type Response = reactor::PollEvented<mio::net::TcpStream>;
     type Future = future::FutureResult<Self::Response, Self::Error>;
 
     fn call(&self, _req: Self::Request) -> Self::Future {
@@ -189,99 +199,6 @@ impl client::Service for TestConnect {
                 ))
             }
         }
-    }
-}
-
-/// Wrapping type for an asynchronous `std::os::unix::net::UnixStream`. This type should never be
-/// used directly.
-pub struct AsyncUnixStream {
-    stream: UnixStream,
-}
-
-impl AsyncUnixStream {
-    fn new(stream: UnixStream) -> Result<AsyncUnixStream, io::Error> {
-        stream.set_nonblocking(true)?;
-        Ok(AsyncUnixStream { stream: stream })
-    }
-
-    fn pair() -> Result<(AsyncUnixStream, AsyncUnixStream), io::Error> {
-        let (cs, ss) = UnixStream::pair()?;
-        let cs = AsyncUnixStream::new(cs)?;
-        let ss = AsyncUnixStream::new(ss)?;
-        Ok((cs, ss))
-    }
-}
-
-fn io_error_to_async_io_error<T>(r: Result<T, io::Error>) -> Result<T, io::Error> {
-    // Here, we trap the EAGAIN (35) error that is reported by nonblocking unix sockets, and return
-    // the `WouldBlock` that tokio/hyper expect to work with.
-    //
-    // From: https://tokio.rs/docs/going-deeper/core-low-level/ (as at 2017-03-30)
-    //
-    // All I/O with tokio-core consistently adheres to two properties:
-    //
-    // * Operations are non-blocking. If an operation would otherwise block an error of the
-    //   WouldBlock error kind is returned.
-    // * When a WouldBlock error is returned, the current future task is scheduled to receive a
-    //   notification when the I/O object would otherwise be ready.
-    r.map_err(|e| match e.raw_os_error() {
-        Some(35) => io::Error::new(io::ErrorKind::WouldBlock, "test socket would block"),
-        _ => e,
-    })
-}
-
-impl io::Read for AsyncUnixStream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize, io::Error> {
-        let result = self.stream.read(buf);
-        io_error_to_async_io_error(result)
-    }
-}
-
-impl AsyncRead for AsyncUnixStream {}
-
-impl io::Write for AsyncUnixStream {
-    fn write(&mut self, buf: &[u8]) -> Result<usize, io::Error> {
-        let result = self.stream.write(buf);
-        io_error_to_async_io_error(result)
-    }
-
-    fn flush(&mut self) -> Result<(), io::Error> {
-        let result = self.stream.flush();
-        io_error_to_async_io_error(result)
-    }
-}
-
-impl AsyncWrite for AsyncUnixStream {
-    fn shutdown(&mut self) -> Result<Async<()>, io::Error> {
-        self.stream.shutdown(net::Shutdown::Both).map(|_| {
-            Async::Ready(())
-        })
-    }
-}
-
-impl mio::event::Evented for AsyncUnixStream {
-    fn register(
-        &self,
-        poll: &mio::Poll,
-        token: mio::Token,
-        ready: mio::Ready,
-        poll_opt: mio::PollOpt,
-    ) -> Result<(), io::Error> {
-        mio::unix::EventedFd(&self.stream.as_raw_fd()).register(poll, token, ready, poll_opt)
-    }
-
-    fn reregister(
-        &self,
-        poll: &mio::Poll,
-        token: mio::Token,
-        ready: mio::Ready,
-        poll_opt: mio::PollOpt,
-    ) -> Result<(), io::Error> {
-        mio::unix::EventedFd(&self.stream.as_raw_fd()).reregister(poll, token, ready, poll_opt)
-    }
-
-    fn deregister(&self, poll: &mio::Poll) -> Result<(), io::Error> {
-        mio::unix::EventedFd(&self.stream.as_raw_fd()).deregister(poll)
     }
 }
 
