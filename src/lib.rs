@@ -3,7 +3,7 @@
 //! You can find out more about Gotham, including where to get help,  at https://gotham.rs.
 //!
 //! We look forward to welcoming you into the Gotham community!
-#![doc(html_root_url = "https://docs.rs/gotham/0.1.0")] // Update when changed in Cargo.toml
+#![doc(html_root_url = "https://docs.rs/gotham/0.1.1")] // Update when changed in Cargo.toml
 #![warn(missing_docs, deprecated)]
 #![doc(test(no_crate_inject, attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
