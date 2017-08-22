@@ -117,31 +117,36 @@ pub trait PipelineHandleChain<P> {
         f: F,
     ) -> Box<HandlerFuture>
     where
-        F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static;
+        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static;
 }
 
 /// Part of a `PipelineHandleChain` which references a `Pipeline` and continues with a tail element.
 impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
-    where T: NewMiddlewareChain,
-          T::Instance: Send + 'static,
-          U: PipelineHandleChain<P>,
-          P: Lookup<Pipeline<T>, N>
+where
+    T: NewMiddlewareChain,
+    T::Instance: 'static,
+    U: PipelineHandleChain<P>,
+    P: Lookup<Pipeline<T>, N>,
 {
-    fn call<F>(&self,
-               pipelines: &PipelineSet<P>,
-               state: State,
-               req: Request,
-               f: F)
-               -> Box<HandlerFuture>
-        where F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+    fn call<F>(
+        &self,
+        pipelines: &PipelineSet<P>,
+        state: State,
+        req: Request,
+        f: F,
+    ) -> Box<HandlerFuture>
+    where
+        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
     {
         let (handle, ref chain) = *self;
         match pipelines.borrow(handle).construct() {
             Ok(p) => {
-                chain.call(pipelines,
-                           state,
-                           req,
-                           move |state, req| p.call(state, req, f))
+                chain.call(
+                    pipelines,
+                    state,
+                    req,
+                    move |state, req| p.call(state, req, f),
+                )
             }
             Err(e) => {
                 trace!("[{}] error borrowing pipeline", request_id(&state));
@@ -155,7 +160,7 @@ impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
 impl<P> PipelineHandleChain<P> for () {
     fn call<F>(&self, _: &PipelineSet<P>, state: State, req: Request, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
+        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
     {
         trace!("[{}] start pipeline", request_id(&state));
         f(state, req)
@@ -203,7 +208,7 @@ mod tests {
     impl Middleware for Number {
         fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
+            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -228,7 +233,7 @@ mod tests {
     impl Middleware for Addition {
         fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
+            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().unwrap().value += self.value;
@@ -251,7 +256,7 @@ mod tests {
     impl Middleware for Multiplication {
         fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
+            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().unwrap().value *= self.value;

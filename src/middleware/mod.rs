@@ -30,7 +30,7 @@ pub mod session;
 ///
 /// impl Middleware for NoopMiddleware {
 ///     fn call<Chain>(self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
 ///     {
 ///         chain(state, req)
 ///     }
@@ -64,7 +64,7 @@ pub mod session;
 ///
 /// impl Middleware for MiddlewareWithStateData {
 ///     fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
 ///     {
 ///         state.put(MiddlewareStateData { i: 10 });
 ///         chain(state, req)
@@ -95,7 +95,7 @@ pub mod session;
 ///
 /// impl Middleware for ConditionalMiddleware {
 ///     fn call<Chain>(self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
 ///     {
 ///         if *req.method() == Method::Get {
 ///             chain(state, req)
@@ -128,7 +128,7 @@ pub mod session;
 ///
 /// impl Middleware for AsyncMiddleware {
 ///     fn call<Chain>(self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static
+///         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
 ///     {
 ///         // This could be any asynchronous action. `future::lazy(_)` defers a function
 ///         // until the next cycle of tokio's event loop.
@@ -152,7 +152,7 @@ pub trait Middleware {
     /// * Ensure to pass the same `State` to `chain`, rather than creating a new `State`.
     fn call<Chain>(self, state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State, Request) -> Box<HandlerFuture> + Send + 'static,
+        Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
         Self: Sized;
 }
 

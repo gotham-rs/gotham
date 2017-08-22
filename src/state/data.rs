@@ -9,7 +9,7 @@ use state::request_id::RequestId;
 ///
 /// Typically implemented using `#[derive(StateData)]`, which is provided by the `gotham_derive`
 /// crate.
-pub trait StateData: Any + Send {}
+pub trait StateData: Any {}
 
 impl StateData for Method {}
 impl StateData for Uri {}

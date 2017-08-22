@@ -28,7 +28,7 @@ pub use self::error::{HandlerError, IntoHandlerError};
 ///
 /// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate
 /// an appropriate HTTP error response.
-pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)> + Send;
+pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)>;
 
 /// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
 /// handlers.
@@ -264,13 +264,13 @@ where
 /// `Service`][tokio-simple-server]
 ///
 /// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
-pub trait Handler: Send {
+pub trait Handler {
     /// Handles the request, returning a boxed future which resolves to a response.
     fn handle(self, state: State, request: Request) -> Box<HandlerFuture>;
 }
 
 /// Creates new `Handler` values.
-pub trait NewHandler: Send + Sync {
+pub trait NewHandler {
     /// The type of `Handler` created by the implementor.
     type Instance: Handler;
 
@@ -280,7 +280,7 @@ pub trait NewHandler: Send + Sync {
 
 impl<F, H> NewHandler for F
 where
-    F: Fn() -> io::Result<H> + Send + Sync,
+    F: Fn() -> io::Result<H>,
     H: Handler,
 {
     type Instance = H;
@@ -397,7 +397,7 @@ impl IntoResponse for Response {
 
 impl<F, R> Handler for F
 where
-    F: FnOnce(State, Request) -> R + Send,
+    F: FnOnce(State, Request) -> R,
     R: IntoHandlerFuture,
 {
     fn handle(self, state: State, req: Request) -> Box<HandlerFuture> {
