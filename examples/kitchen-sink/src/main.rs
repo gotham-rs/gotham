@@ -15,7 +15,6 @@ mod middleware;
 use futures::{future, Future, Stream};
 
 use hyper::{Request, Response, Method, StatusCode};
-use hyper::server::Http;
 
 use log::LogLevelFilter;
 
@@ -30,7 +29,7 @@ use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, P
 use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 use gotham::router::tree::TreeBuilder;
 use gotham::router::tree::node::{NodeBuilder, SegmentType};
-use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService, IntoHandlerError};
+use gotham::handler::{NewHandler, HandlerFuture, IntoHandlerError};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::state::{State, FromState};
 use gotham::http::response::create_response;
@@ -294,6 +293,7 @@ fn main() {
         .level(LogLevelFilter::Error)
         .level_for("gotham", log::LogLevelFilter::Error)
         .level_for("gotham::state", log::LogLevelFilter::Error)
+        .level_for("gotham::start", log::LogLevelFilter::Info)
         .level_for("kitchen_sink", log::LogLevelFilter::Error)
         .chain(std::io::stdout())
         .format(|out, message, record| {
@@ -309,14 +309,5 @@ fn main() {
         .unwrap();
 
     let addr = "127.0.0.1:7878".parse().unwrap();
-
-    let server = Http::new()
-        .bind(&addr, NewHandlerService::new(build_router()))
-        .unwrap();
-
-    println!(
-        "Listening on http://{} with 1 thread.",
-        server.local_addr().unwrap()
-    );
-    server.run().unwrap();
+    gotham::start(addr, build_router());
 }

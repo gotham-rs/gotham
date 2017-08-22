@@ -261,7 +261,7 @@ pub trait Handler {
 }
 
 /// Creates new `Handler` values.
-pub trait NewHandler {
+pub trait NewHandler: Send + Sync {
     /// The type of `Handler` created by the implementor.
     type Instance: Handler;
 
@@ -271,7 +271,7 @@ pub trait NewHandler {
 
 impl<F, H> NewHandler for F
 where
-    F: Fn() -> io::Result<H>,
+    F: Fn() -> io::Result<H> + Send + Sync,
     H: Handler,
 {
     type Instance = H;

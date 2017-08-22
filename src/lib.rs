@@ -29,6 +29,7 @@ extern crate rand;
 extern crate base64;
 extern crate rmp_serde;
 extern crate linked_hash_map;
+extern crate num_cpus;
 
 #[cfg(test)]
 #[macro_use]
@@ -40,3 +41,33 @@ pub mod http;
 pub mod router;
 pub mod state;
 pub mod test;
+
+use std::net::SocketAddr;
+use hyper::server::Http;
+use handler::{NewHandler, NewHandlerService};
+
+pub fn start<NH>(addr: SocketAddr, new_handler: NH)
+where
+    NH: NewHandler + 'static,
+{
+    let threads = num_cpus::get();
+    start_with_num_threads(addr, threads, new_handler)
+}
+
+pub fn start_with_num_threads<NH>(addr: SocketAddr, threads: usize, new_handler: NH)
+where
+    NH: NewHandler + 'static,
+{
+    let server = Http::new()
+        .bind(&addr, NewHandlerService::new(new_handler))
+        .unwrap();
+
+    info!(
+        target: "gotham::start",
+        " Gotham listening on http://{} with {} threads",
+        server.local_addr().unwrap(),
+        threads,
+    );
+
+    server.run().unwrap();
+}
