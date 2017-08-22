@@ -66,6 +66,6 @@ impl ResponseFinalizer {
             }
         }
 
-        future::ok((state, res)).boxed()
+        Box::new(future::ok((state, res)))
     }
 }

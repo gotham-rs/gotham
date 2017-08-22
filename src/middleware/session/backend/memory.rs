@@ -95,9 +95,9 @@ impl Backend for MemoryBackend {
                 match storage.get_refresh(&identifier.value) {
                     Some(&mut (ref mut instant, ref value)) => {
                         *instant = Instant::now();
-                        future::ok(Some(value.clone())).boxed()
+                        Box::new(future::ok(Some(value.clone())))
                     }
-                    None => future::ok(None).boxed(),
+                    None => Box::new(future::ok(None)),
                 }
             }
             Err(PoisonError { .. }) => {

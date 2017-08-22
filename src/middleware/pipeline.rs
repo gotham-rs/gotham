@@ -542,7 +542,7 @@ mod tests {
 
             Ok(move |state, req| match pipeline.construct() {
                 Ok(p) => p.call(state, req, |state, req| handler.handle(state, req)),
-                Err(e) => future::err((state, e.into_handler_error())).boxed(),
+                Err(e) => Box::new(future::err((state, e.into_handler_error()))),
             })
         });
 

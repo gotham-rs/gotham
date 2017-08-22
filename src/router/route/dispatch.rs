@@ -87,7 +87,7 @@ where
             }
             Err(e) => {
                 trace!("[{}] error cloning handler", request_id(&state));
-                future::err((state, e.into_handler_error())).boxed()
+                Box::new(future::err((state, e.into_handler_error())))
             }
         }
     }
@@ -150,7 +150,7 @@ where
             }
             Err(e) => {
                 trace!("[{}] error borrowing pipeline", request_id(&state));
-                future::err((state, e.into_handler_error())).boxed()
+                Box::new(future::err((state, e.into_handler_error())))
             }
         }
     }

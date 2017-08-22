@@ -33,7 +33,7 @@ pub struct HandlerError {
 /// # #[allow(dead_code)]
 /// fn my_handler(state: State, _request: Request) -> Box<HandlerFuture> {
 ///     match File::open("config.toml") {
-///         Err(e) => future::err((state, e.into_handler_error())).boxed(),
+///         Err(e) => Box::new(future::err((state, e.into_handler_error()))),
 ///         Ok(_) => // Create and return a response
 /// #                unimplemented!(),
 ///     }

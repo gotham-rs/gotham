@@ -101,7 +101,7 @@ pub mod session;
 ///             chain(state, req)
 ///         } else {
 ///             let response = create_response(&state, StatusCode::MethodNotAllowed, None);
-///             future::ok((state, response)).boxed()
+///             Box::new(future::ok((state, response)))
 ///         }
 ///     }
 /// }
@@ -133,7 +133,7 @@ pub mod session;
 ///         // This could be any asynchronous action. `future::lazy(_)` defers a function
 ///         // until the next cycle of tokio's event loop.
 ///         let f = future::lazy(|| future::ok(()));
-///         f.and_then(move |_| chain(state, req)).boxed()
+///         Box::new(f.and_then(move |_| chain(state, req)))
 ///     }
 /// }
 /// #

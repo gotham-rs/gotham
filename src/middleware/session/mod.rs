@@ -168,7 +168,7 @@ pub struct SessionCookieConfig {
 /// #   let service = NewHandlerService::new(move || {
 /// #       let handler = |state, req| {
 /// #           let m = nm.new_middleware().unwrap();
-/// #           let chain = |state, req| future::ok(my_handler(state, req)).boxed();
+/// #           let chain = |state, req| Box::new(future::ok(my_handler(state, req)));
 /// #
 /// #           m.call(state, req, chain)
 /// #       };
@@ -424,7 +424,7 @@ where
     new_backend: B,
     identifier_rng: Arc<Mutex<rng::SessionIdentifierRng>>,
     cookie_config: Arc<SessionCookieConfig>,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<SessionTypePhantom<T>>,
 }
 
 /// The per-request value which deals with sessions
@@ -728,18 +728,20 @@ where
 
         match session_identifier {
             Some(id) => {
-                self.backend
+                let f = self.backend
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
                     .and_then(|state| chain(state, request))
-                    .and_then(persist_session::<T>)
-                    .boxed()
+                    .and_then(persist_session::<T>);
+
+                Box::new(f)
             }
             None => {
-                self.new_session(state)
+                let f = self.new_session(state)
                     .and_then(|state| chain(state, request))
-                    .and_then(persist_session::<T>)
-                    .boxed()
+                    .and_then(persist_session::<T>);
+
+                Box::new(f)
             }
         }
     }
@@ -985,7 +987,9 @@ mod tests {
                 session_data.val += 1;
             }
 
-            future::ok((state, Response::new().with_status(StatusCode::Accepted))).boxed()
+            Box::new(future::ok(
+                (state, Response::new().with_status(StatusCode::Accepted)),
+            ))
         };
 
         match m.call(State::new(), req, handler).wait() {
