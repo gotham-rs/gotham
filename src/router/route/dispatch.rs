@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use borrow_bag::{new_borrow_bag, BorrowBag, Handle, Lookup};
 use hyper::Request;
-use futures::{future, Future};
+use futures::future;
 
 use handler::{Handler, NewHandler, HandlerFuture, IntoHandlerError};
 use middleware::pipeline::{NewMiddlewareChain, Pipeline};

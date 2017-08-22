@@ -440,7 +440,7 @@ mod tests {
     use state::StateData;
     use hyper::Response;
     use hyper::StatusCode;
-    use futures::{future, Future};
+    use futures::future;
 
     fn handler(state: State, _req: Request) -> (State, Response) {
         let number = state.borrow::<Number>().unwrap().value;

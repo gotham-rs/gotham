@@ -3,7 +3,7 @@ use std::time::{Instant, Duration};
 use std::{io, thread};
 
 use linked_hash_map::LinkedHashMap;
-use futures::{future, Future};
+use futures::future;
 
 use middleware::session::{SessionError, SessionIdentifier};
 use middleware::session::backend::{NewBackend, Backend, SessionFuture};
@@ -190,6 +190,7 @@ fn cleanup_once(
 mod tests {
     use super::*;
 
+    use futures::Future;
     use rand;
 
     #[test]

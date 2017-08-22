@@ -89,7 +89,7 @@ pub mod session;
 /// # use gotham::state::{State};
 /// # use hyper::Request;
 /// # use hyper::{Method, StatusCode};
-/// # use futures::{future, Future};
+/// # use futures::future;
 /// #
 /// struct ConditionalMiddleware;
 ///

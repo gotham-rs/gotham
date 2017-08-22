@@ -115,7 +115,7 @@ pub struct SessionCookieConfig {
 /// # use std::time::Duration;
 /// # use serde::Serialize;
 /// # use futures::{future, Future, Stream};
-/// # use gotham::handler::NewHandlerService;
+/// # use gotham::handler::{NewHandlerService, HandlerFuture};
 /// # use gotham::state::State;
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
@@ -168,7 +168,7 @@ pub struct SessionCookieConfig {
 /// #   let service = NewHandlerService::new(move || {
 /// #       let handler = |state, req| {
 /// #           let m = nm.new_middleware().unwrap();
-/// #           let chain = |state, req| Box::new(future::ok(my_handler(state, req)));
+/// #           let chain = |state, req| Box::new(future::ok(my_handler(state, req))) as Box<HandlerFuture>;
 /// #
 /// #           m.call(state, req, chain)
 /// #       };
@@ -989,10 +989,11 @@ mod tests {
 
             Box::new(future::ok(
                 (state, Response::new().with_status(StatusCode::Accepted)),
-            ))
+            )) as Box<HandlerFuture>
         };
 
-        match m.call(State::new(), req, handler).wait() {
+        let r: Box<HandlerFuture> = m.call(State::new(), req, handler);
+        match r.wait() {
             Ok(_) => {
                 let guard = received.lock().unwrap();
                 if let Some(value) = *guard {
@@ -1001,7 +1002,7 @@ mod tests {
                     panic!("no session data");
                 }
             }
-            Err(e) => panic!(e),
+            Err((_, e)) => panic!("error: {:?}", e),
         }
 
         let m = nm.new_middleware().unwrap();
