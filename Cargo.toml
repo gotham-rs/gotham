@@ -1,0 +1,19 @@
+[package]
+name = "gotham_middleware_diesel"
+version = "0.1.0"
+authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
+           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
+description = "A Gotham Middleware that provides access to a Diesel connection via an R2D2 pool to allow other Middleware and Handlers to interact with a database."
+license = "MIT/Apache-2.0"
+homepage = "https://gotham.rs"
+repository = "https://github.com/gotham-rs/middleware-diesel"
+readme = "README.md"
+categories = ["web-programming::http-server"]
+keywords = ["http", "async", "web", "framework", "gotham"]
+
+[dependencies]
+log = "0.3.0"
+futures = "0.1.0"
+hyper = "0.11.0"
+gotham = "0.1.0"
+gotham_derive = "0.1.0"
