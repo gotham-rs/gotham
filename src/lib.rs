@@ -8,6 +8,7 @@ extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
 extern crate diesel;
+extern crate r2d2;
 
 use std::io;
 
