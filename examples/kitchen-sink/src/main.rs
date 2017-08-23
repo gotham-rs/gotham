@@ -308,6 +308,5 @@ fn main() {
         .apply()
         .unwrap();
 
-    let addr = "127.0.0.1:7878".parse().unwrap();
-    gotham::start(addr, build_router());
+    gotham::start("127.0.0.1:7878", build_router());
 }
