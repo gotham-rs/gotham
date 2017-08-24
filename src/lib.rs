@@ -56,6 +56,11 @@ pub use socket_queue::start_with_num_threads;
 use std::net::{SocketAddr, ToSocketAddrs, TcpListener};
 use handler::NewHandler;
 
+/// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
+///
+/// ## Windows
+///
+/// An additional thread is used on Windows to accept connections.
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
     NH: NewHandler + 'static,

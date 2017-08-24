@@ -9,6 +9,7 @@ use futures::Stream;
 
 use handler::{NewHandler, NewHandlerService};
 
+/// Starts a Gotham application, with the given number of threads.
 pub fn start_with_num_threads<NH, A>(addr: A, threads: usize, new_handler: NH)
 where
     NH: NewHandler + 'static,

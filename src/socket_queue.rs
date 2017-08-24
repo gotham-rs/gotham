@@ -38,6 +38,11 @@ impl Stream for SocketQueue {
     }
 }
 
+/// Starts a Gotham application, with the given number of threads.
+///
+/// ## Windows
+///
+/// An additional thread is used on Windows to accept connections.
 pub fn start_with_num_threads<NH, A>(addr: A, threads: usize, new_handler: NH)
 where
     NH: NewHandler + 'static,
