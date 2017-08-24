@@ -4,7 +4,7 @@ use quote;
 use helpers::{ty_params, ty_fields};
 
 pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
-    let (name, borrowed, where_clause) = ty_params(&ast);
+    let (name, borrowed, where_clause) = ty_params(&ast, None);
     let (fields, optional_fields) = ty_fields(&ast);
     let ofl = optional_field_labels(optional_fields);
     let ofl_len = ofl.len();
@@ -73,7 +73,7 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
 }
 
 pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
-    let (name, borrowed, where_clause) = ty_params(&ast);
+    let (name, borrowed, where_clause) = ty_params(&ast, None);
     let (fields, optional_fields) = ty_fields(&ast);
     let ofl = optional_field_labels(optional_fields);
     let ofl_len = ofl.len();
