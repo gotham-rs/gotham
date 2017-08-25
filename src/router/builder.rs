@@ -158,7 +158,7 @@ where
 {
     pub fn to<NH>(self, new_handler: NH)
     where
-        NH: NewHandler + Send + Sync + 'static,
+        NH: NewHandler + 'static,
     {
         let dispatcher = DispatcherImpl::new(new_handler, self.pipeline_chain, self.pipelines);
         let route: RouteImpl<M, PE, QSE> = RouteImpl::new(
