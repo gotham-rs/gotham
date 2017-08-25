@@ -57,7 +57,7 @@ pub struct RouterBuilder<'a, C, P> {
     response_finalizer_builder: ResponseFinalizerBuilder,
 }
 
-type DefaultRouterBuilderTo<'a, C, P> = RouterBuilderTo<
+type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     'a,
     MethodOnlyRouteMatcher,
     C,
@@ -70,7 +70,7 @@ impl<'a, C, P> RouterBuilder<'a, C, P>
 where
     C: PipelineHandleChain<P> + Copy,
 {
-    pub fn get<'b>(&'b mut self, path: &str) -> DefaultRouterBuilderTo<'b, C, P>
+    pub fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P>
     where
         C: PipelineHandleChain<P> + Send + Sync + 'static,
         P: Send + Sync + 'static,
@@ -78,7 +78,7 @@ where
         self.request(vec![Method::Get, Method::Head], path)
     }
 
-    pub fn post<'b>(&'b mut self, path: &str) -> DefaultRouterBuilderTo<'b, C, P>
+    pub fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P>
     where
         C: PipelineHandleChain<P> + Send + Sync + 'static,
         P: Send + Sync + 'static,
@@ -90,7 +90,7 @@ where
         &'b mut self,
         methods: Vec<Method>,
         path: &str,
-    ) -> DefaultRouterBuilderTo<'b, C, P>
+    ) -> DefaultSingleRouteBuilder<'b, C, P>
     where
         C: PipelineHandleChain<P> + Send + Sync + 'static,
         P: Send + Sync + 'static,
@@ -109,7 +109,7 @@ where
 
         let matcher = MethodOnlyRouteMatcher::new(methods);
 
-        RouterBuilderTo {
+        SingleRouteBuilder {
             matcher,
             node_builder,
             pipeline_chain: self.pipeline_chain,
@@ -120,7 +120,7 @@ where
     }
 }
 
-pub struct RouterBuilderTo<'a, M, C, P, PE, QSE>
+pub struct SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
@@ -136,13 +136,25 @@ where
     phantom: PhantomData<(PE, QSE)>,
 }
 
-impl<'a, M, C, P, PE, QSE> RouterBuilderTo<'a, M, C, P, PE, QSE>
+impl<'a, M, C, P, PE, QSE> SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
-    M: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    M: RouteMatcher
+        + Send
+        + Sync
+        + 'static,
+    C: PipelineHandleChain<P>
+        + Send
+        + Sync
+        + 'static,
     P: Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor
+        + Send
+        + Sync
+        + 'static,
+    QSE: QueryStringExtractor
+        + Send
+        + Sync
+        + 'static,
 {
     pub fn to<NH>(self, new_handler: NH)
     where
