@@ -29,6 +29,8 @@ extern crate rand;
 extern crate base64;
 extern crate rmp_serde;
 extern crate linked_hash_map;
+extern crate num_cpus;
+extern crate crossbeam;
 
 #[cfg(test)]
 #[macro_use]
@@ -40,3 +42,45 @@ pub mod http;
 pub mod router;
 pub mod state;
 pub mod test;
+
+#[cfg(not(windows))]
+mod clone_sockets;
+#[cfg(not(windows))]
+pub use clone_sockets::start_with_num_threads;
+
+#[cfg(windows)]
+mod socket_queue;
+#[cfg(windows)]
+pub use socket_queue::start_with_num_threads;
+
+use std::net::{SocketAddr, ToSocketAddrs, TcpListener};
+use handler::NewHandler;
+
+/// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
+///
+/// ## Windows
+///
+/// An additional thread is used on Windows to accept connections.
+pub fn start<NH, A>(addr: A, new_handler: NH)
+where
+    NH: NewHandler + 'static,
+    A: ToSocketAddrs,
+{
+    let threads = num_cpus::get();
+    start_with_num_threads(addr, threads, new_handler)
+}
+
+fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
+where
+    A: ToSocketAddrs,
+{
+    let addr = match addr.to_socket_addrs().map(|ref mut i| i.next()) {
+        Ok(Some(a)) => a,
+        Ok(_) => panic!("unable to resolve listener address"),
+        Err(_) => panic!("unable to parse listener address"),
+    };
+
+    let listener = TcpListener::bind(addr).expect("unable to open TCP listener");
+
+    (listener, addr)
+}

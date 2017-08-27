@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use std::collections::HashMap;
 
-use futures::{future, Future};
+use futures::future;
 use hyper::{StatusCode, Response};
 
 use handler::HandlerFuture;
@@ -66,6 +66,6 @@ impl ResponseFinalizer {
             }
         }
 
-        future::ok((state, res)).boxed()
+        Box::new(future::ok((state, res)))
     }
 }

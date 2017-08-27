@@ -36,17 +36,17 @@ impl Middleware for KitchenSinkMiddleware {
         let result = chain(state, request);
         let header_name = self.header_name;
 
-        result
-            .and_then(move |(state, mut response)| {
-                {
-                    let data = state.borrow::<KitchenSinkData>().unwrap();
-                    let headers = response.headers_mut();
-                    headers.set_raw(header_name, data.header_value.to_owned());
-                    headers.set_raw("X-Request-ID", request_id(&state));
-                }
+        let f = result.and_then(move |(state, mut response)| {
+            {
+                let data = state.borrow::<KitchenSinkData>().unwrap();
+                let headers = response.headers_mut();
+                headers.set_raw(header_name, data.header_value.to_owned());
+                headers.set_raw("X-Request-ID", request_id(&state));
+            }
 
-                future::ok((state, response))
-            })
-            .boxed()
+            future::ok((state, response))
+        });
+
+        Box::new(f)
     }
 }

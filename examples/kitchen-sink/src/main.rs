@@ -15,7 +15,6 @@ mod middleware;
 use futures::{future, Future, Stream};
 
 use hyper::{Request, Response, Method, StatusCode};
-use hyper::server::Http;
 
 use log::LogLevelFilter;
 
@@ -30,7 +29,7 @@ use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, P
 use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 use gotham::router::tree::TreeBuilder;
 use gotham::router::tree::node::{NodeBuilder, SegmentType};
-use gotham::handler::{NewHandler, HandlerFuture, NewHandlerService, IntoHandlerError};
+use gotham::handler::{NewHandler, HandlerFuture, IntoHandlerError};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::state::{State, FromState};
 use gotham::http::response::create_response;
@@ -212,20 +211,19 @@ impl Echo {
     }
 
     fn post(state: State, req: Request) -> Box<HandlerFuture> {
-        req.body()
-            .concat2()
-            .then(move |full_body| match full_body {
-                Ok(valid_body) => {
-                    let res = create_response(
-                        &state,
-                        StatusCode::Ok,
-                        Some((valid_body.to_vec(), mime::TEXT_PLAIN)),
-                    );
-                    future::ok((state, res))
-                }
-                Err(e) => future::err((state, e.into_handler_error())),
-            })
-            .boxed()
+        let f = req.body().concat2().then(move |full_body| match full_body {
+            Ok(valid_body) => {
+                let res = create_response(
+                    &state,
+                    StatusCode::Ok,
+                    Some((valid_body.to_vec(), mime::TEXT_PLAIN)),
+                );
+                future::ok((state, res))
+            }
+            Err(e) => future::err((state, e.into_handler_error())),
+        });
+
+        Box::new(f)
     }
 
     fn async(state: State, _req: Request) -> Box<HandlerFuture> {
@@ -234,7 +232,7 @@ impl Echo {
             StatusCode::Ok,
             Some((String::from(ASYNC).into_bytes(), mime::TEXT_PLAIN)),
         );
-        future::lazy(move || future::ok((state, res))).boxed()
+        Box::new(future::lazy(move || future::ok((state, res))))
     }
 
     fn header_value(mut state: State, _req: Request) -> (State, Response) {
@@ -295,6 +293,7 @@ fn main() {
         .level(LogLevelFilter::Error)
         .level_for("gotham", log::LogLevelFilter::Error)
         .level_for("gotham::state", log::LogLevelFilter::Error)
+        .level_for("gotham::start", log::LogLevelFilter::Info)
         .level_for("kitchen_sink", log::LogLevelFilter::Error)
         .chain(std::io::stdout())
         .format(|out, message, record| {
@@ -309,15 +308,5 @@ fn main() {
         .apply()
         .unwrap();
 
-    let addr = "127.0.0.1:7878".parse().unwrap();
-
-    let server = Http::new()
-        .bind(&addr, NewHandlerService::new(build_router()))
-        .unwrap();
-
-    println!(
-        "Listening on http://{} with 1 thread.",
-        server.local_addr().unwrap()
-    );
-    server.run().unwrap();
+    gotham::start("127.0.0.1:7878", build_router());
 }

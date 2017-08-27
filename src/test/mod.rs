@@ -34,7 +34,7 @@ use mio;
 /// #     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 /// #
 /// #     fn call(&self, _req: Self::Request) -> Self::Future {
-/// #         future::ok(server::Response::new().with_status(StatusCode::Accepted)).boxed()
+/// #         Box::new(future::ok(server::Response::new().with_status(StatusCode::Accepted)))
 /// #     }
 /// # }
 /// #
@@ -225,15 +225,15 @@ mod tests {
                         .with_status(StatusCode::Ok)
                         .with_body(self.response.clone());
 
-                    future::ok(response).boxed()
+                    Box::new(future::ok(response))
                 }
-                "/timeout" => future::empty().boxed(),
+                "/timeout" => Box::new(future::empty()),
                 "/myaddr" => {
                     let response = server::Response::new()
                         .with_status(StatusCode::Ok)
                         .with_body(format!("{}", req.remote_addr().unwrap()));
 
-                    future::ok(response).boxed()
+                    Box::new(future::ok(response))
                 }
                 _ => unreachable!(),
             }

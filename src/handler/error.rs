@@ -11,7 +11,7 @@ use http::response::create_response;
 /// `Response`.
 pub struct HandlerError {
     status_code: StatusCode,
-    cause: Box<Error + Send>,
+    cause: Box<Error>,
 }
 
 /// Allows conversion into a HandlerError from an implementing type.
@@ -28,12 +28,12 @@ pub struct HandlerError {
 /// # use gotham::state::State;
 /// # use gotham::handler::{IntoHandlerError, HandlerFuture};
 /// # use hyper::Request;
-/// # use futures::{future, Future};
+/// # use futures::future;
 /// #
 /// # #[allow(dead_code)]
 /// fn my_handler(state: State, _request: Request) -> Box<HandlerFuture> {
 ///     match File::open("config.toml") {
-///         Err(e) => future::err((state, e.into_handler_error())).boxed(),
+///         Err(e) => Box::new(future::err((state, e.into_handler_error()))),
 ///         Ok(_) => // Create and return a response
 /// #                unimplemented!(),
 ///     }
@@ -50,7 +50,7 @@ pub trait IntoHandlerError {
 
 impl<E> IntoHandlerError for E
 where
-    E: Error + Send + 'static,
+    E: Error + 'static,
 {
     fn into_handler_error(self) -> HandlerError {
         HandlerError {

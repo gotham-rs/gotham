@@ -39,7 +39,7 @@ pub use state::request_id::set_request_id;
 /// # }
 /// ```
 pub struct State {
-    data: HashMap<TypeId, Box<Any + Send>>,
+    data: HashMap<TypeId, Box<Any>>,
 }
 
 impl State {

@@ -115,19 +115,19 @@ impl Handler for Router {
                         Err(status) => {
                             trace!("[{}] responding with error status", request_id(&state));
                             let res = create_response(&state, status, None);
-                            future::ok((state, res)).boxed()
+                            Box::new(future::ok((state, res)))
                         }
                     }
                 } else {
                     trace!("[{}] did not find routable node", request_id(&state));
                     let res = create_response(&state, StatusCode::NotFound, None);
-                    future::ok((state, res)).boxed()
+                    Box::new(future::ok((state, res)))
                 }
             }
             None => {
                 trace!("[{}] invalid request path segments", request_id(&state));
                 let res = create_response(&state, StatusCode::InternalServerError, None);
-                future::ok((state, res)).boxed()
+                Box::new(future::ok((state, res)))
             }
         };
 
@@ -166,7 +166,7 @@ impl Router {
 
                         let mut res = Response::new();
                         route.extend_response_on_query_string_error(&mut state, &mut res);
-                        future::ok((state, res)).boxed()
+                        Box::new(future::ok((state, res)))
                     }
                 }
             }
@@ -178,14 +178,14 @@ impl Router {
                 );
                 let mut res = Response::new();
                 route.extend_response_on_path_error(&mut state, &mut res);
-                future::ok((state, res)).boxed()
+                Box::new(future::ok((state, res)))
             }
         }
     }
 
     fn finalize_response(&self, result: Box<HandlerFuture>) -> Box<HandlerFuture> {
         let response_finalizer = self.data.response_finalizer.clone();
-        result
+        let f = result
             .or_else(|(state, err)| {
                 trace!(
                     "[{}] converting error into http response \
@@ -199,8 +199,9 @@ impl Router {
             .and_then(move |(state, res)| {
                 trace!("[{}] handler complete", request_id(&state));
                 response_finalizer.finalize(state, res)
-            })
-            .boxed()
+            });
+
+        Box::new(f)
     }
 }
 
