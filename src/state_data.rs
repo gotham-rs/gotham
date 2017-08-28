@@ -15,7 +15,7 @@ use gotham::state::{State, FromState};
 // party apps but it made working with this middleware a lot nicer.
 pub fn conn<T>(s: &State) -> Result<PooledConnection<ConnectionManager<T>>, GetTimeout>
 where
-    T: Connection + Send + 'static,
+    T: Connection + 'static,
 {
     Diesel::borrow_from(s).conn()
 }
@@ -25,14 +25,14 @@ where
 #[derive(StateData, FromState)]
 pub struct Diesel<T>
 where
-    T: Connection + Send + 'static,
+    T: Connection + 'static,
 {
     pool: Pool<ConnectionManager<T>>,
 }
 
 impl<T> Diesel<T>
 where
-    T: Connection + Send + 'static,
+    T: Connection + 'static,
 {
     pub(crate) fn new(pool: Pool<ConnectionManager<T>>) -> Self {
         Diesel { pool }

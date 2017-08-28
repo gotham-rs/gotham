@@ -42,14 +42,14 @@ use state_data::Diesel;
 /// mechanism.
 pub struct DieselMiddleware<T>
 where
-    T: Connection + Send + 'static,
+    T: Connection + 'static,
 {
     pool: r2d2::Pool<ConnectionManager<T>>,
 }
 
 impl<T> DieselMiddleware<T>
 where
-    T: Connection + Send + 'static,
+    T: Connection,
 {
     /// Sets up a new instance of the middleware and establishes a connection to the database.
     ///
@@ -76,7 +76,7 @@ where
 
 impl<T> NewMiddleware for DieselMiddleware<T>
 where
-    T: Connection + Send + 'static,
+    T: Connection + 'static,
 {
     type Instance = DieselMiddleware<T>;
 
@@ -88,7 +88,7 @@ where
 
 impl<T> Middleware for DieselMiddleware<T>
 where
-    T: Connection + Send + 'static,
+    T: Connection + 'static,
 {
     fn call<Chain>(self, mut state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
     where
@@ -97,13 +97,12 @@ where
         trace!("[{}] pre chain", request_id(&state));
         state.put(Diesel::<T>::new(self.pool));
 
-        chain(state, request)
-            .and_then(move |(state, response)| {
-                {
-                    trace!("[{}] post chain", request_id(&state));
-                }
-                future::ok((state, response))
-            })
-            .boxed()
+        let f = chain(state, request).and_then(move |(state, response)| {
+            {
+                trace!("[{}] post chain", request_id(&state));
+            }
+            future::ok((state, response))
+        });
+        Box::new(f)
     }
 }
