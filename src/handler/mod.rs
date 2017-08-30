@@ -60,7 +60,6 @@ where
     /// ```rust,no_run
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # extern crate borrow_bag;
     /// #
     /// # use gotham::http::response::create_response;
     /// # use gotham::handler::NewHandlerService;
@@ -318,7 +317,6 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # extern crate futures;
 /// #
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
