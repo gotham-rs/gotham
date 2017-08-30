@@ -22,7 +22,6 @@ use state::{State, request_id};
 /// # #[macro_use]
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
-/// # extern crate futures;
 /// # extern crate mime;
 /// #
 /// # use std::io;
@@ -212,7 +211,6 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # extern crate futures;
 /// #
 /// # use std::io;
 /// # use gotham::state::State;

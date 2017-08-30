@@ -13,9 +13,7 @@
 #[macro_use]
 extern crate hyper;
 extern crate futures;
-extern crate futures_cpupool;
 extern crate tokio_core;
-extern crate tokio_io;
 extern crate mio;
 extern crate borrow_bag;
 extern crate url;
@@ -30,6 +28,7 @@ extern crate base64;
 extern crate rmp_serde;
 extern crate linked_hash_map;
 extern crate num_cpus;
+#[cfg(windows)]
 extern crate crossbeam;
 
 #[cfg(test)]

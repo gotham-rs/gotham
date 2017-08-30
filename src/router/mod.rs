@@ -52,8 +52,6 @@ impl RouterData {
 ///
 /// ```
 /// # extern crate gotham;
-/// # extern crate hyper;
-/// # extern crate borrow_bag;
 /// #
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::Router;
