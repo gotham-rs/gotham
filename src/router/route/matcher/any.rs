@@ -13,7 +13,6 @@ use state::State;
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # extern crate mime;
 /// # fn main() {
 /// # use hyper::{Method, Request, Uri};
 /// # use std::str::FromStr;
