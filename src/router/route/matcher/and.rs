@@ -20,12 +20,12 @@ use state::State;
 /// # use gotham::state::State;
 /// # use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
 /// # use gotham::router::route::matcher::and::AndRouteMatcher;
-/// # use gotham::router::route::matcher::accept::AcceptRouteMatcher;
+/// # use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
 /// #
 ///   let methods = vec![Method::Get, Method::Head];
 ///   let supported_media_types = vec![mime::APPLICATION_JSON];
 ///   let method_matcher = MethodOnlyRouteMatcher::new(methods);
-///	  let accept_matcher = AcceptRouteMatcher::new(supported_media_types);
+///	  let accept_matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///   let matcher = AndRouteMatcher::new(method_matcher, accept_matcher);
 ///   let state = State::new();
 ///   let uri = Uri::from_str("https://example.com").unwrap();

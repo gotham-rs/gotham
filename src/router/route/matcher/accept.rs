@@ -25,10 +25,10 @@ use state::{State, request_id};
 /// # use std::str::FromStr;
 /// # use gotham::state::State;
 /// # use gotham::router::route::matcher::RouteMatcher;
-/// # use gotham::router::route::matcher::accept::AcceptRouteMatcher;
+/// # use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
 /// #
 ///   let supported_media_types = vec![mime::APPLICATION_JSON];
-///   let matcher = AcceptRouteMatcher::new(supported_media_types);
+///   let matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///   let state = State::new();
 ///   let uri = Uri::from_str("https://example.com").unwrap();
 ///
@@ -58,18 +58,18 @@ use state::{State, request_id};
 ///   assert!(matcher.is_match(&state, &accept_req4).is_ok());
 /// # }
 /// ```
-pub struct AcceptRouteMatcher {
+pub struct AcceptHeaderRouteMatcher {
     supported_media_types: Vec<mime::Mime>,
 }
 
-impl AcceptRouteMatcher {
-    /// Creates a new `AcceptRouteMatcher`
+impl AcceptHeaderRouteMatcher {
+    /// Creates a new `AcceptHeaderRouteMatcher`
     pub fn new(supported_media_types: Vec<mime::Mime>) -> Self {
-        AcceptRouteMatcher { supported_media_types }
+        AcceptHeaderRouteMatcher { supported_media_types }
     }
 }
 
-impl RouteMatcher for AcceptRouteMatcher {
+impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// Determines if the `Request` was made using an `Accept` header that
     /// includes 1 or more supported media types. No `Accept` header value or the value of `*/*`
     /// will also positvely match.
