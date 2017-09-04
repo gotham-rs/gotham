@@ -27,7 +27,7 @@ use state::{State, request_id};
 /// # use gotham::router::route::matcher::RouteMatcher;
 /// # use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
 /// #
-///   let supported_media_types = vec![mime::APPLICATION_JSON];
+///   let supported_media_types = vec![mime::APPLICATION_JSON, mime::IMAGE_STAR];
 ///   let matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///   let state = State::new();
 ///   let uri = Uri::from_str("https://example.com").unwrap();
@@ -52,10 +52,16 @@ use state::{State, request_id};
 ///   assert!(matcher.is_match(&state, &accept_req4).is_err());
 ///
 ///   // Request with at least one supported accept header
-///   let mut accept_req4 = Request::new(Method::Get, uri.clone());
-///   accept_req4.headers_mut().set(Accept::text());
-///   accept_req4.headers_mut().set(Accept::json());
-///   assert!(matcher.is_match(&state, &accept_req4).is_ok());
+///   let mut accept_req5 = Request::new(Method::Get, uri.clone());
+///   accept_req5.headers_mut().set(Accept::text());
+///   accept_req5.headers_mut().set(Accept::json());
+///   assert!(matcher.is_match(&state, &accept_req5).is_ok());
+
+///   // Request with accept header of `image/*`
+///   let mut accept_req6 = Request::new(Method::Get, uri.clone());
+///   accept_req6.headers_mut().set(Accept::image());
+///   assert!(matcher.is_match(&state, &accept_req6).is_ok());
+///
 /// # }
 /// ```
 pub struct AcceptHeaderRouteMatcher {
