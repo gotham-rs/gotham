@@ -1,5 +1,6 @@
 //! Defines the type `RouteMatcher` and default implementations.
 
+pub mod any;
 pub mod and;
 pub mod accept;
 
