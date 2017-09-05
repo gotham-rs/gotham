@@ -78,7 +78,7 @@ pub trait Route {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Request, Response, Method, StatusCode};
+/// # use hyper::{Response, Method, StatusCode};
 /// #
 /// # use gotham::http::response::create_response;
 /// # use gotham::router::request::path::NoopPathExtractor;
@@ -89,7 +89,7 @@ pub trait Route {
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// #
 /// # fn main() {
-///   fn handler(state: State, _req: Request) -> (State, Response) {
+///   fn handler(state: State) -> (State, Response) {
 ///     let res = create_response(&state, StatusCode::Ok, None);
 ///     (state, res)
 ///   }
@@ -109,7 +109,7 @@ pub trait Route {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Request, Response, StatusCode, Method};
+/// # use hyper::{Response, StatusCode, Method};
 /// #
 /// # use gotham::http::response::create_response;
 /// # use gotham::router::request::path::NoopPathExtractor;
@@ -123,7 +123,7 @@ pub trait Route {
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// #
 /// # fn main() {
-///   fn handler(state: State, _req: Request) -> (State, Response) {
+///   fn handler(state: State) -> (State, Response) {
 ///     let res = create_response(&state, StatusCode::Ok, None);
 ///     (state, res)
 ///   }

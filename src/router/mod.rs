@@ -206,8 +206,8 @@ impl Router {
 mod tests {
     use super::*;
     use std::str::FromStr;
-    use hyper::{Request, Method, Uri, Body};
-    use hyper::header::ContentLength;
+    use hyper::{Method, Uri};
+    use hyper::header::{Headers, ContentLength};
 
     use router::tree::TreeBuilder;
     use router::tree::node::{SegmentType, NodeBuilder};
@@ -220,23 +220,25 @@ mod tests {
     use state::set_request_id;
     use handler::HandlerError;
 
-    fn handler(state: State, _req: Request) -> (State, Response) {
+    fn handler(state: State) -> (State, Response) {
         (state, Response::new())
     }
 
     fn send_request(
         r: Router,
-        m: Method,
+        method: Method,
         uri: &str,
     ) -> Result<(State, Response), (State, HandlerError)> {
         let uri = Uri::from_str(uri).unwrap();
-        let request: Request<Body> = Request::new(m, uri);
 
         let mut state = State::new();
-        set_request_id(&mut state, &request);
-        state.put(RequestPathSegments::new(request.uri().path().clone()));
+        state.put(RequestPathSegments::new(uri.path()));
+        state.put(method);
+        state.put(uri);
+        state.put(Headers::new());
+        set_request_id(&mut state);
 
-        r.handle(state, request).wait()
+        r.handle(state).wait()
     }
 
     #[test]
@@ -247,12 +249,14 @@ mod tests {
 
         let method = Method::Get;
         let uri = Uri::from_str("https://test.gotham.rs").unwrap();
-        let request: Request<Body> = Request::new(method, uri);
 
         let mut state = State::new();
-        set_request_id(&mut state, &request);
+        state.put(method);
+        state.put(uri);
+        state.put(Headers::new());
+        set_request_id(&mut state);
 
-        match router.handle(state, request).wait() {
+        match router.handle(state).wait() {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::InternalServerError);
             }

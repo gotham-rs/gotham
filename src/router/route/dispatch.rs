@@ -157,7 +157,7 @@ mod tests {
     use hyper::Response;
     use hyper::StatusCode;
 
-    fn handler(state: State, _req: Request) -> (State, Response) {
+    fn handler(state: State) -> (State, Response) {
         let number = state.borrow::<Number>().value;
         (
             state,
@@ -184,13 +184,13 @@ mod tests {
     }
 
     impl Middleware for Number {
-        fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.put(self.clone());
-            chain(state, req)
+            chain(state)
         }
     }
 
@@ -209,13 +209,13 @@ mod tests {
     }
 
     impl Middleware for Addition {
-        fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
-            chain(state, req)
+            chain(state)
         }
     }
 
@@ -232,20 +232,20 @@ mod tests {
     }
 
     impl Middleware for Multiplication {
-        fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value *= self.value;
-            chain(state, req)
+            chain(state)
         }
     }
 
     #[test]
     fn pipeline_chain_ordering_test() {
         let new_service = NewHandlerService::new(|| {
-            Ok(move |state, _req| {
+            Ok(move |state| {
                 let pipelines = new_pipeline_set();
 
                 let (pipelines, p1) = pipelines.add(

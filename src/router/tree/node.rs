@@ -46,7 +46,7 @@ pub enum SegmentType {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Request, Response, Method, StatusCode};
+/// # use hyper::{Response, Method, StatusCode};
 /// #
 /// # use gotham::http::PercentDecoded;
 /// # use gotham::http::response::create_response;
@@ -58,7 +58,7 @@ pub enum SegmentType {
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::tree::node::{NodeBuilder, SegmentType};
 /// #
-/// # fn handler(state: State, _req: Request) -> (State, Response) {
+/// # fn handler(state: State) -> (State, Response) {
 /// #   let res = create_response(&state, StatusCode::Ok, None);
 /// #   (state, res)
 /// # }
@@ -420,7 +420,7 @@ mod tests {
     use super::*;
 
     use hyper::Method;
-    use hyper::{Request, Response};
+    use hyper::Response;
 
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet,
                                   DispatcherImpl};
@@ -431,7 +431,7 @@ mod tests {
     use router::request::query_string::NoopQueryStringExtractor;
     use state::State;
 
-    fn handler(state: State, _req: Request) -> (State, Response) {
+    fn handler(state: State) -> (State, Response) {
         (state, Response::new())
     }
 

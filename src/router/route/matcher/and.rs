@@ -14,9 +14,8 @@ use state::State;
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # fn main() {
-/// # use hyper::{Method, Request, Uri};
-/// # use hyper::header::{Accept};
-/// # use std::str::FromStr;
+/// # use hyper::Method;
+/// # use hyper::header::{Headers, Accept};
 /// # use gotham::state::State;
 /// # use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
 /// # use gotham::router::route::matcher::and::AndRouteMatcher;
@@ -27,23 +26,26 @@ use state::State;
 ///   let method_matcher = MethodOnlyRouteMatcher::new(methods);
 ///	  let accept_matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///   let matcher = AndRouteMatcher::new(method_matcher, accept_matcher);
-///   let state = State::new();
-///   let uri = Uri::from_str("https://example.com").unwrap();
+///
+///   let mut state = State::new();
+///   state.put(Method::Get);
 ///
 ///   // Request that matches both requirements
-///   let mut req = Request::new(Method::Get, uri.clone());
-///   req.headers_mut().set(Accept::json());
-///   assert!(matcher.is_match(&state, &req).is_ok());
+///   let mut headers = Headers::new();
+///   headers.set(Accept::json());
+///   state.put(headers);
+///   assert!(matcher.is_match(&state).is_ok());
 ///
 ///   // Request that fails method requirements
-///   let mut req = Request::new(Method::Post, uri.clone());
-///   req.headers_mut().set(Accept::json());
-///   assert!(matcher.is_match(&state, &req).is_err());
+///   state.put(Method::Post);
+///   assert!(matcher.is_match(&state).is_err());
 ///
 ///   // Request that fails accept header
-///   let mut req = Request::new(Method::Get, uri.clone());
-///   req.headers_mut().set(Accept::text());
-///   assert!(matcher.is_match(&state, &req).is_err());
+///   state.put(Method::Get);
+///   let mut headers = Headers::new();
+///   headers.set(Accept::text());
+///   state.put(headers);
+///   assert!(matcher.is_match(&state).is_err());
 /// # }
 /// ```
 pub struct AndRouteMatcher<T, U>

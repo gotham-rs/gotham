@@ -72,7 +72,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Request, Response, Method, StatusCode};
+/// # use hyper::{Response, Method, StatusCode};
 /// #
 /// # use gotham::http::response::create_response;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
@@ -87,7 +87,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::http::PercentDecoded;
 /// #
-/// # fn handler(state: State, _req: Request) -> (State, Response) {
+/// # fn handler(state: State) -> (State, Response) {
 /// #   let res = create_response(&state, StatusCode::Ok, None);
 /// #   (state, res)
 /// # }

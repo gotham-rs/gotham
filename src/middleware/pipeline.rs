@@ -37,7 +37,7 @@ use state::{State, request_id};
 /// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-/// # use hyper::{Request, Response};
+/// # use hyper::Response;
 /// # use hyper::StatusCode;
 /// # use hyper::Method;
 /// #
@@ -56,11 +56,11 @@ use state::{State, request_id};
 /// impl Middleware for MiddlewareOne {
 ///     // Implementation elided.
 ///     // Appends `1` to `MiddlewareData.vec`
-/// #     fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-/// #         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
+/// #     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
 /// #     {
 /// #         state.put(MiddlewareData { vec: vec![1] });
-/// #         chain(state, req)
+/// #         chain(state)
 /// #     }
 /// }
 /// #
@@ -74,11 +74,11 @@ use state::{State, request_id};
 /// impl Middleware for MiddlewareTwo {
 ///     // Implementation elided.
 ///     // Appends `2` to `MiddlewareData.vec`
-/// #     fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-/// #         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
+/// #     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
 /// #     {
 /// #         state.borrow_mut::<MiddlewareData>().vec.push(2);
-/// #         chain(state, req)
+/// #         chain(state)
 /// #     }
 /// }
 /// #
@@ -92,11 +92,11 @@ use state::{State, request_id};
 /// impl Middleware for MiddlewareThree {
 ///     // Implementation elided.
 ///     // Appends `3` to `MiddlewareData.vec`
-/// #     fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-/// #         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
+/// #     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
 /// #     {
 /// #         state.borrow_mut::<MiddlewareData>().vec.push(3);
-/// #         chain(state, req)
+/// #         chain(state)
 /// #     }
 /// }
 /// #
@@ -107,7 +107,7 @@ use state::{State, request_id};
 /// #     }
 /// # }
 ///
-/// fn handler(state: State, _req: Request) -> (State, Response) {
+/// fn handler(state: State) -> (State, Response) {
 ///     let body = {
 ///        let data = state.borrow::<MiddlewareData>();
 ///        format!("{:?}", data.vec)
@@ -215,7 +215,6 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::{Middleware, NewMiddleware};
 /// # use gotham::middleware::pipeline::new_pipeline;
-/// # use hyper::Request;
 /// #
 /// # #[derive(Clone)]
 /// # struct MiddlewareOne;
@@ -225,10 +224,10 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// # struct MiddlewareThree;
 /// #
 /// # impl Middleware for MiddlewareOne {
-/// #   fn call<Chain>(self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
+/// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
 /// #   {
-/// #       chain(state, req)
+/// #       chain(state)
 /// #   }
 /// # }
 /// #
@@ -240,10 +239,10 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// # }
 /// #
 /// # impl Middleware for MiddlewareTwo {
-/// #   fn call<Chain>(self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
+/// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
 /// #   {
-/// #       chain(state, req)
+/// #       chain(state)
 /// #   }
 /// # }
 /// #
@@ -255,10 +254,10 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// # }
 /// #
 /// # impl Middleware for MiddlewareThree {
-/// #   fn call<Chain>(self, state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
+/// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
 /// #   {
-/// #       chain(state, req)
+/// #       chain(state)
 /// #   }
 /// # }
 /// #
@@ -280,7 +279,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 ///
 /// The pipeline defined here is invoked in this order:
 ///
-/// `(&mut state, request)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree`
+/// `(&mut stateuest)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree`
 /// &rarr; `handler` (provided later)
 pub struct PipelineBuilder<T>
 where
@@ -467,7 +466,7 @@ mod tests {
     impl Middleware for Number {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -492,7 +491,7 @@ mod tests {
     impl Middleware for Addition {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
@@ -515,7 +514,7 @@ mod tests {
     impl Middleware for Multiplication {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value *= self.value;
@@ -536,8 +535,8 @@ mod tests {
                 .add(Multiplication { value: 3 }) // 24
                 .build();
 
-            Ok(move |state, req| match pipeline.construct() {
-                Ok(p) => p.call(state, req, |state, req| handler.handle(state, req)),
+            Ok(move |state| match pipeline.construct() {
+                Ok(p) => p.call(state, |state| handler.handle(state)),
                 Err(e) => Box::new(future::err((state, e.into_handler_error()))),
             })
         });
