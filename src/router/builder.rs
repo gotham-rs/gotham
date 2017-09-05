@@ -218,6 +218,35 @@ where
         );
         self.node_builder.add_route(Box::new(route));
     }
+
+    pub fn with_path_params<NPE>(self) -> SingleRouteBuilder<'a, M, C, P, NPE, QSE>
+    where
+        NPE: PathExtractor + Send + Sync + 'static,
+    {
+        self.coerce()
+    }
+
+    pub fn with_query_params<NQSE>(self) -> SingleRouteBuilder<'a, M, C, P, PE, NQSE>
+    where
+        NQSE: QueryStringExtractor + Send + Sync + 'static,
+    {
+        self.coerce()
+    }
+
+    fn coerce<NPE, NQSE>(self) -> SingleRouteBuilder<'a, M, C, P, NPE, NQSE>
+    where
+        NPE: PathExtractor + Send + Sync + 'static,
+        NQSE: QueryStringExtractor + Send + Sync + 'static,
+    {
+        SingleRouteBuilder {
+            node_builder: self.node_builder,
+            matcher: self.matcher,
+            pipeline_chain: self.pipeline_chain,
+            pipelines: self.pipelines,
+            delegation: self.delegation,
+            phantom: PhantomData,
+        }
+    }
 }
 
 fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBuilder {
