@@ -9,7 +9,7 @@ pub mod dispatch;
 
 use std::marker::PhantomData;
 
-use hyper::{Request, Response};
+use hyper::Response;
 use hyper::StatusCode;
 
 use router::route::dispatch::Dispatcher;
@@ -42,7 +42,7 @@ pub enum Delegation {
 /// Applications".
 pub trait Route {
     /// Determines if this `Route` can be invoked, based on the `Request`.
-    fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode>;
+    fn is_match(&self, state: &State) -> Result<(), StatusCode>;
 
     /// Determines if this `Route` intends to delegate requests to a secondary `Router` instance.
     fn delegation(&self) -> Delegation;
@@ -58,14 +58,14 @@ pub trait Route {
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response);
 
     /// Extracts the `Request` query string and stores it in `State`
-    fn extract_query_string(&self, state: &mut State, query: Option<&str>) -> Result<(), String>;
+    fn extract_query_string(&self, state: &mut State) -> Result<(), String>;
 
     /// Extends the `Response` object when query string extraction fails
     fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response);
 
     /// Final call made by the `Router` to the matched `Route` allowing
     /// application specific logic to respond to the request.
-    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture>;
+    fn dispatch(&self, state: State) -> Box<HandlerFuture>;
 }
 
 /// Default implementation for `Route`.
@@ -220,16 +220,16 @@ where
     RE: PathExtractor,
     QSE: QueryStringExtractor,
 {
-    fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode> {
-        self.matcher.is_match(state, req)
+    fn is_match(&self, state: &State) -> Result<(), StatusCode> {
+        self.matcher.is_match(state)
     }
 
     fn delegation(&self) -> Delegation {
         self.delegation
     }
 
-    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture> {
-        self.dispatcher.dispatch(state, req)
+    fn dispatch(&self, state: State) -> Box<HandlerFuture> {
+        self.dispatcher.dispatch(state)
     }
 
     fn extract_request_path(
@@ -244,8 +244,8 @@ where
         RE::extend(state, res)
     }
 
-    fn extract_query_string(&self, state: &mut State, query: Option<&str>) -> Result<(), String> {
-        QSE::extract(state, query)
+    fn extract_query_string(&self, state: &mut State) -> Result<(), String> {
+        QSE::extract(state)
     }
 
     fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response) {

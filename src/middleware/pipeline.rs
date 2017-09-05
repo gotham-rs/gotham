@@ -2,8 +2,6 @@
 
 use std::io;
 
-use hyper::Request;
-
 use handler::HandlerFuture;
 use middleware::{Middleware, NewMiddleware};
 use state::{State, request_id};
@@ -186,12 +184,12 @@ where
 {
     /// Serves a request using this `PipelineInstance`. Requests that pass through all `Middleware`
     /// will be served with the `f` function.
-    pub fn call<F>(self, state: State, req: Request, f: F) -> Box<HandlerFuture>
+    pub fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
     {
         trace!("[{}] calling middleware", request_id(&state));
-        self.chain.call(state, req, f)
+        self.chain.call(state, f)
     }
 }
 
@@ -380,15 +378,15 @@ unsafe impl NewMiddlewareChain for () {
 pub unsafe trait MiddlewareChain: Sized {
     // TODO: Update this after implementing the `dispatch` module.
     /// Recursive function for processing middleware and chaining to the given function.
-    fn call<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static;
+        F: FnOnce(State) -> Box<HandlerFuture> + 'static;
 }
 
 unsafe impl MiddlewareChain for () {
-    fn call<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
     {
         // At the last item in the `MiddlewareChain`, the function is invoked to serve the
         // request. `f` is the nested function of all `Middleware` and the `Handler`.
@@ -396,7 +394,7 @@ unsafe impl MiddlewareChain for () {
         // In the case of 0 middleware, `f` is the function created in `MiddlewareChain::call`
         // which invokes the `Handler` directly.
         trace!("pipeline complete, invoking handler");
-        f(state, request)
+        f(state)
     }
 }
 
@@ -405,9 +403,9 @@ where
     T: Middleware + 'static,
     U: MiddlewareChain,
 {
-    fn call<F>(self, state: State, request: Request, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
     {
         let (m, p) = self;
         // Construct the function from the inside, out. Starting with a function which calls the
@@ -416,17 +414,17 @@ where
         // this (using `m0`, `m1`, `m2` as middleware names, where `m2` is the last middleware
         // before the `Handler`):
         //
-        //  move |state, req| {
-        //      m0.call(state, req, move |state, req| {
-        //          m1.call(state, req, move |state, req| {
-        //              m2.call(state, req, move |state, req| handler.call(state, req))
+        //  move |state| {
+        //      m0.call(state, move |state| {
+        //          m1.call(state, move |state| {
+        //              m2.call(state, move |state| handler.call(state))
         //          })
         //      })
         //  }
         //
         // The resulting function is called by `<() as MiddlewareChain>::call`
         trace!("[{}] executing middleware", request_id(&state));
-        p.call(state, request, move |state, req| m.call(state, req, f))
+        p.call(state, move |state| m.call(state, f))
     }
 }
 
@@ -440,7 +438,7 @@ mod tests {
     use hyper::StatusCode;
     use futures::future;
 
-    fn handler(state: State, _req: Request) -> (State, Response) {
+    fn handler(state: State) -> (State, Response) {
         let number = state.borrow::<Number>().value;
         (
             state,
@@ -467,13 +465,13 @@ mod tests {
     }
 
     impl Middleware for Number {
-        fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
             Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.put(self.clone());
-            chain(state, req)
+            chain(state)
         }
     }
 
@@ -492,13 +490,13 @@ mod tests {
     }
 
     impl Middleware for Addition {
-        fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
             Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
-            chain(state, req)
+            chain(state)
         }
     }
 
@@ -515,13 +513,13 @@ mod tests {
     }
 
     impl Middleware for Multiplication {
-        fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
             Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value *= self.value;
-            chain(state, req)
+            chain(state)
         }
     }
 

@@ -9,7 +9,7 @@ use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
-use hyper::{Request, Response, StatusCode};
+use hyper::{Response, StatusCode};
 
 use handler::{NewHandler, Handler, HandlerFuture, IntoResponse};
 use http::request::path::RequestPathSegments;
@@ -83,13 +83,13 @@ impl NewHandler for Router {
 impl Handler for Router {
     /// Handles the `Request` by determining the correct `Route` from the internal `Tree`, storing
     /// any path related variables in `State` and dispatching to the associated `Handler`.
-    fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
+    fn handle(self, mut state: State) -> Box<HandlerFuture> {
         trace!("[{}] starting", request_id(&state));
 
         let future = match state.try_take::<RequestPathSegments>() {
             Some(rps) => {
                 if let Some((_, leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
-                    match leaf.select_route(&state, &req) {
+                    match leaf.select_route(&state) {
                         Ok(route) => {
                             match route.delegation() {
                                 Delegation::External => {
@@ -102,11 +102,11 @@ impl Handler for Router {
                                     rps.increase_offset(sp);
                                     state.put(rps);
 
-                                    route.dispatch(state, req)
+                                    route.dispatch(state)
                                 }
                                 Delegation::Internal => {
                                     trace!("[{}] dispatching to route", request_id(&state));
-                                    self.dispatch(state, req, sm, route)
+                                    self.dispatch(state, sm, route)
                                 }
                             }
                         }
@@ -144,18 +144,17 @@ impl Router {
     fn dispatch(
         &self,
         mut state: State,
-        req: Request,
         sm: SegmentMapping,
         route: &Box<Route + Send + Sync>,
     ) -> Box<HandlerFuture> {
         match route.extract_request_path(&mut state, sm) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
-                match route.extract_query_string(&mut state, req.query()) {
+                match route.extract_query_string(&mut state) {
                     Ok(()) => {
                         trace!("[{}] extracted query string", request_id(&state));
                         trace!("[{}] dispatching", request_id(&state));
-                        route.dispatch(state, req)
+                        route.dispatch(state)
                     }
                     Err(e) => {
                         trace!("[{}] {}", request_id(&state), e);

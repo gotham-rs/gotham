@@ -4,15 +4,15 @@ pub mod any;
 pub mod and;
 pub mod accept;
 
-use hyper::{Request, Method, StatusCode};
+use hyper::{Method, StatusCode};
 
-use state::{State, request_id};
+use state::{State, FromState, request_id};
 
 /// Determines if pre-defined conditions required for the associated `Route` to be invoked by
 /// the `Router` have been met.
 pub trait RouteMatcher {
     /// Determines if the `Request` meets pre-defined conditions.
-    fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode>;
+    fn is_match(&self, state: &State) -> Result<(), StatusCode>;
 }
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with one
@@ -52,19 +52,20 @@ impl MethodOnlyRouteMatcher {
 
 impl RouteMatcher for MethodOnlyRouteMatcher {
     /// Determines if the `Request` was made using a `Method` the instance contains.
-    fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode> {
-        if self.methods.iter().any(|m| m == req.method()) {
+    fn is_match(&self, state: &State) -> Result<(), StatusCode> {
+        let method = Method::borrow_from(state);
+        if self.methods.iter().any(|m| m == method) {
             trace!(
                 "[{}] matched request method {} to permitted method",
                 request_id(&state),
-                req.method()
+                method
             );
             Ok(())
         } else {
             trace!(
                 "[{}] did not match request method {}",
                 request_id(&state),
-                req.method()
+                method
             );
             Err(StatusCode::MethodNotAllowed)
         }

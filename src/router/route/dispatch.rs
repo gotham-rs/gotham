@@ -1,9 +1,7 @@
 //! Defines Gotham's `Dispatcher` and supporting types.
 
 use std::sync::Arc;
-
 use borrow_bag::{new_borrow_bag, BorrowBag, Handle, Lookup};
-use hyper::Request;
 use futures::future;
 
 use handler::{Handler, NewHandler, HandlerFuture, IntoHandlerError};
@@ -33,7 +31,7 @@ pub fn finalize_pipeline_set<P>(eps: EditablePipelineSet<P>) -> PipelineSet<P> {
 /// and finally into the configured `Handler`.
 pub trait Dispatcher {
     /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
-    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture>;
+    fn dispatch(&self, state: State) -> Box<HandlerFuture>;
 }
 
 /// Default implementation of the `Dispatcher` trait.
@@ -74,15 +72,14 @@ where
     H::Instance: 'static,
     C: PipelineHandleChain<P>,
 {
-    fn dispatch(&self, state: State, req: Request) -> Box<HandlerFuture> {
+    fn dispatch(&self, state: State) -> Box<HandlerFuture> {
         match self.new_handler.new_handler() {
             Ok(h) => {
                 trace!("[{}] cloning handler", request_id(&state));
                 self.pipeline_chain.call(
                     &self.pipelines,
                     state,
-                    req,
-                    move |state, req| h.handle(state, req),
+                    move |state| h.handle(state),
                 )
             }
             Err(e) => {
@@ -109,15 +106,9 @@ where
 pub trait PipelineHandleChain<P> {
     /// Invokes this part of the `PipelineHandleChain`, with requests being passed through to `f`
     /// once all `Middleware` in the `Pipeline` have passed the request through.
-    fn call<F>(
-        &self,
-        pipelines: &PipelineSet<P>,
-        state: State,
-        req: Request,
-        f: F,
-    ) -> Box<HandlerFuture>
+    fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static;
+        F: FnOnce(State) -> Box<HandlerFuture> + 'static;
 }
 
 /// Part of a `PipelineHandleChain` which references a `Pipeline` and continues with a tail element.
@@ -128,26 +119,13 @@ where
     U: PipelineHandleChain<P>,
     P: Lookup<Pipeline<T>, N>,
 {
-    fn call<F>(
-        &self,
-        pipelines: &PipelineSet<P>,
-        state: State,
-        req: Request,
-        f: F,
-    ) -> Box<HandlerFuture>
+    fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
     {
         let (handle, ref chain) = *self;
         match pipelines.borrow(handle).construct() {
-            Ok(p) => {
-                chain.call(
-                    pipelines,
-                    state,
-                    req,
-                    move |state, req| p.call(state, req, f),
-                )
-            }
+            Ok(p) => chain.call(pipelines, state, move |state| p.call(state, f)),
             Err(e) => {
                 trace!("[{}] error borrowing pipeline", request_id(&state));
                 Box::new(future::err((state, e.into_handler_error())))
@@ -158,12 +136,12 @@ where
 
 /// The marker for the end of a `PipelineHandleChain`.
 impl<P> PipelineHandleChain<P> for () {
-    fn call<F>(&self, _: &PipelineSet<P>, state: State, req: Request, f: F) -> Box<HandlerFuture>
+    fn call<F>(&self, _: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
     {
         trace!("[{}] start pipeline", request_id(&state));
-        f(state, req)
+        f(state)
     }
 }
 
@@ -267,7 +245,7 @@ mod tests {
     #[test]
     fn pipeline_chain_ordering_test() {
         let new_service = NewHandlerService::new(|| {
-            Ok(move |state, req| {
+            Ok(move |state, _req| {
                 let pipelines = new_pipeline_set();
 
                 let (pipelines, p1) = pipelines.add(
@@ -298,7 +276,7 @@ mod tests {
 
                 let pipeline_chain = (p3, (p2, (p1, ())));
                 let dispatcher = DispatcherImpl::new(new_handler, pipeline_chain, pipelines);
-                dispatcher.dispatch(state, req)
+                dispatcher.dispatch(state)
             })
         });
 

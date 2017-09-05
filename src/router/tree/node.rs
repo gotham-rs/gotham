@@ -3,7 +3,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::borrow::Borrow;
-use hyper::{Request, StatusCode};
+use hyper::StatusCode;
 
 use http::PercentDecoded;
 use router::route::{Route, Delegation};
@@ -118,7 +118,7 @@ impl Node {
     }
 
     /// Determines if a `Route` instance associated with this `Node` is willing to `Handle` the
-    /// `Request`.
+    /// request.
     ///
     /// Where multiple `Route` instances could possibly handle the `Request` only the first, ordered
     /// per creation, is invoked.
@@ -128,12 +128,8 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub fn select_route(
-        &self,
-        state: &State,
-        req: &Request,
-    ) -> Result<&Box<Route + Send + Sync>, StatusCode> {
-        match self.routes.iter().find(|r| r.is_match(state, req).is_ok()) {
+    pub fn select_route(&self, state: &State) -> Result<&Box<Route + Send + Sync>, StatusCode> {
+        match self.routes.iter().find(|r| r.is_match(state).is_ok()) {
             Some(route) => {
                 trace!("[{}] found matching route", request_id(state));
                 Ok(route)
@@ -143,7 +139,7 @@ impl Node {
                 match self.routes.first() {
                     Some(route) => {
                         trace!("[{}] using error status code from route", request_id(state));
-                        Err(route.is_match(state, req).unwrap_err())
+                        Err(route.is_match(state).unwrap_err())
                     }
                     None => {
                         trace!("[{}] using generic error status code", request_id(state));

@@ -152,22 +152,24 @@ where
         let mut state = State::new();
         set_request_id(&mut state, &req);
 
-        trace!(
-            "[{}] populating immutable request data into state",
-            request_id(&state)
-        );
-        state.put(req.method().clone());
-        state.put(req.uri().clone());
-        state.put(req.version().clone());
-        state.put(req.headers().clone());
-        state.put(RequestPathSegments::new(req.uri().path().clone()));
-
+        let (method, uri, version, headers, body) = req.deconstruct();
         info!(
             "[REQUEST][{}][{}][{}]",
             request_id(&state),
-            req.method(),
-            req.path()
+            method,
+            uri.path()
         );
+
+        trace!(
+            "[{}] populating request data into state",
+            request_id(&state)
+        );
+        state.put(RequestPathSegments::new(uri.path()));
+        state.put(method);
+        state.put(uri);
+        state.put(version);
+        state.put(headers);
+        state.put(body);
 
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
@@ -175,7 +177,7 @@ where
         match self.t.new_handler() {
             Ok(handler) => {
                 let f = handler
-                    .handle(state, req)
+                    .handle(state)
                     .and_then(move |(state, res)| {
                         let f = chrono::UTC::now();
                         match f.signed_duration_since(s).num_microseconds() {
@@ -256,7 +258,7 @@ where
 /// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
 pub trait Handler {
     /// Handles the request, returning a boxed future which resolves to a response.
-    fn handle(self, state: State, request: Request) -> Box<HandlerFuture>;
+    fn handle(self, state: State) -> Box<HandlerFuture>;
 }
 
 /// Creates new `Handler` values.
@@ -386,10 +388,10 @@ impl IntoResponse for Response {
 
 impl<F, R> Handler for F
 where
-    F: FnOnce(State, Request) -> R,
+    F: FnOnce(State) -> R,
     R: IntoHandlerFuture,
 {
-    fn handle(self, state: State, req: Request) -> Box<HandlerFuture> {
-        self(state, req).into_handler_future()
+    fn handle(self, state: State) -> Box<HandlerFuture> {
+        self(state).into_handler_future()
     }
 }

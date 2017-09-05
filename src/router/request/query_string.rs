@@ -25,7 +25,7 @@ use router::response::extender::StaticResponseExtender;
 /// implementing `StaticResponseExtender` independently.
 pub trait QueryStringExtractor: StaticResponseExtender {
     /// Populates the struct with data from the `Request` query string and adds it to `State`
-    fn extract(state: &mut State, query: Option<&str>) -> Result<(), String>;
+    fn extract(state: &mut State) -> Result<(), String>;
 }
 
 /// A `QueryStringExtractor` that does not extract/store any data.
@@ -34,7 +34,7 @@ pub trait QueryStringExtractor: StaticResponseExtender {
 #[derive(Debug)]
 pub struct NoopQueryStringExtractor;
 impl QueryStringExtractor for NoopQueryStringExtractor {
-    fn extract(_state: &mut State, _query: Option<&str>) -> Result<(), String> {
+    fn extract(_state: &mut State) -> Result<(), String> {
         Ok(())
     }
 }

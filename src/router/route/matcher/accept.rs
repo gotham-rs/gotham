@@ -1,11 +1,11 @@
 //! Defines the type `AcceptMatcher`
 
-use hyper::{Request, StatusCode};
-use hyper::header::Accept;
+use hyper::StatusCode;
+use hyper::header::{Headers, Accept};
 use mime;
 
 use router::route::matcher::RouteMatcher;
-use state::{State, request_id};
+use state::{State, FromState, request_id};
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with an `Accept` header that
 /// includes 1 or more supported media types. No `Accept` header value or the value of `*/*` will
@@ -81,9 +81,10 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// will also positvely match.
     ///
     /// Quality values within `Accept` header values are not considered by the matcher.
-    fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode> {
+    fn is_match(&self, state: &State) -> Result<(), StatusCode> {
         // Request method is valid, ensure valid Accept header
-        match req.headers().get::<Accept>() {
+        let headers = Headers::borrow_from(state);
+        match headers.get::<Accept>() {
             Some(accept) => {
                 let acceptable_media_types = accept.iter().map(|qi| &qi.item).collect::<Vec<_>>();
                 for ra in acceptable_media_types {

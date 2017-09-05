@@ -1,6 +1,6 @@
 //! Defines the type `AndRouteMatcher`
 
-use hyper::{Request, StatusCode};
+use hyper::StatusCode;
 
 use router::route::RouteMatcher;
 use state::State;
@@ -71,9 +71,9 @@ where
     T: RouteMatcher,
     U: RouteMatcher,
 {
-    fn is_match(&self, state: &State, req: &Request) -> Result<(), StatusCode> {
-        self.t.is_match(state, req)?;
-        self.u.is_match(state, req)?;
+    fn is_match(&self, state: &State) -> Result<(), StatusCode> {
+        self.t.is_match(state)?;
+        self.u.is_match(state)?;
 
         Ok(())
     }

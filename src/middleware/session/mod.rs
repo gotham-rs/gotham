@@ -8,15 +8,15 @@ use std::marker::PhantomData;
 use base64;
 use rand::Rng;
 use hyper::StatusCode;
-use hyper::server::{Request, Response};
-use hyper::header::{Cookie, SetCookie};
+use hyper::server::Response;
+use hyper::header::{Headers, Cookie, SetCookie};
 use futures::{future, Future};
 use serde::{Serialize, Deserialize};
 use rmp_serde;
 
 use super::{NewMiddleware, Middleware};
 use handler::{HandlerFuture, HandlerError, IntoHandlerError};
-use state::{self, State, StateData};
+use state::{self, State, FromState, StateData};
 use http::response::create_response;
 
 mod backend;
@@ -676,13 +676,12 @@ where
         + for<'de> Deserialize<'de>
         + 'static,
 {
-    fn call<Chain>(self, state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+        Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
         Self: Sized,
     {
-        let session_identifier = request
-            .headers()
+        let session_identifier = Headers::borrow_from(&state)
             .get::<Cookie>()
             .and_then(|c| c.get(self.cookie_config.name.as_ref()))
             .map(|value| SessionIdentifier { value: value.to_owned() });
@@ -692,14 +691,14 @@ where
                 let f = self.backend
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
-                    .and_then(|state| chain(state, request))
+                    .and_then(|state| chain(state))
                     .and_then(persist_session::<T>);
 
                 Box::new(f)
             }
             None => {
                 let f = self.new_session(state)
-                    .and_then(|state| chain(state, request))
+                    .and_then(|state| chain(state))
                     .and_then(persist_session::<T>);
 
                 Box::new(f)

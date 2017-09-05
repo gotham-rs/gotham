@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use hyper::{Headers, Uri, HttpVersion, Method};
+use hyper::{Body, Headers, Uri, HttpVersion, Method};
 
 use http::request::path::RequestPathSegments;
 use state::request_id::RequestId;
@@ -11,6 +11,7 @@ use state::request_id::RequestId;
 /// crate.
 pub trait StateData: Any {}
 
+impl StateData for Body {}
 impl StateData for Method {}
 impl StateData for Uri {}
 impl StateData for HttpVersion {}
