@@ -130,7 +130,7 @@ impl State {
         self.data.get(&type_id).is_some()
     }
 
-    /// Borrows a value from the `State` storage.
+    /// Tries to borrow a value from the `State` storage.
     ///
     /// # Examples
     ///
@@ -160,7 +160,7 @@ impl State {
     /// assert!(state.borrow::<AnotherStruct>().is_none());
     /// # }
     /// ```
-    pub fn borrow<T>(&self) -> Option<&T>
+    pub fn try_borrow<T>(&self) -> Option<&T>
     where
         T: StateData,
     {
@@ -169,7 +169,7 @@ impl State {
         self.data.get(&type_id).and_then(|b| b.downcast_ref::<T>())
     }
 
-    /// Mutably borrows a value from the `State` storage.
+    /// Tries to mutably borrow a value from the `State` storage.
     ///
     /// # Examples
     ///
@@ -203,7 +203,7 @@ impl State {
     ///
     /// assert!(state.borrow_mut::<AnotherStruct>().is_none());
     /// # }
-    pub fn borrow_mut<T>(&mut self) -> Option<&mut T>
+    pub fn try_borrow_mut<T>(&mut self) -> Option<&mut T>
     where
         T: StateData,
     {
@@ -214,7 +214,7 @@ impl State {
         )
     }
 
-    /// Moves a value out of the `State` storage, and returns ownership.
+    /// Tries to move a value out of the `State` storage and return ownership.
     ///
     /// # Examples
     ///
@@ -247,7 +247,7 @@ impl State {
     ///
     /// assert!(state.take::<AnotherStruct>().is_none());
     /// # }
-    pub fn take<T>(&mut self) -> Option<T>
+    pub fn try_take<T>(&mut self) -> Option<T>
     where
         T: StateData,
     {

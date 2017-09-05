@@ -306,7 +306,7 @@ where
         + 'static,
 {
     fn take_from(s: &mut State) -> SessionData<T> {
-        s.take::<SessionData<T>>().unwrap_or_else(|| {
+        s.try_take::<SessionData<T>>().unwrap_or_else(|| {
             panic!(
                 "[{}] [take] SessionData<T> is not stored in State, \
                                         is NewSessionMiddleware configured correctly?",
@@ -316,7 +316,7 @@ where
     }
 
     fn borrow_from(s: &State) -> &SessionData<T> {
-        s.borrow::<SessionData<T>>().unwrap_or_else(|| {
+        s.try_borrow::<SessionData<T>>().unwrap_or_else(|| {
             panic!(
                 "[{}] [borrow] SessionData<T> is not stored in State, \
                                         is NewSessionMiddleware configured correctly?",
@@ -327,7 +327,7 @@ where
 
     fn borrow_mut_from(s: &mut State) -> &mut SessionData<T> {
         let req_id = String::from(state::request_id(s));
-        s.borrow_mut::<SessionData<T>>().unwrap_or_else(|| {
+        s.try_borrow_mut::<SessionData<T>>().unwrap_or_else(|| {
             panic!(
                 "[{}] [borrow_mut] SessionData<T> is not stored in State, \
                                         is NewSessionMiddleware configured correctly?",
@@ -770,7 +770,7 @@ fn persist_session<T>(
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    match state.take::<SessionDropData>() {
+    match state.try_take::<SessionDropData>() {
         Some(ref session_drop_data) => {
             trace!(
                 "[{}] SessionDropData found in state, removing session cookie from user agent",
@@ -787,7 +787,7 @@ where
         }
     }
 
-    match state.take::<SessionData<T>>() {
+    match state.try_take::<SessionData<T>>() {
         Some(session_data) => {
             if let SessionCookieState::New = session_data.cookie_state {
                 send_cookie(&mut response, &session_data);

@@ -34,7 +34,7 @@ macro_rules! from_state {
     ($($t:ident),*) => { $(
         impl FromState<$t> for $t {
             fn take_from(s: &mut State) -> Self {
-                s.take::<$t>()
+                s.try_take::<$t>()
                  .unwrap_or_else(|| {
                      panic!("[{}] [take] {} is not stored in State",
                             request_id(s), "$t")
@@ -42,7 +42,7 @@ macro_rules! from_state {
             }
 
             fn borrow_from(s: &State) -> &$t {
-                s.borrow::<$t>()
+                s.try_borrow::<$t>()
                  .unwrap_or_else(|| {
                      panic!("[{}] [borrow] {} is not stored in State",
                             request_id(s),
@@ -52,7 +52,7 @@ macro_rules! from_state {
 
             fn borrow_mut_from(s: &mut State) -> &mut $t {
                 let req_id = String::from(request_id(s));
-                s.borrow_mut::<$t>()
+                s.try_borrow_mut::<$t>()
                  .unwrap_or_else(|| {
                      panic!("[{}] [borrow_mut] {} is not stored in State",
                             req_id,

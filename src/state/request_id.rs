@@ -50,7 +50,7 @@ pub fn set_request_id<'a>(state: &'a mut State, req: &Request) -> &'a str {
 /// Will panic if the Gotham `Router` has not already populated `State` with a value for `RequestId`
 /// prior to handling control to middleware pipelines and application handlers.
 pub fn request_id(state: &State) -> &str {
-    match state.borrow::<RequestId>() {
+    match state.try_borrow::<RequestId>() {
         Some(request_id) => &request_id.val,
         None => panic!("RequestId must be populated before application code is invoked"),
     }
