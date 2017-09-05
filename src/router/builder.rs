@@ -29,7 +29,8 @@ use router::tree::node::{SegmentType, NodeBuilder};
 /// ```
 pub fn build_router<C, P, F>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F) -> Router
 where
-    C: PipelineHandleChain<P>,
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + 'static,
     F: FnOnce(&mut RouterBuilder<C, P>),
 {
     let mut tree_builder = TreeBuilder::new();
@@ -50,7 +51,57 @@ where
     Router::new(tree_builder.finalize(), response_finalizer)
 }
 
-pub struct RouterBuilder<'a, C, P> {
+pub trait DrawRoutes<C, P>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + 'static,
+{
+    fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Get, Method::Head], path)
+    }
+
+    fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Post], path)
+    }
+
+    fn request<'b>(
+        &'b mut self,
+        methods: Vec<Method>,
+        path: &str,
+    ) -> DefaultSingleRouteBuilder<'b, C, P> {
+        let path = if path.starts_with("/") {
+            &path[1..]
+        } else {
+            path
+        };
+
+        let (node_builder, pipeline_chain, pipelines) = self.component_refs();
+        let node_builder = if path.is_empty() {
+            node_builder
+        } else {
+            build_subtree(node_builder, path.split("/"))
+        };
+
+        let matcher = MethodOnlyRouteMatcher::new(methods);
+
+        SingleRouteBuilder {
+            matcher,
+            node_builder,
+            pipeline_chain: *pipeline_chain,
+            pipelines: pipelines.clone(),
+            delegation: Delegation::Internal,
+            phantom: PhantomData,
+        }
+    }
+
+    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>);
+}
+
+pub struct RouterBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + 'static,
+{
     node_builder: &'a mut NodeBuilder,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
@@ -66,46 +117,21 @@ type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     NoopQueryStringExtractor,
 >;
 
-impl<'a, C, P> RouterBuilder<'a, C, P>
+impl<'a, C, P> DrawRoutes<C, P> for RouterBuilder<'a, C, P>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P>
+        + Copy
+        + Send
+        + Sync
+        + 'static,
     P: Send + Sync + 'static,
 {
-    pub fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Get, Method::Head], path)
-    }
-
-    pub fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Post], path)
-    }
-
-    pub fn request<'b>(
-        &'b mut self,
-        methods: Vec<Method>,
-        path: &str,
-    ) -> DefaultSingleRouteBuilder<'b, C, P> {
-        let path = if path.starts_with("/") {
-            &path[1..]
-        } else {
-            path
-        };
-
-        let node_builder = if path.is_empty() {
-            &mut self.node_builder
-        } else {
-            build_subtree(self.node_builder, path.split("/"))
-        };
-
-        let matcher = MethodOnlyRouteMatcher::new(methods);
-
-        SingleRouteBuilder {
-            matcher,
-            node_builder,
-            pipeline_chain: self.pipeline_chain,
-            pipelines: self.pipelines.clone(),
-            delegation: Delegation::Internal,
-            phantom: PhantomData,
-        }
+    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+        (
+            &mut self.node_builder,
+            &mut self.pipeline_chain,
+            &self.pipelines,
+        )
     }
 }
 
