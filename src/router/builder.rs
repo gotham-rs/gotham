@@ -69,18 +69,8 @@ where
         methods: Vec<Method>,
         path: &str,
     ) -> DefaultSingleRouteBuilder<'b, C, P> {
-        let path = if path.starts_with("/") {
-            &path[1..]
-        } else {
-            path
-        };
-
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
-        let node_builder = if path.is_empty() {
-            node_builder
-        } else {
-            build_subtree(node_builder, path.split("/"))
-        };
+        let node_builder = descend(node_builder, path);
 
         let matcher = MethodOnlyRouteMatcher::new(methods);
 
@@ -92,6 +82,22 @@ where
             delegation: Delegation::Internal,
             phantom: PhantomData,
         }
+    }
+
+    fn scope<F>(&mut self, path: &str, f: F)
+    where
+        F: FnOnce(&mut ScopeBuilder<C, P>),
+    {
+        let (node_builder, pipeline_chain, pipelines) = self.component_refs();
+        let node_builder = descend(node_builder, path);
+
+        let mut scope_builder = ScopeBuilder {
+            node_builder,
+            pipeline_chain: *pipeline_chain,
+            pipelines: pipelines.clone(),
+        };
+
+        f(&mut scope_builder)
     }
 
     fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>);
@@ -108,6 +114,16 @@ where
     response_finalizer_builder: ResponseFinalizerBuilder,
 }
 
+pub struct ScopeBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + 'static,
+{
+    node_builder: &'a mut NodeBuilder,
+    pipeline_chain: C,
+    pipelines: PipelineSet<P>,
+}
+
 type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     'a,
     MethodOnlyRouteMatcher,
@@ -118,6 +134,24 @@ type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
 >;
 
 impl<'a, C, P> DrawRoutes<C, P> for RouterBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P>
+        + Copy
+        + Send
+        + Sync
+        + 'static,
+    P: Send + Sync + 'static,
+{
+    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+        (
+            &mut self.node_builder,
+            &mut self.pipeline_chain,
+            &self.pipelines,
+        )
+    }
+}
+
+impl<'a, C, P> DrawRoutes<C, P> for ScopeBuilder<'a, C, P>
 where
     C: PipelineHandleChain<P>
         + Copy
@@ -183,6 +217,20 @@ where
             self.delegation,
         );
         self.node_builder.add_route(Box::new(route));
+    }
+}
+
+fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBuilder {
+    let path = if path.starts_with("/") {
+        &path[1..]
+    } else {
+        path
+    };
+
+    if path.is_empty() {
+        node_builder
+    } else {
+        build_subtree(node_builder, path.split("/"))
     }
 }
 
@@ -254,7 +302,9 @@ mod tests {
 
         let router = build_router(default_pipeline_chain, pipelines, |route| {
             route.get("/").to(|| Ok(welcome::index));
-            route.post("/api/submit").to(|| Ok(api::submit));
+            route.scope("/api", |route| {
+                route.post("/submit").to(|| Ok(api::submit));
+            });
         });
 
         let new_service = NewHandlerService::new(router);
