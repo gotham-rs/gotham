@@ -16,7 +16,7 @@ use rmp_serde;
 
 use super::{NewMiddleware, Middleware};
 use handler::{HandlerFuture, HandlerError, IntoHandlerError};
-use state::{self, State, StateData, FromState};
+use state::{self, State, StateData};
 use http::response::create_response;
 
 mod backend;
@@ -296,45 +296,6 @@ impl<T> StateData for SessionData<T>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-}
-
-impl<T> FromState<SessionData<T>> for SessionData<T>
-where
-    T: Default
-        + Serialize
-        + for<'de> Deserialize<'de>
-        + 'static,
-{
-    fn take_from(s: &mut State) -> SessionData<T> {
-        s.try_take::<SessionData<T>>().unwrap_or_else(|| {
-            panic!(
-                "[{}] [take] SessionData<T> is not stored in State, \
-                                        is NewSessionMiddleware configured correctly?",
-                state::request_id(s)
-            )
-        })
-    }
-
-    fn borrow_from(s: &State) -> &SessionData<T> {
-        s.try_borrow::<SessionData<T>>().unwrap_or_else(|| {
-            panic!(
-                "[{}] [borrow] SessionData<T> is not stored in State, \
-                                        is NewSessionMiddleware configured correctly?",
-                state::request_id(s)
-            )
-        })
-    }
-
-    fn borrow_mut_from(s: &mut State) -> &mut SessionData<T> {
-        let req_id = String::from(state::request_id(s));
-        s.try_borrow_mut::<SessionData<T>>().unwrap_or_else(|| {
-            panic!(
-                "[{}] [borrow_mut] SessionData<T> is not stored in State, \
-                                        is NewSessionMiddleware configured correctly?",
-                req_id
-            )
-        })
-    }
 }
 
 impl<T> Deref for SessionData<T>

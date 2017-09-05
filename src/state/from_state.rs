@@ -1,66 +1,63 @@
-use state::{State, request_id};
+use state::{State, StateData};
 
-use hyper::{Headers, Uri, HttpVersion, Method};
+/// A trait for accessing data that is stored in `State`.
+pub trait FromState: StateData + Sized {
+    /// Tries to borrow a value from the `State` storage.
+    fn try_borrow_from(&State) -> Option<&Self>;
 
-/// A trait for accessing data that is known to be stored in `State`.
-///
-/// This is especially applicable to data which was been extracted by the `Router` such as `Request`
-/// path and query strings.
-///
-/// # Panics
-/// All functions panic if the value is a None when retrieved from `State`.
-pub trait FromState<T> {
-    /// Moves out of `State` and returns ownership
+    /// Borrows a value from the `State` storage.
     ///
     /// # Panics
-    /// When Self was not stored in State
-    fn take_from(&mut State) -> T;
+    ///
+    /// If `Self` is not present in `State`.
+    fn borrow_from(&State) -> &Self;
 
-    /// Borrows from `State` storage
+    /// Tries to mutably borrow a value from the `State` storage.
+    fn try_borrow_mut_from(&mut State) -> Option<&mut Self>;
+
+    /// Mutably borrows a value from the `State` storage.
     ///
     /// # Panics
-    /// When Self was not stored in State
-    fn borrow_from(&State) -> &T;
+    ///
+    /// If `Self` is not present in `State`.
+    fn borrow_mut_from(&mut State) -> &mut Self;
 
+    /// Tries to move a value out of the `State` storage and return ownership.
+    fn try_take_from(&mut State) -> Option<Self>;
 
-    /// Mutably borrows from `State` storage
+    /// Moves a value out of the `State` storage and returns ownership.
     ///
     /// # Panics
-    /// When Self was not stored in State
-    fn borrow_mut_from(&mut State) -> &mut T;
+    ///
+    /// If `Self` is not present in `State`.
+    fn take_from(&mut State) -> Self;
 }
 
-macro_rules! from_state {
-    ($($t:ident),*) => { $(
-        impl FromState<$t> for $t {
-            fn take_from(s: &mut State) -> Self {
-                s.try_take::<$t>()
-                 .unwrap_or_else(|| {
-                     panic!("[{}] [take] {} is not stored in State",
-                            request_id(s), "$t")
-                 })
-            }
+impl<T> FromState for T
+where
+    T: StateData,
+{
+    fn try_borrow_from(state: &State) -> Option<&Self> {
+        state.try_borrow()
+    }
 
-            fn borrow_from(s: &State) -> &$t {
-                s.try_borrow::<$t>()
-                 .unwrap_or_else(|| {
-                     panic!("[{}] [borrow] {} is not stored in State",
-                            request_id(s),
-                            "$t")
-                 })
-            }
+    fn borrow_from(state: &State) -> &Self {
+        state.borrow()
+    }
 
-            fn borrow_mut_from(s: &mut State) -> &mut $t {
-                let req_id = String::from(request_id(s));
-                s.try_borrow_mut::<$t>()
-                 .unwrap_or_else(|| {
-                     panic!("[{}] [borrow_mut] {} is not stored in State",
-                            req_id,
-                            "$t")
-                 })
-            }
-        }
-    )+}
+    fn try_borrow_mut_from(state: &mut State) -> Option<&mut Self> {
+        state.try_borrow_mut()
+    }
+
+    fn borrow_mut_from(state: &mut State) -> &mut Self {
+        state.borrow_mut()
+    }
+
+    fn try_take_from(state: &mut State) -> Option<Self> {
+        state.try_take()
+    }
+
+    fn take_from(state: &mut State) -> Self {
+        state.take()
+    }
 }
-
-from_state!(Headers, Uri, HttpVersion, Method);

@@ -173,7 +173,7 @@ impl State {
     ///
     /// # Panics
     ///
-    /// If the value is not present.
+    /// If `T` is not present in `State`.
     ///
     /// # Examples
     ///
@@ -253,7 +253,7 @@ impl State {
     ///
     /// # Panics
     ///
-    /// If the value is not present.
+    /// If `T` is not present in `State`.
     ///
     /// # Examples
     ///
@@ -345,6 +345,10 @@ impl State {
     }
 
     /// Moves a value out of the `State` storage and returns ownership.
+    ///
+    /// # Panics
+    ///
+    /// If `T` is not present in `State`.
     ///
     /// # Examples
     ///
