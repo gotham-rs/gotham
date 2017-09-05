@@ -38,7 +38,7 @@ impl Middleware for KitchenSinkMiddleware {
 
         let f = result.and_then(move |(state, mut response)| {
             {
-                let data = state.borrow::<KitchenSinkData>().unwrap();
+                let data = state.borrow::<KitchenSinkData>();
                 let headers = response.headers_mut();
                 headers.set_raw(header_name, data.header_value.to_owned());
                 headers.set_raw("X-Request-ID", request_id(&state));
