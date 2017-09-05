@@ -68,21 +68,14 @@ type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
 
 impl<'a, C, P> RouterBuilder<'a, C, P>
 where
-    C: PipelineHandleChain<P> + Copy,
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + 'static,
 {
-    pub fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P>
-    where
-        C: PipelineHandleChain<P> + Send + Sync + 'static,
-        P: Send + Sync + 'static,
-    {
+    pub fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Get, Method::Head], path)
     }
 
-    pub fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P>
-    where
-        C: PipelineHandleChain<P> + Send + Sync + 'static,
-        P: Send + Sync + 'static,
-    {
+    pub fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Post], path)
     }
 
@@ -90,11 +83,7 @@ where
         &'b mut self,
         methods: Vec<Method>,
         path: &str,
-    ) -> DefaultSingleRouteBuilder<'b, C, P>
-    where
-        C: PipelineHandleChain<P> + Send + Sync + 'static,
-        P: Send + Sync + 'static,
-    {
+    ) -> DefaultSingleRouteBuilder<'b, C, P> {
         let path = if path.starts_with("/") {
             &path[1..]
         } else {
