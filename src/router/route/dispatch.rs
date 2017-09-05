@@ -180,7 +180,7 @@ mod tests {
     use hyper::StatusCode;
 
     fn handler(state: State, _req: Request) -> (State, Response) {
-        let number = state.borrow::<Number>().unwrap().value;
+        let number = state.borrow::<Number>().value;
         (
             state,
             Response::new().with_status(StatusCode::Ok).with_body(
@@ -236,7 +236,7 @@ mod tests {
             Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
-            state.borrow_mut::<Number>().unwrap().value += self.value;
+            state.borrow_mut::<Number>().value += self.value;
             chain(state, req)
         }
     }
@@ -259,7 +259,7 @@ mod tests {
             Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
-            state.borrow_mut::<Number>().unwrap().value *= self.value;
+            state.borrow_mut::<Number>().value *= self.value;
             chain(state, req)
         }
     }

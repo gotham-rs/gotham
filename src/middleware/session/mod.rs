@@ -135,7 +135,7 @@ pub struct SessionCookieConfig {
 ///     // The `Router` has a `NewSessionMiddleware<_, MySessionType>` in a pipeline which is
 ///     // active for this handler.
 ///     let body = {
-///         let session: &SessionData<MySessionType> = state.borrow().unwrap();
+///         let session = state.borrow::<SessionData<MySessionType>>();
 ///         format!("{:?}", session.items).into_bytes()
 ///     };
 ///
@@ -979,10 +979,7 @@ mod tests {
 
         let handler = move |mut state: State, _req: Request| {
             {
-                let session_data = state.borrow_mut::<SessionData<TestSession>>().expect(
-                    "no session data??",
-                );
-
+                let session_data = state.borrow_mut::<SessionData<TestSession>>();
                 *r.lock().unwrap() = Some(session_data.val);
                 session_data.val += 1;
             }

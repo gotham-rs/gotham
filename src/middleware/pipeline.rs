@@ -79,7 +79,7 @@ use state::{State, request_id};
 /// #     fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
 /// #         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
 /// #     {
-/// #         state.borrow_mut::<MiddlewareData>().unwrap().vec.push(2);
+/// #         state.borrow_mut::<MiddlewareData>().vec.push(2);
 /// #         chain(state, req)
 /// #     }
 /// }
@@ -97,7 +97,7 @@ use state::{State, request_id};
 /// #     fn call<Chain>(self, mut state: State, req: Request, chain: Chain) -> Box<HandlerFuture>
 /// #         where Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static
 /// #     {
-/// #         state.borrow_mut::<MiddlewareData>().unwrap().vec.push(3);
+/// #         state.borrow_mut::<MiddlewareData>().vec.push(3);
 /// #         chain(state, req)
 /// #     }
 /// }
@@ -111,7 +111,7 @@ use state::{State, request_id};
 ///
 /// fn handler(state: State, _req: Request) -> (State, Response) {
 ///     let body = {
-///        let data = state.borrow::<MiddlewareData>().unwrap();
+///        let data = state.borrow::<MiddlewareData>();
 ///        format!("{:?}", data.vec)
 ///     };
 ///
@@ -441,7 +441,7 @@ mod tests {
     use futures::future;
 
     fn handler(state: State, _req: Request) -> (State, Response) {
-        let number = state.borrow::<Number>().unwrap().value;
+        let number = state.borrow::<Number>().value;
         (
             state,
             Response::new().with_status(StatusCode::Ok).with_body(
@@ -497,7 +497,7 @@ mod tests {
             Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
-            state.borrow_mut::<Number>().unwrap().value += self.value;
+            state.borrow_mut::<Number>().value += self.value;
             chain(state, req)
         }
     }
@@ -520,7 +520,7 @@ mod tests {
             Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
-            state.borrow_mut::<Number>().unwrap().value *= self.value;
+            state.borrow_mut::<Number>().value *= self.value;
             chain(state, req)
         }
     }
