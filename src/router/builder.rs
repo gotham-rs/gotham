@@ -15,17 +15,37 @@ use router::request::path::{PathExtractor, NoopPathExtractor};
 use router::request::query_string::{QueryStringExtractor, NoopQueryStringExtractor};
 use router::tree::node::{SegmentType, NodeBuilder};
 
-/// ```rust
-/// let pipelines = new_pipeline_set();
-/// let (pipelines, default) = pipelines.add(
-///     new_pipeline()
-///         .add(NewSessionMiddleware::default())
-///         .build()
-/// );
+/// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
+/// value passed to the closure, and the `Router` is constructed before returning.
 ///
-/// router(pipelines, default, |route| {
-///     route.get("/").to(welcome::index);
-/// })
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// # use hyper::{Request, Response};
+/// # use gotham::state::State;
+/// # use gotham::router::Router;
+/// # use gotham::router::builder::*;
+/// # use gotham::middleware::pipeline::new_pipeline;
+/// # use gotham::middleware::session::NewSessionMiddleware;
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+/// # fn my_handler(_: State, _: Request) -> (State, Response) {
+/// #   unreachable!()
+/// # }
+/// #
+/// fn router() -> Router {
+///     let pipelines = new_pipeline_set();
+///     let (pipelines, default) =
+///         pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+///
+///     let pipelines = finalize_pipeline_set(pipelines);
+///
+///     let default_pipeline_chain = (default, ());
+///
+///     build_router(default_pipeline_chain, pipelines, |route| {
+///         route.get("/request/path").to(|| Ok(my_handler));
+///     })
+/// }
+/// # fn main() { router(); }
 /// ```
 pub fn build_router<C, P, F>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F) -> Router
 where
