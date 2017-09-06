@@ -86,7 +86,7 @@ impl Handler for Router {
     fn handle(self, mut state: State, req: Request) -> Box<HandlerFuture> {
         trace!("[{}] starting", request_id(&state));
 
-        let future = match state.take::<RequestPathSegments>() {
+        let future = match state.try_take::<RequestPathSegments>() {
             Some(rps) => {
                 if let Some((_, leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
                     match leaf.select_route(&state, &req) {

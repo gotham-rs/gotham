@@ -38,7 +38,7 @@ use self::middleware::{KitchenSinkData, KitchenSinkMiddleware};
 
 struct Echo;
 
-#[derive(StateData, FromState, PathExtractor, StaticResponseExtender)]
+#[derive(StateData, PathExtractor, StaticResponseExtender)]
 struct SharedRequestPath {
     name: String,
 
@@ -50,7 +50,7 @@ struct SharedRequestPath {
     from: Option<String>,
 }
 
-#[derive(StateData, FromState, QueryStringExtractor, StaticResponseExtender)]
+#[derive(StateData, QueryStringExtractor, StaticResponseExtender)]
 struct SharedQueryString {
     i: u8,
     q: Option<Vec<String>>,
@@ -236,7 +236,7 @@ impl Echo {
     }
 
     fn header_value(mut state: State, _req: Request) -> (State, Response) {
-        state.borrow_mut::<KitchenSinkData>().unwrap().header_value = "different value!".to_owned();
+        state.borrow_mut::<KitchenSinkData>().header_value = "different value!".to_owned();
 
         let res = create_response(
             &state,
@@ -266,7 +266,7 @@ impl Echo {
                 None => "",
             };
 
-            if let Some(srq) = state.borrow::<SharedQueryString>() {
+            if let Some(srq) = state.try_borrow::<SharedQueryString>() {
                 format!(
                     "Greetings, {} from {}. [i: {}, q: {:?}]\n",
                     name,

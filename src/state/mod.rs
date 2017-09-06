@@ -35,7 +35,7 @@ pub use state::request_id::set_request_id;
 /// let mut state = State::new();
 ///
 /// state.put(MyStruct { value: 1 });
-/// assert_eq!(state.borrow::<MyStruct>().unwrap().value, 1);
+/// assert_eq!(state.borrow::<MyStruct>().value, 1);
 /// # }
 /// ```
 pub struct State {
@@ -74,13 +74,13 @@ impl State {
     /// # let mut state = State::new();
     /// #
     /// state.put(MyStruct { value: 1 });
-    /// assert_eq!(state.borrow::<MyStruct>().unwrap().value, 1);
+    /// assert_eq!(state.borrow::<MyStruct>().value, 1);
     ///
     /// state.put(AnotherStruct { value: "a string" });
     /// state.put(MyStruct { value: 100 });
     ///
-    /// assert_eq!(state.borrow::<AnotherStruct>().unwrap().value, "a string");
-    /// assert_eq!(state.borrow::<MyStruct>().unwrap().value, 100);
+    /// assert_eq!(state.borrow::<AnotherStruct>().value, "a string");
+    /// assert_eq!(state.borrow::<MyStruct>().value, 100);
     /// # }
     /// ```
     pub fn put<T>(&mut self, t: T)
@@ -117,7 +117,7 @@ impl State {
     /// #
     /// state.put(MyStruct { value: 1 });
     /// assert!(state.has::<MyStruct>());
-    /// assert_eq!(state.borrow::<MyStruct>().unwrap().value, 1);
+    /// assert_eq!(state.borrow::<MyStruct>().value, 1);
     ///
     /// assert!(!state.has::<AnotherStruct>());
     /// # }
@@ -130,7 +130,7 @@ impl State {
         self.data.get(&type_id).is_some()
     }
 
-    /// Borrows a value from the `State` storage.
+    /// Tries to borrow a value from the `State` storage.
     ///
     /// # Examples
     ///
@@ -154,13 +154,13 @@ impl State {
     /// # let mut state = State::new();
     /// #
     /// state.put(MyStruct { value: 1 });
-    /// assert!(state.borrow::<MyStruct>().is_some());
-    /// assert_eq!(state.borrow::<MyStruct>().unwrap().value, 1);
+    /// assert!(state.try_borrow::<MyStruct>().is_some());
+    /// assert_eq!(state.try_borrow::<MyStruct>().unwrap().value, 1);
     ///
-    /// assert!(state.borrow::<AnotherStruct>().is_none());
+    /// assert!(state.try_borrow::<AnotherStruct>().is_none());
     /// # }
     /// ```
-    pub fn borrow<T>(&self) -> Option<&T>
+    pub fn try_borrow<T>(&self) -> Option<&T>
     where
         T: StateData,
     {
@@ -169,7 +169,91 @@ impl State {
         self.data.get(&type_id).and_then(|b| b.downcast_ref::<T>())
     }
 
+    /// Borrows a value from the `State` storage.
+    ///
+    /// # Panics
+    ///
+    /// If `T` is not present in `State`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
+    /// #
+    /// # use gotham::state::State;
+    /// #
+    /// # #[derive(StateData)]
+    /// # struct MyStruct {
+    /// #     value: i32
+    /// # }
+    /// #
+    /// # fn main() {
+    /// # let mut state = State::new();
+    /// #
+    /// state.put(MyStruct { value: 1 });
+    /// assert_eq!(state.borrow::<MyStruct>().value, 1);
+    /// # }
+    /// ```
+    pub fn borrow<T>(&self) -> &T
+    where
+        T: StateData,
+    {
+        self.try_borrow().expect(
+            "required type is not present in State container",
+        )
+    }
+
+    /// Tries to mutably borrow a value from the `State` storage.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
+    /// #
+    /// # use gotham::state::State;
+    /// #
+    /// # #[derive(StateData)]
+    /// # struct MyStruct {
+    /// #     value: i32
+    /// # }
+    /// #
+    /// # #[derive(StateData)]
+    /// # struct AnotherStruct {
+    /// # }
+    /// #
+    /// # fn main() {
+    /// # let mut state = State::new();
+    /// #
+    /// state.put(MyStruct { value: 100 });
+    ///
+    /// if let Some(a) = state.try_borrow_mut::<MyStruct>() {
+    ///     a.value += 10;
+    /// }
+    ///
+    /// assert_eq!(state.borrow::<MyStruct>().value, 110);
+    ///
+    /// assert!(state.try_borrow_mut::<AnotherStruct>().is_none());
+    /// # }
+    pub fn try_borrow_mut<T>(&mut self) -> Option<&mut T>
+    where
+        T: StateData,
+    {
+        let type_id = TypeId::of::<T>();
+        trace!(" mutably borrowing state data for type_id `{:?}`", type_id);
+        self.data.get_mut(&type_id).and_then(
+            |b| b.downcast_mut::<T>(),
+        )
+    }
+
     /// Mutably borrows a value from the `State` storage.
+    ///
+    /// # Panics
+    ///
+    /// If `T` is not present in `State`.
     ///
     /// # Examples
     ///
@@ -195,26 +279,24 @@ impl State {
     /// state.put(MyStruct { value: 100 });
     ///
     /// {
-    ///     let a = state.borrow_mut::<MyStruct>().unwrap();
+    ///     let a = state.borrow_mut::<MyStruct>();
     ///     a.value += 10;
     /// }
     ///
-    /// assert_eq!(state.borrow::<MyStruct>().unwrap().value, 110);
+    /// assert_eq!(state.borrow::<MyStruct>().value, 110);
     ///
-    /// assert!(state.borrow_mut::<AnotherStruct>().is_none());
+    /// assert!(state.try_borrow_mut::<AnotherStruct>().is_none());
     /// # }
-    pub fn borrow_mut<T>(&mut self) -> Option<&mut T>
+    pub fn borrow_mut<T>(&mut self) -> &mut T
     where
         T: StateData,
     {
-        let type_id = TypeId::of::<T>();
-        trace!(" mutably borrowing state data for type_id `{:?}`", type_id);
-        self.data.get_mut(&type_id).and_then(
-            |b| b.downcast_mut::<T>(),
+        self.try_borrow_mut().expect(
+            "required type is not present in State container",
         )
     }
 
-    /// Moves a value out of the `State` storage, and returns ownership.
+    /// Tries to move a value out of the `State` storage and return ownership.
     ///
     /// # Examples
     ///
@@ -239,15 +321,15 @@ impl State {
     /// #
     /// state.put(MyStruct { value: 110 });
     ///
-    /// assert_eq!(state.take::<MyStruct>().unwrap().value, 110);
+    /// assert_eq!(state.try_take::<MyStruct>().unwrap().value, 110);
     ///
-    /// assert!(state.take::<MyStruct>().is_none());
-    /// assert!(state.borrow_mut::<MyStruct>().is_none());
-    /// assert!(state.borrow::<MyStruct>().is_none());
+    /// assert!(state.try_take::<MyStruct>().is_none());
+    /// assert!(state.try_borrow_mut::<MyStruct>().is_none());
+    /// assert!(state.try_borrow::<MyStruct>().is_none());
     ///
-    /// assert!(state.take::<AnotherStruct>().is_none());
+    /// assert!(state.try_take::<AnotherStruct>().is_none());
     /// # }
-    pub fn take<T>(&mut self) -> Option<T>
+    pub fn try_take<T>(&mut self) -> Option<T>
     where
         T: StateData,
     {
@@ -260,5 +342,45 @@ impl State {
             .remove(&type_id)
             .and_then(|b| b.downcast::<T>().ok())
             .map(|b| *b)
+    }
+
+    /// Moves a value out of the `State` storage and returns ownership.
+    ///
+    /// # Panics
+    ///
+    /// If `T` is not present in `State`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
+    /// #
+    /// # use gotham::state::State;
+    /// #
+    /// # #[derive(StateData)]
+    /// # struct MyStruct {
+    /// #     value: i32
+    /// # }
+    /// #
+    /// # fn main() {
+    /// # let mut state = State::new();
+    /// #
+    /// state.put(MyStruct { value: 110 });
+    ///
+    /// assert_eq!(state.take::<MyStruct>().value, 110);
+    ///
+    /// assert!(state.try_take::<MyStruct>().is_none());
+    /// assert!(state.try_borrow_mut::<MyStruct>().is_none());
+    /// assert!(state.try_borrow::<MyStruct>().is_none());
+    /// # }
+    pub fn take<T>(&mut self) -> T
+    where
+        T: StateData,
+    {
+        self.try_take().expect(
+            "required type is not present in State container",
+        )
     }
 }

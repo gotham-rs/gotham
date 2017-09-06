@@ -37,10 +37,3 @@ pub fn state_data(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let gen = state::state_data(&ast);
     gen.parse().unwrap()
 }
-
-#[proc_macro_derive(FromState)]
-pub fn from_state(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
-    let gen = state::from_state(&ast);
-    gen.parse().unwrap()
-}

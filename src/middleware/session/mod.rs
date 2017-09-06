@@ -16,7 +16,7 @@ use rmp_serde;
 
 use super::{NewMiddleware, Middleware};
 use handler::{HandlerFuture, HandlerError, IntoHandlerError};
-use state::{self, State, StateData, FromState};
+use state::{self, State, StateData};
 use http::response::create_response;
 
 mod backend;
@@ -135,7 +135,7 @@ pub struct SessionCookieConfig {
 ///     // The `Router` has a `NewSessionMiddleware<_, MySessionType>` in a pipeline which is
 ///     // active for this handler.
 ///     let body = {
-///         let session: &SessionData<MySessionType> = state.borrow().unwrap();
+///         let session = state.borrow::<SessionData<MySessionType>>();
 ///         format!("{:?}", session.items).into_bytes()
 ///     };
 ///
@@ -296,45 +296,6 @@ impl<T> StateData for SessionData<T>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-}
-
-impl<T> FromState<SessionData<T>> for SessionData<T>
-where
-    T: Default
-        + Serialize
-        + for<'de> Deserialize<'de>
-        + 'static,
-{
-    fn take_from(s: &mut State) -> SessionData<T> {
-        s.take::<SessionData<T>>().unwrap_or_else(|| {
-            panic!(
-                "[{}] [take] SessionData<T> is not stored in State, \
-                                        is NewSessionMiddleware configured correctly?",
-                state::request_id(s)
-            )
-        })
-    }
-
-    fn borrow_from(s: &State) -> &SessionData<T> {
-        s.borrow::<SessionData<T>>().unwrap_or_else(|| {
-            panic!(
-                "[{}] [borrow] SessionData<T> is not stored in State, \
-                                        is NewSessionMiddleware configured correctly?",
-                state::request_id(s)
-            )
-        })
-    }
-
-    fn borrow_mut_from(s: &mut State) -> &mut SessionData<T> {
-        let req_id = String::from(state::request_id(s));
-        s.borrow_mut::<SessionData<T>>().unwrap_or_else(|| {
-            panic!(
-                "[{}] [borrow_mut] SessionData<T> is not stored in State, \
-                                        is NewSessionMiddleware configured correctly?",
-                req_id
-            )
-        })
-    }
 }
 
 impl<T> Deref for SessionData<T>
@@ -770,7 +731,7 @@ fn persist_session<T>(
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    match state.take::<SessionDropData>() {
+    match state.try_take::<SessionDropData>() {
         Some(ref session_drop_data) => {
             trace!(
                 "[{}] SessionDropData found in state, removing session cookie from user agent",
@@ -787,7 +748,7 @@ where
         }
     }
 
-    match state.take::<SessionData<T>>() {
+    match state.try_take::<SessionData<T>>() {
         Some(session_data) => {
             if let SessionCookieState::New = session_data.cookie_state {
                 send_cookie(&mut response, &session_data);
@@ -979,10 +940,7 @@ mod tests {
 
         let handler = move |mut state: State, _req: Request| {
             {
-                let session_data = state.borrow_mut::<SessionData<TestSession>>().expect(
-                    "no session data??",
-                );
-
+                let session_data = state.borrow_mut::<SessionData<TestSession>>();
                 *r.lock().unwrap() = Some(session_data.val);
                 session_data.val += 1;
             }
