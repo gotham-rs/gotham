@@ -112,6 +112,7 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
                 }
 
                 let mut qsm = {
+                    use gotham::state::FromState;
                     let uri = hyper::Uri::borrow_from(s);
                     let query = uri.query();
                     gotham::http::request::query_string::split(query)
