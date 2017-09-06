@@ -22,7 +22,7 @@ where
 
 /// Provides access to a Diesel connection within an r2d2 pool via Gotham State
 /// for Middleware and Handlers.
-#[derive(StateData, FromState)]
+#[derive(StateData)]
 pub struct Diesel<T>
 where
     T: Connection + 'static,

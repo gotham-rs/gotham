@@ -12,7 +12,6 @@
 #[macro_use]
 extern crate log;
 extern crate futures;
-extern crate hyper;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
@@ -25,7 +24,6 @@ pub mod state_data;
 use std::io;
 
 use futures::{Future, future};
-use hyper::Request;
 
 use gotham::middleware::{NewMiddleware, Middleware};
 use gotham::state::{State, request_id};
@@ -90,14 +88,14 @@ impl<T> Middleware for DieselMiddleware<T>
 where
     T: Connection + 'static,
 {
-    fn call<Chain>(self, mut state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State, Request) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Box<HandlerFuture>,
     {
         trace!("[{}] pre chain", request_id(&state));
         state.put(Diesel::<T>::new(self.pool));
 
-        let f = chain(state, request).and_then(move |(state, response)| {
+        let f = chain(state).and_then(move |(state, response)| {
             {
                 trace!("[{}] post chain", request_id(&state));
             }
