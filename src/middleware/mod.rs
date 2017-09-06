@@ -18,7 +18,6 @@ pub mod session;
 ///
 /// ```rust,no_run
 /// # extern crate gotham;
-/// # extern crate hyper;
 /// #
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
@@ -45,7 +44,6 @@ pub mod session;
 /// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
-/// # extern crate hyper;
 /// #
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
@@ -113,7 +111,6 @@ pub mod session;
 ///
 /// ```rust,no_run
 /// # extern crate gotham;
-/// # extern crate hyper;
 /// # extern crate futures;
 /// #
 /// # use gotham::handler::HandlerFuture;

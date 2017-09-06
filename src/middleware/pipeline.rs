@@ -37,9 +37,7 @@ use state::{State, request_id};
 /// # use gotham::router::request::path::NoopPathExtractor;
 /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-/// # use hyper::Response;
-/// # use hyper::StatusCode;
-/// # use hyper::Method;
+/// # use hyper::{Response, StatusCode, Method};
 /// #
 /// #[derive(StateData)]
 /// struct MiddlewareData {
@@ -208,7 +206,6 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 ///
 /// ```rust
 /// # extern crate gotham;
-/// # extern crate hyper;
 /// #
 /// # use std::io;
 /// # use gotham::state::State;

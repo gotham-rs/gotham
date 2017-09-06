@@ -21,7 +21,6 @@ pub struct HandlerError {
 ///
 /// ```rust
 /// # extern crate gotham;
-/// # extern crate hyper;
 /// # extern crate futures;
 /// #
 /// # use std::fs::File;

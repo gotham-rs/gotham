@@ -12,7 +12,6 @@ use state::State;
 ///
 /// ```rust
 /// # extern crate gotham;
-/// # extern crate hyper;
 /// # fn main() {
 /// # use gotham::state::State;
 /// # use gotham::router::route::matcher::RouteMatcher;
