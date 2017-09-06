@@ -1,5 +1,8 @@
 #![allow(warnings)]
 
+mod single;
+mod replace;
+
 use std::marker::PhantomData;
 
 use hyper::Method;
@@ -14,6 +17,9 @@ use router::route::dispatch::{PipelineHandleChain, PipelineSet, DispatcherImpl};
 use router::request::path::{PathExtractor, NoopPathExtractor};
 use router::request::query_string::{QueryStringExtractor, NoopQueryStringExtractor};
 use router::tree::node::{SegmentType, NodeBuilder};
+
+pub use self::single::DefineSingleRoute;
+use self::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
 
 /// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
 /// value passed to the closure, and the `Router` is constructed before returning.
@@ -352,6 +358,62 @@ where
     phantom: PhantomData<(PE, QSE)>,
 }
 
+impl<'a, M, C, P, PE, QSE> DefineSingleRoute for SingleRouteBuilder<'a, M, C, P, PE, QSE>
+where
+    M: RouteMatcher
+        + Send
+        + Sync
+        + 'static,
+    C: PipelineHandleChain<P>
+        + Send
+        + Sync
+        + 'static,
+    P: Send + Sync + 'static,
+    PE: PathExtractor
+        + Send
+        + Sync
+        + 'static,
+    QSE: QueryStringExtractor
+        + Send
+        + Sync
+        + 'static,
+{
+    fn to<H>(self, handler: H)
+    where
+        H: Handler + Copy + Send + Sync + 'static,
+    {
+        self.to_new_handler(move || Ok(handler))
+    }
+
+    fn to_new_handler<NH>(self, new_handler: NH)
+    where
+        NH: NewHandler + 'static,
+    {
+        let dispatcher = DispatcherImpl::new(new_handler, self.pipeline_chain, self.pipelines);
+        let route: RouteImpl<M, PE, QSE> = RouteImpl::new(
+            self.matcher,
+            Box::new(dispatcher),
+            Extractors::new(),
+            self.delegation,
+        );
+        self.node_builder.add_route(Box::new(route));
+    }
+
+    fn with_path_params<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
+    where
+        NPE: PathExtractor + Send + Sync + 'static,
+    {
+        self.replace_path_extractor()
+    }
+
+    fn with_query_params<NQSE>(self) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
+    where
+        NQSE: QueryStringExtractor + Send + Sync + 'static,
+    {
+        self.replace_query_string_extractor()
+    }
+}
+
 impl<'a, M, C, P, PE, QSE> SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
     M: RouteMatcher
@@ -372,227 +434,6 @@ where
         + Sync
         + 'static,
 {
-    /// Directs the route to the given `Handler`, automatically creating a `NewHandler` which
-    /// copies the `Handler`. This is the easiest option for code which is using bare functions as
-    /// `Handler` functions.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # use hyper::{Request, Response};
-    /// # use gotham::state::State;
-    /// # use gotham::router::Router;
-    /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// fn my_handler(_: State, _: Request) -> (State, Response) {
-    ///     // Handler implementation elided.
-    /// #   unimplemented!()
-    /// }
-    /// #
-    /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    ///
-    /// build_router(default_pipeline_chain, pipelines, |route| {
-    ///     route.get("/request/path").to(my_handler);
-    /// })
-    /// # }
-    /// # fn main() { router(); }
-    /// ```
-    pub fn to<H>(self, handler: H)
-    where
-        H: Handler + Copy + Send + Sync + 'static,
-    {
-        self.to_new_handler(move || Ok(handler))
-    }
-
-    /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
-    /// values are constructed.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # use std::io;
-    /// # use hyper::Request;
-    /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
-    /// # use gotham::state::State;
-    /// # use gotham::router::Router;
-    /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// struct MyNewHandler;
-    /// struct MyHandler;
-    ///
-    /// impl NewHandler for MyNewHandler {
-    ///     type Instance = MyHandler;
-    ///
-    ///     fn new_handler(&self) -> io::Result<Self::Instance> {
-    ///         Ok(MyHandler)
-    ///     }
-    /// }
-    ///
-    /// impl Handler for MyHandler {
-    ///     fn handle(self, _state: State, _req: Request) -> Box<HandlerFuture> {
-    ///         // Handler implementation elided.
-    /// #       unimplemented!()
-    ///     }
-    /// }
-    /// #
-    /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    ///
-    /// build_router(default_pipeline_chain, pipelines, |route| {
-    ///     route.get("/request/path").to_new_handler(MyNewHandler);
-    /// })
-    /// # }
-    /// # fn main() { router(); }
-    /// ```
-    pub fn to_new_handler<NH>(self, new_handler: NH)
-    where
-        NH: NewHandler + 'static,
-    {
-        let dispatcher = DispatcherImpl::new(new_handler, self.pipeline_chain, self.pipelines);
-        let route: RouteImpl<M, PE, QSE> = RouteImpl::new(
-            self.matcher,
-            Box::new(dispatcher),
-            Extractors::new(),
-            self.delegation,
-        );
-        self.node_builder.add_route(Box::new(route));
-    }
-
-    /// Applies a `PathExtractor` type to the current route, to extract path parameters into
-    /// `State` with the given type.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
-    /// # extern crate hyper;
-    /// # #[macro_use]
-    /// # extern crate log;
-    /// # use hyper::{Request, Response};
-    /// # use gotham::state::{State, FromState};
-    /// # use gotham::router::Router;
-    /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// #[derive(StateData, FromState, PathExtractor, StaticResponseExtender)]
-    /// struct MyPathParams {
-    /// #   #[allow(dead_code)]
-    ///     name: String,
-    /// }
-    ///
-    /// fn my_handler(state: State, _: Request) -> (State, Response) {
-    /// #   #[allow(unused_variables)]
-    ///     let params = MyPathParams::borrow_from(&state);
-    ///
-    ///     // Handler implementation elided.
-    /// #   unimplemented!()
-    /// }
-    /// #
-    /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    ///
-    /// build_router(default_pipeline_chain, pipelines, |route| {
-    ///     route.get("/request/path")
-    ///          .with_path_params::<MyPathParams>()
-    ///          .to(my_handler);
-    /// })
-    /// # }
-    /// # fn main() { router(); }
-    /// ```
-    pub fn with_path_params<NPE>(self) -> SingleRouteBuilder<'a, M, C, P, NPE, QSE>
-    where
-        NPE: PathExtractor + Send + Sync + 'static,
-    {
-        self.coerce()
-    }
-
-    /// Applies a `QueryStringExtractor` type to the current route, to extract query parameters into
-    /// `State` with the given type.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
-    /// # extern crate hyper;
-    /// # #[macro_use]
-    /// # extern crate log;
-    /// # use hyper::{Request, Response};
-    /// # use gotham::state::{State, FromState};
-    /// # use gotham::router::Router;
-    /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// #[derive(StateData, FromState, QueryStringExtractor, StaticResponseExtender)]
-    /// struct MyQueryParams {
-    /// #   #[allow(dead_code)]
-    ///     id: u64,
-    /// }
-    ///
-    /// fn my_handler(state: State, _: Request) -> (State, Response) {
-    /// #   #[allow(unused_variables)]
-    ///     let id = MyQueryParams::borrow_from(&state).id;
-    ///
-    ///     // Handler implementation elided.
-    /// #   unimplemented!()
-    /// }
-    /// #
-    /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    ///
-    /// build_router(default_pipeline_chain, pipelines, |route| {
-    ///     route.get("/request/path")
-    ///          .with_query_params::<MyQueryParams>()
-    ///          .to(my_handler);
-    /// })
-    /// # }
-    /// # fn main() { router(); }
-    /// ```
-    pub fn with_query_params<NQSE>(self) -> SingleRouteBuilder<'a, M, C, P, PE, NQSE>
-    where
-        NQSE: QueryStringExtractor + Send + Sync + 'static,
-    {
-        self.coerce()
-    }
-
     fn coerce<NPE, NQSE>(self) -> SingleRouteBuilder<'a, M, C, P, NPE, NQSE>
     where
         NPE: PathExtractor + Send + Sync + 'static,
