@@ -655,20 +655,105 @@ where
 mod tests {
     use super::*;
 
+    use std::str::FromStr;
+
     use hyper::{Request, Response, StatusCode, Method};
     use hyper::server::{NewService, Service};
-    use futures::Future;
+    use futures::{Future, Stream};
 
     use middleware::pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
-    use state::State;
+    use state::{State, StateData};
     use handler::{Handler, NewHandlerService};
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+    use router::response::extender::StaticResponseExtender;
+    use router::tree::SegmentMapping;
+    use http::FormUrlDecoded;
+    use http::request::query_string;
+
+    struct HelloParams {
+        name: String,
+    }
+
+    impl StateData for HelloParams {}
+
+    impl StaticResponseExtender for HelloParams {
+        fn extend(_: &mut State, _: &mut Response) {}
+    }
+
+    impl PathExtractor for HelloParams {
+        fn extract(state: &mut State, segment_mapping: SegmentMapping) -> Result<(), String> {
+            let name = segment_mapping
+                .get("name")
+                .unwrap()
+                .first()
+                .unwrap()
+                .val()
+                .to_owned();
+            let params = HelloParams { name };
+            state.put(params);
+            Ok(())
+        }
+    }
+
+    struct AddParams {
+        x: u64,
+        y: u64,
+    }
+
+    impl StateData for AddParams {}
+
+    impl StaticResponseExtender for AddParams {
+        fn extend(_: &mut State, _: &mut Response) {}
+    }
+
+    impl QueryStringExtractor for AddParams {
+        fn extract(state: &mut State, query: Option<&str>) -> Result<(), String> {
+            let mapping = query_string::split(query);
+            let parse = |vals: Option<&Vec<FormUrlDecoded>>| {
+                let s = vals.unwrap().first().unwrap().val();
+                println!("{}", s);
+                u64::from_str(s).unwrap()
+            };
+
+            let params = AddParams {
+                x: parse(mapping.get("x")),
+                y: parse(mapping.get("y")),
+            };
+
+            state.put(params);
+            Ok(())
+        }
+    }
 
     mod welcome {
         use super::*;
         pub fn index(state: State, req: Request) -> (State, Response) {
             (state, Response::new().with_status(StatusCode::Ok))
+        }
+
+        pub fn hello(mut state: State, req: Request) -> (State, Response) {
+            let params = state.take::<HelloParams>().unwrap();
+            let response = Response::new().with_status(StatusCode::Ok).with_body(
+                format!(
+                    "Hello, {}!",
+                    params.name
+                ),
+            );
+            (state, response)
+        }
+
+        pub fn add(mut state: State, req: Request) -> (State, Response) {
+            let params = state.take::<AddParams>().unwrap();
+            let response = Response::new().with_status(StatusCode::Ok).with_body(
+                format!(
+                    "{} + {} = {}",
+                    params.x,
+                    params.y,
+                    params.x + params.y,
+                ),
+            );
+            (state, response)
         }
     }
 
@@ -691,27 +776,40 @@ mod tests {
 
         let router = build_router(default_pipeline_chain, pipelines, |route| {
             route.get("/").to(welcome::index);
+
+            route
+                .get("/hello/:name")
+                .with_path_params::<HelloParams>()
+                .to(welcome::hello);
+
+            route.get("/add").with_query_params::<AddParams>().to(
+                welcome::add,
+            );
+
             route.scope("/api", |route| { route.post("/submit").to(api::submit); });
         });
 
         let new_service = NewHandlerService::new(router);
 
-        let service = new_service.new_service().unwrap();
+        let call = move |req| {
+            let service = new_service.new_service().unwrap();
+            service.call(req).wait().unwrap()
+        };
 
-        let response = service
-            .call(Request::new(Method::Get, "/".parse().unwrap()))
-            .wait()
-            .unwrap();
-
+        let response = call(Request::new(Method::Get, "/".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);
 
-        let service = new_service.new_service().unwrap();
-
-        let response = service
-            .call(Request::new(Method::Post, "/api/submit".parse().unwrap()))
-            .wait()
-            .unwrap();
-
+        let response = call(Request::new(Method::Post, "/api/submit".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Accepted);
+
+        let response = call(Request::new(Method::Get, "/hello/world".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::Ok);
+        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Hello, world!");
+
+        let response = call(Request::new(Method::Get, "/add?x=16&y=71".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::Ok);
+        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "16 + 71 = 87");
     }
 }
