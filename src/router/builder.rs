@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use hyper::Method;
 
-use handler::NewHandler;
+use handler::{Handler, NewHandler};
 use router::Router;
 use router::tree::TreeBuilder;
 use router::response::finalizer::ResponseFinalizerBuilder;
@@ -42,7 +42,7 @@ use router::tree::node::{SegmentType, NodeBuilder};
 ///     let default_pipeline_chain = (default, ());
 ///
 ///     build_router(default_pipeline_chain, pipelines, |route| {
-///         route.get("/request/path").to(|| Ok(my_handler));
+///         route.get("/request/path").to(my_handler);
 ///     })
 /// }
 /// # fn main() { router(); }
@@ -105,7 +105,7 @@ where
     /// #   let default_pipeline_chain = (default, ());
     /// #
     /// build_router(default_pipeline_chain, pipelines, |route| {
-    ///     route.get("/request/path").to(|| Ok(my_handler));
+    ///     route.get("/request/path").to(my_handler);
     /// })
     /// # }
     /// # fn main() { router(); }
@@ -142,7 +142,7 @@ where
     /// #   let default_pipeline_chain = (default, ());
     /// #
     /// build_router(default_pipeline_chain, pipelines, |route| {
-    ///     route.post("/request/path").to(|| Ok(my_handler));
+    ///     route.post("/request/path").to(my_handler);
     /// })
     /// # }
     /// # fn main() { router(); }
@@ -185,7 +185,7 @@ where
     /// #   let default_pipeline_chain = (default, ());
     /// #
     /// build_router(default_pipeline_chain, pipelines, |route| {
-    ///     route.request(vec![Get, Head], "/request/path").to(|| Ok(my_handler));
+    ///     route.request(vec![Get, Head], "/request/path").to(my_handler);
     /// })
     /// # }
     /// # fn main() { router(); }
@@ -243,7 +243,7 @@ where
     /// build_router(default_pipeline_chain, pipelines, |route| {
     ///     route.scope("/api", |route| {
     ///         // Match requests to `/api/list`
-    ///         route.get("/list").to(|| Ok(api::list));
+    ///         route.get("/list").to(api::list);
     ///     });
     /// })
     /// # }
@@ -372,7 +372,14 @@ where
         + Sync
         + 'static,
 {
-    pub fn to<NH>(self, new_handler: NH)
+    pub fn to<H>(self, handler: H)
+    where
+        H: Handler + Copy + Send + Sync + 'static,
+    {
+        self.to_new_handler(move || Ok(handler))
+    }
+
+    pub fn to_new_handler<NH>(self, new_handler: NH)
     where
         NH: NewHandler + 'static,
     {
@@ -497,10 +504,8 @@ mod tests {
         let default_pipeline_chain = (default, ());
 
         let router = build_router(default_pipeline_chain, pipelines, |route| {
-            route.get("/").to(|| Ok(welcome::index));
-            route.scope("/api", |route| {
-                route.post("/submit").to(|| Ok(api::submit));
-            });
+            route.get("/").to(welcome::index);
+            route.scope("/api", |route| { route.post("/submit").to(api::submit); });
         });
 
         let new_service = NewHandlerService::new(router);
