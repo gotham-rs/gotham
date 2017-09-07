@@ -14,7 +14,7 @@ mod middleware;
 
 use futures::{future, Future, Stream};
 
-use hyper::{Request, Response, Method, StatusCode};
+use hyper::{Body, Response, Method, StatusCode};
 
 use log::LogLevelFilter;
 
@@ -201,7 +201,7 @@ fn build_router() -> Router {
 }
 
 impl Echo {
-    fn get(state: State, _req: Request) -> (State, Response) {
+    fn get(state: State) -> (State, Response) {
         let res = create_response(
             &state,
             StatusCode::Ok,
@@ -210,23 +210,27 @@ impl Echo {
         (state, res)
     }
 
-    fn post(state: State, req: Request) -> Box<HandlerFuture> {
-        let f = req.body().concat2().then(move |full_body| match full_body {
-            Ok(valid_body) => {
-                let res = create_response(
-                    &state,
-                    StatusCode::Ok,
-                    Some((valid_body.to_vec(), mime::TEXT_PLAIN)),
-                );
-                future::ok((state, res))
-            }
-            Err(e) => future::err((state, e.into_handler_error())),
-        });
+    fn post(mut state: State) -> Box<HandlerFuture> {
+        let f = Body::take_from(&mut state).concat2().then(
+            move |full_body| {
+                match full_body {
+                    Ok(valid_body) => {
+                        let res = create_response(
+                            &state,
+                            StatusCode::Ok,
+                            Some((valid_body.to_vec(), mime::TEXT_PLAIN)),
+                        );
+                        future::ok((state, res))
+                    }
+                    Err(e) => future::err((state, e.into_handler_error())),
+                }
+            },
+        );
 
         Box::new(f)
     }
 
-    fn async(state: State, _req: Request) -> Box<HandlerFuture> {
+    fn async(state: State) -> Box<HandlerFuture> {
         let res = create_response(
             &state,
             StatusCode::Ok,
@@ -235,7 +239,7 @@ impl Echo {
         Box::new(future::lazy(move || future::ok((state, res))))
     }
 
-    fn header_value(mut state: State, _req: Request) -> (State, Response) {
+    fn header_value(mut state: State) -> (State, Response) {
         state.borrow_mut::<KitchenSinkData>().header_value = "different value!".to_owned();
 
         let res = create_response(
@@ -246,7 +250,7 @@ impl Echo {
         (state, res)
     }
 
-    fn hello(mut state: State, _req: Request) -> (State, Response) {
+    fn hello(mut state: State) -> (State, Response) {
         let hello = format!("Hello, {}\n", SharedRequestPath::take_from(&mut state).name);
 
         let res = create_response(
@@ -257,7 +261,7 @@ impl Echo {
         (state, res)
     }
 
-    fn greeting(state: State, _req: Request) -> (State, Response) {
+    fn greeting(state: State) -> (State, Response) {
         let g = {
             let srp = SharedRequestPath::borrow_from(&state);
             let name = srp.name.as_str();

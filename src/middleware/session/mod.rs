@@ -8,15 +8,15 @@ use std::marker::PhantomData;
 use base64;
 use rand::Rng;
 use hyper::StatusCode;
-use hyper::server::{Request, Response};
-use hyper::header::{Cookie, SetCookie};
+use hyper::server::Response;
+use hyper::header::{Headers, Cookie, SetCookie};
 use futures::{future, Future};
 use serde::{Serialize, Deserialize};
 use rmp_serde;
 
 use super::{NewMiddleware, Middleware};
 use handler::{HandlerFuture, HandlerError, IntoHandlerError};
-use state::{self, State, StateData};
+use state::{self, State, FromState, StateData};
 use http::response::create_response;
 
 mod backend;
@@ -116,14 +116,14 @@ pub struct SessionCookieConfig {
 /// # use serde::Serialize;
 /// # use futures::{future, Future, Stream};
 /// # use gotham::handler::{NewHandlerService, HandlerFuture};
-/// # use gotham::state::State;
+/// # use gotham::state::{State, FromState};
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
 /// #                                   SessionIdentifier};
 /// # use gotham::http::response::create_response;
 /// # use hyper::header::Cookie;
-/// # use hyper::server::{Request, Response, Service};
-/// # use hyper::{Method, StatusCode};
+/// # use hyper::server::{Response, Service};
+/// # use hyper::{Request, Method, StatusCode};
 /// # use hyper::mime;
 /// #
 /// #[derive(Default, Serialize, Deserialize)]
@@ -131,11 +131,11 @@ pub struct SessionCookieConfig {
 ///     items: Vec<String>,
 /// }
 ///
-/// fn my_handler(state: State, _request: Request) -> (State, Response) {
+/// fn my_handler(state: State) -> (State, Response) {
 ///     // The `Router` has a `NewSessionMiddleware<_, MySessionType>` in a pipeline which is
 ///     // active for this handler.
 ///     let body = {
-///         let session = state.borrow::<SessionData<MySessionType>>();
+///         let session = SessionData::<MySessionType>::borrow_from(&state);
 ///         format!("{:?}", session.items).into_bytes()
 ///     };
 ///
@@ -166,11 +166,11 @@ pub struct SessionCookieConfig {
 /// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
 /// #
 /// #   let service = NewHandlerService::new(move || {
-/// #       let handler = |state, req| {
+/// #       let handler = |state| {
 /// #           let m = nm.new_middleware().unwrap();
-/// #           let chain = |state, req| Box::new(future::ok(my_handler(state, req))) as Box<HandlerFuture>;
+/// #           let chain = |state| Box::new(future::ok(my_handler(state))) as Box<HandlerFuture>;
 /// #
-/// #           m.call(state, req, chain)
+/// #           m.call(state, chain)
 /// #       };
 /// #
 /// #       Ok(handler)
@@ -676,13 +676,12 @@ where
         + for<'de> Deserialize<'de>
         + 'static,
 {
-    fn call<Chain>(self, state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State, Request) -> Box<HandlerFuture> + 'static,
+        Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
         Self: Sized,
     {
-        let session_identifier = request
-            .headers()
+        let session_identifier = Headers::borrow_from(&state)
             .get::<Cookie>()
             .and_then(|c| c.get(self.cookie_config.name.as_ref()))
             .map(|value| SessionIdentifier { value: value.to_owned() });
@@ -692,14 +691,14 @@ where
                 let f = self.backend
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
-                    .and_then(|state| chain(state, request))
+                    .and_then(|state| chain(state))
                     .and_then(persist_session::<T>);
 
                 Box::new(f)
             }
             None => {
                 let f = self.new_session(state)
-                    .and_then(|state| chain(state, request))
+                    .and_then(|state| chain(state))
                     .and_then(persist_session::<T>);
 
                 Box::new(f)
@@ -905,7 +904,9 @@ mod tests {
     use super::*;
     use std::sync::Mutex;
     use rand;
-    use hyper::{self, Method, StatusCode, Response};
+    use hyper::{StatusCode, Response};
+    use hyper::header::Headers;
+
 
     #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
     struct TestSession {
@@ -932,13 +933,10 @@ mod tests {
         let mut cookies = Cookie::new();
         cookies.set("_gotham_session", identifier.value.clone());
 
-        let mut req: Request<hyper::Body> = Request::new(Method::Get, "/".parse().unwrap());
-        req.headers_mut().set::<Cookie>(cookies);
-
         let received: Arc<Mutex<Option<u64>>> = Arc::new(Mutex::new(None));
         let r = received.clone();
 
-        let handler = move |mut state: State, _req: Request| {
+        let handler = move |mut state: State| {
             {
                 let session_data = state.borrow_mut::<SessionData<TestSession>>();
                 *r.lock().unwrap() = Some(session_data.val);
@@ -950,7 +948,12 @@ mod tests {
             )) as Box<HandlerFuture>
         };
 
-        let r: Box<HandlerFuture> = m.call(State::new(), req, handler);
+        let mut state = State::new();
+        let mut headers = Headers::new();
+        headers.set::<Cookie>(cookies);
+        state.put(headers);
+
+        let r: Box<HandlerFuture> = m.call(state, handler);
         match r.wait() {
             Ok(_) => {
                 let guard = received.lock().unwrap();

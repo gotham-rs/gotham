@@ -21,17 +21,15 @@ pub struct HandlerError {
 ///
 /// ```rust
 /// # extern crate gotham;
-/// # extern crate hyper;
 /// # extern crate futures;
 /// #
 /// # use std::fs::File;
 /// # use gotham::state::State;
 /// # use gotham::handler::{IntoHandlerError, HandlerFuture};
-/// # use hyper::Request;
 /// # use futures::future;
 /// #
 /// # #[allow(dead_code)]
-/// fn my_handler(state: State, _request: Request) -> Box<HandlerFuture> {
+/// fn my_handler(state: State) -> Box<HandlerFuture> {
 ///     match File::open("config.toml") {
 ///         Err(e) => Box::new(future::err((state, e.into_handler_error()))),
 ///         Ok(_) => // Create and return a response
@@ -92,13 +90,15 @@ impl HandlerError {
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::{StatusCode, Request, Method};
+    /// # use hyper::StatusCode;
+    /// # use hyper::header::Headers;
     /// # use gotham::state::State;
     /// # use gotham::handler::{IntoResponse, IntoHandlerError};
     /// # use gotham::state::request_id::set_request_id;
     /// # fn main() {
     /// # let mut state = State::new();
-    /// # set_request_id(&mut state, &Request::new(Method::Get, "/".parse().unwrap()));
+    /// # state.put(Headers::new());
+    /// # set_request_id(&mut state);
     /// let io_error = std::io::Error::last_os_error();
     /// let handler_error = io_error
     ///     .into_handler_error()

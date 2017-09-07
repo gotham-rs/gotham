@@ -1,10 +1,10 @@
 //! Defines a unique id per `Request` that should be output with all logging
 
-use hyper::Request;
+use hyper::header::Headers;
 use uuid::Uuid;
 
 use http::header::XRequestId;
-use state::State;
+use state::{State, FromState};
 
 /// Holds details about the current Request that are useful for enhancing logging.
 pub struct RequestId {
@@ -20,24 +20,25 @@ pub struct RequestId {
 ///
 /// This method MUST be invoked by Gotham, before handing control to
 /// pipelines or Handlers to ensure that a value for `RequestId` is always available.
-pub fn set_request_id<'a>(state: &'a mut State, req: &Request) -> &'a str {
+pub fn set_request_id<'a>(state: &'a mut State) -> &'a str {
     if !state.has::<RequestId>() {
-        match req.headers().get::<XRequestId>() {
+        let request_id = match Headers::borrow_from(state).get::<XRequestId>() {
             Some(ex_req_id) => {
                 trace!(
                     "[{}] RequestId set from external source via X-Request-ID header",
                     ex_req_id.0.clone()
                 );
-                state.put(RequestId { val: ex_req_id.0.clone() })
+                RequestId { val: ex_req_id.0.clone() }
             }
             None => {
                 let val = Uuid::new_v4().hyphenated().to_string();
                 trace!("[{}] RequestId generated internally", val);
-                let request_id = RequestId { val };
-                state.put(request_id);
+                RequestId { val }
             }
-        }
+        };
+        state.put(request_id);
     };
+
     request_id(state)
 }
 
@@ -50,7 +51,7 @@ pub fn set_request_id<'a>(state: &'a mut State, req: &Request) -> &'a str {
 /// Will panic if the Gotham `Router` has not already populated `State` with a value for `RequestId`
 /// prior to handling control to middleware pipelines and application handlers.
 pub fn request_id(state: &State) -> &str {
-    match state.try_borrow::<RequestId>() {
+    match RequestId::try_borrow_from(state) {
         Some(request_id) => &request_id.val,
         None => panic!("RequestId must be populated before application code is invoked"),
     }
@@ -59,9 +60,6 @@ pub fn request_id(state: &State) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use std::str::FromStr;
-    use hyper::{Method, Uri};
 
     #[test]
     #[should_panic(expected = "RequestId must be populated before application code is invoked")]
@@ -73,14 +71,13 @@ mod tests {
     #[test]
     fn uses_an_external_request_id() {
         let mut state = State::new();
-        let mut req = Request::new(
-            Method::Get,
-            Uri::from_str("https://test.gotham.rs").unwrap(),
-        );
-        req.headers_mut().set(XRequestId("1-2-3-4".to_string()));
+
+        let mut headers = Headers::new();
+        headers.set(XRequestId("1-2-3-4".to_string()));
+        state.put(headers);
 
         {
-            let r = set_request_id(&mut state, &req);
+            let r = set_request_id(&mut state);
             assert_eq!("1-2-3-4", r);
         };
         assert_eq!("1-2-3-4", request_id(&state));
@@ -89,13 +86,10 @@ mod tests {
     #[test]
     fn sets_a_unique_request_id() {
         let mut state = State::new();
-        let req = Request::new(
-            Method::Get,
-            Uri::from_str("https://test.gotham.rs").unwrap(),
-        );
+        state.put(Headers::new());
 
         {
-            let r = set_request_id(&mut state, &req);
+            let r = set_request_id(&mut state);
             assert_eq!(4, Uuid::parse_str(r).unwrap().get_version_num());
         };
         assert_eq!(
@@ -111,13 +105,8 @@ mod tests {
         let mut state = State::new();
         state.put(RequestId { val: "1-2-3-4".to_string() });
 
-        let req = Request::new(
-            Method::Get,
-            Uri::from_str("https://test.gotham.rs").unwrap(),
-        );
-
         {
-            set_request_id(&mut state, &req);
+            set_request_id(&mut state);
         }
         assert_eq!("1-2-3-4", request_id(&state));
     }

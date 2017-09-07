@@ -3,7 +3,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::borrow::Borrow;
-use hyper::{Request, StatusCode};
+use hyper::StatusCode;
 
 use http::PercentDecoded;
 use router::route::{Route, Delegation};
@@ -46,7 +46,7 @@ pub enum SegmentType {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Request, Response, Method, StatusCode};
+/// # use hyper::{Response, Method, StatusCode};
 /// #
 /// # use gotham::http::PercentDecoded;
 /// # use gotham::http::response::create_response;
@@ -58,7 +58,7 @@ pub enum SegmentType {
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::tree::node::{NodeBuilder, SegmentType};
 /// #
-/// # fn handler(state: State, _req: Request) -> (State, Response) {
+/// # fn handler(state: State) -> (State, Response) {
 /// #   let res = create_response(&state, StatusCode::Ok, None);
 /// #   (state, res)
 /// # }
@@ -118,7 +118,7 @@ impl Node {
     }
 
     /// Determines if a `Route` instance associated with this `Node` is willing to `Handle` the
-    /// `Request`.
+    /// request.
     ///
     /// Where multiple `Route` instances could possibly handle the `Request` only the first, ordered
     /// per creation, is invoked.
@@ -128,12 +128,8 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub fn select_route(
-        &self,
-        state: &State,
-        req: &Request,
-    ) -> Result<&Box<Route + Send + Sync>, StatusCode> {
-        match self.routes.iter().find(|r| r.is_match(state, req).is_ok()) {
+    pub fn select_route(&self, state: &State) -> Result<&Box<Route + Send + Sync>, StatusCode> {
+        match self.routes.iter().find(|r| r.is_match(state).is_ok()) {
             Some(route) => {
                 trace!("[{}] found matching route", request_id(state));
                 Ok(route)
@@ -143,7 +139,7 @@ impl Node {
                 match self.routes.first() {
                     Some(route) => {
                         trace!("[{}] using error status code from route", request_id(state));
-                        Err(route.is_match(state, req).unwrap_err())
+                        Err(route.is_match(state).unwrap_err())
                     }
                     None => {
                         trace!("[{}] using generic error status code", request_id(state));
@@ -424,7 +420,7 @@ mod tests {
     use super::*;
 
     use hyper::Method;
-    use hyper::{Request, Response};
+    use hyper::Response;
 
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet,
                                   DispatcherImpl};
@@ -435,7 +431,7 @@ mod tests {
     use router::request::query_string::NoopQueryStringExtractor;
     use state::State;
 
-    fn handler(state: State, _req: Request) -> (State, Response) {
+    fn handler(state: State) -> (State, Response) {
         (state, Response::new())
     }
 

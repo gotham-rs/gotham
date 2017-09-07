@@ -4,7 +4,6 @@ use gotham;
 use gotham::handler::HandlerFuture;
 use gotham::state::State;
 use gotham::middleware::{Middleware, NewMiddleware};
-use hyper::Request;
 use futures::{future, Future};
 
 use gotham::state::request_id;
@@ -27,13 +26,13 @@ impl NewMiddleware for KitchenSinkMiddleware {
 }
 
 impl Middleware for KitchenSinkMiddleware {
-    fn call<Chain>(self, mut state: State, request: Request, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State, Request) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Box<HandlerFuture>,
     {
         state.put(KitchenSinkData { header_value: "default value".to_owned() });
 
-        let result = chain(state, request);
+        let result = chain(state);
         let header_name = self.header_name;
 
         let f = result.and_then(move |(state, mut response)| {

@@ -64,11 +64,11 @@ where
     /// # use gotham::http::response::create_response;
     /// # use gotham::handler::NewHandlerService;
     /// # use gotham::state::State;
-    /// # use hyper::{Request, Response};
+    /// # use hyper::Response;
     /// # use hyper::StatusCode;
     /// #
     /// # fn main() {
-    /// fn handler(state: State, _req: Request) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     let res = create_response(&state, StatusCode::Accepted, None);
     ///     (state, res)
     /// }
@@ -94,11 +94,11 @@ where
     /// # use gotham::router::request::path::NoopPathExtractor;
     /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
     /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-    /// # use hyper::{Request, Response};
+    /// # use hyper::Response;
     /// # use hyper::{StatusCode, Method};
     /// #
     /// # fn main() {
-    /// fn handler(state: State, _req: Request) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     let res = create_response(&state, StatusCode::Accepted, None);
     ///     (state, res)
     /// }
@@ -149,25 +149,16 @@ where
 
     fn call(&self, req: Self::Request) -> Self::Future {
         let s = chrono::UTC::now();
+        let (method, uri, version, headers, body) = req.deconstruct();
+
         let mut state = State::new();
-        set_request_id(&mut state, &req);
-
-        trace!(
-            "[{}] populating immutable request data into state",
-            request_id(&state)
-        );
-        state.put(req.method().clone());
-        state.put(req.uri().clone());
-        state.put(req.version().clone());
-        state.put(req.headers().clone());
-        state.put(RequestPathSegments::new(req.uri().path().clone()));
-
-        info!(
-            "[REQUEST][{}][{}][{}]",
-            request_id(&state),
-            req.method(),
-            req.path()
-        );
+        state.put(RequestPathSegments::new(uri.path()));
+        state.put(method);
+        state.put(uri);
+        state.put(version);
+        state.put(headers);
+        state.put(body);
+        set_request_id(&mut state);
 
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
@@ -175,7 +166,7 @@ where
         match self.t.new_handler() {
             Ok(handler) => {
                 let f = handler
-                    .handle(state, req)
+                    .handle(state)
                     .and_then(move |(state, res)| {
                         let f = chrono::UTC::now();
                         match f.signed_duration_since(s).num_microseconds() {
@@ -256,7 +247,7 @@ where
 /// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
 pub trait Handler {
     /// Handles the request, returning a boxed future which resolves to a response.
-    fn handle(self, state: State, request: Request) -> Box<HandlerFuture>;
+    fn handle(self, state: State) -> Box<HandlerFuture>;
 }
 
 /// Creates new `Handler` values.
@@ -330,7 +321,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
-/// # use hyper::{Request, Response};
+/// # use hyper::Response;
 /// #
 /// struct MyStruct {
 ///     value: String
@@ -351,7 +342,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 ///     }
 /// }
 ///
-/// fn handler(state: State, _req: Request) -> (State, MyStruct) {
+/// fn handler(state: State) -> (State, MyStruct) {
 ///     (state, MyStruct::new())
 /// }
 ///
@@ -386,10 +377,10 @@ impl IntoResponse for Response {
 
 impl<F, R> Handler for F
 where
-    F: FnOnce(State, Request) -> R,
+    F: FnOnce(State) -> R,
     R: IntoHandlerFuture,
 {
-    fn handle(self, state: State, req: Request) -> Box<HandlerFuture> {
-        self(state, req).into_handler_future()
+    fn handle(self, state: State) -> Box<HandlerFuture> {
+        self(state).into_handler_future()
     }
 }

@@ -23,7 +23,7 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
     res
 }
 
-/// Extends a `Response` object with an optional body and  set of default headers that ensure
+/// Extends a `Response` object with an optional body and set of default headers that ensure
 /// security and conformance to best practice.
 ///
 /// # Examples
@@ -35,9 +35,8 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use std::str::FromStr;
-/// # use hyper::{Request, Response, Method, Uri, Body, StatusCode};
-/// # use hyper::header::{ContentType, ContentLength};
+/// # use hyper::{Response, Method, StatusCode};
+/// # use hyper::header::{Headers, ContentType, ContentLength};
 /// # use gotham::state::State;
 /// # use gotham::state::set_request_id;
 /// # use gotham::http::response::extend_response;
@@ -45,12 +44,10 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// #
 /// # fn main() {
 /// #   let mut state = State::new();
-/// #   let u = "https://example.com";
 /// #   let m = Method::Get;
-/// #   let uri = Uri::from_str(u).unwrap();
-/// #   let req: Request<Body> = Request::new(m.clone(), uri);
-/// #   let req_id = String::from(set_request_id(&mut state, &req));
 /// #   state.put(m);
+/// #   state.put(Headers::new());
+/// #   let req_id = String::from(set_request_id(&mut state));
 ///     let status = StatusCode::Ok;
 ///     let mime = mime::TEXT_PLAIN;
 ///     let expected_mime = mime.clone();
@@ -105,9 +102,8 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use std::str::FromStr;
-/// # use hyper::{Request, Response, Method, Uri, Body};
-/// # use hyper::header::{ContentType, ContentLength};
+/// # use hyper::Response;
+/// # use hyper::header::{Headers, ContentType, ContentLength};
 /// # use gotham::state::State;
 /// # use gotham::state::set_request_id;
 /// # use gotham::http::response::set_headers;
@@ -115,11 +111,8 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// #
 /// # fn main() {
 /// #   let mut state = State::new();
-/// #   let u = "https://example.com";
-/// #   let m = Method::Get;
-/// #   let uri = Uri::from_str(u).unwrap();
-/// #   let req: Request<Body> = Request::new(m, uri);
-/// #   let req_id = String::from(set_request_id(&mut state, &req));
+/// #   state.put(Headers::new());
+/// #   let req_id = String::from(set_request_id(&mut state));
 /// #   let mut res = Response::new();
 ///     let mime = mime::TEXT_HTML;
 ///     let expected_mime = mime.clone();
@@ -136,9 +129,8 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use std::str::FromStr;
-/// # use hyper::{Request, Response, Method, Uri, Body};
-/// # use hyper::header::{ContentType, ContentLength};
+/// # use hyper::Response;
+/// # use hyper::header::{Headers, ContentType, ContentLength};
 /// # use gotham::state::State;
 /// # use gotham::state::set_request_id;
 /// # use gotham::http::response::set_headers;
@@ -146,11 +138,8 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// #
 /// # fn main() {
 /// #   let mut state = State::new();
-/// #   let u = "https://example.com";
-/// #   let m = Method::Get;
-/// #   let uri = Uri::from_str(u).unwrap();
-/// #   let req: Request<Body> = Request::new(m, uri);
-/// #   let req_id = String::from(set_request_id(&mut state, &req));
+/// #   state.put(Headers::new());
+/// #   let req_id = String::from(set_request_id(&mut state));
 /// #   let mut res = Response::new();
 ///     set_headers(&state, &mut res, None, None);
 ///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(), req_id);

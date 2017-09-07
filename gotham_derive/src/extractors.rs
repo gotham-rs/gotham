@@ -87,7 +87,7 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
         impl #borrowed gotham::router::request::query_string::QueryStringExtractor for #name #borrowed
              #where_clause
         {
-            fn extract(s: &mut gotham::state::State, query: Option<&str>) -> Result<(), String> {
+            fn extract(s: &mut gotham::state::State) -> Result<(), String> {
                 fn parse<T>(s: &gotham::state::State, key: &str, values: Option<&Vec<gotham::http::FormUrlDecoded>>) -> Result<T, String>
                     where T: gotham::router::request::query_string::FromQueryString
                 {
@@ -111,7 +111,13 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
                     }
                 }
 
-                let mut qsm = gotham::http::request::query_string::split(query);
+                let mut qsm = {
+                    use gotham::state::FromState;
+                    let uri = hyper::Uri::borrow_from(s);
+                    let query = uri.query();
+                    gotham::http::request::query_string::split(query)
+                };
+
                 trace!("[{}] query string mappings recieved from client: {:?}", gotham::state::request_id(s), qsm);
 
                 // Add an empty Vec for Optional segments that have not been provided.
