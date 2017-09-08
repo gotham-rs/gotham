@@ -143,13 +143,13 @@ pub trait DefineSingleRoute {
     ///
     /// build_router(default_pipeline_chain, pipelines, |route| {
     ///     route.get("/request/path")
-    ///          .with_path_params::<MyPathParams>()
+    ///          .with_path_extractor::<MyPathParams>()
     ///          .to(my_handler);
     /// })
     /// # }
     /// # fn main() { router(); }
     /// ```
-    fn with_path_params<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
+    fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
     where
         NPE: PathExtractor + Send + Sync + 'static,
         Self: ReplacePathExtractor<NPE>,
@@ -199,13 +199,15 @@ pub trait DefineSingleRoute {
     ///
     /// build_router(default_pipeline_chain, pipelines, |route| {
     ///     route.get("/request/path")
-    ///          .with_query_params::<MyQueryParams>()
+    ///          .with_query_string_extractor::<MyQueryParams>()
     ///          .to(my_handler);
     /// })
     /// # }
     /// # fn main() { router(); }
     /// ```
-    fn with_query_params<NQSE>(self) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
+    fn with_query_string_extractor<NQSE>(
+        self,
+    ) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
     where
         NQSE: QueryStringExtractor + Send + Sync + 'static,
         Self: ReplaceQueryStringExtractor<NQSE>,

@@ -399,14 +399,15 @@ where
         self.node_builder.add_route(Box::new(route));
     }
 
-    fn with_path_params<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
+    fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
     where
         NPE: PathExtractor + Send + Sync + 'static,
     {
         self.replace_path_extractor()
     }
 
-    fn with_query_params<NQSE>(self) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
+    fn with_query_string_extractor<NQSE>(self)
+        -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
     where
         NQSE: QueryStringExtractor + Send + Sync + 'static,
     {
@@ -620,12 +621,13 @@ mod tests {
 
             route
                 .get("/hello/:name")
-                .with_path_params::<HelloParams>()
+                .with_path_extractor::<HelloParams>()
                 .to(welcome::hello);
 
-            route.get("/add").with_query_params::<AddParams>().to(
-                welcome::add,
-            );
+            route
+                .get("/add")
+                .with_query_string_extractor::<AddParams>()
+                .to(welcome::add);
 
             route.scope("/api", |route| { route.post("/submit").to(api::submit); });
         });
