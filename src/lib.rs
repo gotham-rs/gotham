@@ -5,6 +5,10 @@
 //! We look forward to welcoming you into the Gotham community!
 #![doc(html_root_url = "https://docs.rs/gotham/0.1.1")] // Update when changed in Cargo.toml
 #![warn(missing_docs, deprecated)]
+
+// Stricter requirements once we get to pull request stage, all warnings must be resolved.
+#![cfg_attr(feature = "ci", deny(warnings))]
+
 #![doc(test(no_crate_inject, attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
