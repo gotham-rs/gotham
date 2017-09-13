@@ -11,9 +11,15 @@ use router::route::{Route, Delegation};
 use router::tree::{SegmentsProcessed, SegmentMapping, Path};
 use state::{State, request_id};
 
+/// A regular expression that implements PartialEq, Eq, PartialOrd, and ord.
+/// It does so in a potentially error-prone way by comparing the underlying &str
+/// representations of the regular expression.
 pub struct OrderedRegex(Regex);
 
 impl<'a> OrderedRegex {
+    /// Creates a new OrderedRegex from a provided string.
+    /// It wraps the string in begin and end of line anchors to prevent it from matching
+    /// more than intended.
     pub fn new(regex: &'a str) -> Self {
         OrderedRegex(Regex::new(&format!("^{pattern}$", pattern = regex)).unwrap())
     }
@@ -29,21 +35,13 @@ impl Eq for OrderedRegex {}
 
 impl PartialOrd for OrderedRegex {
     fn partial_cmp(&self, other: &OrderedRegex) -> Option<Ordering> {
-        return if self.0.as_str() > other.0.as_str() {
-            Some(Ordering::Greater)
-        } else if self.0.as_str() < other.0.as_str() {
-            Some(Ordering::Less)
-        } else if self.0.as_str() == other.0.as_str() {
-            Some(Ordering::Equal)
-        } else {
-            None
-        }
+        Some(self.0.as_str().cmp(other.0.as_str()))
     }
 }
 
 impl Ord for OrderedRegex {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        self.0.as_str().cmp(other.0.as_str())
     }
 }
 
