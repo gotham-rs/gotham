@@ -1,9 +1,49 @@
-use router::request::path::{PathExtractor, NoopPathExtractor};
-use router::request::query_string::{QueryStringExtractor, NoopQueryStringExtractor};
+use router::request::path::PathExtractor;
+use router::request::query_string::QueryStringExtractor;
 use router::builder::SingleRouteBuilder;
 use router::builder::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
+use router::route::{Extractors, RouteImpl};
+use router::route::matcher::RouteMatcher;
+use router::route::dispatch::{PipelineHandleChain, DispatcherImpl};
 use handler::{Handler, NewHandler};
 
+/// Describes the API for defining a single route, after determining which request paths will be
+/// dispatched here. The API here uses chained function calls to build and add the route into the
+/// `RouterBuilder` which created it.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// # use hyper::{Request, Response};
+/// # use gotham::state::State;
+/// # use gotham::router::Router;
+/// # use gotham::router::builder::*;
+/// # use gotham::middleware::pipeline::new_pipeline;
+/// # use gotham::middleware::session::NewSessionMiddleware;
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+/// fn my_handler(_: State, _: Request) -> (State, Response) {
+///     // Handler implementation elided.
+/// #   unimplemented!()
+/// }
+/// #
+/// # fn router() -> Router {
+/// #   let pipelines = new_pipeline_set();
+/// #   let (pipelines, default) =
+/// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+/// #
+/// #   let pipelines = finalize_pipeline_set(pipelines);
+/// #
+/// #   let default_pipeline_chain = (default, ());
+///
+/// build_router(default_pipeline_chain, pipelines, |route| {
+///     route.get("/request/path") // <- This value implements `DefineSingleRoute`
+///          .to(my_handler);
+/// })
+/// # }
+/// # fn main() { router(); }
+/// ```
 pub trait DefineSingleRoute {
     /// Directs the route to the given `Handler`, automatically creating a `NewHandler` which
     /// copies the `Handler`. This is the easiest option for code which is using bare functions as

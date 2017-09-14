@@ -2,14 +2,16 @@ use std::marker::PhantomData;
 
 use hyper::Method;
 
-use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::dispatch::{PipelineHandleChain, PipelineSet, DispatcherImpl};
-use router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
-use router::request::path::{PathExtractor, NoopPathExtractor};
-use router::request::query_string::{QueryStringExtractor, NoopQueryStringExtractor};
-use router::builder::{SingleRouteBuilder, ScopeBuilder};
+use router::route::Delegation;
+use router::route::dispatch::{PipelineHandleChain, PipelineSet};
+use router::route::matcher::MethodOnlyRouteMatcher;
+use router::request::path::NoopPathExtractor;
+use router::request::query_string::NoopQueryStringExtractor;
+use router::builder::{SingleRouteBuilder, RouterBuilder, ScopeBuilder};
 use router::tree::node::{SegmentType, NodeBuilder};
 
+/// The default type returned when building a single route. See
+/// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
 pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     'a,
     MethodOnlyRouteMatcher,
@@ -19,7 +21,9 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     NoopQueryStringExtractor,
 >;
 
-/// Defines functions available on builders that are able to define routes.
+/// Defines functions used by a builder to determine which request paths will be dispatched to a
+/// route. This trait is implemented by the top-level `RouterBuilder`, and also the `ScopedBuilder`
+/// created by `DrawRoutes::scope`.
 pub trait DrawRoutes<C, P>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,

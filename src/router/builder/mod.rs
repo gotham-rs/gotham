@@ -1,4 +1,4 @@
-#![allow(warnings)]
+//! Defines a builder API for constructing a `Router`.
 
 mod draw;
 mod single;
@@ -6,22 +6,18 @@ mod replace;
 
 use std::marker::PhantomData;
 
-use hyper::Method;
-
-use handler::{Handler, NewHandler};
 use router::Router;
 use router::tree::TreeBuilder;
 use router::response::finalizer::ResponseFinalizerBuilder;
-use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
-use router::route::dispatch::{PipelineHandleChain, PipelineSet, DispatcherImpl};
-use router::request::path::{PathExtractor, NoopPathExtractor};
-use router::request::query_string::{QueryStringExtractor, NoopQueryStringExtractor};
-use router::tree::node::{SegmentType, NodeBuilder};
+use router::route::Delegation;
+use router::route::matcher::RouteMatcher;
+use router::route::dispatch::{PipelineHandleChain, PipelineSet};
+use router::request::path::PathExtractor;
+use router::request::query_string::QueryStringExtractor;
+use router::tree::node::NodeBuilder;
 
 pub use self::single::DefineSingleRoute;
 pub use self::draw::{DrawRoutes, DefaultSingleRouteBuilder};
-use self::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
 
 /// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
 /// value passed to the closure, and the `Router` is constructed before returning.
@@ -79,6 +75,8 @@ where
     Router::new(tree_builder.finalize(), response_finalizer)
 }
 
+/// The top-level builder which is created by `build_router` and passed to the provided closure.
+/// See the `build_router` function and the `DrawRoutes` trait for usage.
 pub struct RouterBuilder<'a, C, P>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
@@ -90,6 +88,8 @@ where
     response_finalizer_builder: ResponseFinalizerBuilder,
 }
 
+/// A scoped builder, which is created by `DrawRoutes::scope` and passed to the provided closure.
+/// See the `DrawRoutes` trait for usage.
 pub struct ScopeBuilder<'a, C, P>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
@@ -136,6 +136,8 @@ where
     }
 }
 
+/// Implements the traits required to define a single route, after determining which request paths
+/// will be dispatched here. The `DefineSingleRoute` trait has documentation for using this type.
 pub struct SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
     M: RouteMatcher + Send + Sync + 'static,
@@ -209,6 +211,7 @@ where
     }
 }
 
+// Trait impls live with the traits.
 impl<'a, M, C, P, PE, QSE> SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
     M: RouteMatcher
@@ -229,6 +232,8 @@ where
         + Sync
         + 'static,
 {
+    /// Coerces the type of the internal `PhantomData`, to replace an extractor by changing the
+    /// type parameter without changing anything else.
     fn coerce<NPE, NQSE>(self) -> SingleRouteBuilder<'a, M, C, P, NPE, NQSE>
     where
         NPE: PathExtractor + Send + Sync + 'static,
@@ -258,7 +263,7 @@ mod tests {
     use middleware::pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
     use state::{State, StateData};
-    use handler::{Handler, NewHandlerService};
+    use handler::NewHandlerService;
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     use router::response::extender::StaticResponseExtender;
     use router::tree::SegmentMapping;
@@ -322,11 +327,11 @@ mod tests {
 
     mod welcome {
         use super::*;
-        pub fn index(state: State, req: Request) -> (State, Response) {
+        pub fn index(state: State, _req: Request) -> (State, Response) {
             (state, Response::new().with_status(StatusCode::Ok))
         }
 
-        pub fn hello(mut state: State, req: Request) -> (State, Response) {
+        pub fn hello(mut state: State, _req: Request) -> (State, Response) {
             let params = state.take::<HelloParams>().unwrap();
             let response = Response::new().with_status(StatusCode::Ok).with_body(
                 format!(
@@ -337,7 +342,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn add(mut state: State, req: Request) -> (State, Response) {
+        pub fn add(mut state: State, _req: Request) -> (State, Response) {
             let params = state.take::<AddParams>().unwrap();
             let response = Response::new().with_status(StatusCode::Ok).with_body(
                 format!(
@@ -353,7 +358,7 @@ mod tests {
 
     mod api {
         use super::*;
-        pub fn submit(state: State, req: Request) -> (State, Response) {
+        pub fn submit(state: State, _req: Request) -> (State, Response) {
             (state, Response::new().with_status(StatusCode::Accepted))
         }
     }

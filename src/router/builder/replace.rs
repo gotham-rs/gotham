@@ -1,7 +1,7 @@
-use router::request::path::{PathExtractor, NoopPathExtractor};
-use router::request::query_string::{QueryStringExtractor, NoopQueryStringExtractor};
-use router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
-use router::route::dispatch::{PipelineHandleChain, PipelineSet, DispatcherImpl};
+use router::request::path::PathExtractor;
+use router::request::query_string::QueryStringExtractor;
+use router::route::matcher::RouteMatcher;
+use router::route::dispatch::PipelineHandleChain;
 use router::builder::SingleRouteBuilder;
 use router::builder::single::DefineSingleRoute;
 
