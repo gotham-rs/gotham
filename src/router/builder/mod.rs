@@ -25,14 +25,14 @@ pub use self::draw::{DrawRoutes, DefaultSingleRouteBuilder};
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # use hyper::{Request, Response};
+/// # use hyper::Response;
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::middleware::pipeline::new_pipeline;
 /// # use gotham::middleware::session::NewSessionMiddleware;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-/// # fn my_handler(_: State, _: Request) -> (State, Response) {
+/// # fn my_handler(_: State) -> (State, Response) {
 /// #   unreachable!()
 /// # }
 /// #
@@ -163,13 +163,13 @@ mod tests {
 
     use std::str::FromStr;
 
-    use hyper::{Request, Response, StatusCode, Method};
+    use hyper::{Request, Response, StatusCode, Method, Uri};
     use hyper::server::{NewService, Service};
     use futures::{Future, Stream};
 
     use middleware::pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
-    use state::{State, StateData};
+    use state::{State, StateData, FromState};
     use handler::NewHandlerService;
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     use router::response::extender::StaticResponseExtender;
@@ -214,8 +214,13 @@ mod tests {
     }
 
     impl QueryStringExtractor for AddParams {
-        fn extract(state: &mut State, query: Option<&str>) -> Result<(), String> {
-            let mapping = query_string::split(query);
+        fn extract(state: &mut State) -> Result<(), String> {
+            let mapping = {
+                let uri = Uri::borrow_from(state);
+                let query = uri.query();
+                query_string::split(query)
+            };
+
             let parse = |vals: Option<&Vec<FormUrlDecoded>>| {
                 let s = vals.unwrap().first().unwrap().val();
                 println!("{}", s);
@@ -234,12 +239,12 @@ mod tests {
 
     mod welcome {
         use super::*;
-        pub fn index(state: State, _req: Request) -> (State, Response) {
+        pub fn index(state: State) -> (State, Response) {
             (state, Response::new().with_status(StatusCode::Ok))
         }
 
-        pub fn hello(mut state: State, _req: Request) -> (State, Response) {
-            let params = state.take::<HelloParams>().unwrap();
+        pub fn hello(mut state: State) -> (State, Response) {
+            let params = state.take::<HelloParams>();
             let response = Response::new().with_status(StatusCode::Ok).with_body(
                 format!(
                     "Hello, {}!",
@@ -249,8 +254,8 @@ mod tests {
             (state, response)
         }
 
-        pub fn add(mut state: State, _req: Request) -> (State, Response) {
-            let params = state.take::<AddParams>().unwrap();
+        pub fn add(mut state: State) -> (State, Response) {
+            let params = state.take::<AddParams>();
             let response = Response::new().with_status(StatusCode::Ok).with_body(
                 format!(
                     "{} + {} = {}",
@@ -265,7 +270,7 @@ mod tests {
 
     mod api {
         use super::*;
-        pub fn submit(state: State, _req: Request) -> (State, Response) {
+        pub fn submit(state: State) -> (State, Response) {
             (state, Response::new().with_status(StatusCode::Accepted))
         }
     }

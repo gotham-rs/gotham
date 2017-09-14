@@ -16,14 +16,14 @@ use handler::{Handler, NewHandler};
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # use hyper::{Request, Response};
+/// # use hyper::Response;
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::middleware::pipeline::new_pipeline;
 /// # use gotham::middleware::session::NewSessionMiddleware;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-/// fn my_handler(_: State, _: Request) -> (State, Response) {
+/// fn my_handler(_: State) -> (State, Response) {
 ///     // Handler implementation elided.
 /// #   unimplemented!()
 /// }
@@ -54,14 +54,14 @@ pub trait DefineSingleRoute {
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::{Request, Response};
+    /// # use hyper::Response;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::middleware::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// fn my_handler(_: State, _: Request) -> (State, Response) {
+    /// fn my_handler(_: State) -> (State, Response) {
     ///     // Handler implementation elided.
     /// #   unimplemented!()
     /// }
@@ -94,7 +94,6 @@ pub trait DefineSingleRoute {
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// # use std::io;
-    /// # use hyper::Request;
     /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -114,7 +113,7 @@ pub trait DefineSingleRoute {
     /// }
     ///
     /// impl Handler for MyHandler {
-    ///     fn handle(self, _state: State, _req: Request) -> Box<HandlerFuture> {
+    ///     fn handle(self, _state: State) -> Box<HandlerFuture> {
     ///         // Handler implementation elided.
     /// #       unimplemented!()
     ///     }
@@ -151,20 +150,20 @@ pub trait DefineSingleRoute {
     /// # extern crate hyper;
     /// # #[macro_use]
     /// # extern crate log;
-    /// # use hyper::{Request, Response};
+    /// # use hyper::Response;
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::middleware::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// #[derive(StateData, FromState, PathExtractor, StaticResponseExtender)]
+    /// #[derive(StateData, PathExtractor, StaticResponseExtender)]
     /// struct MyPathParams {
     /// #   #[allow(dead_code)]
     ///     name: String,
     /// }
     ///
-    /// fn my_handler(state: State, _: Request) -> (State, Response) {
+    /// fn my_handler(state: State) -> (State, Response) {
     /// #   #[allow(unused_variables)]
     ///     let params = MyPathParams::borrow_from(&state);
     ///
@@ -207,20 +206,20 @@ pub trait DefineSingleRoute {
     /// # extern crate hyper;
     /// # #[macro_use]
     /// # extern crate log;
-    /// # use hyper::{Request, Response};
+    /// # use hyper::Response;
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::middleware::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// #[derive(StateData, FromState, QueryStringExtractor, StaticResponseExtender)]
+    /// #[derive(StateData, QueryStringExtractor, StaticResponseExtender)]
     /// struct MyQueryParams {
     /// #   #[allow(dead_code)]
     ///     id: u64,
     /// }
     ///
-    /// fn my_handler(state: State, _: Request) -> (State, Response) {
+    /// fn my_handler(state: State) -> (State, Response) {
     /// #   #[allow(unused_variables)]
     ///     let id = MyQueryParams::borrow_from(&state).id;
     ///

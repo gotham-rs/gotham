@@ -36,14 +36,14 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::{Request, Response};
+    /// # use hyper::Response;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::middleware::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// # fn my_handler(_: State, _: Request) -> (State, Response) {
+    /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
@@ -73,14 +73,14 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::{Request, Response};
+    /// # use hyper::Response;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::middleware::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// # fn my_handler(_: State, _: Request) -> (State, Response) {
+    /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
@@ -115,7 +115,7 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::{Request, Response};
+    /// # use hyper::Response;
     /// # use hyper::Method::*;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -123,7 +123,7 @@ where
     /// # use gotham::middleware::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// # fn my_handler(_: State, _: Request) -> (State, Response) {
+    /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
@@ -169,7 +169,7 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::{Request, Response};
+    /// # use hyper::Response;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -178,7 +178,7 @@ where
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # mod api {
     /// #   use super::*;
-    /// #   pub fn list(_: State, _: Request) -> (State, Response) {
+    /// #   pub fn list(_: State) -> (State, Response) {
     /// #       unreachable!()
     /// #   }
     /// # }
