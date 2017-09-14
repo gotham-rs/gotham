@@ -100,42 +100,6 @@ where
     pipelines: PipelineSet<P>,
 }
 
-impl<'a, C, P> DrawRoutes<C, P> for RouterBuilder<'a, C, P>
-where
-    C: PipelineHandleChain<P>
-        + Copy
-        + Send
-        + Sync
-        + 'static,
-    P: Send + Sync + 'static,
-{
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
-        (
-            &mut self.node_builder,
-            &mut self.pipeline_chain,
-            &self.pipelines,
-        )
-    }
-}
-
-impl<'a, C, P> DrawRoutes<C, P> for ScopeBuilder<'a, C, P>
-where
-    C: PipelineHandleChain<P>
-        + Copy
-        + Send
-        + Sync
-        + 'static,
-    P: Send + Sync + 'static,
-{
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
-        (
-            &mut self.node_builder,
-            &mut self.pipeline_chain,
-            &self.pipelines,
-        )
-    }
-}
-
 /// Implements the traits required to define a single route, after determining which request paths
 /// will be dispatched here. The `DefineSingleRoute` trait has documentation for using this type.
 pub struct SingleRouteBuilder<'a, M, C, P, PE, QSE>
@@ -152,63 +116,6 @@ where
     pipelines: PipelineSet<P>,
     delegation: Delegation,
     phantom: PhantomData<(PE, QSE)>,
-}
-
-impl<'a, M, C, P, PE, QSE> DefineSingleRoute for SingleRouteBuilder<'a, M, C, P, PE, QSE>
-where
-    M: RouteMatcher
-        + Send
-        + Sync
-        + 'static,
-    C: PipelineHandleChain<P>
-        + Send
-        + Sync
-        + 'static,
-    P: Send + Sync + 'static,
-    PE: PathExtractor
-        + Send
-        + Sync
-        + 'static,
-    QSE: QueryStringExtractor
-        + Send
-        + Sync
-        + 'static,
-{
-    fn to<H>(self, handler: H)
-    where
-        H: Handler + Copy + Send + Sync + 'static,
-    {
-        self.to_new_handler(move || Ok(handler))
-    }
-
-    fn to_new_handler<NH>(self, new_handler: NH)
-    where
-        NH: NewHandler + 'static,
-    {
-        let dispatcher = DispatcherImpl::new(new_handler, self.pipeline_chain, self.pipelines);
-        let route: RouteImpl<M, PE, QSE> = RouteImpl::new(
-            self.matcher,
-            Box::new(dispatcher),
-            Extractors::new(),
-            self.delegation,
-        );
-        self.node_builder.add_route(Box::new(route));
-    }
-
-    fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
-    where
-        NPE: PathExtractor + Send + Sync + 'static,
-    {
-        self.replace_path_extractor()
-    }
-
-    fn with_query_string_extractor<NQSE>(self)
-        -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
-    where
-        NQSE: QueryStringExtractor + Send + Sync + 'static,
-    {
-        self.replace_query_string_extractor()
-    }
 }
 
 // Trait impls live with the traits.

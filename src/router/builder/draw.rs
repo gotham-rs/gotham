@@ -263,3 +263,39 @@ where
         }
     }
 }
+
+impl<'a, C, P> DrawRoutes<C, P> for RouterBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P>
+        + Copy
+        + Send
+        + Sync
+        + 'static,
+    P: Send + Sync + 'static,
+{
+    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+        (
+            &mut self.node_builder,
+            &mut self.pipeline_chain,
+            &self.pipelines,
+        )
+    }
+}
+
+impl<'a, C, P> DrawRoutes<C, P> for ScopeBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P>
+        + Copy
+        + Send
+        + Sync
+        + 'static,
+    P: Send + Sync + 'static,
+{
+    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+        (
+            &mut self.node_builder,
+            &mut self.pipeline_chain,
+            &self.pipelines,
+        )
+    }
+}
