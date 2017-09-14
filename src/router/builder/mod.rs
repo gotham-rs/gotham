@@ -243,6 +243,10 @@ mod tests {
             (state, Response::new().with_status(StatusCode::Ok))
         }
 
+        pub fn literal(state: State) -> (State, Response) {
+            (state, Response::new().with_status(StatusCode::Created))
+        }
+
         pub fn hello(mut state: State) -> (State, Response) {
             let params = state.take::<SalutationParams>();
             let response = Response::new().with_status(StatusCode::Ok).with_body(
@@ -250,6 +254,13 @@ mod tests {
                     "Hello, {}!",
                     params.name
                 ),
+            );
+            (state, response)
+        }
+
+        pub fn globbed(mut state: State) -> (State, Response) {
+            let response = Response::new().with_status(StatusCode::Ok).with_body(
+                "Globbed",
             );
             (state, response)
         }
@@ -305,6 +316,11 @@ mod tests {
                 .to(welcome::hello);
 
             route
+                .get("/hello/:name/*")
+                .with_path_extractor::<SalutationParams>()
+                .to(welcome::globbed);
+
+            route
                 .get("/goodbye/:name:[a-zA-Z]+")
                 .with_path_extractor::<SalutationParams>()
                 .to(welcome::goodbye);
@@ -313,6 +329,8 @@ mod tests {
                 .get("/add")
                 .with_query_string_extractor::<AddParams>()
                 .to(welcome::add);
+
+            route.get(r"/literal/\:param/\*").to(welcome::literal);
 
             route.scope("/api", |route| { route.post("/submit").to(api::submit); });
         });
@@ -335,6 +353,16 @@ mod tests {
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Hello, world!");
 
+        let response = call(Request::new(
+            Method::Get,
+            "/hello/world/more/path/here/handled/by/glob"
+                .parse()
+                .unwrap(),
+        ));
+        assert_eq!(response.status(), StatusCode::Ok);
+        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Globbed");
+
         let response = call(Request::new(Method::Get, "/goodbye/world".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
@@ -344,6 +372,15 @@ mod tests {
         );
 
         let response = call(Request::new(Method::Get, "/goodbye/9875".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::NotFound);
+
+        let response = call(Request::new(
+            Method::Get,
+            "/literal/:param/*".parse().unwrap(),
+        ));
+        assert_eq!(response.status(), StatusCode::Created);
+
+        let response = call(Request::new(Method::Get, "/literal/a/b".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::NotFound);
 
         let response = call(Request::new(Method::Get, "/add?x=16&y=71".parse().unwrap()));

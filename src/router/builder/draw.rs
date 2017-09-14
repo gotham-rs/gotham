@@ -245,18 +245,21 @@ where
         Some(segment) => {
             println!("router::builder::build_subtree descending into {}", segment);
 
-            let (segment, segment_type) = if segment.starts_with(":") {
-                let segment = &segment[1..];
-                match segment.find(":") {
-                    Some(n) => {
-                        let (segment, pattern) = segment.split_at(n);
-                        let regex = ConstrainedSegmentRegex::new(&pattern[1..]);
-                        (segment, SegmentType::Constrained { regex })
+            let (segment, segment_type) = match segment.chars().next() {
+                Some(':') => {
+                    let segment = &segment[1..];
+                    match segment.find(":") {
+                        Some(n) => {
+                            let (segment, pattern) = segment.split_at(n);
+                            let regex = ConstrainedSegmentRegex::new(&pattern[1..]);
+                            (segment, SegmentType::Constrained { regex })
+                        }
+                        None => (segment, SegmentType::Dynamic),
                     }
-                    None => (segment, SegmentType::Dynamic),
                 }
-            } else {
-                (segment, SegmentType::Static)
+                Some('*') if segment.len() == 1 => (segment, SegmentType::Glob),
+                Some('\\') => (&segment[1..], SegmentType::Static),
+                _ => (segment, SegmentType::Static),
             };
 
             if !node.has_child(segment, segment_type.clone()) {
