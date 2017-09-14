@@ -28,6 +28,7 @@ extern crate base64;
 extern crate rmp_serde;
 extern crate linked_hash_map;
 extern crate num_cpus;
+extern crate regex;
 #[cfg(windows)]
 extern crate crossbeam;
 

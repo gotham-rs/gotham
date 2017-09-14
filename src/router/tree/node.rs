@@ -4,11 +4,46 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::borrow::Borrow;
 use hyper::StatusCode;
+use regex::Regex;
 
 use http::PercentDecoded;
 use router::route::{Route, Delegation};
 use router::tree::{SegmentsProcessed, SegmentMapping, Path};
 use state::{State, request_id};
+
+/// A regular expression that implements PartialEq, Eq, PartialOrd, and ord.
+/// It does so in a potentially error-prone way by comparing the underlying &str
+/// representations of the regular expression.
+pub struct OrderedRegex(Regex);
+
+impl<'a> OrderedRegex {
+    /// Creates a new OrderedRegex from a provided string.
+    /// It wraps the string in begin and end of line anchors to prevent it from matching
+    /// more than intended.
+    pub fn new(regex: &'a str) -> Self {
+        OrderedRegex(Regex::new(&format!("^{pattern}$", pattern = regex)).unwrap())
+    }
+}
+
+impl PartialEq for OrderedRegex {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.as_str() == other.0.as_str()
+    }
+}
+
+impl Eq for OrderedRegex {}
+
+impl PartialOrd for OrderedRegex {
+    fn partial_cmp(&self, other: &OrderedRegex) -> Option<Ordering> {
+        Some(self.0.as_str().cmp(other.0.as_str()))
+    }
+}
+
+impl Ord for OrderedRegex {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.as_str().cmp(other.0.as_str())
+    }
+}
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -22,7 +57,7 @@ pub enum SegmentType {
     /// Uses the supplied regex to determine match against incoming request paths.
     Constrained {
         /// Regex used to match against a single segment of a request path.
-        regex: String,
+        regex: OrderedRegex,
     },
 
     /// Matches any corresponding segment for incoming request paths.
@@ -263,8 +298,9 @@ impl Node {
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
         match self.segment_type {
             SegmentType::Static => self.segment == req_path_segment.val(),
-            // TODO #10, address Constrained type
-            SegmentType::Constrained { regex: _ } => unimplemented!(),
+            SegmentType::Constrained { ref regex } => {
+                regex.0.is_match(req_path_segment.val().as_ref())
+            },
             SegmentType::Dynamic | SegmentType::Glob => true,
         }
     }
@@ -526,6 +562,17 @@ mod tests {
         seg3.add_child(seg4);
         root.add_child(seg3);
 
+        // Ensure regex matching works and that it's anchored to the segment and does not allow for
+        // overzealous matching
+        // GET: /resource/<id> where id: [0-9]+
+        let mut seg_resource = NodeBuilder::new("resource", SegmentType::Static);
+        let mut seg_id = NodeBuilder::new("id", SegmentType::Constrained {
+            regex: OrderedRegex::new("[0-9]+")
+        });
+        seg_id.add_route(get_route(pipeline_set.clone()));
+        seg_resource.add_child(seg_id);
+        root.add_child(seg_resource);
+
         // Ensure traversal will backtrack and find the correct path if it goes down an ultimately
         // invalid branch, in this case seg6 initially being matched by the dynamic handler segdyn1
         // which matches every segment it sees.
@@ -614,6 +661,16 @@ mod tests {
                 assert_eq!(path.last().unwrap().segment(), "seg10");
                 assert_eq!(sp, 5);
             }
+            None => panic!("traversal should have succeeded here"),
+        }
+
+        let rs = RequestPathSegments::new("/resource/5001");
+        let expected_segment = "id";
+        match root.traverse(&rs.segments()) {
+            Some((path, _, sp, _)) => {
+                assert_eq!(path.last().unwrap().segment(), expected_segment);
+                assert_eq!(sp, 2);
+            },
             None => panic!("traversal should have succeeded here"),
         }
     }

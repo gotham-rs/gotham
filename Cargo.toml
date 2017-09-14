@@ -30,6 +30,7 @@ rand = "0.3"
 linked-hash-map = "0.4"
 num_cpus = "1"
 crossbeam = "0.3"
+regex = "0.2"
 
 [dev-dependencies]
 gotham_derive = { version = "0.1.0", path = "gotham_derive" }
