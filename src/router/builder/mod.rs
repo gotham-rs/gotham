@@ -177,17 +177,17 @@ mod tests {
     use http::FormUrlDecoded;
     use http::request::query_string;
 
-    struct HelloParams {
+    struct SalutationParams {
         name: String,
     }
 
-    impl StateData for HelloParams {}
+    impl StateData for SalutationParams {}
 
-    impl StaticResponseExtender for HelloParams {
+    impl StaticResponseExtender for SalutationParams {
         fn extend(_: &mut State, _: &mut Response) {}
     }
 
-    impl PathExtractor for HelloParams {
+    impl PathExtractor for SalutationParams {
         fn extract(state: &mut State, segment_mapping: SegmentMapping) -> Result<(), String> {
             let name = segment_mapping
                 .get("name")
@@ -196,7 +196,7 @@ mod tests {
                 .unwrap()
                 .val()
                 .to_owned();
-            let params = HelloParams { name };
+            let params = SalutationParams { name };
             state.put(params);
             Ok(())
         }
@@ -244,10 +244,21 @@ mod tests {
         }
 
         pub fn hello(mut state: State) -> (State, Response) {
-            let params = state.take::<HelloParams>();
+            let params = state.take::<SalutationParams>();
             let response = Response::new().with_status(StatusCode::Ok).with_body(
                 format!(
                     "Hello, {}!",
+                    params.name
+                ),
+            );
+            (state, response)
+        }
+
+        pub fn goodbye(mut state: State) -> (State, Response) {
+            let params = state.take::<SalutationParams>();
+            let response = Response::new().with_status(StatusCode::Ok).with_body(
+                format!(
+                    "Goodbye, {}!",
                     params.name
                 ),
             );
@@ -290,8 +301,13 @@ mod tests {
 
             route
                 .get("/hello/:name")
-                .with_path_extractor::<HelloParams>()
+                .with_path_extractor::<SalutationParams>()
                 .to(welcome::hello);
+
+            route
+                .get("/goodbye/:name:[a-zA-Z]+")
+                .with_path_extractor::<SalutationParams>()
+                .to(welcome::goodbye);
 
             route
                 .get("/add")
@@ -318,6 +334,17 @@ mod tests {
         assert_eq!(response.status(), StatusCode::Ok);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Hello, world!");
+
+        let response = call(Request::new(Method::Get, "/goodbye/world".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::Ok);
+        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        assert_eq!(
+            &String::from_utf8(response_bytes).unwrap(),
+            "Goodbye, world!"
+        );
+
+        let response = call(Request::new(Method::Get, "/goodbye/9875".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::NotFound);
 
         let response = call(Request::new(Method::Get, "/add?x=16&y=71".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);

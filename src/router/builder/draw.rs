@@ -9,6 +9,7 @@ use router::request::path::NoopPathExtractor;
 use router::request::query_string::NoopQueryStringExtractor;
 use router::builder::{SingleRouteBuilder, RouterBuilder, ScopeBuilder};
 use router::tree::node::{SegmentType, NodeBuilder};
+use router::tree::regex::ConstrainedSegmentRegex;
 
 /// The default type returned when building a single route. See
 /// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
@@ -243,8 +244,17 @@ where
     match i.next() {
         Some(segment) => {
             println!("router::builder::build_subtree descending into {}", segment);
+
             let (segment, segment_type) = if segment.starts_with(":") {
-                (&segment[1..], SegmentType::Dynamic)
+                let segment = &segment[1..];
+                match segment.find(":") {
+                    Some(n) => {
+                        let (segment, pattern) = segment.split_at(n);
+                        let regex = ConstrainedSegmentRegex::new(&pattern[1..]);
+                        (segment, SegmentType::Constrained { regex })
+                    }
+                    None => (segment, SegmentType::Dynamic),
+                }
             } else {
                 (segment, SegmentType::Static)
             };
