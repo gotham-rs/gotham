@@ -38,7 +38,7 @@ use router::Router;
 ///
 /// let uri = "http://localhost/".parse().unwrap();
 ///
-/// let future = test_server.client().unwrap().get(uri);
+/// let future = test_server.client().get(uri);
 /// let response = test_server.run_request(future).unwrap();
 ///
 /// assert_eq!(response.status(), StatusCode::Accepted);
@@ -92,14 +92,20 @@ where
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see a default value as the source address for the connection.
-    pub fn client(&self) -> io::Result<client::Client<TestConnect>> {
+    pub fn client(&self) -> client::Client<TestConnect> {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any value, and need not be contactable.
-    pub fn client_with_address(
+    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> client::Client<TestConnect> {
+        self.try_client_with_address(client_addr).expect(
+            "TestServer: unable to spawn client",
+        )
+    }
+
+    fn try_client_with_address(
         &self,
         client_addr: net::SocketAddr,
     ) -> io::Result<client::Client<TestConnect>> {
@@ -249,7 +255,7 @@ mod tests {
         let uri = "http://localhost/".parse().unwrap();
 
         let mut test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client().unwrap().get(uri);
+        let response = test_server.client().get(uri);
         let response = test_server.run_request(response).unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
@@ -262,7 +268,7 @@ mod tests {
         let new_service = || Ok(TestService { response: "".to_owned() });
         let mut test_server = TestServer::new(new_service).unwrap().timeout(1);
         let uri = "http://localhost/timeout".parse().unwrap();
-        let response = test_server.client().unwrap().get(uri);
+        let response = test_server.client().get(uri);
 
         match test_server.run_request(response) {
             Err(TestRequestError::TimedOut) => (),
@@ -284,9 +290,7 @@ mod tests {
         let uri = "http://localhost/myaddr".parse().unwrap();
 
         let mut test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client_with_address(client_addr).unwrap().get(
-            uri,
-        );
+        let response = test_server.client_with_address(client_addr).get(uri);
         let response = test_server.run_request(response).unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
