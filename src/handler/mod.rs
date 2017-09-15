@@ -15,6 +15,7 @@ use hyper::{Request, Response};
 use futures::{future, Future};
 
 use state::{State, set_request_id};
+use state::client_addr::put_client_addr;
 use http::request::path::RequestPathSegments;
 
 mod error;
@@ -148,9 +149,14 @@ where
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
+        let mut state = State::new();
+
+        if let Some(addr) = req.remote_addr() {
+            put_client_addr(&mut state, addr);
+        }
+
         let (method, uri, version, headers, body) = req.deconstruct();
 
-        let mut state = State::new();
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);

@@ -3,14 +3,15 @@
 mod data;
 mod from_state;
 pub mod request_id;
+pub(crate) mod client_addr;
 
 use std::collections::HashMap;
 use std::any::{Any, TypeId};
 
 pub use state::data::StateData;
 pub use state::from_state::FromState;
-pub use state::request_id::request_id;
-pub use state::request_id::set_request_id;
+pub use state::request_id::{request_id, set_request_id};
+pub use state::client_addr::client_addr;
 
 /// Provides storage for request state, and stores one item of each type. The types used for
 /// storage must implement the `gotham::state::StateData` trait to allow its storage.
