@@ -142,10 +142,8 @@ use state::{State, request_id};
 /// #   let response_finalizer = ResponseFinalizerBuilder::new().finalize();
 /// #   let router = Router::new(tree, response_finalizer);
 /// #
-/// #   let mut test_server = TestServer::new(router).unwrap();
-/// #   let client = test_server.client();
-/// #   let uri = "http://example.com/".parse().unwrap();
-///     let response = test_server.run_request(client.get(uri)).unwrap();
+/// #   let test_server = TestServer::new(router).unwrap();
+///     let response = test_server.client().get("http://example.com/").unwrap();
 ///     assert_eq!(response.status(), StatusCode::Ok);
 ///     assert_eq!(test_server.read_body(response).unwrap(), "[1, 2, 3]".as_bytes());
 /// }
@@ -521,7 +519,7 @@ mod tests {
 
     #[test]
     fn pipeline_ordering_test() {
-        let mut test_server = TestServer::new(|| {
+        let test_server = TestServer::new(|| {
             let pipeline = new_pipeline()
                 .add(Number { value: 0 }) // 0
                 .add(Addition { value: 1 }) // 1
@@ -538,9 +536,7 @@ mod tests {
             })
         }).unwrap();
 
-        let uri = "http://localhost/".parse().unwrap();
-        let response = test_server.client().get(uri);
-        let response = test_server.run_request(response).unwrap();
+        let response = test_server.client().get("http://localhost/").unwrap();
 
         let buf = test_server.read_body(response).unwrap();
         assert_eq!(buf.as_slice(), "24".as_bytes());

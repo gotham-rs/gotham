@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn pipeline_chain_ordering_test() {
-        let mut test_server = TestServer::new(|| {
+        let test_server = TestServer::new(|| {
             Ok(move |state| {
                 let pipelines = new_pipeline_set();
 
@@ -284,10 +284,7 @@ mod tests {
             })
         }).unwrap();
 
-        let uri = "http://localhost/".parse().unwrap();
-
-        let response = test_server.client().get(uri);
-        let response = test_server.run_request(response).unwrap();
+        let response = test_server.client().get("http://localhost/").unwrap();
 
         let buf = test_server.read_body(response).unwrap();
         assert_eq!(buf.as_slice(), "24".as_bytes());

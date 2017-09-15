@@ -34,15 +34,14 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// }
 /// #
 /// # fn main() {
-/// #   let mut test_server = TestServer::new(|| Ok(my_handler)).unwrap();
-/// #   let uri = "http://localhost/".parse().unwrap();
+/// #   let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 /// #   let response = test_server
 /// #       .client_with_address("127.0.0.1:9816".parse().unwrap())
-/// #       .get(uri);
-/// #
-/// #   let response = test_server.run_request(response).unwrap();
+/// #       .get("http://localhost/")
+/// #       .unwrap();
 /// #
 /// #   assert_eq!(response.status(), StatusCode::Ok);
+/// #
 /// #   let buf = test_server.read_body(response).unwrap();
 /// #   assert_eq!(buf.as_slice(), b"127.0.0.1:9816");
 /// # }

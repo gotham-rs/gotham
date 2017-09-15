@@ -3,11 +3,14 @@
 //! `TestServer::new(_)` is the most useful entry point.
 
 use std::{cell, io, net, time};
+use std::cell::RefCell;
 use std::net::{TcpListener, TcpStream, SocketAddr, IpAddr};
-use hyper::{self, client, server};
-use hyper::server::NewService;
+use hyper::{self, Request, Response, Uri, Method};
+use hyper::error::UriError;
+use hyper::client::{self, Client};
+use hyper::server::{self, Http, NewService};
 use futures::{future, Future, Stream};
-use tokio_core::reactor;
+use tokio_core::reactor::{Core, PollEvented, Timeout};
 use mio;
 
 use handler::{NewHandler, NewHandlerService};
@@ -34,13 +37,9 @@ use router::Router;
 /// # fn main() {
 /// use gotham::test::TestServer;
 ///
-/// let mut test_server = TestServer::new(|| Ok(my_handler)).unwrap();
+/// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
-/// let uri = "http://localhost/".parse().unwrap();
-///
-/// let future = test_server.client().get(uri);
-/// let response = test_server.run_request(future).unwrap();
-///
+/// let response = test_server.client().get("http://localhost/").unwrap();
 /// assert_eq!(response.status(), StatusCode::Accepted);
 /// # }
 /// ```
@@ -48,8 +47,8 @@ pub struct TestServer<NH = Router>
 where
     NH: NewHandler + 'static,
 {
-    core: reactor::Core,
-    http: server::Http,
+    core: RefCell<Core>,
+    http: Http,
     timeout: u64,
     new_service: NewHandlerService<NH>,
 }
@@ -64,6 +63,14 @@ pub enum TestRequestError {
     IoError(io::Error),
     /// A `hyper::Error` occurred before a response was received
     HyperError(hyper::Error),
+    /// The URL could not be parsed when building the request
+    UriError(UriError),
+}
+
+impl From<UriError> for TestRequestError {
+    fn from(error: UriError) -> TestRequestError {
+        TestRequestError::UriError(error)
+    }
 }
 
 impl<NH> TestServer<NH>
@@ -74,9 +81,9 @@ where
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
     /// for each connection.
     pub fn new(new_handler: NH) -> Result<TestServer<NH>, io::Error> {
-        reactor::Core::new().map(|core| {
+        Core::new().map(|core| {
             TestServer {
-                core: core,
+                core: RefCell::new(core),
                 http: server::Http::new(),
                 timeout: 10,
                 new_service: NewHandlerService::new(new_handler),
@@ -92,24 +99,24 @@ where
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see a default value as the source address for the connection.
-    pub fn client(&self) -> client::Client<TestConnect> {
+    pub fn client<'a>(&'a self) -> TestClient<'a, NH> {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any value, and need not be contactable.
-    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> client::Client<TestConnect> {
+    pub fn client_with_address<'a>(&'a self, client_addr: net::SocketAddr) -> TestClient<'a, NH> {
         self.try_client_with_address(client_addr).expect(
             "TestServer: unable to spawn client",
         )
     }
 
-    fn try_client_with_address(
-        &self,
+    fn try_client_with_address<'a>(
+        &'a self,
         client_addr: net::SocketAddr,
-    ) -> io::Result<client::Client<TestConnect>> {
-        let handle = self.core.handle();
+    ) -> io::Result<TestClient<'a, NH>> {
+        let handle = self.core.borrow().handle();
 
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
@@ -122,35 +129,41 @@ where
         };
 
         let cs = mio::net::TcpStream::from_stream(cs)?;
-        let cs = reactor::PollEvented::new(cs, &handle)?;
+        let cs = PollEvented::new(cs, &handle)?;
 
         let ss = mio::net::TcpStream::from_stream(ss)?;
-        let ss = reactor::PollEvented::new(ss, &handle)?;
+        let ss = PollEvented::new(ss, &handle)?;
 
         let service = self.new_service.new_service()?;
         self.http.bind_connection(&handle, ss, client_addr, service);
-        Ok(
-            client::Client::configure()
-                .connector(TestConnect { stream: cell::RefCell::new(Some(cs)) })
-                .build(&self.core.handle()),
-        )
+
+        let client = Client::configure()
+            .connector(TestConnect { stream: cell::RefCell::new(Some(cs)) })
+            .build(&self.core.borrow().handle());
+
+        Ok(TestClient {
+            client,
+            test_server: self,
+        })
     }
 
     /// Runs the event loop until the response future is completed.
     ///
     /// If the future came from a different instance of `TestServer`, the event loop will run until
     /// the timeout is triggered.
-    // TODO: Ensure this is impossible to trigger in the more ergonomic client interface to
-    // `TestServer`, when such a thing is written.
-    pub fn run_request<F>(&mut self, f: F) -> Result<F::Item, TestRequestError>
+    fn run_request<F>(&self, f: F) -> Result<F::Item, TestRequestError>
     where
         F: Future<Error = hyper::Error>,
     {
         let timeout_duration = time::Duration::from_secs(self.timeout);
-        let timeout = reactor::Timeout::new(timeout_duration, &self.core.handle())
+        let timeout = Timeout::new(timeout_duration, &self.core.borrow().handle())
             .map_err(|e| TestRequestError::IoError(e))?;
 
-        let run_result = self.core.run(f.select2(timeout));
+        let run_result = {
+            let mut core = self.core.borrow_mut();
+            core.run(f.select2(timeout))
+        };
+
         match run_result {
             Ok(future::Either::A((item, _))) => Ok(item),
             Ok(future::Either::B(_)) => Err(TestRequestError::TimedOut),
@@ -161,29 +174,60 @@ where
 
     /// Runs the event loop until the response body has been fully read. An `Ok(_)` response holds
     /// a buffer containing all bytes of the response body.
-    pub fn read_body(&mut self, response: client::Response) -> hyper::Result<Vec<u8>> {
+    pub fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
 
         let r = {
             let f: hyper::Body = response.body();
             let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
-            self.core.run(f)
+
+            let mut core = self.core.borrow_mut();
+            core.run(f)
         };
 
         r.map(|_| buf)
     }
 }
 
+/// Client interface for issuing requests to a `TestServer`.
+pub struct TestClient<'a, NH>
+where
+    NH: NewHandler + 'static,
+{
+    client: Client<TestConnect>,
+    test_server: &'a TestServer<NH>,
+}
+
+impl<'a, NH> TestClient<'a, NH>
+where
+    NH: NewHandler + 'static,
+{
+    /// Parse the URI, send a GET request using this `TestClient`, and await the response.
+    pub fn get(&self, uri: &str) -> Result<Response, TestRequestError> {
+        self.get_uri(uri.parse()?)
+    }
+
+    /// Send a GET request using this `TestClient`, and await the response.
+    pub fn get_uri(&self, uri: Uri) -> Result<Response, TestRequestError> {
+        self.request(Request::new(Method::Get, uri))
+    }
+
+    /// Send a constructed request using this `TestClient`, and await the response.
+    pub fn request(&self, req: Request) -> Result<Response, TestRequestError> {
+        self.test_server.run_request(self.client.request(req))
+    }
+}
+
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
 pub struct TestConnect {
-    stream: cell::RefCell<Option<reactor::PollEvented<mio::net::TcpStream>>>,
+    stream: cell::RefCell<Option<PollEvented<mio::net::TcpStream>>>,
 }
 
 impl client::Service for TestConnect {
     type Request = hyper::Uri;
     type Error = io::Error;
-    type Response = reactor::PollEvented<mio::net::TcpStream>;
+    type Response = PollEvented<mio::net::TcpStream>;
     type Future = future::FutureResult<Self::Response, Self::Error>;
 
     fn call(&self, _req: Self::Request) -> Self::Future {
@@ -252,11 +296,9 @@ mod tests {
             .unwrap()
             .as_secs();
         let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
-        let uri = "http://localhost/".parse().unwrap();
 
-        let mut test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client().get(uri);
-        let response = test_server.run_request(response).unwrap();
+        let test_server = TestServer::new(new_service).unwrap();
+        let response = test_server.client().get("http://localhost/").unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
         let buf = test_server.read_body(response).unwrap();
@@ -266,11 +308,9 @@ mod tests {
     #[test]
     fn times_out() {
         let new_service = || Ok(TestService { response: "".to_owned() });
-        let mut test_server = TestServer::new(new_service).unwrap().timeout(1);
-        let uri = "http://localhost/timeout".parse().unwrap();
-        let response = test_server.client().get(uri);
+        let test_server = TestServer::new(new_service).unwrap().timeout(1);
 
-        match test_server.run_request(response) {
+        match test_server.client().get("http://localhost/timeout") {
             Err(TestRequestError::TimedOut) => (),
             e @ Err(_) => {
                 e.unwrap();
@@ -287,11 +327,12 @@ mod tests {
             .as_secs();
         let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
         let client_addr = "9.8.7.6:58901".parse().unwrap();
-        let uri = "http://localhost/myaddr".parse().unwrap();
 
-        let mut test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client_with_address(client_addr).get(uri);
-        let response = test_server.run_request(response).unwrap();
+        let test_server = TestServer::new(new_service).unwrap();
+        let response = test_server
+            .client_with_address(client_addr)
+            .get("http://localhost/myaddr")
+            .unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
         let buf = test_server.read_body(response).unwrap();
