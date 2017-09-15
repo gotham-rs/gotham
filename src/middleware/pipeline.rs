@@ -26,7 +26,7 @@ use state::{State, request_id};
 /// # use std::io;
 /// # use gotham::http::response::create_response;
 /// # use gotham::state::State;
-/// # use gotham::handler::{HandlerFuture, NewHandlerService};
+/// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::{Middleware, NewMiddleware};
 /// # use gotham::middleware::pipeline::new_pipeline;
 /// # use gotham::router::Router;
@@ -142,8 +142,7 @@ use state::{State, request_id};
 /// #   let response_finalizer = ResponseFinalizerBuilder::new().finalize();
 /// #   let router = Router::new(tree, response_finalizer);
 /// #
-/// #   let new_service = NewHandlerService::new(router);
-/// #   let mut test_server = TestServer::new(new_service).unwrap();
+/// #   let mut test_server = TestServer::new(router).unwrap();
 /// #   let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
 /// #   let uri = "http://example.com/".parse().unwrap();
 ///     let response = test_server.run_request(client.get(uri)).unwrap();
@@ -429,7 +428,7 @@ where
 mod tests {
     use super::*;
     use test::TestServer;
-    use handler::{Handler, NewHandlerService, IntoHandlerError};
+    use handler::{Handler, IntoHandlerError};
     use state::StateData;
     use hyper::Response;
     use hyper::StatusCode;
@@ -522,7 +521,7 @@ mod tests {
 
     #[test]
     fn pipeline_ordering_test() {
-        let new_service = NewHandlerService::new(|| {
+        let mut test_server = TestServer::new(|| {
             let pipeline = new_pipeline()
                 .add(Number { value: 0 }) // 0
                 .add(Addition { value: 1 }) // 1
@@ -537,11 +536,9 @@ mod tests {
                 Ok(p) => p.call(state, |state| handler.handle(state)),
                 Err(e) => Box::new(future::err((state, e.into_handler_error()))),
             })
-        });
+        }).unwrap();
 
         let uri = "http://localhost/".parse().unwrap();
-
-        let mut test_server = TestServer::new(new_service).unwrap();
         let response = test_server
             .client("127.0.0.1:0".parse().unwrap())
             .unwrap()

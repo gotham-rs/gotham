@@ -23,7 +23,6 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// # extern crate hyper;
 /// #
 /// # use hyper::{Response, StatusCode};
-/// # use gotham::handler::NewHandlerService;
 /// # use gotham::state::{State, client_addr};
 /// # use gotham::test::TestServer;
 /// #
@@ -35,8 +34,7 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// }
 /// #
 /// # fn main() {
-/// #   let new_service = NewHandlerService::new(|| Ok(my_handler));
-/// #   let mut test_server = TestServer::new(new_service).unwrap();
+/// #   let mut test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 /// #   let uri = "http://localhost/".parse().unwrap();
 /// #   let response = test_server
 /// #       .client("127.0.0.1:9816".parse().unwrap())

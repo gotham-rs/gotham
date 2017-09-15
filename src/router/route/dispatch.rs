@@ -155,7 +155,6 @@ mod tests {
     use super::*;
     use std::io;
     use test::TestServer;
-    use handler::NewHandlerService;
     use middleware::{Middleware, NewMiddleware};
     use middleware::pipeline::new_pipeline;
     use state::StateData;
@@ -249,7 +248,7 @@ mod tests {
 
     #[test]
     fn pipeline_chain_ordering_test() {
-        let new_service = NewHandlerService::new(|| {
+        let mut test_server = TestServer::new(|| {
             Ok(move |state| {
                 let pipelines = new_pipeline_set();
 
@@ -283,11 +282,10 @@ mod tests {
                 let dispatcher = DispatcherImpl::new(new_handler, pipeline_chain, pipelines);
                 dispatcher.dispatch(state)
             })
-        });
+        }).unwrap();
 
         let uri = "http://localhost/".parse().unwrap();
 
-        let mut test_server = TestServer::new(new_service).unwrap();
         let response = test_server
             .client("127.0.0.1:0".parse().unwrap())
             .unwrap()

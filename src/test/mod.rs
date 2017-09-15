@@ -1,15 +1,17 @@
 //! Contains helpers for Gotham applications to use during testing.
 //!
-//! [`TestServer::new(_)`][TestServer::new] is the most useful entry point.
-//!
-//! [TestServer::new]: struct.TestServer.html#method.new
+//! `TestServer::new(_)` is the most useful entry point.
 
 use std::{cell, io, net, time};
 use std::net::{TcpListener, TcpStream};
 use hyper::{self, client, server};
+use hyper::server::NewService;
 use futures::{future, Future, Stream};
 use tokio_core::reactor;
 use mio;
+
+use handler::{NewHandler, NewHandlerService};
+use router::Router;
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
 /// (which Gotham's `Router` is). An instance of `TestServer` is run single-threaded and
@@ -22,32 +24,17 @@ use mio;
 /// # extern crate futures;
 /// # extern crate gotham;
 /// #
-/// # use hyper::{server, StatusCode};
-/// # use futures::{future, Future};
+/// # use gotham::state::State;
+/// # use hyper::{Response, StatusCode};
 /// #
-/// # struct MyService;
-/// #
-/// # impl server::Service for MyService {
-/// #     type Request = server::Request;
-/// #     type Response = server::Response;
-/// #     type Error = hyper::Error;
-/// #     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
-/// #
-/// #     fn call(&self, _req: Self::Request) -> Self::Future {
-/// #         Box::new(future::ok(server::Response::new().with_status(StatusCode::Accepted)))
-/// #     }
-/// # }
-/// #
-/// # impl MyService {
-/// #     fn new() -> MyService {
-/// #         MyService
-/// #     }
+/// # fn my_handler(state: State) -> (State, Response) {
+/// #   (state, Response::new().with_status(StatusCode::Accepted))
 /// # }
 /// #
 /// # fn main() {
 /// use gotham::test::TestServer;
 ///
-/// let mut test_server = TestServer::new(|| Ok(MyService::new())).unwrap();
+/// let mut test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
 /// let uri = "http://localhost/".parse().unwrap();
 /// let client_addr = "127.0.0.1:15100".parse().unwrap();
@@ -58,11 +45,14 @@ use mio;
 /// assert_eq!(response.status(), StatusCode::Accepted);
 /// # }
 /// ```
-pub struct TestServer<S> {
+pub struct TestServer<NH = Router>
+where
+    NH: NewHandler + 'static,
+{
     core: reactor::Core,
     http: server::Http,
     timeout: u64,
-    new_service: S,
+    new_service: NewHandlerService<NH>,
 }
 
 /// The `TestRequestError` type represents all error states that can result from evaluating a
@@ -77,32 +67,27 @@ pub enum TestRequestError {
     HyperError(hyper::Error),
 }
 
-impl<S> TestServer<S>
+impl<NH> TestServer<NH>
 where
-    S: server::NewService<
-        Request = server::Request,
-        Response = server::Response,
-        Error = hyper::Error,
-    >,
-    S::Instance: 'static,
+    NH: NewHandler + 'static,
 {
     /// Creates a `TestServer` instance for the service spawned by `new_service`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
     /// for each connection.
-    pub fn new(new_service: S) -> Result<TestServer<S>, io::Error> {
+    pub fn new(new_handler: NH) -> Result<TestServer<NH>, io::Error> {
         reactor::Core::new().map(|core| {
             TestServer {
                 core: core,
                 http: server::Http::new(),
                 timeout: 10,
-                new_service: new_service,
+                new_service: NewHandlerService::new(new_handler),
             }
         })
     }
 
     /// Sets the request timeout to `t` seconds and returns a new `TestServer`. The default timeout
     /// value is 10 seconds.
-    pub fn timeout(self, t: u64) -> TestServer<S> {
+    pub fn timeout(self, t: u64) -> TestServer<NH> {
         TestServer { timeout: t, ..self }
     }
 
@@ -205,38 +190,44 @@ impl client::Service for TestConnect {
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
-    use hyper::StatusCode;
+    use hyper::{StatusCode, Uri};
+    use handler::{Handler, NewHandler, HandlerFuture};
+    use state::{State, FromState, client_addr};
 
     #[derive(Clone)]
     struct TestService {
         response: String,
     }
 
-    impl server::Service for TestService {
-        type Request = server::Request;
-        type Response = server::Response;
-        type Error = hyper::Error;
-        type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
-
-        fn call(&self, req: Self::Request) -> Self::Future {
-            match req.path() {
+    impl Handler for TestService {
+        fn handle(self, state: State) -> Box<HandlerFuture> {
+            let path = Uri::borrow_from(&state).path().to_owned();
+            match path.as_str() {
                 "/" => {
                     let response = server::Response::new()
                         .with_status(StatusCode::Ok)
                         .with_body(self.response.clone());
 
-                    Box::new(future::ok(response))
+                    Box::new(future::ok((state, response)))
                 }
                 "/timeout" => Box::new(future::empty()),
                 "/myaddr" => {
                     let response = server::Response::new()
                         .with_status(StatusCode::Ok)
-                        .with_body(format!("{}", req.remote_addr().unwrap()));
+                        .with_body(format!("{}", client_addr(&state).unwrap()));
 
-                    Box::new(future::ok(response))
+                    Box::new(future::ok((state, response)))
                 }
                 _ => unreachable!(),
             }
+        }
+    }
+
+    impl NewHandler for TestService {
+        type Instance = Self;
+
+        fn new_handler(&self) -> io::Result<Self> {
+            Ok(self.clone())
         }
     }
 
