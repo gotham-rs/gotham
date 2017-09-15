@@ -286,10 +286,7 @@ mod tests {
 
         let uri = "http://localhost/".parse().unwrap();
 
-        let response = test_server
-            .client("127.0.0.1:0".parse().unwrap())
-            .unwrap()
-            .get(uri);
+        let response = test_server.client().unwrap().get(uri);
         let response = test_server.run_request(response).unwrap();
 
         let buf = test_server.read_body(response).unwrap();

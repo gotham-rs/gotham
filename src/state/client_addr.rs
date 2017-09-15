@@ -37,7 +37,7 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// #   let mut test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 /// #   let uri = "http://localhost/".parse().unwrap();
 /// #   let response = test_server
-/// #       .client("127.0.0.1:9816".parse().unwrap())
+/// #       .client_with_address("127.0.0.1:9816".parse().unwrap())
 /// #       .unwrap()
 /// #       .get(uri);
 /// #

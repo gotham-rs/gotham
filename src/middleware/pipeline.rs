@@ -143,7 +143,7 @@ use state::{State, request_id};
 /// #   let router = Router::new(tree, response_finalizer);
 /// #
 /// #   let mut test_server = TestServer::new(router).unwrap();
-/// #   let client = test_server.client("127.0.0.1:10000".parse().unwrap()).unwrap();
+/// #   let client = test_server.client().unwrap();
 /// #   let uri = "http://example.com/".parse().unwrap();
 ///     let response = test_server.run_request(client.get(uri)).unwrap();
 ///     assert_eq!(response.status(), StatusCode::Ok);
@@ -539,10 +539,7 @@ mod tests {
         }).unwrap();
 
         let uri = "http://localhost/".parse().unwrap();
-        let response = test_server
-            .client("127.0.0.1:0".parse().unwrap())
-            .unwrap()
-            .get(uri);
+        let response = test_server.client().unwrap().get(uri);
         let response = test_server.run_request(response).unwrap();
 
         let buf = test_server.read_body(response).unwrap();
