@@ -11,6 +11,10 @@ readme = "README.md"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "gotham"]
 
+[features]
+default = []
+ci = []
+
 [dependencies]
 log = "0.3"
 hyper = "~0.11.2"
