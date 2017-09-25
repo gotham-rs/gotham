@@ -5,6 +5,7 @@
 use std::{cell, io, net, time};
 use std::cell::RefCell;
 use std::net::{TcpListener, TcpStream, SocketAddr, IpAddr};
+use std::ops::{Deref, DerefMut};
 use hyper::{self, Request, Response, Uri, Method};
 use hyper::error::UriError;
 use hyper::client::{self, Client};
@@ -39,7 +40,8 @@ use router::Router;
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
-/// let response = test_server.client().get("http://localhost/").unwrap();
+/// let client = test_server.client();
+/// let response = client.get("http://localhost/").unwrap();
 /// assert_eq!(response.status(), StatusCode::Accepted);
 /// # }
 /// ```
@@ -171,10 +173,13 @@ where
             Err(future::Either::B((e, _))) => Err(TestRequestError::IoError(e)),
         }
     }
+}
 
-    /// Runs the event loop until the response body has been fully read. An `Ok(_)` response holds
-    /// a buffer containing all bytes of the response body.
-    pub fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>> {
+impl<NH> BodyReader for TestServer<NH>
+where
+    NH: NewHandler + 'static,
+{
+    fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
 
         let r = {
@@ -203,18 +208,95 @@ where
     NH: NewHandler + 'static,
 {
     /// Parse the URI, send a GET request using this `TestClient`, and await the response.
-    pub fn get(&self, uri: &str) -> Result<Response, TestRequestError> {
+    pub fn get(&self, uri: &str) -> Result<TestResponse, TestRequestError> {
         self.get_uri(uri.parse()?)
     }
 
     /// Send a GET request using this `TestClient`, and await the response.
-    pub fn get_uri(&self, uri: Uri) -> Result<Response, TestRequestError> {
+    pub fn get_uri(&self, uri: Uri) -> Result<TestResponse, TestRequestError> {
         self.request(Request::new(Method::Get, uri))
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn request(&self, req: Request) -> Result<Response, TestRequestError> {
-        self.test_server.run_request(self.client.request(req))
+    pub fn request(&self, req: Request) -> Result<TestResponse, TestRequestError> {
+        self.test_server.run_request(self.client.request(req)).map(
+            |response| {
+                TestResponse {
+                    response,
+                    reader: self.test_server,
+                }
+            },
+        )
+    }
+}
+
+trait BodyReader {
+    /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
+    /// response holds a buffer containing all bytes of the response body.
+    fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>>;
+}
+
+/// Wrapping struct for the `Response` returned by a `TestClient`. Provides access to the
+/// `Response` value via the `Deref` and `DerefMut` traits, and also provides a function for
+/// awaiting a completed response body.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate hyper;
+/// # extern crate futures;
+/// # extern crate gotham;
+/// # extern crate mime;
+/// #
+/// # use gotham::state::State;
+/// # use gotham::http::response::create_response;
+/// # use hyper::{Response, StatusCode};
+/// #
+/// # fn my_handler(state: State) -> (State, Response) {
+/// #   let body = "This is the body content.".to_string().into_bytes();;
+/// #   let response = create_response(&state,
+/// #                                  StatusCode::Ok,
+/// #                                  Some((body, mime::TEXT_PLAIN)));
+/// #
+/// #   (state, response)
+/// # }
+/// #
+/// # fn main() {
+/// use gotham::test::TestServer;
+///
+/// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
+///
+/// let client = test_server.client();
+/// let response = client.get("http://localhost/").unwrap();
+/// assert_eq!(response.status(), StatusCode::Ok);
+/// let body = response.read_body().unwrap();
+/// assert_eq!(&body[..], b"This is the body content.");
+/// # }
+/// ```
+pub struct TestResponse<'a> {
+    response: Response,
+    reader: &'a BodyReader,
+}
+
+impl<'a> Deref for TestResponse<'a> {
+    type Target = Response;
+
+    fn deref(&self) -> &Response {
+        &self.response
+    }
+}
+
+impl<'a> DerefMut for TestResponse<'a> {
+    fn deref_mut(&mut self) -> &mut Response {
+        &mut self.response
+    }
+}
+
+impl<'a> TestResponse<'a> {
+    /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
+    /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
+    pub fn read_body(self) -> hyper::Result<Vec<u8>> {
+        self.reader.read_body(self.response)
     }
 }
 
@@ -298,10 +380,11 @@ mod tests {
         let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
 
         let test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client().get("http://localhost/").unwrap();
+        let client = test_server.client();
+        let response = client.get("http://localhost/").unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
-        let buf = test_server.read_body(response).unwrap();
+        let buf = response.read_body().unwrap();
         assert_eq!(buf.as_slice(), format!("time: {}", ticks).as_bytes());
     }
 
@@ -329,13 +412,11 @@ mod tests {
         let client_addr = "9.8.7.6:58901".parse().unwrap();
 
         let test_server = TestServer::new(new_service).unwrap();
-        let response = test_server
-            .client_with_address(client_addr)
-            .get("http://localhost/myaddr")
-            .unwrap();
+        let client = test_server.client_with_address(client_addr);
+        let response = client.get("http://localhost/myaddr").unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
-        let buf = test_server.read_body(response).unwrap();
+        let buf = response.read_body().unwrap();
         let received_addr: net::SocketAddr = String::from_utf8(buf).unwrap().parse().unwrap();
         assert_eq!(received_addr, client_addr);
     }

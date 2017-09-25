@@ -284,9 +284,10 @@ mod tests {
             })
         }).unwrap();
 
-        let response = test_server.client().get("http://localhost/").unwrap();
+        let client = test_server.client();
+        let response = client.get("http://localhost/").unwrap();
 
-        let buf = test_server.read_body(response).unwrap();
+        let buf = response.read_body().unwrap();
         assert_eq!(buf.as_slice(), "24".as_bytes());
     }
 }

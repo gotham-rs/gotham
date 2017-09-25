@@ -143,9 +143,10 @@ use state::{State, request_id};
 /// #   let router = Router::new(tree, response_finalizer);
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
-///     let response = test_server.client().get("http://example.com/").unwrap();
+///     let client = test_server.client();
+///     let response = client.get("http://example.com/").unwrap();
 ///     assert_eq!(response.status(), StatusCode::Ok);
-///     assert_eq!(test_server.read_body(response).unwrap(), "[1, 2, 3]".as_bytes());
+///     assert_eq!(response.read_body().unwrap(), "[1, 2, 3]".as_bytes());
 /// }
 /// ```
 pub struct Pipeline<T>
@@ -536,9 +537,10 @@ mod tests {
             })
         }).unwrap();
 
-        let response = test_server.client().get("http://localhost/").unwrap();
+        let client = test_server.client();
+        let response = client.get("http://localhost/").unwrap();
 
-        let buf = test_server.read_body(response).unwrap();
+        let buf = response.read_body().unwrap();
         assert_eq!(buf.as_slice(), "24".as_bytes());
     }
 }
