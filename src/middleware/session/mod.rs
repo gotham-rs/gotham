@@ -755,14 +755,14 @@ impl<B, T> SessionMiddleware<B, T>
           T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
 {
     fn random_identifier(&self) -> SessionIdentifier {
-        let mut bytes: Vec<u8> = Vec::with_capacity(64);
+        let mut bytes = [0u8; 64];
 
         match self.identifier_rng.lock() {
-            Ok(mut rng) => rng.fill_bytes(bytes.as_mut_slice()),
+            Ok(mut rng) => rng.fill_bytes(&mut bytes),
             Err(PoisonError { .. }) => unreachable!("identifier_rng lock poisoned. Rng panicked?"),
         };
 
-        SessionIdentifier { value: base64::encode_config(&bytes, base64::URL_SAFE_NO_PAD) }
+        SessionIdentifier { value: base64::encode_config(&bytes[..], base64::URL_SAFE_NO_PAD) }
     }
 }
 
@@ -949,6 +949,9 @@ mod tests {
         let m = nm.new_middleware().unwrap();
 
         let identifier = m.random_identifier();
+        // 64 -> 512 bits = (85 * 6 + 2)
+        // Without padding that requires 86 base64 characters to represent.
+        assert_eq!(identifier.value.len(), 86);
 
         let session = TestSession { val: rand::random() };
         let mut bytes = Vec::new();
