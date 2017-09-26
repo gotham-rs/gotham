@@ -25,7 +25,6 @@ use router::Router;
 ///
 /// ```rust
 /// # extern crate hyper;
-/// # extern crate futures;
 /// # extern crate gotham;
 /// #
 /// # use gotham::state::State;
@@ -243,7 +242,6 @@ trait BodyReader {
 ///
 /// ```rust
 /// # extern crate hyper;
-/// # extern crate futures;
 /// # extern crate gotham;
 /// # extern crate mime;
 /// #
