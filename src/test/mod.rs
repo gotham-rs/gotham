@@ -333,11 +333,11 @@ mod tests {
     use state::{State, FromState, client_addr};
 
     #[derive(Clone)]
-    struct TestService {
+    struct TestHandler {
         response: String,
     }
 
-    impl Handler for TestService {
+    impl Handler for TestHandler {
         fn handle(self, state: State) -> Box<HandlerFuture> {
             let path = Uri::borrow_from(&state).path().to_owned();
             match path.as_str() {
@@ -361,7 +361,7 @@ mod tests {
         }
     }
 
-    impl NewHandler for TestService {
+    impl NewHandler for TestHandler {
         type Instance = Self;
 
         fn new_handler(&self) -> io::Result<Self> {
@@ -375,7 +375,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
+        let new_service = move || Ok(TestHandler { response: format!("time: {}", ticks) });
 
         let test_server = TestServer::new(new_service).unwrap();
         let response = test_server.client().get("http://localhost/").unwrap();
@@ -387,7 +387,7 @@ mod tests {
 
     #[test]
     fn times_out() {
-        let new_service = || Ok(TestService { response: "".to_owned() });
+        let new_service = || Ok(TestHandler { response: "".to_owned() });
         let test_server = TestServer::new(new_service).unwrap().timeout(1);
 
         match test_server.client().get("http://localhost/timeout") {
@@ -405,7 +405,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
+        let new_service = move || Ok(TestHandler { response: format!("time: {}", ticks) });
         let client_addr = "9.8.7.6:58901".parse().unwrap();
 
         let test_server = TestServer::new(new_service).unwrap();
