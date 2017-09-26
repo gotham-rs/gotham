@@ -79,7 +79,7 @@ impl Default for SessionCookieConfig {
             name: "_gotham_session".to_string(),
             secure: true,
             http_only: true,
-            same_site: SameSiteEnforcement::Strict,
+            same_site: SameSiteEnforcement::Lax,
             domain: None,
             path: "/".to_string(),
         }
@@ -977,14 +977,14 @@ mod tests {
         assert_eq!(&m.cookie_config.name, "_gotham_session");
         assert!(m.cookie_config.secure);
         assert!(m.cookie_config.http_only);
-        assert_eq!(m.cookie_config.same_site, SameSiteEnforcement::Strict);
+        assert_eq!(m.cookie_config.same_site, SameSiteEnforcement::Lax);
         assert_eq!(&m.cookie_config.path, "/");
         assert!(m.cookie_config.domain.is_none());
 
         assert_eq!(
             m.cookie_config.to_cookie_string(&identifier.value),
             format!(
-                "_gotham_session={}; Secure; HttpOnly; SameSite=Strict; Path=/",
+                "_gotham_session={}; Secure; HttpOnly; SameSite=Lax; Path=/",
                 &identifier.value
             )
         );
