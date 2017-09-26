@@ -40,8 +40,7 @@ use router::Router;
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
-/// let client = test_server.client();
-/// let response = client.get("http://localhost/").unwrap();
+/// let response = test_server.client().get("http://localhost/").unwrap();
 /// assert_eq!(response.status(), StatusCode::Accepted);
 /// # }
 /// ```
@@ -208,17 +207,17 @@ where
     NH: NewHandler + 'static,
 {
     /// Parse the URI, send a GET request using this `TestClient`, and await the response.
-    pub fn get(&self, uri: &str) -> Result<TestResponse, TestRequestError> {
+    pub fn get(&self, uri: &str) -> Result<TestResponse<'a>, TestRequestError> {
         self.get_uri(uri.parse()?)
     }
 
     /// Send a GET request using this `TestClient`, and await the response.
-    pub fn get_uri(&self, uri: Uri) -> Result<TestResponse, TestRequestError> {
+    pub fn get_uri(&self, uri: Uri) -> Result<TestResponse<'a>, TestRequestError> {
         self.request(Request::new(Method::Get, uri))
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn request(&self, req: Request) -> Result<TestResponse, TestRequestError> {
+    pub fn request(&self, req: Request) -> Result<TestResponse<'a>, TestRequestError> {
         self.test_server.run_request(self.client.request(req)).map(
             |response| {
                 TestResponse {
@@ -266,8 +265,7 @@ trait BodyReader {
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
-/// let client = test_server.client();
-/// let response = client.get("http://localhost/").unwrap();
+/// let response = test_server.client().get("http://localhost/").unwrap();
 /// assert_eq!(response.status(), StatusCode::Ok);
 /// let body = response.read_body().unwrap();
 /// assert_eq!(&body[..], b"This is the body content.");
@@ -380,8 +378,7 @@ mod tests {
         let new_service = move || Ok(TestService { response: format!("time: {}", ticks) });
 
         let test_server = TestServer::new(new_service).unwrap();
-        let client = test_server.client();
-        let response = client.get("http://localhost/").unwrap();
+        let response = test_server.client().get("http://localhost/").unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
         let buf = response.read_body().unwrap();
@@ -412,8 +409,10 @@ mod tests {
         let client_addr = "9.8.7.6:58901".parse().unwrap();
 
         let test_server = TestServer::new(new_service).unwrap();
-        let client = test_server.client_with_address(client_addr);
-        let response = client.get("http://localhost/myaddr").unwrap();
+        let response = test_server
+            .client_with_address(client_addr)
+            .get("http://localhost/myaddr")
+            .unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
         let buf = response.read_body().unwrap();
