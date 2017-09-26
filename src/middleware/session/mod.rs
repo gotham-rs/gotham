@@ -1,6 +1,6 @@
 //! Defines a default session middleware supporting multiple backends
 
-use std::{io, fmt};
+use std::io;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
@@ -51,38 +51,10 @@ enum SessionDataState {
     Dirty,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 enum SameSiteEnforcement {
     Strict,
     Lax,
-}
-
-#[derive(Clone, PartialEq)]
-enum CookieOption {
-    // If `Expires` / `Max-Age` are ever added here, be sure to update `reset_session` to allow
-    // for them.
-    Secure,
-    HttpOnly,
-    SameSite(SameSiteEnforcement),
-    Domain(String),
-}
-
-impl fmt::Display for CookieOption {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
-        use self::CookieOption::*;
-        use self::SameSiteEnforcement::*;
-
-        match *self {
-            Secure => out.write_str("secure"),
-            HttpOnly => out.write_str("HttpOnly"),
-            SameSite(Strict) => out.write_str("SameSite=strict"),
-            SameSite(Lax) => out.write_str("SameSite=lax"),
-            Domain(ref s) => {
-                out.write_str("Domain=")?;
-                out.write_str(s)
-            }
-        }
-    }
 }
 
 /// Configuration for how the `Set-Cookie` header is generated.
@@ -92,8 +64,60 @@ impl fmt::Display for CookieOption {
 /// `SessionCookieConfig`.
 #[derive(Clone)]
 pub struct SessionCookieConfig {
+    // If `Expires` / `Max-Age` are ever added update `reset_session` to allow for them.
     name: String,
-    options: Vec<CookieOption>,
+    secure: bool,
+    http_only: bool,
+    same_site: SameSiteEnforcement,
+    path: String,
+    domain: Option<String>,
+}
+
+impl Default for SessionCookieConfig {
+    fn default() -> SessionCookieConfig {
+        SessionCookieConfig {
+            name: "_gotham_session".to_string(),
+            secure: true,
+            http_only: true,
+            same_site: SameSiteEnforcement::Strict,
+            domain: None,
+            path: "/".to_string(),
+        }
+    }
+}
+
+impl SessionCookieConfig {
+    fn to_cookie_string(&self, value: &str) -> String {
+        // Ensure this is always enough to prevent re-allocs
+        let mut cookie_value = String::with_capacity(255);
+
+        cookie_value.push_str(&self.name);
+        cookie_value.push('=');
+        cookie_value.push_str(value);
+
+        if self.secure {
+            cookie_value.push_str("; Secure")
+        }
+
+        if self.http_only {
+            cookie_value.push_str("; HttpOnly")
+        }
+
+        match self.same_site {
+            SameSiteEnforcement::Strict => cookie_value.push_str("; SameSite=Strict"),
+            SameSiteEnforcement::Lax => cookie_value.push_str("; SameSite=Lax"),
+        }
+
+        if let Some(ref domain) = self.domain {
+            cookie_value.push_str("; Domain=");
+            cookie_value.push_str(domain);
+        }
+
+        cookie_value.push_str("; Path=");
+        cookie_value.push_str(&self.path);
+
+        cookie_value
+    }
 }
 
 /// The wrapping type for application session data.
@@ -440,21 +464,10 @@ where
         NewSessionMiddleware {
             new_backend: b,
             identifier_rng: Arc::new(Mutex::new(rng::session_identifier_rng())),
-            cookie_config: Arc::new(SessionCookieConfig {
-                name: "_gotham_session".to_owned(),
-                options: default_cookie_options(),
-            }),
+            cookie_config: Arc::new(SessionCookieConfig::default()),
             phantom: PhantomData,
         }
     }
-}
-
-fn default_cookie_options() -> Vec<CookieOption> {
-    vec![
-        CookieOption::HttpOnly,
-        CookieOption::Secure,
-        CookieOption::SameSite(SameSiteEnforcement::Lax),
-    ]
 }
 
 impl<B, T> NewSessionMiddleware<B, T>
@@ -462,29 +475,44 @@ where
     B: NewBackend,
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    fn add_cookie_option(self, opt: CookieOption) -> NewSessionMiddleware<B, T> {
-        let mut cookie_config = (*self.cookie_config).clone();
-        cookie_config.options.push(opt);
-
+    fn rebuild_new_session_middleware(
+        self,
+        cookie_config: SessionCookieConfig,
+    ) -> NewSessionMiddleware<B, T> {
         NewSessionMiddleware {
             cookie_config: Arc::new(cookie_config),
             ..self
         }
     }
-
-    fn remove_cookie_option(self, opt: CookieOption) -> NewSessionMiddleware<B, T> {
-        let mut cookie_config = (*self.cookie_config).clone();
-        cookie_config.options = cookie_config
-            .options
-            .iter()
-            .cloned()
-            .filter(|v| *v != opt)
-            .collect();
-
-        NewSessionMiddleware {
-            cookie_config: Arc::new(cookie_config),
-            ..self
-        }
+    /// Configures the session cookie to be set at a more restrictive path
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
+    /// #
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct MySessionType {
+    /// #   items: Vec<String>,
+    /// # }
+    /// #
+    /// # fn main() {
+    /// NewSessionMiddleware::default()
+    ///     .with_session_type::<MySessionType>()
+    ///     .anchor_to_path("/app".to_string())
+    /// # ;}
+    /// ```
+    pub fn anchor_to_path<P>(self, path: P) -> NewSessionMiddleware<B, T>
+    where
+        P: AsRef<str>,
+    {
+        let cookie_config = SessionCookieConfig {
+            name: path.as_ref().to_owned(),
+            ..(*self.cookie_config).clone()
+        };
+        self.rebuild_new_session_middleware(cookie_config)
     }
 
     /// Configures the `NewSessionMiddleware` not to send the `secure` flag along with the cookie.
@@ -509,7 +537,11 @@ where
     /// # ;}
     /// ```
     pub fn insecure(self) -> NewSessionMiddleware<B, T> {
-        self.remove_cookie_option(CookieOption::Secure)
+        let cookie_config = SessionCookieConfig {
+            secure: false,
+            ..(*self.cookie_config).clone()
+        };
+        self.rebuild_new_session_middleware(cookie_config)
     }
 
     /// Configures the `NewSessionMiddleware` to use an alternate cookie name.
@@ -540,11 +572,7 @@ where
             name: name.as_ref().to_owned(),
             ..(*self.cookie_config).clone()
         };
-
-        NewSessionMiddleware {
-            cookie_config: Arc::new(cookie_config),
-            ..self
-        }
+        self.rebuild_new_session_middleware(cookie_config)
     }
 
     /// Configures the `NewSessionMiddleware` to use a `Domain` attribute with the provided value.
@@ -567,11 +595,15 @@ where
     ///     .with_cookie_domain("example.com")
     /// # ;}
     /// ```
-    pub fn with_cookie_domain<S>(self, name: S) -> NewSessionMiddleware<B, T>
+    pub fn with_cookie_domain<S>(self, domain: S) -> NewSessionMiddleware<B, T>
     where
         S: AsRef<str>,
     {
-        self.add_cookie_option(CookieOption::Domain(name.as_ref().to_owned()))
+        let cookie_config = SessionCookieConfig {
+            domain: Some(domain.as_ref().to_owned()),
+            ..(*self.cookie_config).clone()
+        };
+        self.rebuild_new_session_middleware(cookie_config)
     }
 
     /// Removes the `SameSite` cookie attribute, allowing cross-site requests to include the cookie.
@@ -601,7 +633,11 @@ where
     /// # ;}
     /// ```
     pub fn allow_cross_site_usage(self) -> NewSessionMiddleware<B, T> {
-        self.remove_cookie_option(CookieOption::SameSite(SameSiteEnforcement::Lax))
+        let cookie_config = SessionCookieConfig {
+            same_site: SameSiteEnforcement::Lax,
+            ..(*self.cookie_config).clone()
+        };
+        self.rebuild_new_session_middleware(cookie_config)
     }
 
     /// Sets the "SameSite" cookie attribute value to "strict".
@@ -632,8 +668,11 @@ where
     /// # ;}
     /// ```
     pub fn with_strict_same_site_enforcement(self) -> NewSessionMiddleware<B, T> {
-        self.remove_cookie_option(CookieOption::SameSite(SameSiteEnforcement::Lax))
-            .add_cookie_option(CookieOption::SameSite(SameSiteEnforcement::Strict))
+        let cookie_config = SessionCookieConfig {
+            same_site: SameSiteEnforcement::Strict,
+            ..(*self.cookie_config).clone()
+        };
+        self.rebuild_new_session_middleware(cookie_config)
     }
 
     /// Changes the session type to the provided type parameter. This is required to override the
@@ -686,8 +725,15 @@ where
             .and_then(|c| c.get(self.cookie_config.name.as_ref()))
             .map(|value| SessionIdentifier { value: value.to_owned() });
 
+
         match session_identifier {
             Some(id) => {
+                trace!(
+                    "[{}] SessionIdentifier {} found in cookie from user-agent",
+                    state::request_id(&state),
+                    id.value
+                );
+
                 let f = self.backend
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
@@ -697,6 +743,11 @@ where
                 Box::new(f)
             }
             None => {
+                trace!(
+                    "[{}] No SessionIdentifier found in cookie from user-agent",
+                    state::request_id(&state),
+                );
+
                 let f = self.new_session(state)
                     .and_then(|state| chain(state))
                     .and_then(persist_session::<T>);
@@ -763,29 +814,22 @@ where
     }
 }
 
-fn cookie_string(cookie_config: &SessionCookieConfig, value: &str) -> String {
-    let cookie_value = format!("{}={}", cookie_config.name, value);
-
-    cookie_config.options.iter().fold(
-        cookie_value,
-        |acc, opt| {
-            format!("{}; {}", acc, opt)
-        },
-    )
-}
-
 fn send_cookie<T>(response: &mut Response, session_data: &SessionData<T>)
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    let cookie_string = cookie_string(&*session_data.cookie_config, &session_data.identifier.value);
+    let cookie_string = session_data.cookie_config.to_cookie_string(
+        &session_data.identifier.value,
+    );
 
     let set_cookie = SetCookie(vec![cookie_string]);
     response.headers_mut().set(set_cookie);
 }
 
 fn reset_cookie(response: &mut Response, session_drop_data: &SessionDropData) {
-    let cookie_string = cookie_string(&*session_drop_data.cookie_config, "discarded");
+    let cookie_string = session_drop_data.cookie_config.to_cookie_string(
+        "discarded",
+    );
     let cookie_string = format!(
         "{}; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0",
         cookie_string
@@ -856,9 +900,10 @@ where
         match result {
             Ok(v) => {
                 trace!(
-                    "[{}] retrieved session ({}) from backend successfully",
+                    "[{}] got response for session ({}) from backend, data located: {}",
                     state::request_id(&state),
-                    identifier.value
+                    identifier.value,
+                    v.is_some()
                 );
 
                 let session_data = SessionData::<T>::construct(self, identifier, v);
@@ -903,14 +948,46 @@ where
 mod tests {
     use super::*;
     use std::sync::Mutex;
+    use std::time::Duration;
     use rand;
     use hyper::{StatusCode, Response};
     use hyper::header::Headers;
 
-
     #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
     struct TestSession {
         val: u64,
+    }
+
+    #[test]
+    fn new_session() {
+        let backend = MemoryBackend::new(Duration::from_secs(1));
+        let nm = NewSessionMiddleware::new(backend).with_session_type::<TestSession>();
+        let m = nm.new_middleware().unwrap();
+
+        // Identifier generation is functioning as expected
+        //
+        // 64 -> 512 bits = (85 * 6 + 2)
+        // Without padding that requires 86 base64 characters to represent.
+        let identifier = m.random_identifier();
+        assert_eq!(identifier.value.len(), 86);
+        let identifier2 = m.random_identifier();
+        assert_eq!(identifier2.value.len(), 86);
+        assert_ne!(identifier, identifier2);
+
+        assert_eq!(&m.cookie_config.name, "_gotham_session");
+        assert!(m.cookie_config.secure);
+        assert!(m.cookie_config.http_only);
+        assert_eq!(m.cookie_config.same_site, SameSiteEnforcement::Strict);
+        assert_eq!(&m.cookie_config.path, "/");
+        assert!(m.cookie_config.domain.is_none());
+
+        assert_eq!(
+            m.cookie_config.to_cookie_string(&identifier.value),
+            format!(
+                "_gotham_session={}; Secure; HttpOnly; SameSite=Strict; Path=/",
+                &identifier.value
+            )
+        );
     }
 
     #[test]
