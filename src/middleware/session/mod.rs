@@ -501,15 +501,15 @@ where
     /// # fn main() {
     /// NewSessionMiddleware::default()
     ///     .with_session_type::<MySessionType>()
-    ///     .anchor_to_path("/app".to_string())
+    ///     .with_cookie_path("/app".to_string())
     /// # ;}
     /// ```
-    pub fn anchor_to_path<P>(self, path: P) -> NewSessionMiddleware<B, T>
+    pub fn with_cookie_path<P>(self, path: P) -> NewSessionMiddleware<B, T>
     where
         P: AsRef<str>,
     {
         let cookie_config = SessionCookieConfig {
-            name: path.as_ref().to_owned(),
+            path: path.as_ref().to_owned(),
             ..(*self.cookie_config).clone()
         };
         self.rebuild_new_session_middleware(cookie_config)
@@ -985,6 +985,30 @@ mod tests {
             m.cookie_config.to_cookie_string(&identifier.value),
             format!(
                 "_gotham_session={}; Secure; HttpOnly; SameSite=Lax; Path=/",
+                &identifier.value
+            )
+        );
+    }
+
+    #[test]
+    fn new_session_custom_settings() {
+        let backend = MemoryBackend::new(Duration::from_secs(1));
+        let nm = NewSessionMiddleware::new(backend)
+            .with_cookie_name("_my_session")
+            .with_cookie_domain("example.com")
+            .with_strict_same_site_enforcement()
+            .with_cookie_path("/myapp")
+            .insecure()
+            .with_session_type::<TestSession>();
+
+        let m = nm.new_middleware().unwrap();
+        let identifier = m.random_identifier();
+        assert_eq!(identifier.value.len(), 86);
+
+        assert_eq!(
+            m.cookie_config.to_cookie_string(&identifier.value),
+            format!(
+                "_my_session={}; HttpOnly; SameSite=Strict; Domain=example.com; Path=/myapp",
                 &identifier.value
             )
         );
