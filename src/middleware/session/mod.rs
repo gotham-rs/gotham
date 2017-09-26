@@ -53,6 +53,7 @@ enum SessionDataState {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum SameSiteEnforcement {
+    Disabled,
     Strict,
     Lax,
 }
@@ -106,6 +107,7 @@ impl SessionCookieConfig {
         match self.same_site {
             SameSiteEnforcement::Strict => cookie_value.push_str("; SameSite=Strict"),
             SameSiteEnforcement::Lax => cookie_value.push_str("; SameSite=Lax"),
+            SameSiteEnforcement::Disabled => (),
         }
 
         if let Some(ref domain) = self.domain {
@@ -634,7 +636,7 @@ where
     /// ```
     pub fn allow_cross_site_usage(self) -> NewSessionMiddleware<B, T> {
         let cookie_config = SessionCookieConfig {
-            same_site: SameSiteEnforcement::Lax,
+            same_site: SameSiteEnforcement::Disabled,
             ..(*self.cookie_config).clone()
         };
         self.rebuild_new_session_middleware(cookie_config)
@@ -993,7 +995,7 @@ mod tests {
     #[test]
     fn new_session_custom_settings() {
         let backend = MemoryBackend::new(Duration::from_secs(1));
-        let nm = NewSessionMiddleware::new(backend)
+        let nm = NewSessionMiddleware::new(backend.clone())
             .with_cookie_name("_my_session")
             .with_cookie_domain("example.com")
             .with_strict_same_site_enforcement()
@@ -1009,6 +1011,24 @@ mod tests {
             m.cookie_config.to_cookie_string(&identifier.value),
             format!(
                 "_my_session={}; HttpOnly; SameSite=Strict; Domain=example.com; Path=/myapp",
+                &identifier.value
+            )
+        );
+
+        let nm = NewSessionMiddleware::new(backend)
+            .with_cookie_name("x_session")
+            .with_cookie_path("/xapp")
+            .allow_cross_site_usage()
+            .with_session_type::<TestSession>();
+
+        let m = nm.new_middleware().unwrap();
+        let identifier = m.random_identifier();
+        assert_eq!(identifier.value.len(), 86);
+
+        assert_eq!(
+            m.cookie_config.to_cookie_string(&identifier.value),
+            format!(
+                "x_session={}; Secure; HttpOnly; Path=/xapp",
                 &identifier.value
             )
         );
