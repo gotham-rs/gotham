@@ -258,7 +258,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn globbed(mut state: State) -> (State, Response) {
+        pub fn globbed(state: State) -> (State, Response) {
             let response = Response::new().with_status(StatusCode::Ok).with_body(
                 "Globbed",
             );
