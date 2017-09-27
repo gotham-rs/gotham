@@ -133,7 +133,6 @@ impl SessionCookieConfig {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate futures;
-/// # extern crate serde;
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// # extern crate bincode;
