@@ -447,6 +447,24 @@ where
     }
 }
 
+impl<B, T> Clone for NewSessionMiddleware<B, T>
+where
+    B: NewBackend,
+    T: Default
+        + Serialize
+        + for<'de> Deserialize<'de>
+        + 'static,
+{
+    fn clone(&self) -> Self {
+        NewSessionMiddleware {
+            new_backend: self.new_backend.clone(),
+            identifier_rng: self.identifier_rng.clone(),
+            cookie_config: self.cookie_config.clone(),
+            phantom: PhantomData,
+        }
+    }
+}
+
 impl Default for NewSessionMiddleware<MemoryBackend, ()> {
     fn default() -> NewSessionMiddleware<MemoryBackend, ()> {
         NewSessionMiddleware::new(MemoryBackend::default())
