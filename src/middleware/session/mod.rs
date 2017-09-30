@@ -12,7 +12,7 @@ use hyper::server::Response;
 use hyper::header::{Headers, Cookie, SetCookie};
 use futures::{future, Future};
 use serde::{Serialize, Deserialize};
-use rmp_serde;
+use bincode;
 
 use super::{NewMiddleware, Middleware};
 use handler::{HandlerFuture, HandlerError, IntoHandlerError};
@@ -133,13 +133,11 @@ impl SessionCookieConfig {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate futures;
-/// # extern crate serde;
 /// # #[macro_use]
 /// # extern crate serde_derive;
-/// # extern crate rmp_serde;
+/// # extern crate bincode;
 /// #
 /// # use std::time::Duration;
-/// # use serde::Serialize;
 /// # use futures::{future, Future, Stream};
 /// # use gotham::handler::{NewHandlerService, HandlerFuture};
 /// # use gotham::state::{State, FromState};
@@ -175,12 +173,11 @@ impl SessionCookieConfig {
 /// # fn main() {
 /// #   let backend = MemoryBackend::new(Duration::from_secs(1));
 /// #   let identifier = SessionIdentifier { value: "u0G6KdfckQgkV0qLANZjjNkEHBU".to_owned() };
-/// #   let mut bytes = Vec::new();
 /// #   let session = MySessionType {
 /// #       items: vec!["a".into(), "b".into(), "c".into()],
 /// #   };
 /// #
-/// #   session.serialize(&mut rmp_serde::Serializer::new(&mut bytes)).unwrap();
+/// #   let bytes = bincode::serialize(&session, bincode::Infinite).unwrap();
 /// #   backend.persist_session(identifier.clone(), &bytes[..]).unwrap();
 /// #
 /// #   let mut cookies = Cookie::new();
@@ -283,7 +280,7 @@ where
 
         match val {
             Some(val) => {
-                match T::deserialize(&mut rmp_serde::Deserializer::new(&val[..])) {
+                match bincode::deserialize::<T>(&val[..]) {
                     Ok(value) => {
                         let backend = Box::new(middleware.backend);
                         let cookie_config = middleware.cookie_config.clone();
@@ -849,19 +846,19 @@ fn write_session<T>(
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    let mut bytes = Vec::new();
+    let bytes = match bincode::serialize(&session_data.value, bincode::Infinite) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            error!(
+                "[{}] failed to serialize session: {:?}",
+                state::request_id(&state),
+                e
+            );
 
-    {
-        let mut serializer = rmp_serde::Serializer::new(&mut bytes);
-
-        match session_data.value.serialize(&mut serializer) {
-            Err(_) => {
-                let response = create_response(&state, StatusCode::InternalServerError, None);
-                return future::ok((state, response));
-            }
-            Ok(_) => {}
+            let response = create_response(&state, StatusCode::InternalServerError, None);
+            return future::ok((state, response));
         }
-    }
+    };
 
     let identifier = session_data.identifier;
     let slice = &bytes[..];
@@ -1045,10 +1042,7 @@ mod tests {
         assert_eq!(identifier.value.len(), 86);
 
         let session = TestSession { val: rand::random() };
-        let mut bytes = Vec::new();
-        session
-            .serialize(&mut rmp_serde::Serializer::new(&mut bytes))
-            .unwrap();
+        let bytes = bincode::serialize(&session, bincode::Infinite).unwrap();
 
         m.backend
             .persist_session(identifier.clone(), &bytes)
@@ -1092,8 +1086,7 @@ mod tests {
 
         let m = nm.new_middleware().unwrap();
         let bytes = m.backend.read_session(identifier).wait().unwrap().unwrap();
-        let updated = TestSession::deserialize(&mut rmp_serde::Deserializer::new(&bytes[..]))
-            .unwrap();
+        let updated = bincode::deserialize::<TestSession>(&bytes[..]).unwrap();
 
         assert_eq!(updated.val, session.val + 1);
     }

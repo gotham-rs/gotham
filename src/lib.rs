@@ -29,7 +29,7 @@ extern crate mime;
 extern crate serde;
 extern crate rand;
 extern crate base64;
-extern crate rmp_serde;
+extern crate bincode;
 extern crate linked_hash_map;
 extern crate num_cpus;
 extern crate regex;
