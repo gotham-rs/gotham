@@ -838,9 +838,7 @@ where
     let cookie_string = session_data.cookie_config.to_cookie_string(
         &session_data.identifier.value,
     );
-
-    let set_cookie = SetCookie(vec![cookie_string]);
-    response.headers_mut().set(set_cookie);
+    write_cookie(cookie_string, response);
 }
 
 fn reset_cookie(response: &mut Response, session_drop_data: &SessionDropData) {
@@ -851,9 +849,17 @@ fn reset_cookie(response: &mut Response, session_drop_data: &SessionDropData) {
         "{}; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0",
         cookie_string
     );
+    write_cookie(cookie_string, response);
+}
 
-    let set_cookie = SetCookie(vec![cookie_string]);
-    response.headers_mut().set(set_cookie);
+fn write_cookie(cookie: String, response: &mut Response) {
+    let headers = response.headers_mut();
+    if let Some(existing_cookies) = headers.get_mut::<SetCookie>() {
+        return existing_cookies.push(cookie);
+    }
+
+    let set_cookie = SetCookie(vec![cookie]);
+    headers.set(set_cookie);
 }
 
 fn write_session<T>(
