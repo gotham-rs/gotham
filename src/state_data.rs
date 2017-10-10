@@ -11,9 +11,20 @@ use gotham::state::{State, FromState};
 /// Convenience function for usage within 3rd party Middleware and Handlers to obtain a
 /// Diesel connection.
 ///
-// Really just addresses the need to include all the relevant types in 3rd
-// party apps but it made working with this middleware a lot nicer.
-pub fn conn<T>(s: &State) -> Result<PooledConnection<ConnectionManager<T>>, GetTimeout>
+/// # Panics
+/// If a connection can not be provided.
+pub fn connection<T>(s: &State) -> PooledConnection<ConnectionManager<T>>
+where
+    T: Connection + 'static,
+{
+    Diesel::borrow_from(s).conn().expect(
+        "Did not obtain valid Diesel connection from R2D2 pool",
+    )
+}
+
+/// Convenience function for usage within 3rd party Middleware and Handlers to obtain a
+/// Diesel connection.
+pub fn try_connection<T>(s: &State) -> Result<PooledConnection<ConnectionManager<T>>, GetTimeout>
 where
     T: Connection + 'static,
 {
@@ -21,7 +32,6 @@ where
 }
 
 /// Provides access to a Diesel connection within an r2d2 pool via Gotham State
-/// for Middleware and Handlers.
 #[derive(StateData)]
 pub struct Diesel<T>
 where
