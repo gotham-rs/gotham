@@ -212,7 +212,7 @@ impl Echo {
     }
 
     fn post(state: State, req: Request) -> Box<HandlerFuture> {
-        req.body()
+        Box::new(req.body()
             .concat2()
             .then(move |full_body| match full_body {
                 Ok(valid_body) => {
@@ -224,8 +224,7 @@ impl Echo {
                     future::ok((state, res))
                 }
                 Err(e) => future::err((state, e.into_handler_error())),
-            })
-            .boxed()
+            }))
     }
 
     fn async(state: State, _req: Request) -> Box<HandlerFuture> {
@@ -234,7 +233,7 @@ impl Echo {
             StatusCode::Ok,
             Some((String::from(ASYNC).into_bytes(), mime::TEXT_PLAIN)),
         );
-        future::lazy(move || future::ok((state, res))).boxed()
+        Box::new(future::lazy(move || future::ok((state, res))))
     }
 
     fn header_value(mut state: State, _req: Request) -> (State, Response) {

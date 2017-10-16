@@ -36,7 +36,7 @@ impl Middleware for KitchenSinkMiddleware {
         let result = chain(state, request);
         let header_name = self.header_name;
 
-        result
+        Box::new(result
             .and_then(move |(state, mut response)| {
                 {
                     let data = state.borrow::<KitchenSinkData>().unwrap();
@@ -46,7 +46,6 @@ impl Middleware for KitchenSinkMiddleware {
                 }
 
                 future::ok((state, response))
-            })
-            .boxed()
+            }))
     }
 }
