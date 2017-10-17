@@ -18,6 +18,8 @@ use hyper::{Body, Response, Method, StatusCode};
 
 use log::LogLevelFilter;
 
+use chrono::prelude::*;
+
 use gotham::router::request::path::NoopPathExtractor;
 use gotham::router::request::query_string::NoopQueryStringExtractor;
 use gotham::router::response::finalizer::ResponseFinalizerBuilder;
@@ -303,7 +305,7 @@ fn main() {
         .format(|out, message, record| {
             out.finish(format_args!(
                 "{}[{}][{}]{}",
-                chrono::UTC::now().format("[%Y-%m-%d %H:%M:%S%.9f]"),
+                Utc::now().format("[%Y-%m-%d %H:%M:%S%.9f]"),
                 record.target(),
                 record.level(),
                 message
