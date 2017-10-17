@@ -9,7 +9,7 @@ use std::io;
 use std::sync::Arc;
 use std::error::Error;
 
-use chrono;
+use chrono::prelude::*;
 use hyper;
 use hyper::server::{NewService, Service};
 use hyper::{Request, Response};
@@ -148,7 +148,7 @@ where
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        let s = chrono::UTC::now();
+        let s = Utc::now();
         let (method, uri, version, headers, body) = req.deconstruct();
 
         let mut state = State::new();
@@ -168,7 +168,7 @@ where
                 let f = handler
                     .handle(state)
                     .and_then(move |(state, res)| {
-                        let f = chrono::UTC::now();
+                        let f = Utc::now();
                         match f.signed_duration_since(s).num_microseconds() {
                             Some(dur) => {
                                 info!(
@@ -195,7 +195,7 @@ where
                         }
                     })
                     .or_else(move |(state, err)| {
-                        let f = chrono::UTC::now();
+                        let f = Utc::now();
 
                         {
                             // HandlerError::cause() is far more interesting for logging,

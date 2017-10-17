@@ -28,7 +28,7 @@ mio = "0.6"
 borrow-bag = "0.3"
 url = "1.4.0"
 uuid = { version = "0.5", features = ["v4"] }
-chrono = "0.3"
+chrono = "0.4"
 base64 = "0.4"
 rand = "0.3"
 linked-hash-map = "0.4"
