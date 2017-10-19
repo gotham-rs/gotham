@@ -100,3 +100,72 @@ fn finalize_panic_response(timer: Timer) -> FutureResult<Response, hyper::Error>
 
     future::ok(Response::new().with_status(StatusCode::InternalServerError))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::io;
+
+    use hyper::{StatusCode, Headers};
+
+    use http::response::create_response;
+    use state::set_request_id;
+    use handler::{IntoHandlerError, HandlerFuture};
+
+    #[test]
+    fn success() {
+        let new_handler = || {
+            Ok(|state| {
+                let res = create_response(&state, StatusCode::Accepted, None);
+                (state, res)
+            })
+        };
+
+        let mut state = State::new();
+        state.put(Headers::new());
+        set_request_id(&mut state);
+
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let response = r.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::Accepted);
+    }
+
+    #[test]
+    fn error() {
+        let new_handler = || {
+            Ok(|state| {
+                let res = create_response(&state, StatusCode::Accepted, None);
+                Box::new(future::err(
+                    (state, io::Error::last_os_error().into_handler_error()),
+                )) as Box<HandlerFuture>
+            })
+        };
+
+        let mut state = State::new();
+        state.put(Headers::new());
+        set_request_id(&mut state);
+
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let response = r.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::InternalServerError);
+    }
+
+    #[test]
+    fn panic() {
+        let new_handler = || {
+            Ok(|state| {
+                let val: Option<Box<HandlerFuture>> = None;
+                val.expect("test panic")
+            })
+        };
+
+        let mut state = State::new();
+        state.put(Headers::new());
+        set_request_id(&mut state);
+
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let response = r.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::InternalServerError);
+    }
+}
