@@ -24,16 +24,23 @@ impl Timer {
 
     /// Finishes measuring, and returns the elapsed time as a `Timing` value.
     pub(super) fn elapsed(self, state: &State) -> Timing {
+        let timing = self.elapsed_no_logging();
+
+        if let Timing::Invalid = timing {
+            error!(
+                "[{}] Unable to measure timing of request, num_microseconds was None",
+                request_id(state)
+            );
+        }
+
+        timing
+    }
+
+    pub(super) fn elapsed_no_logging(self) -> Timing {
         let Timer { start } = self;
         match Utc::now().signed_duration_since(start).num_microseconds() {
             Some(dur) => Timing::Microseconds(dur),
-            None => {
-                error!(
-                    "[{}] Unable to measure timing of request, num_microseconds was None",
-                    request_id(state)
-                );
-                Timing::Invalid
-            }
+            None => Timing::Invalid,
         }
     }
 }

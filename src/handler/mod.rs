@@ -19,6 +19,7 @@ use http::request::path::RequestPathSegments;
 
 mod error;
 mod timing;
+mod trap;
 
 pub use self::error::{HandlerError, IntoHandlerError};
 
@@ -147,8 +148,6 @@ where
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        let timer = timing::Timer::new();
-
         let (method, uri, version, headers, body) = req.deconstruct();
 
         let mut state = State::new();
@@ -160,51 +159,7 @@ where
         state.put(body);
         set_request_id(&mut state);
 
-        // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
-        // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
-        // immediately consuming it.
-        match self.t.new_handler() {
-            Ok(handler) => {
-                let f = handler
-                    .handle(state)
-                    .and_then(move |(state, res)| {
-                        let timing = timer.elapsed(&state);
-
-                        info!(
-                            "[RESPONSE][{}][{}][{}][{}]",
-                            request_id(&state),
-                            res.version(),
-                            res.status(),
-                            timing
-                        );
-
-                        future::ok(timing.add_to_response(res))
-                    })
-                    .or_else(move |(state, err)| {
-                        let timing = timer.elapsed(&state);
-
-                        {
-                            // HandlerError::cause() is far more interesting for logging, but the
-                            // API doesn't guarantee its presence (even though it always is).
-                            let err_description = err.cause().map(Error::description).unwrap_or(
-                                err.description(),
-                            );
-
-                            error!(
-                                "[ERROR][{}][Error: {}][{}]",
-                                request_id(&state),
-                                err_description,
-                                timing
-                            );
-                        }
-
-                        future::ok(err.into_response(&state))
-                    });
-
-                Box::new(f)
-            }
-            Err(e) => Box::new(future::err(e.into())),
-        }
+        trap::call_handler(self.t.as_ref(), state)
     }
 }
 
