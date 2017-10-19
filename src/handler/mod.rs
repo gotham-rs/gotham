@@ -8,6 +8,7 @@
 use std::io;
 use std::sync::Arc;
 use std::error::Error;
+use std::panic::{AssertUnwindSafe, RefUnwindSafe};
 
 use hyper;
 use hyper::server::{NewService, Service};
@@ -159,7 +160,7 @@ where
         state.put(body);
         set_request_id(&mut state);
 
-        trap::call_handler(self.t.as_ref(), state)
+        trap::call_handler(self.t.as_ref(), AssertUnwindSafe(state))
     }
 }
 
@@ -180,7 +181,7 @@ pub trait Handler {
 }
 
 /// Creates new `Handler` values.
-pub trait NewHandler: Send + Sync {
+pub trait NewHandler: Send + Sync + RefUnwindSafe {
     /// The type of `Handler` created by the implementor.
     type Instance: Handler;
 
@@ -190,7 +191,7 @@ pub trait NewHandler: Send + Sync {
 
 impl<F, H> NewHandler for F
 where
-    F: Fn() -> io::Result<H> + Send + Sync,
+    F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
     H: Handler,
 {
     type Instance = H;

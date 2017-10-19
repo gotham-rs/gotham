@@ -7,6 +7,7 @@ use router::route::Route;
 use router::tree::node::{Node, NodeBuilder, SegmentType};
 
 pub mod node;
+pub mod regex;
 
 /// A depth ordered `Vec` of `Node` instances that create a routable path through the `Tree` for the
 /// matched `Request` path.

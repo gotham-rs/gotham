@@ -8,6 +8,7 @@ pub mod matcher;
 pub mod dispatch;
 
 use std::marker::PhantomData;
+use std::panic::RefUnwindSafe;
 
 use hyper::Response;
 use hyper::StatusCode;
@@ -40,7 +41,7 @@ pub enum Delegation {
 ///
 /// Capable of delegating requests to secondary `Router` instances in order to support "Modular
 /// Applications".
-pub trait Route {
+pub trait Route: RefUnwindSafe {
     /// Determines if this `Route` can be invoked, based on the `Request`.
     fn is_match(&self, state: &State) -> Result<(), StatusCode>;
 

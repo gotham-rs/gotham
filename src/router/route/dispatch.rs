@@ -1,6 +1,7 @@
 //! Defines Gotham's `Dispatcher` and supporting types.
 
 use std::sync::Arc;
+use std::panic::RefUnwindSafe;
 use borrow_bag::{new_borrow_bag, BorrowBag, Handle, Lookup};
 use futures::future;
 
@@ -29,7 +30,7 @@ pub fn finalize_pipeline_set<P>(eps: EditablePipelineSet<P>) -> PipelineSet<P> {
 
 /// Used by `Router` to dispatch requests via `Pipeline`(s), through `Middleware`(s)
 /// and finally into the configured `Handler`.
-pub trait Dispatcher {
+pub trait Dispatcher: RefUnwindSafe {
     /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
     fn dispatch(&self, state: State) -> Box<HandlerFuture>;
 }
@@ -39,6 +40,7 @@ pub struct DispatcherImpl<H, C, P>
 where
     H: NewHandler,
     C: PipelineHandleChain<P>,
+    P: RefUnwindSafe,
 {
     new_handler: H,
     pipeline_chain: C,
@@ -50,6 +52,7 @@ where
     H: NewHandler,
     H::Instance: 'static,
     C: PipelineHandleChain<P>,
+    P: RefUnwindSafe,
 {
     /// Creates a new `DispatcherImpl`.
     ///
@@ -71,6 +74,7 @@ where
     H: NewHandler,
     H::Instance: 'static,
     C: PipelineHandleChain<P>,
+    P: RefUnwindSafe,
 {
     fn dispatch(&self, state: State) -> Box<HandlerFuture> {
         match self.new_handler.new_handler() {
@@ -103,7 +107,7 @@ where
 /// will be invoked as:
 ///
 /// `(state, request)` &rarr; `p1` &rarr; `p2` &rarr; `p3` &rarr; `handler`
-pub trait PipelineHandleChain<P> {
+pub trait PipelineHandleChain<P>: RefUnwindSafe {
     /// Invokes this part of the `PipelineHandleChain`, with requests being passed through to `f`
     /// once all `Middleware` in the `Pipeline` have passed the request through.
     fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
@@ -118,6 +122,7 @@ where
     T::Instance: 'static,
     U: PipelineHandleChain<P>,
     P: Lookup<Pipeline<T>, N>,
+    N: RefUnwindSafe,
 {
     fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where

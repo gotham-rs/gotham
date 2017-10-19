@@ -1,6 +1,7 @@
 //! Defines types for Gotham middleware
 
 use std::io;
+use std::panic::RefUnwindSafe;
 
 use handler::HandlerFuture;
 use state::State;
@@ -152,7 +153,7 @@ pub trait Middleware {
 }
 
 /// Creates new `Middleware` values.
-pub trait NewMiddleware: Sync {
+pub trait NewMiddleware: Sync + RefUnwindSafe {
     /// The type of `Middleware` created by the implementor.
     type Instance: Middleware;
 

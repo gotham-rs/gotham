@@ -1,7 +1,7 @@
 //! Defines functionality for processing a request and trapping errors and panics in response
 //! generation.
 
-use std::panic::catch_unwind;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::error::Error;
 
 use hyper::{self, Response, StatusCode};
@@ -13,32 +13,33 @@ use state::{State, request_id};
 
 pub(super) fn call_handler<T>(
     t: &T,
-    state: State,
+    state: AssertUnwindSafe<State>,
 ) -> Box<Future<Item = Response, Error = hyper::Error>>
 where
     T: NewHandler,
 {
     let timer = Timer::new();
 
-    // TODO: catch_unwind
-    let res: Result<_, ()> = {
+    let res = catch_unwind(move || {
+        type ResponseFuture = Future<Item = Response, Error = hyper::Error>;
+
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
         // immediately consuming it.
-        let b: Box<Future<Item = _, Error = _>> = match t.new_handler() {
+        match t.new_handler() {
             Ok(handler) => {
+                let AssertUnwindSafe(state) = state;
+
                 let f = handler.handle(state).then(move |result| match result {
                     Ok((state, res)) => finalize_success_response(timer, state, res),
                     Err((state, err)) => finalize_error_response(timer, state, err),
                 });
 
-                Box::new(f)
+                Box::new(f) as Box<ResponseFuture>
             }
-            Err(e) => Box::new(future::err(e.into())),
-        };
-
-        Ok(b)
-    };
+            Err(e) => Box::new(future::err(e.into())) as Box<ResponseFuture>,
+        }
+    });
 
     match res {
         Ok(f) => f,
