@@ -7,7 +7,6 @@
 
 use std::io;
 use std::sync::Arc;
-use std::error::Error;
 use std::panic::{AssertUnwindSafe, RefUnwindSafe};
 
 use hyper;
@@ -15,7 +14,7 @@ use hyper::server::{NewService, Service};
 use hyper::{Request, Response};
 use futures::{future, Future};
 
-use state::{State, set_request_id, request_id};
+use state::{State, set_request_id};
 use http::request::path::RequestPathSegments;
 
 mod error;

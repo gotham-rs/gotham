@@ -3,7 +3,7 @@
 use regex::Regex;
 
 use std::cmp::Ordering;
-use std::panic::{AssertUnwindSafe, UnwindSafe, catch_unwind};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::process;
 
 /// A unwind-safe wrapper for Regex that implements PartialEq, Eq, PartialOrd, and Ord.  These
@@ -29,6 +29,8 @@ impl ConstrainedSegmentRegex {
         }
     }
 
+    /// Wraps `regex::Regex::is_match` to return true if and only if the regex matches the string
+    /// given.
     pub fn is_match(&self, s: &str) -> bool {
         match catch_unwind(|| self.regex.is_match(s)) {
             Ok(b) => b,
