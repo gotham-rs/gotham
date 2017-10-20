@@ -12,6 +12,8 @@ extern crate mime;
 
 mod middleware;
 
+use std::panic::RefUnwindSafe;
+
 use futures::{future, Future, Stream};
 
 use hyper::{Body, Response, Method, StatusCode};
@@ -70,7 +72,7 @@ fn static_route<NH, P, C>(
 where
     NH: NewHandler + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
-    P: Send + Sync + 'static,
+    P: Send + Sync + RefUnwindSafe + 'static,
 {
     let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
@@ -93,7 +95,7 @@ fn dynamic_route<NH, P, C>(
 where
     NH: NewHandler + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
-    P: Send + Sync + 'static,
+    P: Send + Sync + RefUnwindSafe + 'static,
 {
     let matcher = MethodOnlyRouteMatcher::new(methods);
     let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
