@@ -135,7 +135,6 @@ mod tests {
     fn error() {
         let new_handler = || {
             Ok(|state| {
-                let res = create_response(&state, StatusCode::Accepted, None);
                 Box::new(future::err(
                     (state, io::Error::last_os_error().into_handler_error()),
                 )) as Box<HandlerFuture>
@@ -154,7 +153,7 @@ mod tests {
     #[test]
     fn panic() {
         let new_handler = || {
-            Ok(|state| {
+            Ok(|_| {
                 let val: Option<Box<HandlerFuture>> = None;
                 val.expect("test panic")
             })
