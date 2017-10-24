@@ -1,6 +1,7 @@
 //! Defines types for a middleware pipeline
 
 use std::io;
+use std::panic::RefUnwindSafe;
 
 use handler::HandlerFuture;
 use middleware::{Middleware, NewMiddleware};
@@ -329,7 +330,7 @@ where
 /// This type should never be implemented outside of Gotham, does not form part of the public API,
 /// and is subject to change without notice.
 #[doc(hidden)]
-pub unsafe trait NewMiddlewareChain: Sized {
+pub unsafe trait NewMiddlewareChain: RefUnwindSafe + Sized {
     type Instance: MiddlewareChain;
 
     /// Create and return a new `MiddlewareChain` value.

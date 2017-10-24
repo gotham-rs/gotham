@@ -7,19 +7,19 @@
 
 use std::io;
 use std::sync::Arc;
-use std::error::Error;
+use std::panic::{AssertUnwindSafe, RefUnwindSafe};
 
-use chrono::prelude::*;
 use hyper;
 use hyper::server::{NewService, Service};
 use hyper::{Request, Response};
 use futures::{future, Future};
 
-use state::{State, set_request_id, request_id};
+use state::{State, set_request_id};
 use http::request::path::RequestPathSegments;
-use http::header::XRuntimeMicroseconds;
 
 mod error;
+mod timing;
+mod trap;
 
 pub use self::error::{HandlerError, IntoHandlerError};
 
@@ -148,7 +148,6 @@ where
     type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
-        let s = Utc::now();
         let (method, uri, version, headers, body) = req.deconstruct();
 
         let mut state = State::new();
@@ -160,77 +159,7 @@ where
         state.put(body);
         set_request_id(&mut state);
 
-        // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
-        // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
-        // immediately consuming it.
-        match self.t.new_handler() {
-            Ok(handler) => {
-                let f = handler
-                    .handle(state)
-                    .and_then(move |(state, res)| {
-                        let f = Utc::now();
-                        match f.signed_duration_since(s).num_microseconds() {
-                            Some(dur) => {
-                                info!(
-                                    "[RESPONSE][{}][{}][{}][{}µs]",
-                                    request_id(&state),
-                                    res.version(),
-                                    res.status(),
-                                    dur
-                                );
-
-                                future::ok(res.with_header(XRuntimeMicroseconds(dur)))
-                            }
-                            None => {
-                                // Valid response is still sent to client in this case but
-                                // timing has failed and should be looked into.
-                                error!(
-                                    "[RESPONSE][{}][{}][{}][invalid]",
-                                    request_id(&state),
-                                    res.version(),
-                                    res.status()
-                                );
-                                future::ok(res)
-                            }
-                        }
-                    })
-                    .or_else(move |(state, err)| {
-                        let f = Utc::now();
-
-                        {
-                            // HandlerError::cause() is far more interesting for logging,
-                            // but the API doesn't guarantee its presence (even though it
-                            // always is).
-                            let err_description = err.cause().map(Error::description).unwrap_or(
-                                err.description(),
-                            );
-
-                            match f.signed_duration_since(s).num_microseconds() {
-                                Some(dur) => {
-                                    error!(
-                                        "[ERROR][{}][Error: {}][{}]",
-                                        request_id(&state),
-                                        err_description,
-                                        dur
-                                    );
-                                }
-                                None => {
-                                    error!(
-                                        "[ERROR][{}][Error: {}][invalid]",
-                                        request_id(&state),
-                                        err_description
-                                    );
-                                }
-                            }
-                        }
-
-                        future::ok(err.into_response(&state))
-                    });
-
-                Box::new(f)
-            }
-            Err(e) => Box::new(future::err(e.into())),
-        }
+        trap::call_handler(self.t.as_ref(), AssertUnwindSafe(state))
     }
 }
 
@@ -251,7 +180,7 @@ pub trait Handler {
 }
 
 /// Creates new `Handler` values.
-pub trait NewHandler: Send + Sync {
+pub trait NewHandler: Send + Sync + RefUnwindSafe {
     /// The type of `Handler` created by the implementor.
     type Instance: Handler;
 
@@ -261,7 +190,7 @@ pub trait NewHandler: Send + Sync {
 
 impl<F, H> NewHandler for F
 where
-    F: Fn() -> io::Result<H> + Send + Sync,
+    F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
     H: Handler,
 {
     type Instance = H;

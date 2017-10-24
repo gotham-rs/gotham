@@ -4,6 +4,7 @@ use std::io;
 use std::sync::{Arc, Mutex, PoisonError};
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
+use std::panic::RefUnwindSafe;
 
 use base64;
 use rand::Rng;
@@ -344,7 +345,7 @@ where
 
 impl StateData for SessionDropData {}
 
-trait SessionTypePhantom<T>: Send + Sync
+trait SessionTypePhantom<T>: Send + Sync + RefUnwindSafe
 where
     T: Send
 {

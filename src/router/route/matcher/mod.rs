@@ -4,13 +4,15 @@ pub mod any;
 pub mod and;
 pub mod accept;
 
+use std::panic::RefUnwindSafe;
+
 use hyper::{Method, StatusCode};
 
 use state::{State, FromState, request_id};
 
 /// Determines if pre-defined conditions required for the associated `Route` to be invoked by
 /// the `Router` have been met.
-pub trait RouteMatcher {
+pub trait RouteMatcher: RefUnwindSafe {
     /// Determines if the `Request` meets pre-defined conditions.
     fn is_match(&self, state: &State) -> Result<(), StatusCode>;
 }

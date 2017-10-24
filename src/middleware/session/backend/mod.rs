@@ -1,13 +1,14 @@
 pub(super) mod memory;
 
 use std::io;
+use std::panic::RefUnwindSafe;
 
 use futures::Future;
 
 use middleware::session::{SessionError, SessionIdentifier};
 
 /// Creates new `Backend` values.
-pub trait NewBackend: Sync + Clone {
+pub trait NewBackend: Sync + Clone + RefUnwindSafe {
     /// The type of `Backend` created by the implementor.
     type Instance: Backend + 'static;
 

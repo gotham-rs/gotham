@@ -4,46 +4,12 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::borrow::Borrow;
 use hyper::StatusCode;
-use regex::Regex;
 
 use http::PercentDecoded;
 use router::route::{Route, Delegation};
 use router::tree::{SegmentsProcessed, SegmentMapping, Path};
+use router::tree::regex::ConstrainedSegmentRegex;
 use state::{State, request_id};
-
-/// A regular expression that implements PartialEq, Eq, PartialOrd, and ord.
-/// It does so in a potentially error-prone way by comparing the underlying &str
-/// representations of the regular expression.
-pub struct OrderedRegex(Regex);
-
-impl<'a> OrderedRegex {
-    /// Creates a new OrderedRegex from a provided string.
-    /// It wraps the string in begin and end of line anchors to prevent it from matching
-    /// more than intended.
-    pub fn new(regex: &'a str) -> Self {
-        OrderedRegex(Regex::new(&format!("^{pattern}$", pattern = regex)).unwrap())
-    }
-}
-
-impl PartialEq for OrderedRegex {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.as_str() == other.0.as_str()
-    }
-}
-
-impl Eq for OrderedRegex {}
-
-impl PartialOrd for OrderedRegex {
-    fn partial_cmp(&self, other: &OrderedRegex) -> Option<Ordering> {
-        Some(self.0.as_str().cmp(other.0.as_str()))
-    }
-}
-
-impl Ord for OrderedRegex {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0.as_str().cmp(other.0.as_str())
-    }
-}
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -57,7 +23,7 @@ pub enum SegmentType {
     /// Uses the supplied regex to determine match against incoming request paths.
     Constrained {
         /// Regex used to match against a single segment of a request path.
-        regex: OrderedRegex,
+        regex: ConstrainedSegmentRegex,
     },
 
     /// Matches any corresponding segment for incoming request paths.
@@ -299,8 +265,8 @@ impl Node {
         match self.segment_type {
             SegmentType::Static => self.segment == req_path_segment.val(),
             SegmentType::Constrained { ref regex } => {
-                regex.0.is_match(req_path_segment.val().as_ref())
-            },
+                regex.is_match(req_path_segment.val().as_ref())
+            }
             SegmentType::Dynamic | SegmentType::Glob => true,
         }
     }
@@ -455,6 +421,8 @@ impl Eq for NodeBuilder {}
 mod tests {
     use super::*;
 
+    use std::panic::RefUnwindSafe;
+
     use hyper::Method;
     use hyper::Response;
 
@@ -473,7 +441,7 @@ mod tests {
 
     fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
     where
-        P: Send + Sync + 'static,
+        P: Send + Sync + RefUnwindSafe + 'static,
     {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRouteMatcher::new(methods);
@@ -490,7 +458,7 @@ mod tests {
 
     fn get_delegated_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
     where
-        P: Send + Sync + 'static,
+        P: Send + Sync + RefUnwindSafe + 'static,
     {
         let methods = vec![Method::Get];
         let matcher = MethodOnlyRouteMatcher::new(methods);
@@ -566,9 +534,10 @@ mod tests {
         // overzealous matching
         // GET: /resource/<id> where id: [0-9]+
         let mut seg_resource = NodeBuilder::new("resource", SegmentType::Static);
-        let mut seg_id = NodeBuilder::new("id", SegmentType::Constrained {
-            regex: OrderedRegex::new("[0-9]+")
-        });
+        let mut seg_id = NodeBuilder::new(
+            "id",
+            SegmentType::Constrained { regex: ConstrainedSegmentRegex::new("[0-9]+") },
+        );
         seg_id.add_route(get_route(pipeline_set.clone()));
         seg_resource.add_child(seg_id);
         root.add_child(seg_resource);
@@ -670,7 +639,7 @@ mod tests {
             Some((path, _, sp, _)) => {
                 assert_eq!(path.last().unwrap().segment(), expected_segment);
                 assert_eq!(sp, 2);
-            },
+            }
             None => panic!("traversal should have succeeded here"),
         }
     }
