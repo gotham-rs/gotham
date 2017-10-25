@@ -22,6 +22,8 @@ extern crate r2d2_diesel;
 pub mod state_data;
 
 use std::io;
+use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::process;
 
 use futures::{Future, future};
 
@@ -39,6 +41,15 @@ use state_data::Diesel;
 /// out connections to other Middleware and Handlers that require them via the Gotham `State`
 /// mechanism.
 pub struct DieselMiddleware<T>
+where
+    T: Connection + 'static,
+{
+    pool: AssertUnwindSafe<r2d2::Pool<ConnectionManager<T>>>,
+}
+
+/// Instance created by DieselMiddleware for each request that implements
+/// the actual logic of the middleware.
+pub struct DieselMiddlewareImpl<T>
 where
     T: Connection + 'static,
 {
@@ -68,7 +79,7 @@ where
         let pool = Pool::<ConnectionManager<T>>::new(r2d2_config, manager)
             .expect("Failed to create pool.");
 
-        DieselMiddleware { pool }
+        DieselMiddleware { pool: AssertUnwindSafe(pool) }
     }
 }
 
@@ -76,15 +87,26 @@ impl<T> NewMiddleware for DieselMiddleware<T>
 where
     T: Connection + 'static,
 {
-    type Instance = DieselMiddleware<T>;
+    type Instance = DieselMiddlewareImpl<T>;
 
     fn new_middleware(&self) -> io::Result<Self::Instance> {
-        let pool = self.pool.clone();
-        Ok(DieselMiddleware { pool })
+        match catch_unwind(|| self.pool.clone()) {
+            Ok(pool) => Ok(DieselMiddlewareImpl { pool }),
+            Err(_) => {
+                error!(
+                    "PANIC: r2d2::Pool::clone caused a panic, unable to rescue with a HTTP error"
+                );
+                eprintln!(
+                    "PANIC: r2d2::Pool::clone caused a panic, unable to rescue with a HTTP error"
+                );
+                process::abort()
+            }
+        }
+
     }
 }
 
-impl<T> Middleware for DieselMiddleware<T>
+impl<T> Middleware for DieselMiddlewareImpl<T>
 where
     T: Connection + 'static,
 {
