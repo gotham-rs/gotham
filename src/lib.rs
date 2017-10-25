@@ -72,10 +72,7 @@ where
     /// without panic.
     pub fn new(database_url: &str, c: Option<r2d2::Config<T, r2d2_diesel::Error>>) -> Self {
         let manager = ConnectionManager::<T>::new(database_url);
-        let r2d2_config = match c {
-            Some(c) => c,
-            None => r2d2::Config::default(),
-        };
+        let r2d2_config = c.unwrap_or(r2d2::Config::default());
         let pool = Pool::<ConnectionManager<T>>::new(r2d2_config, manager)
             .expect("Failed to create pool.");
 
