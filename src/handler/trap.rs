@@ -3,8 +3,11 @@
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::error::Error;
+use std::any::Any;
+use std::{io, mem};
 
 use hyper::{self, Response, StatusCode};
+use futures::Async;
 use futures::future::{self, Future, FutureResult};
 
 use handler::{NewHandler, Handler, HandlerError, IntoResponse};
@@ -42,7 +45,9 @@ where
     });
 
     match res {
-        Ok(f) => f,
+        Ok(f) => Box::new(UnwindSafeFuture::new(f).catch_unwind().then(
+            finalize_catch_unwind_response,
+        )),
         Err(_) => Box::new(finalize_panic_response(timer)),
     }
 }
@@ -101,6 +106,69 @@ fn finalize_panic_response(timer: Timer) -> FutureResult<Response, hyper::Error>
     future::ok(Response::new().with_status(StatusCode::InternalServerError))
 }
 
+fn finalize_catch_unwind_response(
+    result: Result<Result<Response, hyper::Error>, Box<Any + Send>>,
+) -> FutureResult<Response, hyper::Error> {
+    let response = result
+        .unwrap_or_else(|_| {
+            let e = io::Error::new(
+                io::ErrorKind::Other,
+                "Attempting to poll the future caused a panic",
+            );
+
+            Err(hyper::Error::Io(e))
+        })
+        .unwrap_or_else(|_| {
+            error!("[PANIC][A panic occurred while polling the future]");
+            Response::new().with_status(StatusCode::InternalServerError)
+        });
+
+    future::ok(response)
+}
+
+enum UnwindSafeFuture<F>
+where
+    F: Future<Error = hyper::Error>,
+{
+    Available(AssertUnwindSafe<F>),
+    Poisoned,
+}
+
+impl<F> Future for UnwindSafeFuture<F>
+where
+    F: Future<Error = hyper::Error>,
+{
+    type Item = F::Item;
+    type Error = hyper::Error;
+
+    fn poll(&mut self) -> Result<Async<Self::Item>, hyper::Error> {
+        match mem::replace(self, UnwindSafeFuture::Poisoned) {
+            UnwindSafeFuture::Available(mut f) => {
+                let r = f.poll();
+                *self = UnwindSafeFuture::Available(f);
+                r
+            }
+            UnwindSafeFuture::Poisoned => {
+                let e = io::Error::new(
+                    io::ErrorKind::Other,
+                    "Poisoned future due to previous panic",
+                );
+
+                Err(hyper::Error::Io(e))
+            }
+        }
+    }
+}
+
+impl<F> UnwindSafeFuture<F>
+where
+    F: Future<Error = hyper::Error>,
+{
+    fn new(f: F) -> UnwindSafeFuture<F> {
+        UnwindSafeFuture::Available(AssertUnwindSafe(f))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -156,6 +224,24 @@ mod tests {
             Ok(|_| {
                 let val: Option<Box<HandlerFuture>> = None;
                 val.expect("test panic")
+            })
+        };
+
+        let mut state = State::new();
+        state.put(Headers::new());
+        set_request_id(&mut state);
+
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let response = r.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::InternalServerError);
+    }
+
+    #[test]
+    fn async_panic() {
+        let new_handler = || {
+            Ok(|_| {
+                let val: Option<Box<HandlerFuture>> = None;
+                Box::new(future::lazy(move || val.expect("test panic"))) as Box<HandlerFuture>
             })
         };
 
