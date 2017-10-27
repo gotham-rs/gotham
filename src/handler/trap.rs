@@ -200,6 +200,32 @@ mod tests {
     }
 
     #[test]
+    fn async_success_repeat_poll() {
+        let new_handler = || {
+            Ok(|state| {
+                let f = future::lazy(move || {
+                    let res = create_response(&state, StatusCode::Accepted, None);
+                    future::ok((state, res))
+                });
+
+                let f = future::lazy(move || f);
+                let f = future::lazy(move || f);
+                let f = future::lazy(move || f);
+
+                Box::new(f) as Box<HandlerFuture>
+            })
+        };
+
+        let mut state = State::new();
+        state.put(Headers::new());
+        set_request_id(&mut state);
+
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let response = r.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::Accepted);
+    }
+
+    #[test]
     fn error() {
         let new_handler = || {
             Ok(|state| {
@@ -242,6 +268,28 @@ mod tests {
             Ok(|_| {
                 let val: Option<Box<HandlerFuture>> = None;
                 Box::new(future::lazy(move || val.expect("test panic"))) as Box<HandlerFuture>
+            })
+        };
+
+        let mut state = State::new();
+        state.put(Headers::new());
+        set_request_id(&mut state);
+
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let response = r.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::InternalServerError);
+    }
+
+    #[test]
+    fn async_panic_repeat_poll() {
+        let new_handler = || {
+            Ok(|_| {
+                let val: Option<Box<HandlerFuture>> = None;
+                let f = future::lazy(move || val.expect("test panic"));
+                let f = future::lazy(move || f);
+                let f = future::lazy(move || f);
+                let f = future::lazy(move || f);
+                Box::new(f) as Box<HandlerFuture>
             })
         };
 
