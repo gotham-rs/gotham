@@ -294,6 +294,15 @@ impl<'a> TestResponse<'a> {
     pub fn read_body(self) -> hyper::Result<Vec<u8>> {
         self.reader.read_body(self.response)
     }
+
+    /// Awaits the UTF-8 encoded body of the underlying `Response`, and returns the `String`. This
+    /// will cause the event loop to execute until the `Response` body has been fully read and the
+    /// `String` created.
+    pub fn read_utf8_body(self) -> hyper::Result<String> {
+        let buf = self.read_body()?;
+        let s = String::from_utf8(buf)?;
+        Ok(s)
+    }
 }
 
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
@@ -386,8 +395,8 @@ mod tests {
         let response = test_server.client().get("http://localhost/").unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
-        let buf = response.read_body().unwrap();
-        assert_eq!(buf.as_slice(), format!("time: {}", ticks).as_bytes());
+        let buf = response.read_utf8_body().unwrap();
+        assert_eq!(buf, format!("time: {}", ticks));
     }
 
     #[test]
