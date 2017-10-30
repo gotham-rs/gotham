@@ -325,10 +325,17 @@ impl client::Service for TestConnect {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use std::time::{SystemTime, UNIX_EPOCH};
-    use hyper::{StatusCode, Uri};
-    use handler::{Handler, NewHandler, HandlerFuture};
+    use std::str::FromStr;
+
+    use mime;
+    use hyper::{StatusCode, Uri, Body};
+    use hyper::header::{ContentLength, ContentType};
+
+    use handler::{Handler, NewHandler, HandlerFuture, IntoHandlerError};
     use state::{State, FromState, client_addr};
+    use http::response::create_response;
 
     #[derive(Clone)]
     struct TestHandler {
@@ -416,5 +423,63 @@ mod tests {
         let buf = response.read_body().unwrap();
         let received_addr: net::SocketAddr = String::from_utf8(buf).unwrap().parse().unwrap();
         assert_eq!(received_addr, client_addr);
+    }
+
+    #[test]
+    fn async_echo() {
+        fn handler(mut state: State) -> Box<HandlerFuture> {
+            let f = Body::take_from(&mut state).concat2().then(
+                move |full_body| {
+                    match full_body {
+                        Ok(body) => {
+                            let resp_data = body.to_vec();
+                            let res = create_response(
+                                &state,
+                                StatusCode::Ok,
+                                Some((resp_data, mime::TEXT_PLAIN)),
+                            );
+                            future::ok((state, res))
+                        }
+
+                        Err(e) => future::err((state, e.into_handler_error())),
+                    }
+                },
+            );
+
+            Box::new(f)
+        }
+
+        let server = TestServer::new(|| Ok(handler)).unwrap();
+
+        let client = server.client();
+        let data = "This text should get reflected back to us. \
+                    Even this fancy piece of unicode: \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
+
+        let mut req = Request::new(
+            Method::Post,
+            Uri::from_str("http://host/echo").expect("uri"),
+        );
+        req.set_body(data);
+        req.headers_mut().set(ContentType(mime::TEXT_PLAIN));
+        let res = client.request(req).expect("request successful");
+        assert_eq!(res.status(), StatusCode::Ok);
+
+        {
+            let content_type = res.headers().get::<ContentType>().expect("ContentType");
+            assert_eq!(content_type.0, mime::TEXT_PLAIN);
+        }
+
+        let content_length = {
+            let content_length = res.headers().get::<ContentLength>().expect("ContentLength");
+            assert_eq!(content_length.0, data.as_bytes().len() as u64);
+
+            content_length.0
+        };
+
+        let buf = String::from_utf8(res.read_body().expect("readable response"))
+            .expect("UTF8 response");
+
+        assert_eq!(content_length, buf.len() as u64);
+        assert_eq!(data, &buf);
     }
 }
