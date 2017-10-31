@@ -6,7 +6,10 @@ use std::{cell, io, net, time};
 use std::cell::RefCell;
 use std::net::{TcpListener, TcpStream, SocketAddr, IpAddr};
 use std::ops::{Deref, DerefMut};
-use hyper::{self, Request, Response, Uri, Method};
+
+use mime;
+use hyper::{self, Request, Response, Uri, Method, Body};
+use hyper::header::ContentType;
 use hyper::error::UriError;
 use hyper::client::{self, Client};
 use hyper::server::{self, Http, NewService};
@@ -211,12 +214,42 @@ where
 {
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
     pub fn get(self, uri: &str) -> RequestBuilder<'a, NH> {
-        RequestBuilder::new(self, Method::Get, uri.parse())
+        self.build_request(Method::Get, uri)
     }
 
-    /// Begin constructing a GET request using this `TestClient.
+    /// Begin constructing a GET request using this `TestClient`.
     pub fn get_uri(self, uri: Uri) -> RequestBuilder<'a, NH> {
-        RequestBuilder::new(self, Method::Get, Ok(uri))
+        self.build_request_uri(Method::Get, uri)
+    }
+
+    /// Parse the URI and begin constructing a POST request using this `TestClient`.
+    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<'a, NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request(Method::Post, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Begin constructing a POST request using this `TestClient`.
+    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<'a, NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request_uri(Method::Post, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Parse the URI and begin constructing a request with the given HTTP method.
+    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<'a, NH> {
+        RequestBuilder::new(self, method, uri.parse())
+    }
+
+    /// Begin constructing a request with the given HTTP method and Uri.
+    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<'a, NH> {
+        RequestBuilder::new(self, method, Ok(uri))
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
@@ -340,7 +373,6 @@ mod tests {
     use super::*;
 
     use std::time::{SystemTime, UNIX_EPOCH};
-    use std::str::FromStr;
 
     use mime;
     use hyper::{StatusCode, Uri, Body};
@@ -479,13 +511,11 @@ mod tests {
         let data = "This text should get reflected back to us. \
                     Even this fancy piece of unicode: \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
 
-        let mut req = Request::new(
-            Method::Post,
-            Uri::from_str("http://host/echo").expect("uri"),
-        );
-        req.set_body(data);
-        req.headers_mut().set(ContentType(mime::TEXT_PLAIN));
-        let res = client.perform(req).expect("request successful");
+        let res = client
+            .post("http://host/echo", data, mime::TEXT_PLAIN)
+            .perform()
+            .expect("request successful");
+
         assert_eq!(res.status(), StatusCode::Ok);
 
         {
