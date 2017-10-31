@@ -17,6 +17,10 @@ use mio;
 use handler::{NewHandler, NewHandlerService};
 use router::Router;
 
+mod request;
+
+pub use self::request::RequestBuilder;
+
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
 /// (which Gotham's `Router` is). An instance of `TestServer` is run single-threaded and
 /// asynchronous, and only accessible by a client returned from the `TestServer`.
@@ -205,18 +209,18 @@ impl<'a, NH> TestClient<'a, NH>
 where
     NH: NewHandler + 'static,
 {
-    /// Parse the URI, send a GET request using this `TestClient`, and await the response.
-    pub fn get(&self, uri: &str) -> Result<TestResponse<'a>, TestRequestError> {
-        self.get_uri(uri.parse()?)
+    /// Parse the URI and begin constructing a GET request using this `TestClient`.
+    pub fn get(self, uri: &str) -> RequestBuilder<'a, NH> {
+        RequestBuilder::new(self, Method::Get, uri.parse())
     }
 
-    /// Send a GET request using this `TestClient`, and await the response.
-    pub fn get_uri(&self, uri: Uri) -> Result<TestResponse<'a>, TestRequestError> {
-        self.request(Request::new(Method::Get, uri))
+    /// Begin constructing a GET request using this `TestClient.
+    pub fn get_uri(self, uri: Uri) -> RequestBuilder<'a, NH> {
+        RequestBuilder::new(self, Method::Get, Ok(uri))
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn request(&self, req: Request) -> Result<TestResponse<'a>, TestRequestError> {
+    pub fn perform(self, req: Request) -> Result<TestResponse<'a>, TestRequestError> {
         self.test_server.run_request(self.client.request(req)).map(
             |response| {
                 TestResponse {
@@ -392,7 +396,11 @@ mod tests {
         let new_service = move || Ok(TestHandler { response: format!("time: {}", ticks) });
 
         let test_server = TestServer::new(new_service).unwrap();
-        let response = test_server.client().get("http://localhost/").unwrap();
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .perform()
+            .unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
         let buf = response.read_utf8_body().unwrap();
@@ -404,7 +412,12 @@ mod tests {
         let new_service = || Ok(TestHandler { response: "".to_owned() });
         let test_server = TestServer::new(new_service).unwrap().timeout(1);
 
-        match test_server.client().get("http://localhost/timeout") {
+        let res = test_server
+            .client()
+            .get("http://localhost/timeout")
+            .perform();
+
+        match res {
             Err(TestRequestError::TimedOut) => (),
             e @ Err(_) => {
                 e.unwrap();
@@ -426,6 +439,7 @@ mod tests {
         let response = test_server
             .client_with_address(client_addr)
             .get("http://localhost/myaddr")
+            .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
@@ -441,6 +455,7 @@ mod tests {
                 move |full_body| {
                     match full_body {
                         Ok(body) => {
+                            debug!("test");
                             let resp_data = body.to_vec();
                             let res = create_response(
                                 &state,
@@ -470,7 +485,7 @@ mod tests {
         );
         req.set_body(data);
         req.headers_mut().set(ContentType(mime::TEXT_PLAIN));
-        let res = client.request(req).expect("request successful");
+        let res = client.perform(req).expect("request successful");
         assert_eq!(res.status(), StatusCode::Ok);
 
         {

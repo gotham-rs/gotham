@@ -536,7 +536,11 @@ mod tests {
             })
         }).unwrap();
 
-        let response = test_server.client().get("http://localhost/").unwrap();
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .perform()
+            .unwrap();
 
         let buf = response.read_body().unwrap();
         assert_eq!(buf.as_slice(), "24".as_bytes());
