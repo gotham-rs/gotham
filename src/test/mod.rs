@@ -46,7 +46,7 @@ pub use self::request::RequestBuilder;
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
-/// let response = test_server.client().get("http://localhost/").unwrap();
+/// let response = test_server.client().get("http://localhost/").perform().unwrap();
 /// assert_eq!(response.status(), StatusCode::Accepted);
 /// # }
 /// ```
@@ -300,7 +300,7 @@ trait BodyReader {
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
-/// let response = test_server.client().get("http://localhost/").unwrap();
+/// let response = test_server.client().get("http://localhost/").perform().unwrap();
 /// assert_eq!(response.status(), StatusCode::Ok);
 /// let body = response.read_body().unwrap();
 /// assert_eq!(&body[..], b"This is the body content.");

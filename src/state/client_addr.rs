@@ -38,6 +38,7 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// #   let response = test_server
 /// #       .client_with_address("127.0.0.1:9816".parse().unwrap())
 /// #       .get("http://localhost/")
+/// #       .perform()
 /// #       .unwrap();
 /// #
 /// #   assert_eq!(response.status(), StatusCode::Ok);

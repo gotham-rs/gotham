@@ -143,7 +143,7 @@ use state::{State, request_id};
 /// #   let router = Router::new(tree, response_finalizer);
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
-///     let response = test_server.client().get("http://example.com/").unwrap();
+///     let response = test_server.client().get("http://example.com/").perform().unwrap();
 ///     assert_eq!(response.status(), StatusCode::Ok);
 ///     assert_eq!(response.read_body().unwrap(), "[1, 2, 3]".as_bytes());
 /// }
