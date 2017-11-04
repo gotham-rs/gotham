@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 use std::panic::RefUnwindSafe;
-use borrow_bag::{new_borrow_bag, BorrowBag, Handle, Lookup};
+use borrow_bag::{BorrowBag, Handle, Lookup};
 use futures::future;
 
 use handler::{Handler, NewHandler, HandlerFuture, IntoHandlerError};
@@ -19,7 +19,7 @@ pub type EditablePipelineSet<P> = BorrowBag<P>;
 ///
 /// See BorrowBag#add to insert new `Pipeline` instances.
 pub fn new_pipeline_set() -> EditablePipelineSet<()> {
-    new_borrow_bag()
+    BorrowBag::new()
 }
 
 /// Wraps the current set of `Pipeline` instances into a thread-safe reference counting pointer for

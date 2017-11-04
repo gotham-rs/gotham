@@ -25,7 +25,7 @@ mime = "0.3"
 futures = "~0.1.11"
 tokio-core = "0.1"
 mio = "0.6"
-borrow-bag = "0.3"
+borrow-bag = "0.4"
 url = "1.4.0"
 uuid = { version = "0.5", features = ["v4"] }
 chrono = "0.4"
