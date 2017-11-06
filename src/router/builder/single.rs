@@ -1,3 +1,5 @@
+use std::panic::RefUnwindSafe;
+
 use router::request::path::PathExtractor;
 use router::request::query_string::QueryStringExtractor;
 use router::builder::SingleRouteBuilder;
@@ -83,7 +85,7 @@ pub trait DefineSingleRoute {
     /// ```
     fn to<H>(self, handler: H)
     where
-        H: Handler + Copy + Send + Sync + 'static;
+        H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static;
 
     /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
     /// values are constructed.
@@ -263,7 +265,7 @@ where
         + Send
         + Sync
         + 'static,
-    P: Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor
         + Send
         + Sync
@@ -275,7 +277,7 @@ where
 {
     fn to<H>(self, handler: H)
     where
-        H: Handler + Copy + Send + Sync + 'static,
+        H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static,
     {
         self.to_new_handler(move || Ok(handler))
     }

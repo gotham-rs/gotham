@@ -1,3 +1,5 @@
+use std::panic::RefUnwindSafe;
+
 use router::request::path::PathExtractor;
 use router::request::query_string::QueryStringExtractor;
 use router::route::matcher::RouteMatcher;
@@ -19,7 +21,7 @@ impl<'a, M, C, P, PE, QSE, NPE> ReplacePathExtractor<NPE>
 where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
-    P: Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
     NPE: PathExtractor + Send + Sync + 'static,
@@ -45,7 +47,7 @@ impl<'a, M, C, P, PE, QSE, NQSE> ReplaceQueryStringExtractor<NQSE>
 where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
-    P: Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
     NQSE: QueryStringExtractor + Send + Sync + 'static,
