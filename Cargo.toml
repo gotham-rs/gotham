@@ -14,6 +14,7 @@ keywords = ["http", "async", "web", "framework", "gotham"]
 [features]
 default = []
 ci = []
+experimental-router = []
 
 [dependencies]
 log = "0.3"

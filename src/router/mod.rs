@@ -1,5 +1,6 @@
 //! Defines the Gotham `Router` and supporting types.
 
+#[cfg(feature = "experimental-router")]
 pub mod builder;
 pub mod tree;
 pub mod route;
