@@ -103,6 +103,22 @@ where
     }
 }
 
+impl<T> Clone for DieselMiddleware<T>
+where
+    T: Connection + 'static,
+{
+    fn clone(&self) -> Self {
+        match catch_unwind(|| self.pool.clone()) {
+            Ok(pool) => DieselMiddleware { pool: AssertUnwindSafe(pool) },
+            Err(_) => {
+                error!("PANIC: r2d2::Pool::clone caused a panic");
+                eprintln!("PANIC: r2d2::Pool::clone caused a panic");
+                process::abort()
+            }
+        }
+    }
+}
+
 impl<T> Middleware for DieselMiddlewareImpl<T>
 where
     T: Connection + 'static,
