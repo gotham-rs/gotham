@@ -217,7 +217,6 @@ mod tests {
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;
-    use state::set_request_id;
     use handler::HandlerError;
 
     fn handler(state: State) -> (State, Response) {
@@ -236,7 +235,7 @@ mod tests {
         state.put(method);
         state.put(uri);
         state.put(Headers::new());
-        set_request_id(&mut state);
+        state.set_request_id();
 
         r.handle(state).wait()
     }
@@ -254,7 +253,7 @@ mod tests {
         state.put(method);
         state.put(uri);
         state.put(Headers::new());
-        set_request_id(&mut state);
+        state.set_request_id();
 
         match router.handle(state).wait() {
             Ok((_state, res)) => {

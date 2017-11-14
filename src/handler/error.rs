@@ -94,11 +94,10 @@ impl HandlerError {
     /// # use hyper::header::Headers;
     /// # use gotham::state::State;
     /// # use gotham::handler::{IntoResponse, IntoHandlerError};
-    /// # use gotham::state::request_id::set_request_id;
     /// # fn main() {
     /// # let mut state = State::new();
     /// # state.put(Headers::new());
-    /// # set_request_id(&mut state);
+    /// # state.set_request_id();
     /// let io_error = std::io::Error::last_os_error();
     /// let handler_error = io_error
     ///     .into_handler_error()

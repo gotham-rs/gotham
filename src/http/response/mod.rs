@@ -38,7 +38,6 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// # use hyper::{Response, Method, StatusCode};
 /// # use hyper::header::{Headers, ContentType, ContentLength};
 /// # use gotham::state::State;
-/// # use gotham::state::set_request_id;
 /// # use gotham::http::response::extend_response;
 /// # use gotham::http::header::XRequestId;
 /// #
@@ -47,7 +46,7 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// #   let m = Method::Get;
 /// #   state.put(m);
 /// #   state.put(Headers::new());
-/// #   let req_id = String::from(set_request_id(&mut state));
+/// #   let req_id = String::from(state.set_request_id());
 ///     let status = StatusCode::Ok;
 ///     let mime = mime::TEXT_PLAIN;
 ///     let expected_mime = mime.clone();
@@ -105,14 +104,13 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # use hyper::Response;
 /// # use hyper::header::{Headers, ContentType, ContentLength};
 /// # use gotham::state::State;
-/// # use gotham::state::set_request_id;
 /// # use gotham::http::response::set_headers;
 /// # use gotham::http::header::XRequestId;
 /// #
 /// # fn main() {
 /// #   let mut state = State::new();
 /// #   state.put(Headers::new());
-/// #   let req_id = String::from(set_request_id(&mut state));
+/// #   let req_id = String::from(state.set_request_id());
 /// #   let mut res = Response::new();
 ///     let mime = mime::TEXT_HTML;
 ///     let expected_mime = mime.clone();
@@ -132,14 +130,13 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # use hyper::Response;
 /// # use hyper::header::{Headers, ContentType, ContentLength};
 /// # use gotham::state::State;
-/// # use gotham::state::set_request_id;
 /// # use gotham::http::response::set_headers;
 /// # use gotham::http::header::XRequestId;
 /// #
 /// # fn main() {
 /// #   let mut state = State::new();
 /// #   state.put(Headers::new());
-/// #   let req_id = String::from(set_request_id(&mut state));
+/// #   let req_id = String::from(state.set_request_id());
 /// #   let mut res = Response::new();
 ///     set_headers(&state, &mut res, None, None);
 ///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(), req_id);

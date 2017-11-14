@@ -14,7 +14,7 @@ use hyper::server::{NewService, Service};
 use hyper::{Request, Response};
 use futures::{future, Future};
 
-use state::{State, set_request_id};
+use state::State;
 use http::request::path::RequestPathSegments;
 
 mod error;
@@ -157,7 +157,7 @@ where
         state.put(version);
         state.put(headers);
         state.put(body);
-        set_request_id(&mut state);
+        state.set_request_id();
 
         trap::call_handler(self.t.as_ref(), AssertUnwindSafe(state))
     }
