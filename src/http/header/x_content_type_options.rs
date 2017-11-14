@@ -1,7 +1,6 @@
 //! Define the X-Content-Type-Options header.
 
 use std::fmt;
-use std::ascii::AsciiExt;
 
 use hyper;
 use hyper::header::{Header, Raw, Formatter, parsing};
