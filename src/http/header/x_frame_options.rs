@@ -2,7 +2,6 @@
 
 use std::fmt;
 use std::str::FromStr;
-use std::ascii::AsciiExt;
 
 use hyper;
 use hyper::Uri;
