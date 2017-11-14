@@ -110,7 +110,6 @@ mod tests {
     use hyper::{StatusCode, Headers};
 
     use http::response::create_response;
-    use state::set_request_id;
     use handler::{IntoHandlerError, HandlerFuture};
 
     #[test]
@@ -124,7 +123,7 @@ mod tests {
 
         let mut state = State::new();
         state.put(Headers::new());
-        set_request_id(&mut state);
+        state.set_request_id();
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = r.wait().unwrap();
@@ -143,7 +142,7 @@ mod tests {
 
         let mut state = State::new();
         state.put(Headers::new());
-        set_request_id(&mut state);
+        state.set_request_id();
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = r.wait().unwrap();
@@ -161,7 +160,7 @@ mod tests {
 
         let mut state = State::new();
         state.put(Headers::new());
-        set_request_id(&mut state);
+        state.set_request_id();
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = r.wait().unwrap();

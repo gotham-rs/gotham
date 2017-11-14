@@ -10,7 +10,7 @@ use std::any::{Any, TypeId};
 pub use state::data::StateData;
 pub use state::from_state::FromState;
 pub use state::request_id::request_id;
-pub use state::request_id::set_request_id;
+use state::request_id::set_request_id;
 
 /// Provides storage for request state, and stores one item of each type. The types used for
 /// storage must implement the `gotham::state::StateData` trait to allow its storage.
@@ -42,7 +42,7 @@ pub struct State {
     data: HashMap<TypeId, Box<Any>>,
 }
 
-impl State {
+impl<'a> State {
     /// Creates a new, empty `State`
     pub fn new() -> State {
         State { data: HashMap::new() }
@@ -382,5 +382,18 @@ impl State {
         self.try_take().expect(
             "required type is not present in State container",
         )
+    }
+
+    /// Sets a unique identifier for the request if it has not already been stored.
+    ///
+    /// The unique identifier chosen depends on the the request environment:
+    ///
+    /// 1. If the header X-Request-ID is provided this value is used as is;
+    /// 2. Alternatively creates and stores a UUID v4 value.
+    ///
+    /// This method MUST be invoked by Gotham, before handing control to
+    /// pipelines or Handlers to ensure that a value for `RequestId` is always available.
+    pub fn set_request_id(&'a mut self) -> &'a str {
+        set_request_id(self)
     }
 }
