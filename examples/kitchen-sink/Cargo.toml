@@ -8,7 +8,7 @@ authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
 gotham = { path = "../.." }
 gotham_derive = { path = "../../gotham_derive" }
 futures = "*"
-hyper="~0.11.2"
+hyper="~0.11.7"
 borrow-bag = "*"
 log = "0.3"
 fern = "0.4"
