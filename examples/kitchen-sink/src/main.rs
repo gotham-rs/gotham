@@ -9,17 +9,17 @@ extern crate chrono;
 extern crate log;
 extern crate fern;
 extern crate mime;
+extern crate tokio_timer;
 
 mod middleware;
 
 use std::panic::RefUnwindSafe;
 
+use tokio_timer::*;
+use std::time::Duration;
 use futures::{future, Future, Stream};
-
 use hyper::{Body, Response, Method, StatusCode};
-
 use log::LogLevelFilter;
-
 use chrono::prelude::*;
 
 use gotham::router::request::path::NoopPathExtractor;
@@ -161,6 +161,15 @@ fn build_router() -> Router {
     ));
     tree_builder.add_child(async);
 
+    let mut wait = NodeBuilder::new("wait", SegmentType::Static);
+    wait.add_route(static_route(
+        vec![Method::Get],
+        || Ok(Echo::wait),
+        (global, ()),
+        pipeline_set.clone(),
+    ));
+    tree_builder.add_child(wait);
+
     let mut header_value = NodeBuilder::new("header_value", SegmentType::Static);
     header_value.add_route(static_route(
         vec![Method::Get],
@@ -241,6 +250,31 @@ impl Echo {
             Some((String::from(ASYNC).into_bytes(), mime::TEXT_PLAIN)),
         );
         Box::new(future::lazy(move || future::ok((state, res))))
+    }
+
+    pub fn wait(state: State) -> Box<HandlerFuture> {
+        let timeout = Timer::default();
+        let sleep = timeout.sleep(Duration::from_secs(2));
+
+        let result = sleep.then(|future_result| match future_result {
+            Ok(_) => {
+                let res = create_response(
+                    &state,
+                    StatusCode::Ok,
+                    Some((
+                        String::from("delayed hello").into_bytes(),
+                        mime::TEXT_PLAIN,
+                    )),
+                );
+                future::ok((state, res))
+            }
+            Err(e) => {
+                let err = e.into_handler_error();
+                future::err((state, err))
+            }
+        });
+
+        Box::new(result)
     }
 
     fn header_value(mut state: State) -> (State, Response) {
