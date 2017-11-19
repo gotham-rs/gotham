@@ -256,7 +256,7 @@ impl Echo {
         let timeout = Timer::default();
         let sleep = timeout.sleep(Duration::from_secs(2));
 
-        let result = sleep.then(|future_result| match future_result {
+        let result = sleep.then(|res| match res {
             Ok(_) => {
                 let res = create_response(
                     &state,
