@@ -14,8 +14,8 @@ keywords = ["http", "async", "web", "framework", "gotham"]
 [dependencies]
 log = "0.3.0"
 futures = "0.1.0"
-gotham = { path = "../gotham" }
-gotham_derive = { path = "../gotham/gotham_derive" }
+gotham = { git = "https://github.com/gotham-rs/gotham" }
+gotham_derive = {  git = "https://github.com/gotham-rs/gotham" }
 
 diesel = { version = "1.0.0-beta1", features = ["postgres", "sqlite", "mysql"] }
 r2d2 = "0.8.1"
