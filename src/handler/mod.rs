@@ -5,7 +5,7 @@
 //!
 //! [handler-impl]: trait.Handler.html#implementors
 
-use std::io;
+use std::{io, thread};
 use std::sync::Arc;
 use std::panic::{AssertUnwindSafe, RefUnwindSafe};
 
@@ -14,7 +14,7 @@ use hyper::server::{NewService, Service};
 use hyper::{Request, Response};
 use futures::{future, Future};
 
-use state::{State, set_request_id};
+use state::{State, request_id, set_request_id};
 use state::client_addr::put_client_addr;
 use http::request::path::RequestPathSegments;
 
@@ -164,6 +164,12 @@ where
         state.put(headers);
         state.put(body);
         set_request_id(&mut state);
+
+        debug!(
+            "[DEBUG][{}][Thread][{:?}]",
+            request_id(&state),
+            thread::current().id(),
+        );
 
         trap::call_handler(self.t.as_ref(), AssertUnwindSafe(state))
     }
