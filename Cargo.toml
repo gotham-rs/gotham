@@ -13,7 +13,7 @@ keywords = ["http", "async", "web", "framework", "gotham"]
 
 [features]
 default = []
-ci = []
+ci = ["experimental-router"]
 experimental-router = []
 
 [dependencies]
