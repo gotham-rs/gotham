@@ -2,6 +2,8 @@
 
 use std::fmt;
 use std::str::FromStr;
+// TODO: Remove when this import isn't required in stable anymore.
+#[allow(unused_imports)]
 use std::ascii::AsciiExt;
 
 use hyper;
