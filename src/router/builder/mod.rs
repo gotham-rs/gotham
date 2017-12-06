@@ -6,8 +6,11 @@ mod replace;
 
 use std::marker::PhantomData;
 
+use hyper::StatusCode;
+
 use router::Router;
 use router::tree::TreeBuilder;
+use router::response::extender::ResponseExtender;
 use router::response::finalizer::ResponseFinalizerBuilder;
 use router::route::Delegation;
 use router::route::matcher::RouteMatcher;
@@ -86,6 +89,60 @@ where
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
     response_finalizer_builder: ResponseFinalizerBuilder,
+}
+
+impl<'a, C, P> RouterBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + 'static,
+{
+    /// Adds a `ResponseExtender` to the `ResponseFinalizer` in the `Router`.
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use hyper::{Response, StatusCode};
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::response::extender::ResponseExtender;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::middleware::pipeline::new_pipeline;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+    /// #
+    /// struct MyExtender;
+    ///
+    /// impl ResponseExtender for MyExtender {
+    ///     fn extend(&self, state: &mut State, res: &mut Response) {
+    ///         // Extender implementation omitted.
+    /// #       let _ = (state, res);
+    ///     }
+    /// }
+    ///
+    /// fn router() -> Router {
+    ///     let pipelines = new_pipeline_set();
+    ///     let (pipelines, default) =
+    ///         pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+    ///
+    ///     let pipelines = finalize_pipeline_set(pipelines);
+    ///
+    ///     let default_pipeline_chain = (default, ());
+    ///
+    ///     build_router(default_pipeline_chain, pipelines, |route| {
+    ///         route.add_response_extender(StatusCode::InternalServerError, MyExtender);
+    ///     })
+    /// }
+    /// # fn main() { router(); }
+    /// ```
+    pub fn add_response_extender<E>(&mut self, status_code: StatusCode, extender: E)
+    where
+        E: ResponseExtender + Send + Sync + 'static,
+    {
+        self.response_finalizer_builder.add(
+            status_code,
+            Box::new(extender),
+        )
+    }
 }
 
 /// A scoped builder, which is created by `DrawRoutes::scope` and passed to the provided closure.
