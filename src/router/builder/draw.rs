@@ -223,6 +223,8 @@ where
 }
 
 fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBuilder {
+    trace!("[walking to: {}]", path);
+
     let path = if path.starts_with("/") {
         &path[1..]
     } else {
@@ -242,7 +244,7 @@ where
 {
     match i.next() {
         Some(segment) => {
-            println!("router::builder::build_subtree descending into {}", segment);
+            trace!("[descending into {}]", segment);
 
             let (segment, segment_type) = match segment.chars().next() {
                 Some(':') => {
@@ -270,7 +272,7 @@ where
             build_subtree(child, i)
         }
         None => {
-            println!("router::builder::build_subtree reached node");
+            trace!("[reached node]");
             node
         }
     }
