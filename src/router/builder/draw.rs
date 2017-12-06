@@ -104,7 +104,6 @@ where
         self.request(vec![Method::Post], path)
     }
 
-    // TODO: Glob paths
     /// Creates a single route which matches any requests to the given `path` with one of the
     /// given `methods`. The `path` can consist of static or dynamic segments, for example:
     ///
