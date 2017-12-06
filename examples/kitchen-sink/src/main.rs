@@ -13,27 +13,18 @@ extern crate tokio_timer;
 
 mod middleware;
 
-use std::panic::RefUnwindSafe;
-
 use tokio_timer::*;
 use std::time::Duration;
 use futures::{future, Future, Stream};
-use hyper::{Body, Response, Method, StatusCode};
+use hyper::{Body, Response, StatusCode};
 use log::LogLevelFilter;
 use chrono::prelude::*;
 
-use gotham::router::request::path::NoopPathExtractor;
-use gotham::router::request::query_string::NoopQueryStringExtractor;
-use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 use gotham::router::response::extender::NoopResponseExtender;
 use gotham::router::Router;
-use gotham::router::route::{Route, RouteImpl, Extractors, Delegation};
-use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet,
-                                      DispatcherImpl, PipelineHandleChain};
-use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-use gotham::router::tree::TreeBuilder;
-use gotham::router::tree::node::{NodeBuilder, SegmentType};
-use gotham::handler::{NewHandler, HandlerFuture, IntoHandlerError};
+use gotham::router::builder::*;
+use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::middleware::pipeline::new_pipeline;
 use gotham::state::{State, FromState};
 use gotham::http::response::create_response;
@@ -63,52 +54,6 @@ struct SharedQueryString {
 static INDEX: &'static str = "Try POST /echo";
 static ASYNC: &'static str = "Got async response";
 
-fn static_route<NH, P, C>(
-    methods: Vec<Method>,
-    new_handler: NH,
-    active_pipelines: C,
-    pipeline_set: PipelineSet<P>,
-) -> Box<Route + Send + Sync>
-where
-    NH: NewHandler + 'static,
-    C: PipelineHandleChain<P> + Send + Sync + 'static,
-    P: Send + Sync + RefUnwindSafe + 'static,
-{
-    let matcher = MethodOnlyRouteMatcher::new(methods);
-    let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
-    let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-    let route = RouteImpl::new(
-        matcher,
-        Box::new(dispatcher),
-        extractors,
-        Delegation::Internal,
-    );
-    Box::new(route)
-}
-
-fn dynamic_route<NH, P, C>(
-    methods: Vec<Method>,
-    new_handler: NH,
-    active_pipelines: C,
-    pipeline_set: PipelineSet<P>,
-) -> Box<Route + Send + Sync>
-where
-    NH: NewHandler + 'static,
-    C: PipelineHandleChain<P> + Send + Sync + 'static,
-    P: Send + Sync + RefUnwindSafe + 'static,
-{
-    let matcher = MethodOnlyRouteMatcher::new(methods);
-    let dispatcher = DispatcherImpl::new(new_handler, active_pipelines, pipeline_set);
-    let extractors: Extractors<SharedRequestPath, SharedQueryString> = Extractors::new();
-    let route = RouteImpl::new(
-        matcher,
-        Box::new(dispatcher),
-        extractors,
-        Delegation::Internal,
-    );
-    Box::new(route)
-}
-
 // Builds a tree that looks like:
 //
 // /                     --> (Get Route)
@@ -118,99 +63,41 @@ where
 // | - hello
 //     | - :name         --> (Get Route)
 //         | :from       --> (Get Route)
-fn build_router() -> Router {
-    let mut tree_builder = TreeBuilder::new();
-
-    let editable_pipeline_set = new_pipeline_set();
-    let (editable_pipeline_set, global) = editable_pipeline_set.add(
+fn router() -> Router {
+    let pipelines = new_pipeline_set();
+    let (pipelines, global) = pipelines.add(
         new_pipeline()
             .add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" })
             .build(),
     );
 
-    let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
+    let default_pipeline_chain = (global, ());
 
-    tree_builder.add_route(static_route(
-        vec![Method::Get],
-        || Ok(Echo::get),
-        (global, ()),
-        pipeline_set.clone(),
-    ));
+    let pipelines = finalize_pipeline_set(pipelines);
 
-    let mut echo = NodeBuilder::new("echo", SegmentType::Static);
-    echo.add_route(static_route(
-        vec![Method::Get, Method::Head],
-        || Ok(Echo::get),
-        (global, ()),
-        pipeline_set.clone(),
-    ));
-    echo.add_route(static_route(
-        vec![Method::Post],
-        || Ok(Echo::post),
-        (global, ()),
-        pipeline_set.clone(),
-    ));
-    tree_builder.add_child(echo);
+    build_router(default_pipeline_chain, pipelines, |route| {
+        route.get("/").to(Echo::get);
+        route.get("/echo").to(Echo::get);
+        route.post("/echo").to(Echo::post);
+        route.get("/async").to(Echo::async);
+        route.get("/wait").to(Echo::wait);
+        route.get("/header_value").to(Echo::header_value);
 
-    let mut async = NodeBuilder::new("async", SegmentType::Static);
-    async.add_route(static_route(
-        vec![Method::Get],
-        || Ok(Echo::async),
-        (global, ()),
-        pipeline_set.clone(),
-    ));
-    tree_builder.add_child(async);
+        route
+            .get("/hello/:name")
+            .with_path_extractor::<SharedRequestPath>()
+            .with_query_string_extractor::<SharedQueryString>()
+            .to(Echo::hello);
 
-    let mut wait = NodeBuilder::new("wait", SegmentType::Static);
-    wait.add_route(static_route(
-        vec![Method::Get],
-        || Ok(Echo::wait),
-        (global, ()),
-        pipeline_set.clone(),
-    ));
-    tree_builder.add_child(wait);
+        route
+            .get("/hello/:name/:from")
+            .with_path_extractor::<SharedRequestPath>()
+            .with_query_string_extractor::<SharedQueryString>()
+            .to(Echo::greeting);
 
-    let mut header_value = NodeBuilder::new("header_value", SegmentType::Static);
-    header_value.add_route(static_route(
-        vec![Method::Get],
-        || Ok(Echo::header_value),
-        (global, ()),
-        pipeline_set.clone(),
-    ));
-    tree_builder.add_child(header_value);
-
-    let mut hello = NodeBuilder::new("hello", SegmentType::Static);
-
-    let mut name = NodeBuilder::new("name", SegmentType::Dynamic);
-    name.add_route(dynamic_route(
-        vec![Method::Get],
-        || Ok(Echo::hello),
-        (global, ()),
-        pipeline_set.clone(),
-    ));
-
-    let mut from = NodeBuilder::new("from", SegmentType::Dynamic);
-    from.add_route(dynamic_route(
-        vec![Method::Get],
-        || Ok(Echo::greeting),
-        (global, ()),
-        pipeline_set.clone(),
-    ));
-
-    name.add_child(from);
-    hello.add_child(name);
-    tree_builder.add_child(hello);
-
-    let tree = tree_builder.finalize();
-
-    let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
-    let extender_200 = NoopResponseExtender::new();
-    response_finalizer_builder.add(StatusCode::Ok, Box::new(extender_200));
-    let extender_500 = NoopResponseExtender::new();
-    response_finalizer_builder.add(StatusCode::InternalServerError, Box::new(extender_500));
-    let response_finalizer = response_finalizer_builder.finalize();
-
-    Router::new(tree, response_finalizer)
+        route.add_response_extender(StatusCode::Ok, NoopResponseExtender::new());
+        route.add_response_extender(StatusCode::InternalServerError, NoopResponseExtender::new());
+    })
 }
 
 impl Echo {
@@ -350,5 +237,5 @@ fn main() {
         .apply()
         .unwrap();
 
-    gotham::start("127.0.0.1:7878", build_router());
+    gotham::start("127.0.0.1:7878", router());
 }
