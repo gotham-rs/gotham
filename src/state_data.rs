@@ -2,11 +2,11 @@
 //! pool so a connection can be established if required by Middleware or Handlers.
 
 use diesel::Connection;
-use r2d2::{GetTimeout, Pool, PooledConnection};
+use r2d2::{Error, Pool, PooledConnection};
 use r2d2_diesel::ConnectionManager;
 
 use gotham;
-use gotham::state::{State, FromState};
+use gotham::state::{FromState, State};
 
 /// Convenience function for usage within 3rd party Middleware and Handlers to obtain a
 /// Diesel connection.
@@ -17,14 +17,14 @@ pub fn connection<T>(s: &State) -> PooledConnection<ConnectionManager<T>>
 where
     T: Connection + 'static,
 {
-    Diesel::borrow_from(s).conn().expect(
-        "Did not obtain valid Diesel connection from R2D2 pool",
-    )
+    Diesel::borrow_from(s)
+        .conn()
+        .expect("Did not obtain valid Diesel connection from R2D2 pool")
 }
 
 /// Convenience function for usage within 3rd party Middleware and Handlers to obtain a
 /// Diesel connection.
-pub fn try_connection<T>(s: &State) -> Result<PooledConnection<ConnectionManager<T>>, GetTimeout>
+pub fn try_connection<T>(s: &State) -> Result<PooledConnection<ConnectionManager<T>>, Error>
 where
     T: Connection + 'static,
 {
@@ -49,7 +49,7 @@ where
     }
 
     /// Provides access to a Diesel connection from our r2d2 backed connection pool.
-    pub fn conn(&self) -> Result<PooledConnection<ConnectionManager<T>>, GetTimeout> {
+    pub fn conn(&self) -> Result<PooledConnection<ConnectionManager<T>>, Error> {
         self.pool.get()
     }
 }

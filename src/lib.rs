@@ -9,26 +9,26 @@
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 #![deny(private_in_public)]
 
-#[macro_use]
-extern crate log;
+extern crate diesel;
 extern crate futures;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate diesel;
+#[macro_use]
+extern crate log;
 extern crate r2d2;
 extern crate r2d2_diesel;
 
 pub mod state_data;
 
 use std::io;
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::process;
 
-use futures::{Future, future};
+use futures::{future, Future};
 
-use gotham::middleware::{NewMiddleware, Middleware};
-use gotham::state::{State, request_id};
+use gotham::middleware::{Middleware, NewMiddleware};
+use gotham::state::{request_id, State};
 use gotham::handler::HandlerFuture;
 
 use diesel::Connection;
@@ -63,20 +63,20 @@ where
     /// Sets up a new instance of the middleware and establishes a connection to the database.
     ///
     /// * The database to connect to, including authentication components.
-    /// * An optional config instance. Utilises `r2d2::Config::default()` if not provided.
     ///
     /// # Panics
     /// If the database identified in `database_url` cannot be connected to at application start.
     ///
     /// n.b. connection will be re-established if the database goes away and returns mid execution
     /// without panic.
-    pub fn new(database_url: &str, c: Option<r2d2::Config<T, r2d2_diesel::Error>>) -> Self {
+    pub fn new(database_url: &str) -> Self {
         let manager = ConnectionManager::<T>::new(database_url);
-        let r2d2_config = c.unwrap_or(r2d2::Config::default());
-        let pool = Pool::<ConnectionManager<T>>::new(r2d2_config, manager)
-            .expect("Failed to create pool.");
 
-        DieselMiddleware { pool: AssertUnwindSafe(pool) }
+        let pool = Pool::<ConnectionManager<T>>::new(manager).expect("Failed to create pool.");
+
+        DieselMiddleware {
+            pool: AssertUnwindSafe(pool),
+        }
     }
 }
 
@@ -99,7 +99,6 @@ where
                 process::abort()
             }
         }
-
     }
 }
 
@@ -109,7 +108,9 @@ where
 {
     fn clone(&self) -> Self {
         match catch_unwind(|| self.pool.clone()) {
-            Ok(pool) => DieselMiddleware { pool: AssertUnwindSafe(pool) },
+            Ok(pool) => DieselMiddleware {
+                pool: AssertUnwindSafe(pool),
+            },
             Err(_) => {
                 error!("PANIC: r2d2::Pool::clone caused a panic");
                 eprintln!("PANIC: r2d2::Pool::clone caused a panic");
