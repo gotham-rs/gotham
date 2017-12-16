@@ -7,12 +7,16 @@ use router::route::dispatch::PipelineHandleChain;
 use router::builder::SingleRouteBuilder;
 use router::builder::single::DefineSingleRoute;
 
+/// Describes the operation of replacing a `PathExtractor` on a route. This trait exists to remove
+/// type clutter from the documentation of `SingleRouteBuilder::with_path_extractor`.
 pub trait ReplacePathExtractor<T>
 where
     T: PathExtractor,
 {
     type Output: DefineSingleRoute;
 
+    /// Replaces the `PathExtractor` in `self` with the parameterized type `T`. This is a type
+    /// level operation so takes no value.
     fn replace_path_extractor(self) -> Self::Output;
 }
 
@@ -33,12 +37,16 @@ where
     }
 }
 
+/// Describes the operation of replacing a `QueryStringExtractor` on a route. This trait exists to
+/// remove type clutter from the documentation of `SingleRouteBuilder::with_query_string_extractor`.
 pub trait ReplaceQueryStringExtractor<T>
 where
     T: QueryStringExtractor,
 {
     type Output: DefineSingleRoute;
 
+    /// Replaces the `QueryStringExtractor` in `self` with the parameterized type `T`. This is a
+    /// type level operation so takes no value.
     fn replace_query_string_extractor(self) -> Self::Output;
 }
 
