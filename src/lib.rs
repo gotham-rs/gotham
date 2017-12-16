@@ -78,6 +78,18 @@ where
             pool: AssertUnwindSafe(pool),
         }
     }
+
+    /// Sets up a new instance of the middleware and establishes a connection to the database.
+    ///
+    /// * The connection pool (with custom configuration)
+    ///
+    /// n.b. connection will be re-established if the database goes away and returns mid execution
+    /// without panic.
+    pub fn with_pool(pool: Pool<ConnectionManager<T>>) -> Self {
+        DieselMiddleware {
+            pool: AssertUnwindSafe(pool),
+        }
+    }
 }
 
 impl<T> NewMiddleware for DieselMiddleware<T>
@@ -138,5 +150,32 @@ where
             future::ok((state, response))
         });
         Box::new(f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use diesel::pg::PgConnection;
+    use r2d2_diesel::ConnectionManager;
+
+    #[test]
+    #[ignore]
+    fn new_with_default_config() {
+        let manager = ConnectionManager::new("postgres://user:password@localhost");
+        let pool = Pool::<ConnectionManager<PgConnection>>::new(manager).unwrap();
+        let _middleware = DieselMiddleware::with_pool(pool);
+    }
+
+    #[test]
+    #[ignore]
+    fn new_with_custom_pool_config() {
+        let manager = ConnectionManager::new("postgres://user:password@localhost");
+        let pool = Pool::<ConnectionManager<PgConnection>>::builder()
+            .min_idle(Some(1))
+            .build(manager)
+            .unwrap();
+        let _middleware = DieselMiddleware::with_pool(pool);
     }
 }
