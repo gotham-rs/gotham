@@ -74,9 +74,7 @@ where
 
         let pool = Pool::<ConnectionManager<T>>::new(manager).expect("Failed to create pool.");
 
-        DieselMiddleware {
-            pool: AssertUnwindSafe(pool),
-        }
+        DieselMiddleware::with_pool(pool)
     }
 
     /// Sets up a new instance of the middleware and establishes a connection to the database.
