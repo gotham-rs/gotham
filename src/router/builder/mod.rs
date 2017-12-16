@@ -14,7 +14,8 @@ use router::response::extender::ResponseExtender;
 use router::response::finalizer::ResponseFinalizerBuilder;
 use router::route::Delegation;
 use router::route::matcher::RouteMatcher;
-use router::route::dispatch::{PipelineHandleChain, PipelineSet};
+use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineHandleChain,
+                              PipelineSet};
 use router::request::path::PathExtractor;
 use router::request::query_string::QueryStringExtractor;
 use router::tree::node::NodeBuilder;
@@ -76,6 +77,38 @@ where
     };
 
     Router::new(tree_builder.finalize(), response_finalizer)
+}
+
+/// Builds a `Router` with **no** middleware using the provided closure. Routes are defined using
+/// the `RouterBuilder` value passed to the closure, and the `Router` is constructed before
+/// returning.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// # use hyper::Response;
+/// # use gotham::state::State;
+/// # use gotham::router::Router;
+/// # use gotham::router::builder::*;
+/// # fn my_handler(_: State) -> (State, Response) {
+/// #   unreachable!()
+/// # }
+/// #
+/// fn router() -> Router {
+///     build_simple_router(|route| {
+///         route.get("/request/path").to(my_handler);
+///     })
+/// }
+/// # fn main() { router(); }
+/// ```
+pub fn build_simple_router<F>(f: F) -> Router
+where
+    F: FnOnce(&mut RouterBuilder<(), ()>),
+{
+    let pipelines = finalize_pipeline_set(new_pipeline_set());
+    let pipeline_chain = ();
+
+    build_router(pipeline_chain, pipelines, f)
 }
 
 /// The top-level builder which is created by `build_router` and passed to the provided closure.
