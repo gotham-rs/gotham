@@ -1,0 +1,11 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+
+branches:
+  only:
+  - master
+
+cache: cargo
