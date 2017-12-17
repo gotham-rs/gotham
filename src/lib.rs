@@ -155,22 +155,22 @@ where
 mod tests {
     use super::*;
 
-    use diesel::pg::PgConnection;
+    use diesel::sqlite::SqliteConnection;
     use r2d2_diesel::ConnectionManager;
 
+    static DATABASE_URL: &'static str = ":memory:";
+
     #[test]
-    #[ignore]
     fn new_with_default_config() {
-        let manager = ConnectionManager::new("postgres://user:password@localhost");
-        let pool = Pool::<ConnectionManager<PgConnection>>::new(manager).unwrap();
+        let manager = ConnectionManager::new(DATABASE_URL);
+        let pool = Pool::<ConnectionManager<SqliteConnection>>::new(manager).unwrap();
         let _middleware = DieselMiddleware::with_pool(pool);
     }
 
     #[test]
-    #[ignore]
     fn new_with_custom_pool_config() {
-        let manager = ConnectionManager::new("postgres://user:password@localhost");
-        let pool = Pool::<ConnectionManager<PgConnection>>::builder()
+        let manager = ConnectionManager::new(DATABASE_URL);
+        let pool = Pool::<ConnectionManager<SqliteConnection>>::builder()
             .min_idle(Some(1))
             .build(manager)
             .unwrap();
