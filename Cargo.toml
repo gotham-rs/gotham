@@ -25,3 +25,6 @@ gotham_derive = {  git = "https://github.com/gotham-rs/gotham" }
 diesel = { version = "1.0.0-beta1" }
 r2d2 = "0.8.1"
 r2d2-diesel = "1.0.0-beta1"
+
+[dev-dependencies]
+diesel = { features = ["sqlite"] }
