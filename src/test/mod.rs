@@ -58,10 +58,7 @@ where
     data: Rc<TestServerData<NH>>,
 }
 
-/// This type should not need to be directly used by client applications.
-///
-/// It is used by TestServer to hold internal data within an Rc
-pub struct TestServerData<NH = Router>
+struct TestServerData<NH = Router>
 where
     NH: NewHandler + 'static,
 {
@@ -99,17 +96,6 @@ where
         TestServer {
             data: self.data.clone(),
         }
-    }
-}
-
-impl<NH> Deref for TestServer<NH>
-where
-    NH: NewHandler + 'static,
-{
-    type Target = TestServerData<NH>;
-
-    fn deref(&self) -> &TestServerData<NH> {
-        &*self.data
     }
 }
 
@@ -157,7 +143,7 @@ where
     }
 
     fn try_client_with_address(&self, client_addr: net::SocketAddr) -> io::Result<TestClient<NH>> {
-        let handle = self.core.borrow().handle();
+        let handle = self.data.core.borrow().handle();
 
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
@@ -175,14 +161,16 @@ where
         let ss = mio::net::TcpStream::from_stream(ss)?;
         let ss = PollEvented::new(ss, &handle)?;
 
-        let service = self.new_service.new_service()?;
-        self.http.bind_connection(&handle, ss, client_addr, service);
+        let service = self.data.new_service.new_service()?;
+        self.data
+            .http
+            .bind_connection(&handle, ss, client_addr, service);
 
         let client = Client::configure()
             .connector(TestConnect {
                 stream: cell::RefCell::new(Some(cs)),
             })
-            .build(&self.core.borrow().handle());
+            .build(&self.data.core.borrow().handle());
 
         Ok(TestClient {
             client,
@@ -198,12 +186,12 @@ where
     where
         F: Future<Error = hyper::Error>,
     {
-        let timeout_duration = time::Duration::from_secs(self.timeout);
-        let timeout = Timeout::new(timeout_duration, &self.core.borrow().handle())
+        let timeout_duration = time::Duration::from_secs(self.data.timeout);
+        let timeout = Timeout::new(timeout_duration, &self.data.core.borrow().handle())
             .map_err(|e| TestRequestError::IoError(e))?;
 
         let run_result = {
-            let mut core = self.core.borrow_mut();
+            let mut core = self.data.core.borrow_mut();
             core.run(f.select2(timeout))
         };
 
@@ -227,7 +215,7 @@ where
             let f: hyper::Body = response.body();
             let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
 
-            let mut core = self.core.borrow_mut();
+            let mut core = self.data.core.borrow_mut();
             core.run(f)
         };
 
