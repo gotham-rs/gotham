@@ -63,3 +63,10 @@ impl Ord for ConstrainedSegmentRegex {
         self.regex.as_str().cmp(other.regex.as_str())
     }
 }
+
+impl Clone for ConstrainedSegmentRegex {
+    fn clone(&self) -> ConstrainedSegmentRegex {
+        let ConstrainedSegmentRegex { regex: AssertUnwindSafe(ref regex) } = *self;
+        ConstrainedSegmentRegex { regex: AssertUnwindSafe(regex.clone()) }
+    }
+}

@@ -175,8 +175,13 @@ impl TreeBuilder {
     /// exists at the root of the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
-    pub fn has_child(&self, segment: &str) -> bool {
-        self.root.has_child(segment)
+    pub fn has_child(&self, segment: &str, segment_type: SegmentType) -> bool {
+        self.root.has_child(segment, segment_type)
+    }
+
+    /// Borrow the root `NodeBuilder` as mutable.
+    pub fn borrow_root_mut(&mut self) -> &mut NodeBuilder {
+        &mut self.root
     }
 
     /// Adds a `Route` be evaluated by the `Router` when the root of the
