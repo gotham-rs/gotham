@@ -1,13 +1,15 @@
 use std::panic::RefUnwindSafe;
 
-use router::request::path::PathExtractor;
-use router::request::query_string::QueryStringExtractor;
+use handler::{Handler, NewHandler};
+use router::Router;
 use router::builder::SingleRouteBuilder;
 use router::builder::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
+use router::request::path::PathExtractor;
+use router::request::query_string::QueryStringExtractor;
 use router::route::{Extractors, RouteImpl};
+use router::route::Delegation;
+use router::route::dispatch::{DispatcherImpl, PipelineHandleChain};
 use router::route::matcher::RouteMatcher;
-use router::route::dispatch::{PipelineHandleChain, DispatcherImpl};
-use handler::{Handler, NewHandler};
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
@@ -140,6 +142,78 @@ pub trait DefineSingleRoute {
     where
         NH: NewHandler + 'static;
 
+    /// Delegates the request to a secondary router instance.
+    ///
+    /// This allows Gotham apps to support the modular application structure which are more
+    /// structured applications with a top-level router that dispatches requests to sub-routers that
+    /// in turn handle the set of requests defined by that module.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use std::io;
+    /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::middleware::pipeline::new_pipeline;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+    ///
+    /// mod abc {
+    ///   use super::*;
+    ///
+    ///   struct MyNewHandler;
+    ///   struct MyHandler;
+    ///
+    ///   impl NewHandler for MyNewHandler {
+    ///       type Instance = MyHandler;
+    ///
+    ///       fn new_handler(&self) -> io::Result<Self::Instance> {
+    ///           Ok(MyHandler)
+    ///       }
+    ///   }
+    ///
+    ///   impl Handler for MyHandler {
+    ///       fn handle(self, _state: State) -> Box<HandlerFuture> {
+    ///           // Handler implementation elided.
+    /// #         unimplemented!()
+    ///       }
+    ///   }
+    /// #
+    ///   pub fn sub_router() -> Router {
+    /// #   let pipelines = new_pipeline_set();
+    /// #   let (pipelines, default) =
+    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+    /// #
+    /// #   let pipelines = finalize_pipeline_set(pipelines);
+    /// #
+    /// #   let default_pipeline_chain = (default, ());
+    ///
+    ///   build_router(default_pipeline_chain, pipelines, |route| {
+    ///     route.get("/path").to_new_handler(MyNewHandler);
+    ///   })
+    /// # }
+    /// }
+    ///
+    /// fn router() -> Router {
+    /// #   let pipelines = new_pipeline_set();
+    /// #   let (pipelines, default) =
+    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+    /// #
+    /// #   let pipelines = finalize_pipeline_set(pipelines);
+    /// #
+    /// #   let default_pipeline_chain = (default, ());
+    ///   build_router(default_pipeline_chain, pipelines, |route| {
+    ///       route.get("/abc").to_router(abc::sub_router());
+    ///   })
+    /// }
+    /// # fn main() { router(); }
+    /// ```
+    fn to_router(self, router: Router);
+
     /// Applies a `PathExtractor` type to the current route, to extract path parameters into
     /// `State` with the given type.
     ///
@@ -257,23 +331,11 @@ pub trait DefineSingleRoute {
 
 impl<'a, M, C, P, PE, QSE> DefineSingleRoute for SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
-    M: RouteMatcher
-        + Send
-        + Sync
-        + 'static,
-    C: PipelineHandleChain<P>
-        + Send
-        + Sync
-        + 'static,
+    M: RouteMatcher + Send + Sync + 'static,
+    C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor
-        + Send
-        + Sync
-        + 'static,
-    QSE: QueryStringExtractor
-        + Send
-        + Sync
-        + 'static,
+    PE: PathExtractor + Send + Sync + 'static,
+    QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     fn to<H>(self, handler: H)
     where
@@ -291,7 +353,18 @@ where
             self.matcher,
             Box::new(dispatcher),
             Extractors::new(),
-            self.delegation,
+            Delegation::Internal,
+        );
+        self.node_builder.add_route(Box::new(route));
+    }
+
+    fn to_router(self, router: Router) {
+        let dispatcher = DispatcherImpl::new(router, self.pipeline_chain, self.pipelines);
+        let route: RouteImpl<M, PE, QSE> = RouteImpl::new(
+            self.matcher,
+            Box::new(dispatcher),
+            Extractors::new(),
+            Delegation::External,
         );
         self.node_builder.add_route(Box::new(route));
     }
@@ -303,8 +376,9 @@ where
         self.replace_path_extractor()
     }
 
-    fn with_query_string_extractor<NQSE>(self)
-        -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
+    fn with_query_string_extractor<NQSE>(
+        self,
+    ) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
     where
         NQSE: QueryStringExtractor + Send + Sync + 'static,
     {

@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 
 use hyper::Method;
 
-use router::route::Delegation;
 use router::route::dispatch::{PipelineHandleChain, PipelineSet};
 use router::route::matcher::MethodOnlyRouteMatcher;
 use router::request::path::NoopPathExtractor;
@@ -157,7 +156,6 @@ where
             node_builder,
             pipeline_chain: *pipeline_chain,
             pipelines: pipelines.clone(),
-            delegation: Delegation::Internal,
             phantom: PhantomData,
         }
     }

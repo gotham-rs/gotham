@@ -9,19 +9,18 @@ use std::marker::PhantomData;
 use hyper::StatusCode;
 
 use router::Router;
-use router::tree::TreeBuilder;
-use router::response::extender::ResponseExtender;
-use router::response::finalizer::ResponseFinalizerBuilder;
-use router::route::Delegation;
-use router::route::matcher::RouteMatcher;
-use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineHandleChain,
-                              PipelineSet};
 use router::request::path::PathExtractor;
 use router::request::query_string::QueryStringExtractor;
+use router::response::extender::ResponseExtender;
+use router::response::finalizer::ResponseFinalizerBuilder;
+use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, PipelineHandleChain,
+                              PipelineSet};
+use router::route::matcher::RouteMatcher;
+use router::tree::TreeBuilder;
 use router::tree::node::NodeBuilder;
 
+pub use self::draw::{DefaultSingleRouteBuilder, DrawRoutes};
 pub use self::single::DefineSingleRoute;
-pub use self::draw::{DrawRoutes, DefaultSingleRouteBuilder};
 
 /// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
 /// value passed to the closure, and the `Router` is constructed before returning.
@@ -171,10 +170,8 @@ where
     where
         E: ResponseExtender + Send + Sync + 'static,
     {
-        self.response_finalizer_builder.add(
-            status_code,
-            Box::new(extender),
-        )
+        self.response_finalizer_builder
+            .add(status_code, Box::new(extender))
     }
 }
 
@@ -204,30 +201,17 @@ where
     matcher: M,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
-    delegation: Delegation,
     phantom: PhantomData<(PE, QSE)>,
 }
 
 // Trait impls live with the traits.
 impl<'a, M, C, P, PE, QSE> SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
-    M: RouteMatcher
-        + Send
-        + Sync
-        + 'static,
-    C: PipelineHandleChain<P>
-        + Send
-        + Sync
-        + 'static,
+    M: RouteMatcher + Send + Sync + 'static,
+    C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: Send + Sync + 'static,
-    PE: PathExtractor
-        + Send
-        + Sync
-        + 'static,
-    QSE: QueryStringExtractor
-        + Send
-        + Sync
-        + 'static,
+    PE: PathExtractor + Send + Sync + 'static,
+    QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     /// Coerces the type of the internal `PhantomData`, to replace an extractor by changing the
     /// type parameter without changing anything else.
@@ -241,7 +225,6 @@ where
             matcher: self.matcher,
             pipeline_chain: self.pipeline_chain,
             pipelines: self.pipelines,
-            delegation: self.delegation,
             phantom: PhantomData,
         }
     }
@@ -253,19 +236,19 @@ mod tests {
 
     use std::str::FromStr;
 
-    use hyper::{Request, Response, StatusCode, Method, Uri};
-    use hyper::server::{NewService, Service};
     use futures::{Future, Stream};
+    use hyper::{Method, Request, Response, StatusCode, Uri};
+    use hyper::server::{NewService, Service};
 
-    use middleware::pipeline::new_pipeline;
-    use middleware::session::NewSessionMiddleware;
-    use state::{State, StateData, FromState};
     use handler::NewHandlerService;
-    use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    use router::response::extender::StaticResponseExtender;
-    use router::tree::SegmentMapping;
     use http::FormUrlDecoded;
     use http::request::query_string;
+    use middleware::pipeline::new_pipeline;
+    use middleware::session::NewSessionMiddleware;
+    use router::response::extender::StaticResponseExtender;
+    use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set};
+    use router::tree::SegmentMapping;
+    use state::{FromState, State, StateData};
 
     struct SalutationParams {
         name: String,
@@ -339,43 +322,37 @@ mod tests {
 
         pub fn hello(mut state: State) -> (State, Response) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new().with_status(StatusCode::Ok).with_body(
-                format!(
-                    "Hello, {}!",
-                    params.name
-                ),
-            );
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body(format!("Hello, {}!", params.name));
             (state, response)
         }
 
         pub fn globbed(state: State) -> (State, Response) {
-            let response = Response::new().with_status(StatusCode::Ok).with_body(
-                "Globbed",
-            );
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body("Globbed");
             (state, response)
         }
 
         pub fn goodbye(mut state: State) -> (State, Response) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new().with_status(StatusCode::Ok).with_body(
-                format!(
-                    "Goodbye, {}!",
-                    params.name
-                ),
-            );
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body(format!("Goodbye, {}!", params.name));
             (state, response)
         }
 
         pub fn add(mut state: State) -> (State, Response) {
             let params = state.take::<AddParams>();
-            let response = Response::new().with_status(StatusCode::Ok).with_body(
-                format!(
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body(format!(
                     "{} + {} = {}",
                     params.x,
                     params.y,
                     params.x + params.y,
-                ),
-            );
+                ));
             (state, response)
         }
     }
@@ -422,7 +399,9 @@ mod tests {
 
             route.get(r"/literal/\:param/\*").to(welcome::literal);
 
-            route.scope("/api", |route| { route.post("/submit").to(api::submit); });
+            route.scope("/api", |route| {
+                route.post("/submit").to(api::submit);
+            });
         });
 
         let new_service = NewHandlerService::new(router);
