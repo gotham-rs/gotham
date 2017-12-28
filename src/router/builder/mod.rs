@@ -5,6 +5,7 @@ mod single;
 mod replace;
 
 use std::marker::PhantomData;
+use std::panic::RefUnwindSafe;
 
 use hyper::StatusCode;
 
@@ -12,12 +13,13 @@ use router::Router;
 use router::tree::TreeBuilder;
 use router::response::extender::ResponseExtender;
 use router::response::finalizer::ResponseFinalizerBuilder;
-use router::route::Delegation;
+use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::RouteMatcher;
+use router::route::matcher::any::AnyRouteMatcher;
 use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineHandleChain,
-                              PipelineSet};
-use router::request::path::PathExtractor;
-use router::request::query_string::QueryStringExtractor;
+                              PipelineSet, DispatcherImpl};
+use router::request::path::{PathExtractor, NoopPathExtractor};
+use router::request::query_string::{QueryStringExtractor, NoopQueryStringExtractor};
 use router::tree::node::NodeBuilder;
 
 pub use self::single::DefineSingleRoute;
@@ -190,6 +192,39 @@ where
     pipelines: PipelineSet<P>,
 }
 
+/// A delegated builder, which is created by `DrawRoutes::delegate` and returned. See the
+/// `DrawRoutes` trait for usage.
+pub struct DelegateRouteBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + 'static,
+{
+    node_builder: &'a mut NodeBuilder,
+    pipeline_chain: C,
+    pipelines: PipelineSet<P>,
+}
+
+type DelegatedRoute = RouteImpl<AnyRouteMatcher, NoopPathExtractor, NoopQueryStringExtractor>;
+
+impl<'a, C, P> DelegateRouteBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
+{
+/// Directs the delegated route to the given `Router`.
+    pub fn to_router(self, router: Router) {
+        let dispatcher = DispatcherImpl::new(router, self.pipeline_chain, self.pipelines);
+        let route: DelegatedRoute = DelegatedRoute::new(
+            AnyRouteMatcher::new(),
+            Box::new(dispatcher),
+            Extractors::new(),
+            Delegation::External,
+        );
+
+        self.node_builder.add_route(Box::new(route));
+    }
+}
+
 /// Implements the traits required to define a single route, after determining which request paths
 /// will be dispatched here. The `DefineSingleRoute` trait has documentation for using this type.
 pub struct SingleRouteBuilder<'a, M, C, P, PE, QSE>
@@ -204,7 +239,6 @@ where
     matcher: M,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
-    delegation: Delegation,
     phantom: PhantomData<(PE, QSE)>,
 }
 
@@ -241,7 +275,6 @@ where
             matcher: self.matcher,
             pipeline_chain: self.pipeline_chain,
             pipelines: self.pipelines,
-            delegation: self.delegation,
             phantom: PhantomData,
         }
     }
@@ -355,6 +388,13 @@ mod tests {
             (state, response)
         }
 
+        pub fn delegated(state: State) -> (State, Response) {
+            let response = Response::new().with_status(StatusCode::Ok).with_body(
+                "Delegated",
+            );
+            (state, response)
+        }
+
         pub fn goodbye(mut state: State) -> (State, Response) {
             let params = state.take::<SalutationParams>();
             let response = Response::new().with_status(StatusCode::Ok).with_body(
@@ -397,6 +437,9 @@ mod tests {
 
         let default_pipeline_chain = (default, ());
 
+        let delegated_router =
+            build_simple_router(|route| { route.get("/b").to(welcome::delegated); });
+
         let router = build_router(default_pipeline_chain, pipelines, |route| {
             route.get("/").to(welcome::index);
 
@@ -423,6 +466,8 @@ mod tests {
             route.get(r"/literal/\:param/\*").to(welcome::literal);
 
             route.scope("/api", |route| { route.post("/submit").to(api::submit); });
+
+            route.delegate("/delegated").to_router(delegated_router);
         });
 
         let new_service = NewHandlerService::new(router);
@@ -452,6 +497,11 @@ mod tests {
         assert_eq!(response.status(), StatusCode::Ok);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Globbed");
+
+        let response = call(Request::new(Method::Get, "/delegated/b".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::Ok);
+        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
 
         let response = call(Request::new(Method::Get, "/goodbye/world".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);

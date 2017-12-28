@@ -1,13 +1,13 @@
 use std::marker::PhantomData;
+use std::panic::RefUnwindSafe;
 
 use hyper::Method;
 
-use router::route::Delegation;
 use router::route::dispatch::{PipelineHandleChain, PipelineSet};
 use router::route::matcher::MethodOnlyRouteMatcher;
 use router::request::path::NoopPathExtractor;
 use router::request::query_string::NoopQueryStringExtractor;
-use router::builder::{SingleRouteBuilder, RouterBuilder, ScopeBuilder};
+use router::builder::{SingleRouteBuilder, RouterBuilder, ScopeBuilder, DelegateRouteBuilder};
 use router::tree::node::{SegmentType, NodeBuilder};
 use router::tree::regex::ConstrainedSegmentRegex;
 
@@ -28,7 +28,7 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
 pub trait DrawRoutes<C, P>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
-    P: Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
 {
     /// Creates a route which matches `GET` and `HEAD` requests to the given path.
     ///
@@ -157,7 +157,6 @@ where
             node_builder,
             pipeline_chain: *pipeline_chain,
             pipelines: pipelines.clone(),
-            delegation: Delegation::Internal,
             phantom: PhantomData,
         }
     }
@@ -215,6 +214,50 @@ where
         };
 
         f(&mut scope_builder)
+    }
+
+    /// Begins delegating a subpath of the tree.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::middleware::pipeline::new_pipeline;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+    /// #
+    /// fn admin_router() -> Router {
+    ///     // Implementation elided
+    /// #   build_simple_router(|_route| {})
+    /// }
+    ///
+    /// # fn router() -> Router {
+    /// #   let pipelines = new_pipeline_set();
+    /// #   let (pipelines, default) =
+    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+    /// #
+    /// #   let pipelines = finalize_pipeline_set(pipelines);
+    /// #
+    /// #   let default_pipeline_chain = (default, ());
+    /// #
+    /// build_router(default_pipeline_chain, pipelines, |route| {
+    ///     route.delegate("/admin").to_router(admin_router());
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn delegate<'b>(&'b mut self, path: &str) -> DelegateRouteBuilder<'b, C, P> {
+        let (node_builder, pipeline_chain, pipelines) = self.component_refs();
+        let node_builder = descend(node_builder, path);
+
+        DelegateRouteBuilder {
+            node_builder,
+            pipeline_chain: *pipeline_chain,
+            pipelines: pipelines.clone(),
+        }
     }
 
     /// Return the components that comprise this builder. For internal use only.
@@ -285,7 +328,7 @@ where
         + Send
         + Sync
         + 'static,
-    P: Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
 {
     fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
         (
@@ -303,7 +346,7 @@ where
         + Send
         + Sync
         + 'static,
-    P: Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
 {
     fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
         (

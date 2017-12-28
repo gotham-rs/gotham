@@ -4,7 +4,7 @@ use router::request::path::PathExtractor;
 use router::request::query_string::QueryStringExtractor;
 use router::builder::SingleRouteBuilder;
 use router::builder::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
-use router::route::{Extractors, RouteImpl};
+use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::RouteMatcher;
 use router::route::dispatch::{PipelineHandleChain, DispatcherImpl};
 use handler::{Handler, NewHandler};
@@ -291,7 +291,7 @@ where
             self.matcher,
             Box::new(dispatcher),
             Extractors::new(),
-            self.delegation,
+            Delegation::Internal,
         );
         self.node_builder.add_route(Box::new(route));
     }
