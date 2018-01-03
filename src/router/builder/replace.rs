@@ -13,6 +13,7 @@ pub trait ReplacePathExtractor<T>
 where
     T: PathExtractor,
 {
+    /// The type returned when replacing the `PathExtractor` with the target type.
     type Output: DefineSingleRoute;
 
     #[doc(hidden)]
@@ -44,6 +45,7 @@ pub trait ReplaceQueryStringExtractor<T>
 where
     T: QueryStringExtractor,
 {
+    /// The type returned when replacing the `QueryStringExtractor` with the target type.
     type Output: DefineSingleRoute;
 
     #[doc(hidden)]
