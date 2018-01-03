@@ -41,23 +41,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.get("/request/path").to(my_handler);
     /// })
     /// # }
@@ -79,23 +68,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.only_get("/request/path").to(my_handler);
     /// })
     /// # }
@@ -116,23 +94,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.head("/request/path").to(my_handler);
     /// })
     /// # }
@@ -153,23 +120,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.post("/request/path").to(my_handler);
     /// })
     /// # }
@@ -190,23 +146,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.put("/request/path").to(my_handler);
     /// })
     /// # }
@@ -227,23 +172,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.patch("/request/path").to(my_handler);
     /// })
     /// # }
@@ -264,23 +198,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.delete("/request/path").to(my_handler);
     /// })
     /// # }
@@ -301,23 +224,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.options("/request/path").to(my_handler);
     /// })
     /// # }
@@ -343,23 +255,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.request(vec![Get, Head], "/request/path").to(my_handler);
     /// })
     /// # }
@@ -395,9 +296,6 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # mod api {
     /// #   use super::*;
     /// #   pub fn list(_: State) -> (State, Response) {
@@ -406,15 +304,7 @@ where
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.scope("/api", |route| {
     ///         // Match requests to `/api/list`
     ///         route.get("/list").to(api::list);
@@ -448,9 +338,6 @@ where
     /// # extern crate hyper;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// #
     /// fn admin_router() -> Router {
     ///     // Implementation elided
@@ -458,15 +345,7 @@ where
     /// }
     ///
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.delegate("/admin").to_router(admin_router());
     /// })
     /// # }
