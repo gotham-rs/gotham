@@ -47,12 +47,12 @@ where
     /// #
     /// # fn router() -> Router {
     /// build_simple_router(|route| {
-    ///     route.get("/request/path").to(my_handler);
+    ///     route.get_or_head("/request/path").to(my_handler);
     /// })
     /// # }
     /// # fn main() { router(); }
     /// ```
-    fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn get_or_head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Get, Method::Head], path)
     }
 
@@ -74,12 +74,12 @@ where
     /// #
     /// # fn router() -> Router {
     /// build_simple_router(|route| {
-    ///     route.only_get("/request/path").to(my_handler);
+    ///     route.get("/request/path").to(my_handler);
     /// })
     /// # }
     /// # fn main() { router(); }
     /// ```
-    fn only_get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Get], path)
     }
 
