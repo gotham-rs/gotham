@@ -216,6 +216,43 @@ where
         self.request(vec![Method::Put], path)
     }
 
+    /// Creates a route which matches `PATCH` requests to the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use hyper::Response;
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::middleware::pipeline::new_pipeline;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+    /// # fn my_handler(_: State) -> (State, Response) {
+    /// #   unreachable!()
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// #   let pipelines = new_pipeline_set();
+    /// #   let (pipelines, default) =
+    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+    /// #
+    /// #   let pipelines = finalize_pipeline_set(pipelines);
+    /// #
+    /// #   let default_pipeline_chain = (default, ());
+    /// #
+    /// build_router(default_pipeline_chain, pipelines, |route| {
+    ///     route.patch("/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn patch<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Patch], path)
+    }
+
     /// Creates a route which matches `DELETE` requests to the given path.
     ///
     /// # Examples
