@@ -1,5 +1,6 @@
 //! Defines the Gotham `Router` and supporting types.
 
+pub mod builder;
 pub mod tree;
 pub mod route;
 pub mod request;
