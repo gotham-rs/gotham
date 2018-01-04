@@ -24,6 +24,7 @@ use router::tree::node::NodeBuilder;
 
 pub use self::single::DefineSingleRoute;
 pub use self::draw::{DrawRoutes, DefaultSingleRouteBuilder};
+pub use self::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
 
 /// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
 /// value passed to the closure, and the `Router` is constructed before returning.

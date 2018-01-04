@@ -41,30 +41,72 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+    /// build_simple_router(|route| {
+    ///     route.get_or_head("/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn get_or_head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Get, Method::Head], path)
+    }
+
+    /// Creates a route which matches **only** `GET` requests to the given path (ignoring `HEAD`
+    /// requests).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use hyper::Response;
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # fn my_handler(_: State) -> (State, Response) {
+    /// #   unreachable!()
+    /// # }
     /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
     ///     route.get("/request/path").to(my_handler);
     /// })
     /// # }
     /// # fn main() { router(); }
     /// ```
     fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Get, Method::Head], path)
+        self.request(vec![Method::Get], path)
+    }
+
+    /// Creates a route which matches `HEAD` requests to the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use hyper::Response;
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # fn my_handler(_: State) -> (State, Response) {
+    /// #   unreachable!()
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.head("/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Head], path)
     }
 
     /// Creates a route which matches `POST` requests to the given path.
@@ -78,23 +120,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.post("/request/path").to(my_handler);
     /// })
     /// # }
@@ -102,6 +133,110 @@ where
     /// ```
     fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Post], path)
+    }
+
+    /// Creates a route which matches `PUT` requests to the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use hyper::Response;
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # fn my_handler(_: State) -> (State, Response) {
+    /// #   unreachable!()
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.put("/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn put<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Put], path)
+    }
+
+    /// Creates a route which matches `PATCH` requests to the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use hyper::Response;
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # fn my_handler(_: State) -> (State, Response) {
+    /// #   unreachable!()
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.patch("/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn patch<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Patch], path)
+    }
+
+    /// Creates a route which matches `DELETE` requests to the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use hyper::Response;
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # fn my_handler(_: State) -> (State, Response) {
+    /// #   unreachable!()
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.delete("/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn delete<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Delete], path)
+    }
+
+    /// Creates a route which matches `OPTIONS` requests to the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # use hyper::Response;
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # fn my_handler(_: State) -> (State, Response) {
+    /// #   unreachable!()
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.options("/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn options<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Options], path)
     }
 
     /// Creates a single route which matches any requests to the given `path` with one of the
@@ -120,23 +255,12 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # fn my_handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.request(vec![Get, Head], "/request/path").to(my_handler);
     /// })
     /// # }
@@ -172,9 +296,6 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// # mod api {
     /// #   use super::*;
     /// #   pub fn list(_: State) -> (State, Response) {
@@ -183,15 +304,7 @@ where
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.scope("/api", |route| {
     ///         // Match requests to `/api/list`
     ///         route.get("/list").to(api::list);
@@ -225,9 +338,6 @@ where
     /// # extern crate hyper;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// #
     /// fn admin_router() -> Router {
     ///     // Implementation elided
@@ -235,15 +345,7 @@ where
     /// }
     ///
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
-    /// #
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_simple_router(|route| {
     ///     route.delegate("/admin").to_router(admin_router());
     /// })
     /// # }

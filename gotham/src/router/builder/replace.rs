@@ -13,8 +13,10 @@ pub trait ReplacePathExtractor<T>
 where
     T: PathExtractor,
 {
+    /// The type returned when replacing the `PathExtractor` with the target type.
     type Output: DefineSingleRoute;
 
+    #[doc(hidden)]
     /// Replaces the `PathExtractor` in `self` with the parameterized type `T`. This is a type
     /// level operation so takes no value.
     fn replace_path_extractor(self) -> Self::Output;
@@ -43,8 +45,10 @@ pub trait ReplaceQueryStringExtractor<T>
 where
     T: QueryStringExtractor,
 {
+    /// The type returned when replacing the `QueryStringExtractor` with the target type.
     type Output: DefineSingleRoute;
 
+    #[doc(hidden)]
     /// Replaces the `QueryStringExtractor` in `self` with the parameterized type `T`. This is a
     /// type level operation so takes no value.
     fn replace_query_string_extractor(self) -> Self::Output;
