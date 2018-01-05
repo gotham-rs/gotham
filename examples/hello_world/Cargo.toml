@@ -1,0 +1,15 @@
+[package]
+name = "hello_world"
+version = "0.2.0"
+authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
+           "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
+description = "A hello world example application for Gotham"
+license = "MIT/Apache-2.0"
+publish = false
+
+[dependencies]
+gotham = { path = "../../gotham" }
+
+hyper = "0.11"
+futures = "~0.1.11"
+mime = "0.3"
