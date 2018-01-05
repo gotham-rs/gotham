@@ -30,7 +30,7 @@ pub fn say_hello(state: State) -> (State, Response) {
     (state, res)
 }
 
-/// Start a server and call the `Handler` we've defined above for `Request` we receive.
+/// Start a server and call the `Handler` we've defined above for each `Request` we receive.
 pub fn main() {
     let addr = "127.0.0.1:7878";
     println!("Listening for requests at http://{}", addr);
