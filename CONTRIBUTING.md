@@ -3,11 +3,6 @@
 Please take a moment to review this document in order to make the contribution
 process easy and effective for everyone involved.
 
-All aspects of the contribution process must adhere to 
-[Gotham policies](https://github.com/gotham-rs/policies). 
-Take a moment to read these now if you've not previously had a chance to
-consider them.
-
 ## License
 
 You agree to license your contribution under the 
