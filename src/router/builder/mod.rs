@@ -36,7 +36,7 @@ pub use self::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
-/// # use gotham::middleware::pipeline::new_pipeline;
+/// # use gotham::pipeline::new_pipeline;
 /// # use gotham::middleware::session::NewSessionMiddleware;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
 /// # fn my_handler(_: State) -> (State, Response) {
@@ -142,7 +142,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::response::extender::ResponseExtender;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
+    /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// #
@@ -291,7 +291,7 @@ mod tests {
     use hyper::server::{NewService, Service};
     use futures::{Future, Stream};
 
-    use middleware::pipeline::new_pipeline;
+    use pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
     use state::{State, StateData, FromState};
     use handler::NewHandlerService;

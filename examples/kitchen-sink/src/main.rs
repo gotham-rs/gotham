@@ -25,7 +25,7 @@ use gotham::router::Router;
 use gotham::router::builder::*;
 use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
 use gotham::handler::{HandlerFuture, IntoHandlerError};
-use gotham::middleware::pipeline::new_pipeline;
+use gotham::pipeline::new_pipeline;
 use gotham::state::{State, FromState};
 use gotham::http::response::create_response;
 
