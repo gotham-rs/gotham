@@ -11,10 +11,6 @@ readme = "README.md"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "gotham"]
 
-[features]
-default = []
-ci = []
-
 [dependencies]
 log = "0.3"
 hyper = "~0.11.7"
@@ -37,7 +33,7 @@ crossbeam = "0.3"
 regex = "0.2"
 
 [dev-dependencies]
-gotham_derive = { version = "0.1.0", path = "gotham_derive" }
+gotham_derive = { path = "../gotham_derive" }
 
 [badges]
 travis-ci = { repository = "gotham-rs/gotham", branch = "master" }

@@ -6,10 +6,10 @@ authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
 description = "A Gotham Middleware that provides access to a Diesel connection via an R2D2 pool to allow other Middleware and Handlers to interact with a database."
 license = "MIT/Apache-2.0"
 homepage = "https://gotham.rs"
-repository = "https://github.com/gotham-rs/middleware-diesel"
+repository = "https://github.com/gotham-rs/gotham"
 readme = "README.md"
 categories = ["web-programming::http-server"]
-keywords = ["http", "async", "web", "framework", "gotham"]
+keywords = ["http", "async", "web", "gotham", "diesel"]
 
 [features]
 postgres = ["diesel/postgres"]
@@ -19,8 +19,8 @@ mysql = ["diesel/mysql"]
 [dependencies]
 log = "0.3.0"
 futures = "0.1.0"
-gotham = { git = "https://github.com/gotham-rs/gotham" }
-gotham_derive = { git = "https://github.com/gotham-rs/gotham" }
+gotham = { path = "../../gotham" }
+gotham_derive = { path = "../../gotham_derive" }
 
 diesel = { version = "1.0.0-beta1" }
 r2d2 = "0.8.1"

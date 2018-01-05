@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "./gotham",
-    "./gotham_derive",
+    "gotham",
+    "gotham_derive",
 ]
