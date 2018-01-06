@@ -1,8 +1,13 @@
 # Gotham Examples
 
-You'll find standalone crates here that act as examples for building web applications with Gotham.
-All include test cases that both act to prove the correctness of the example and serve as an example
-of how to test your own applications.
+Standalone crates that act as examples for building web applications with Gotham.
+
+All include test cases that prove correctness and serve as an example of how to test your own applications.
+
+These examples are best reviewed once you've understood the Rust language itself through resources
+such as [the Rust book](https://doc.rust-lang.org/book/second-edition/).
+
+## Supplementary resources
 
 The following resources will also assist you in learning Gotham:
 
@@ -10,7 +15,16 @@ The following resources will also assist you in learning Gotham:
 * [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
 * [Twitter](https://twitter.com/gotham_rs)
 
-Review the examples in the following order which will assist you in building your knowledge of
-Gotham from novice through to expert:
+## Suggested order
+
+Reviewing our examples in the order shown here will assist you in methodically learning the
+concepts and functionality provided by Gotham from introductory through to advanced levels.
 
 1. [Hello World](hello_world) - The universal introduction.
+
+## License
+
+Licensed under your option of:
+
+* [MIT License](../LICENSE-MIT)
+* [Apache License, Version 2.0](../LICENSE-APACHE)
