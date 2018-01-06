@@ -46,5 +46,5 @@ Hello World!%
 
 Licensed under your option of:
 
-* [MIT License](LICENSE-MIT)
-* [Apache License, Version 2.0](LICENSE-APACHE)
+* [MIT License](../../LICENSE-MIT)
+* [Apache License, Version 2.0](../../LICENSE-APACHE)
