@@ -1,5 +1,5 @@
-//! Makes a Diesel connection available to every Middleware and Handler that is involved in
-//! processing a single Gotham request.
+//! Makes a Diesel connection available to Middleware and Handlers that are involved in
+//! processing a Request.
 //!
 //! Utilises r2d2 pooling to ensure efficent database usage and prevent resource exhaustion.
 
