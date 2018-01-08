@@ -18,6 +18,13 @@ Gotham is licensed under your option of:
 * [MIT License](LICENSE-MIT)
 * [Apache License, Version 2.0](LICENSE-APACHE)
 
+## Community
+
+The following policies guide participation in our project and our community:
+
+* [Conduct](../../CONDUCT.md)
+* [Contributing](../../CONTRIBUTING.md)
+
 ## Learning Gotham
 All of the following resources are available to assist you learning Gotham:
 
