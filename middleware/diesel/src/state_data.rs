@@ -22,8 +22,7 @@ where
         .expect("Did not obtain valid Diesel connection from R2D2 pool")
 }
 
-/// Convenience function for usage within 3rd party Middleware and Handlers to obtain a
-/// Diesel connection.
+/// Convenience function for Middleware and Handlers to obtain a Diesel connection.
 pub fn try_connection<T>(s: &State) -> Result<PooledConnection<ConnectionManager<T>>, Error>
 where
     T: Connection + 'static,

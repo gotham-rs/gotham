@@ -1,37 +1,23 @@
-# Gotham Middleware for Diesel
+# Middleware for Diesel
 
-TODO - Currently under active development.
+[Diesel](https://diesel.rs) is a safe, extensible ORM and query builder
+for Rust. Diesel is the most productive way to interact with databases
+in Rust because of its safe and composable abstractions over queries.
+
+This middleware provides a convenient mechanism to setup a pool of
+connections for Postgres, MySQL or Sqlite database and provide one of
+those connections, per Request, to a Gotham application via `state`.
+
+**This middleware is under active development**
+
+n.b. Diesel does not yet natively support async.
+The API here will initially use CpuPool to make life easier for Gotham
+apps but will use native Diesel async support once
+[available](https://github.com/diesel-rs/diesel/issues/399).
 
 ## License
-Gotham is licensed under your option of:
 
-* [MIT License](LICENSE-MIT)
-* [Apache License, Version 2.0](LICENSE-APACHE)
+Licensed under your option of:
 
-## Learning Gotham
-All of the following resources are available to assist you learning Gotham:
-
-* [The Gotham website](https://gotham.rs)
-* [Our API documentation](https://docs.rs/gotham/)
-* [The Gotham book](https://book.gotham.rs)
-* [Our example application](https://github.com/gotham-rs/example-app)
-
-## Help
-The Gotham core team collaborate on the [#gotham](https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23gotham) channel on irc.mozilla.org. Gotham specific chat and requests for help are both very welcome here.
-
-Additionally the Gotham core team often hang out in
-[#rust-webdev](https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-webdev) and [#rust](https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust).
-
-## Policies
-Gotham is a young project that we want to create an energetic and respectful community around.
-
-As a starting point we've adopted the following [policies](https://github.com/gotham-rs/policies) which we'd like your help in refining further.
-
-These policies are in effect for any environment or tool that supports the Gotham project.
-
-
-## News
-You can keep up with Gotham at:
-
-* [Our blog](https://gotham.rs/blog)
-* [On Twitter](https://twitter.com/gotham_rs)
+* [MIT License](../LICENSE-MIT)
+* [Apache License, Version 2.0](../LICENSE-APACHE)
