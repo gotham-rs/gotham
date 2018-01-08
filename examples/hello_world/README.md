@@ -1,10 +1,6 @@
-# Hello World Example
+# Hello World
 
-A Hello World example application for working with [Gotham](https://gotham.rs).
-
-Useful as an introduction to Gotham or as a point to build from when you have
-simple requirements and don't need a Router to handle dispatch, middleware,
-pipelines etc.
+A simple introduction to working with Gotham.
 
 ## Running
 

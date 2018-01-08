@@ -5,6 +5,7 @@ authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
            "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
 description = "A hello world example application for Gotham"
 license = "MIT/Apache-2.0"
+readme = "README.md"
 publish = false
 
 [dependencies]
