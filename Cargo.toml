@@ -6,5 +6,7 @@ members = [
 		"middleware/template",
     "middleware/diesel",
 
+    "misc/borrow_bag",
+
     "examples/hello_world",
 ]
