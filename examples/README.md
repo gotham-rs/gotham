@@ -1,4 +1,4 @@
-# Gotham Examples
+# Gotham examples
 
 Standalone crates that act as examples for building web applications with Gotham.
 
@@ -20,7 +20,7 @@ The following resources will also assist you in learning Gotham:
 Reviewing our examples in the order shown here will assist you in methodically learning the
 concepts and functionality provided by Gotham from introductory through to advanced levels.
 
-1. [Hello World](hello_world) - The universal introduction.
+1. [Hello World](hello_world) - A simple introduction to working with Gotham.
 
 ## License
 
