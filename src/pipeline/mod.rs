@@ -1,5 +1,7 @@
 //! Defines types for a middleware pipeline
 
+pub mod single;
+
 use std::io;
 use std::panic::RefUnwindSafe;
 
