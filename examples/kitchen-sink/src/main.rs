@@ -23,9 +23,9 @@ use chrono::prelude::*;
 use gotham::router::response::extender::NoopResponseExtender;
 use gotham::router::Router;
 use gotham::router::builder::*;
-use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::pipeline::new_pipeline;
+use gotham::pipeline::single::single_pipeline;
 use gotham::state::{State, FromState};
 use gotham::http::response::create_response;
 
@@ -64,18 +64,13 @@ static ASYNC: &'static str = "Got async response";
 //     | - :name         --> (Get Route)
 //         | :from       --> (Get Route)
 fn router() -> Router {
-    let pipelines = new_pipeline_set();
-    let (pipelines, global) = pipelines.add(
+    let (pipelines, chain) = single_pipeline(
         new_pipeline()
             .add(KitchenSinkMiddleware { header_name: "X-Kitchen-Sink" })
             .build(),
     );
 
-    let default_pipeline_chain = (global, ());
-
-    let pipelines = finalize_pipeline_set(pipelines);
-
-    build_router(default_pipeline_chain, pipelines, |route| {
+    build_router(chain, pipelines, |route| {
         route.get("/").to(Echo::get);
         route.get("/echo").to(Echo::get);
         route.post("/echo").to(Echo::post);
