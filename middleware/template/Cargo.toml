@@ -1,0 +1,18 @@
+[package]
+name = "middleware-template"
+version = "0.0.0"
+authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
+           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
+description = "A template for creating custom Gotham middlewares"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+publish = false
+
+[dependencies]
+log = "0.3.0"
+futures = "0.1.0"
+
+# Middlewares should reference the semantic versions of Gotham that are they compatible with
+# and not use relative references such as shown here.
+gotham = { path = "../../gotham" }
+gotham_derive = { path = "../../gotham_derive" }

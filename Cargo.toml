@@ -3,5 +3,7 @@ members = [
     "gotham",
     "gotham_derive",
 
+		"middleware/template",
+
     "examples/hello_world",
 ]
