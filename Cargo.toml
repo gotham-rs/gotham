@@ -4,6 +4,7 @@ members = [
     "gotham_derive",
 
 		"middleware/template",
+    "middleware/diesel",
 
     "examples/hello_world",
 ]
