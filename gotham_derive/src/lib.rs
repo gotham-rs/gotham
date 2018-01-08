@@ -9,6 +9,7 @@ mod extractors;
 mod extenders;
 mod state;
 mod helpers;
+mod new_middleware;
 
 #[proc_macro_derive(PathExtractor)]
 pub fn base_path_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -35,5 +36,12 @@ pub fn static_response_extender(input: proc_macro::TokenStream) -> proc_macro::T
 pub fn state_data(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = syn::parse_macro_input(&input.to_string()).unwrap();
     let gen = state::state_data(&ast);
+    gen.parse().unwrap()
+}
+
+#[proc_macro_derive(NewMiddleware)]
+pub fn new_middleware(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = syn::parse_macro_input(&input.to_string()).unwrap();
+    let gen = new_middleware::new_middleware(&ast);
     gen.parse().unwrap()
 }
