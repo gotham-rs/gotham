@@ -1,9 +1,7 @@
-use std::io;
-
 use gotham;
 use gotham::handler::HandlerFuture;
 use gotham::state::State;
-use gotham::middleware::{Middleware, NewMiddleware};
+use gotham::middleware::Middleware;
 use futures::{future, Future};
 
 use gotham::state::request_id;
@@ -13,16 +11,9 @@ pub struct KitchenSinkData {
     pub header_value: String,
 }
 
+#[derive(Clone, NewMiddleware)]
 pub struct KitchenSinkMiddleware {
     pub header_name: &'static str,
-}
-
-impl NewMiddleware for KitchenSinkMiddleware {
-    type Instance = KitchenSinkMiddleware;
-
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
-        Ok(KitchenSinkMiddleware { ..*self })
-    }
 }
 
 impl Middleware for KitchenSinkMiddleware {
