@@ -1,6 +1,7 @@
 use std::any::Any;
 
-use hyper::{Body, Headers, Uri, HttpVersion, Method};
+use hyper::{Body, Headers, HttpVersion, Method, Uri};
+use tokio_core::reactor::Handle;
 
 use http::request::path::RequestPathSegments;
 use state::request_id::RequestId;
@@ -16,6 +17,8 @@ impl StateData for Method {}
 impl StateData for Uri {}
 impl StateData for HttpVersion {}
 impl StateData for Headers {}
+
+impl StateData for Handle {}
 
 impl StateData for RequestPathSegments {}
 impl StateData for RequestId {}

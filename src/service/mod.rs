@@ -176,6 +176,7 @@ where
 
         let (method, uri, version, headers, body) = req.deconstruct();
 
+        state.put(self.handle.clone());
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);
