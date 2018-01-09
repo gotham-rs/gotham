@@ -3,7 +3,7 @@ members = [
     "gotham",
     "gotham_derive",
 
-		"middleware/template",
+    "middleware/template",
     "middleware/diesel",
 
     "misc/borrow_bag",
