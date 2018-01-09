@@ -18,7 +18,7 @@ use mime;
 use mio;
 use tokio_core::reactor::{Core, PollEvented, Timeout};
 
-use handler::{NewHandler, NewHandlerService};
+use handler::{NewHandler, GothamService};
 use router::Router;
 
 mod request;
@@ -65,7 +65,7 @@ where
     core: RefCell<Core>,
     http: Http,
     timeout: u64,
-    new_service: NewHandlerService<NH>,
+    new_service: GothamService<NH>,
 }
 
 /// The `TestRequestError` type represents all error states that can result from evaluating a
@@ -119,7 +119,7 @@ where
                 core: RefCell::new(core),
                 http: server::Http::new(),
                 timeout,
-                new_service: NewHandlerService::new(new_handler),
+                new_service: GothamService::new(new_handler),
             };
 
             TestServer {

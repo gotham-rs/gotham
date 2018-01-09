@@ -8,7 +8,7 @@ use hyper::Response;
 use state::{State, request_id};
 use http::header::XRuntimeMicroseconds;
 
-/// Used by `NewHandlerService` to time requests. The `elapsed` function returns the elapsed time
+/// Used by `GothamService` to time requests. The `elapsed` function returns the elapsed time
 /// in a way that can be used for logging and adding the `X-Runtime-Microseconds` header to
 /// responses.
 #[derive(Clone, Copy)]

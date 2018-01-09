@@ -294,7 +294,7 @@ mod tests {
     use middleware::pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
     use state::{State, StateData, FromState};
-    use handler::NewHandlerService;
+    use handler::GothamService;
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     use router::response::extender::StaticResponseExtender;
     use router::tree::SegmentMapping;
@@ -471,7 +471,7 @@ mod tests {
             route.delegate("/delegated").to_router(delegated_router);
         });
 
-        let new_service = NewHandlerService::new(router);
+        let new_service = GothamService::new(router);
 
         let call = move |req| {
             let service = new_service.new_service().unwrap();

@@ -32,27 +32,27 @@ pub type HandlerFuture = Future<Item = (State, Response), Error = (State, Handle
 
 /// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
 /// handlers.
-pub struct NewHandlerService<T>
+pub struct GothamService<T>
 where
     T: NewHandler + 'static,
 {
     t: Arc<T>,
 }
 
-impl<T> Clone for NewHandlerService<T>
+impl<T> Clone for GothamService<T>
 where
     T: NewHandler + 'static,
 {
     fn clone(&self) -> Self {
-        NewHandlerService { t: self.t.clone() }
+        GothamService { t: self.t.clone() }
     }
 }
 
-impl<T> NewHandlerService<T>
+impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    /// Creates a `NewHandlerService` for the given `NewHandler`.
+    /// Creates a `GothamService` for the given `NewHandler`.
     ///
     /// # Examples
     ///
@@ -63,7 +63,7 @@ where
     /// # extern crate hyper;
     /// #
     /// # use gotham::http::response::create_response;
-    /// # use gotham::handler::NewHandlerService;
+    /// # use gotham::handler::GothamService;
     /// # use gotham::state::State;
     /// # use hyper::Response;
     /// # use hyper::StatusCode;
@@ -74,7 +74,7 @@ where
     ///     (state, res)
     /// }
     ///
-    /// NewHandlerService::new(|| Ok(handler));
+    /// GothamService::new(|| Ok(handler));
     /// # }
     /// ```
     ///
@@ -85,7 +85,7 @@ where
     /// # extern crate hyper;
     /// #
     /// # use gotham::http::response::create_response;
-    /// # use gotham::handler::NewHandlerService;
+    /// # use gotham::handler::GothamService;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::tree::TreeBuilder;
@@ -117,15 +117,15 @@ where
     /// let tree = tree_builder.finalize();
     /// let router = Router::new(tree, finalizer);
     ///
-    /// NewHandlerService::new(router);
+    /// GothamService::new(router);
     /// # }
     /// ```
-    pub fn new(t: T) -> NewHandlerService<T> {
-        NewHandlerService { t: Arc::new(t) }
+    pub fn new(t: T) -> GothamService<T> {
+        GothamService { t: Arc::new(t) }
     }
 }
 
-impl<T> NewService for NewHandlerService<T>
+impl<T> NewService for GothamService<T>
 where
     T: NewHandler + 'static,
 {
@@ -139,7 +139,7 @@ where
     }
 }
 
-impl<T> Service for NewHandlerService<T>
+impl<T> Service for GothamService<T>
 where
     T: NewHandler,
 {

@@ -8,7 +8,7 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use futures::{future, task, Future, Stream, Poll, Async};
 
-use handler::{NewHandler, NewHandlerService};
+use handler::{NewHandler, GothamService};
 
 use crossbeam::sync::SegQueue;
 
@@ -51,7 +51,7 @@ where
     let (listener, addr) = super::tcp_listener(addr);
 
     let protocol = Arc::new(Http::new());
-    let service = NewHandlerService::new(new_handler);
+    let service = GothamService::new(new_handler);
 
     let queue = SocketQueue::new();
 
@@ -98,7 +98,7 @@ fn listen(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
     })).expect("unable to run reactor over listener");
 }
 
-fn serve<NH>(queue: SocketQueue, protocol: &Http, new_service: &NewHandlerService<NH>)
+fn serve<NH>(queue: SocketQueue, protocol: &Http, new_service: &GothamService<NH>)
 where
     NH: NewHandler + 'static,
 {

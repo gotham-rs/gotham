@@ -140,7 +140,7 @@ impl SessionCookieConfig {
 /// #
 /// # use std::time::Duration;
 /// # use futures::{future, Future, Stream};
-/// # use gotham::handler::{NewHandlerService, HandlerFuture};
+/// # use gotham::handler::{GothamService, HandlerFuture};
 /// # use gotham::state::{State, FromState};
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
@@ -189,7 +189,7 @@ impl SessionCookieConfig {
 /// #
 /// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
 /// #
-/// #   let service = NewHandlerService::new(move || {
+/// #   let service = GothamService::new(move || {
 /// #       let handler = |state| {
 /// #           let m = nm.new_middleware().unwrap();
 /// #           let chain = |state| Box::new(future::ok(my_handler(state))) as Box<HandlerFuture>;
