@@ -21,7 +21,7 @@ mod trap;
 
 /// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
 /// handlers.
-pub struct GothamService<T>
+pub(super) struct GothamService<T>
 where
     T: NewHandler + 'static,
 {
@@ -34,88 +34,13 @@ where
     T: NewHandler + 'static,
 {
     /// Creates a `GothamService` for the given `NewHandler`.
-    ///
-    /// # Examples
-    ///
-    /// Using a closure which is a `NewHandler`:
-    ///
-    /// ```rust,no_run
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # extern crate tokio_core;
-    /// #
-    /// # use std::sync::Arc;
-    /// # use gotham::http::response::create_response;
-    /// # use gotham::service::GothamService;
-    /// # use gotham::state::State;
-    /// # use hyper::Response;
-    /// # use hyper::StatusCode;
-    /// # use tokio_core::reactor::Core;
-    /// #
-    /// # fn main() {
-    /// fn handler(state: State) -> (State, Response) {
-    ///     let res = create_response(&state, StatusCode::Accepted, None);
-    ///     (state, res)
-    /// }
-    ///
-    /// let core = Core::new().unwrap(); // tokio-core
-    ///
-    /// GothamService::new(Arc::new(|| Ok(handler)), core.handle());
     /// # }
     /// ```
-    ///
-    /// Using a `Router`:
-    ///
-    /// ```rust,no_run
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # extern crate tokio_core;
-    /// #
-    /// # use std::sync::Arc;
-    /// # use gotham::http::response::create_response;
-    /// # use gotham::service::GothamService;
-    /// # use gotham::state::State;
-    /// # use gotham::router::Router;
-    /// # use gotham::router::tree::TreeBuilder;
-    /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-    /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
-    /// # use gotham::router::request::path::NoopPathExtractor;
-    /// # use gotham::router::request::query_string::NoopQueryStringExtractor;
-    /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-    /// # use hyper::Response;
-    /// # use hyper::{StatusCode, Method};
-    /// # use tokio_core::reactor::Core;
-    /// #
-    /// # fn main() {
-    /// fn handler(state: State) -> (State, Response) {
-    ///     let res = create_response(&state, StatusCode::Accepted, None);
-    ///     (state, res)
-    /// }
-    ///
-    /// let mut tree_builder = TreeBuilder::new();
-    /// let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-    /// let finalizer = ResponseFinalizerBuilder::new().finalize();
-    ///
-    /// let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
-    /// let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
-    /// let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-    /// let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
-    ///
-    /// tree_builder.add_route(Box::new(route));
-    /// let tree = tree_builder.finalize();
-    /// let router = Router::new(tree, finalizer);
-    ///
-    /// let core = Core::new().unwrap(); // tokio-core
-    ///
-    /// GothamService::new(Arc::new(router), core.handle());
-    /// # }
-    /// ```
-    pub fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
+    pub(super) fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
         GothamService { t, handle }
     }
 
-    pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
+    pub(super) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
         ConnectedGothamService {
             t: self.t.clone(),
             handle: self.handle.clone(),
@@ -124,7 +49,7 @@ where
     }
 }
 
-pub(crate) struct ConnectedGothamService<T>
+pub(super) struct ConnectedGothamService<T>
 where
     T: NewHandler + 'static,
 {
@@ -192,5 +117,52 @@ where
         );
 
         trap::call_handler(self.t.as_ref(), AssertUnwindSafe(state))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use hyper::{Method, StatusCode};
+    use tokio_core::reactor::Core;
+
+    use http::response::create_response;
+    use router::builder::*;
+    use state::State;
+
+    fn handler(state: State) -> (State, Response) {
+        let res = create_response(&state, StatusCode::Accepted, None);
+        (state, res)
+    }
+
+    #[test]
+    fn new_handler_closure() {
+        let mut core = Core::new().unwrap();
+        let service = GothamService::new(Arc::new(|| Ok(handler)), core.handle());
+
+        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let f = service
+            .connect("127.0.0.1:10000".parse().unwrap())
+            .call(req);
+        let response = core.run(f).unwrap();
+        assert_eq!(response.status(), StatusCode::Accepted);
+    }
+
+    #[test]
+    fn router() {
+        let router = build_simple_router(|route| {
+            route.get("/").to(handler);
+        });
+
+        let mut core = Core::new().unwrap();
+        let service = GothamService::new(Arc::new(router), core.handle());
+
+        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let f = service
+            .connect("127.0.0.1:10000".parse().unwrap())
+            .call(req);
+        let response = core.run(f).unwrap();
+        assert_eq!(response.status(), StatusCode::Accepted);
     }
 }
