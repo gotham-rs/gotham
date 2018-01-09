@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
+use std::sync::Arc;
 
 use futures::{future, Future, Stream};
 use hyper::{self, Body, Method, Request, Response, Uri};
@@ -116,11 +117,13 @@ where
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
     pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
         Core::new().map(|core| {
+            let handle = core.handle();
+
             let data = TestServerData {
                 core: RefCell::new(core),
                 http: server::Http::new(),
                 timeout,
-                new_service: GothamService::new(new_handler),
+                new_service: GothamService::new(Arc::new(new_handler), handle),
             };
 
             TestServer {

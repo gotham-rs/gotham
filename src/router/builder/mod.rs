@@ -286,10 +286,12 @@ mod tests {
     use super::*;
 
     use std::str::FromStr;
+    use std::sync::Arc;
 
     use hyper::{Request, Response, StatusCode, Method, Uri};
     use hyper::server::{NewService, Service};
     use futures::{Future, Stream};
+    use tokio_core::reactor::Core;
 
     use middleware::pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
@@ -471,11 +473,12 @@ mod tests {
             route.delegate("/delegated").to_router(delegated_router);
         });
 
-        let new_service = GothamService::new(router);
+        let mut core = Core::new().unwrap();
+        let new_service = GothamService::new(Arc::new(router), core.handle());
 
-        let call = move |req| {
+        let mut call = move |req| {
             let service = new_service.new_service().unwrap();
-            service.call(req).wait().unwrap()
+            core.run(service.call(req)).unwrap()
         };
 
         let response = call(Request::new(Method::Get, "/".parse().unwrap()));

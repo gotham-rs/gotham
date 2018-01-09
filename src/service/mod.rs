@@ -8,6 +8,7 @@ use hyper;
 use hyper::server::{NewService, Service};
 use hyper::{Request, Response};
 use futures::Future;
+use tokio_core::reactor::Handle;
 
 use handler::NewHandler;
 use state::{State, request_id, set_request_id};
@@ -24,6 +25,7 @@ where
     T: NewHandler + 'static,
 {
     t: Arc<T>,
+    handle: Handle,
 }
 
 impl<T> Clone for GothamService<T>
@@ -31,7 +33,7 @@ where
     T: NewHandler + 'static,
 {
     fn clone(&self) -> Self {
-        GothamService { t: self.t.clone() }
+        GothamService { t: self.t.clone(), handle: self.handle.clone() }
     }
 }
 
@@ -107,8 +109,8 @@ where
     /// GothamService::new(router);
     /// # }
     /// ```
-    pub fn new(t: T) -> GothamService<T> {
-        GothamService { t: Arc::new(t) }
+    pub fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
+        GothamService { t, handle }
     }
 }
 
