@@ -137,9 +137,11 @@ impl SessionCookieConfig {
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// # extern crate bincode;
+/// # extern crate tokio_core;
 /// #
 /// # use std::time::Duration;
-/// # use futures::{future, Future, Stream};
+/// # use std::sync::Arc;
+/// # use futures::{future, Stream};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::service::GothamService;
 /// # use gotham::state::{State, FromState};
@@ -151,6 +153,7 @@ impl SessionCookieConfig {
 /// # use hyper::server::{Response, Service};
 /// # use hyper::{Request, Method, StatusCode};
 /// # use hyper::mime;
+/// # use tokio_core::reactor::Core;
 /// #
 /// #[derive(Default, Serialize, Deserialize)]
 /// struct MySessionType {
@@ -190,7 +193,7 @@ impl SessionCookieConfig {
 /// #
 /// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
 /// #
-/// #   let service = GothamService::new(move || {
+/// #   let new_handler = move || {
 /// #       let handler = |state| {
 /// #           let m = nm.new_middleware().unwrap();
 /// #           let chain = |state| Box::new(future::ok(my_handler(state))) as Box<HandlerFuture>;
@@ -199,16 +202,14 @@ impl SessionCookieConfig {
 /// #       };
 /// #
 /// #       Ok(handler)
-/// #   });
+/// #   };
+///
+/// #   let mut core = Core::new().unwrap();
+/// #   let service = GothamService::new(Arc::new(new_handler), core.handle());
 /// #
-/// #   let response = service.call(req).wait().unwrap();
+/// #   let response = core.run(service.call(req)).unwrap();
 /// #
-/// #   let response_bytes = response
-/// #       .body()
-/// #       .concat2()
-/// #       .wait()
-/// #       .unwrap()
-/// #       .to_vec();
+/// #   let response_bytes = core.run(response.body().concat2()).unwrap().to_vec();
 /// #
 /// #   assert_eq!(String::from_utf8(response_bytes).unwrap(),
 /// #              r#"["a", "b", "c"]"#);

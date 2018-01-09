@@ -50,12 +50,15 @@ where
     /// ```rust,no_run
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate tokio_core;
     /// #
+    /// # use std::sync::Arc;
     /// # use gotham::http::response::create_response;
     /// # use gotham::service::GothamService;
     /// # use gotham::state::State;
     /// # use hyper::Response;
     /// # use hyper::StatusCode;
+    /// # use tokio_core::reactor::Core;
     /// #
     /// # fn main() {
     /// fn handler(state: State) -> (State, Response) {
@@ -63,7 +66,9 @@ where
     ///     (state, res)
     /// }
     ///
-    /// GothamService::new(|| Ok(handler));
+    /// let core = Core::new().unwrap(); // tokio-core
+    ///
+    /// GothamService::new(Arc::new(|| Ok(handler)), core.handle());
     /// # }
     /// ```
     ///
@@ -72,7 +77,9 @@ where
     /// ```rust,no_run
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate tokio_core;
     /// #
+    /// # use std::sync::Arc;
     /// # use gotham::http::response::create_response;
     /// # use gotham::service::GothamService;
     /// # use gotham::state::State;
@@ -86,6 +93,7 @@ where
     /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
     /// # use hyper::Response;
     /// # use hyper::{StatusCode, Method};
+    /// # use tokio_core::reactor::Core;
     /// #
     /// # fn main() {
     /// fn handler(state: State) -> (State, Response) {
@@ -106,7 +114,9 @@ where
     /// let tree = tree_builder.finalize();
     /// let router = Router::new(tree, finalizer);
     ///
-    /// GothamService::new(router);
+    /// let core = Core::new().unwrap(); // tokio-core
+    ///
+    /// GothamService::new(Arc::new(router), core.handle());
     /// # }
     /// ```
     pub fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
