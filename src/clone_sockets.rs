@@ -1,4 +1,4 @@
-use std::net::{SocketAddr, ToSocketAddrs, TcpListener};
+use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
 use std::thread;
 use std::sync::Arc;
 
@@ -38,12 +38,8 @@ where
     serve(listener, &addr, &protocol, new_handler);
 }
 
-fn serve<NH>(
-    listener: TcpListener,
-    addr: &SocketAddr,
-    protocol: &Http,
-    new_handler: Arc<NH>,
-) where
+fn serve<NH>(listener: TcpListener, addr: &SocketAddr, protocol: &Http, new_handler: Arc<NH>)
+where
     NH: NewHandler + 'static,
 {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
@@ -55,9 +51,10 @@ fn serve<NH>(
         .expect("unable to convert TCP listener to tokio listener");
 
     core.run(listener.incoming().for_each(|(socket, addr)| {
-        match new_service.new_service() {
+        match new_service.connect(addr).new_service() {
             Ok(service) => {
-                let f = protocol.serve_connection(socket, service)
+                let f = protocol
+                    .serve_connection(socket, service)
                     .map(|_| ())
                     .map_err(|_| ());
 

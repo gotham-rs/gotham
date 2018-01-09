@@ -1,6 +1,7 @@
 //! Defines the `Service` which is used by a Gotham application to interface to Hyper.
 
 use std::{io, thread};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::panic::AssertUnwindSafe;
 
@@ -11,7 +12,7 @@ use futures::Future;
 use tokio_core::reactor::Handle;
 
 use handler::NewHandler;
-use state::{State, request_id, set_request_id};
+use state::{request_id, set_request_id, State};
 use state::client_addr::put_client_addr;
 use http::request::path::RequestPathSegments;
 
@@ -26,15 +27,6 @@ where
 {
     t: Arc<T>,
     handle: Handle,
-}
-
-impl<T> Clone for GothamService<T>
-where
-    T: NewHandler + 'static,
-{
-    fn clone(&self) -> Self {
-        GothamService { t: self.t.clone(), handle: self.handle.clone() }
-    }
 }
 
 impl<T> GothamService<T>
@@ -122,9 +114,39 @@ where
     pub fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
         GothamService { t, handle }
     }
+
+    pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
+        ConnectedGothamService {
+            t: self.t.clone(),
+            handle: self.handle.clone(),
+            client_addr,
+        }
+    }
 }
 
-impl<T> NewService for GothamService<T>
+pub(crate) struct ConnectedGothamService<T>
+where
+    T: NewHandler + 'static,
+{
+    t: Arc<T>,
+    handle: Handle,
+    client_addr: SocketAddr,
+}
+
+impl<T> Clone for ConnectedGothamService<T>
+where
+    T: NewHandler + 'static,
+{
+    fn clone(&self) -> Self {
+        ConnectedGothamService {
+            t: self.t.clone(),
+            handle: self.handle.clone(),
+            client_addr: self.client_addr,
+        }
+    }
+}
+
+impl<T> NewService for ConnectedGothamService<T>
 where
     T: NewHandler + 'static,
 {
@@ -138,7 +160,7 @@ where
     }
 }
 
-impl<T> Service for GothamService<T>
+impl<T> Service for ConnectedGothamService<T>
 where
     T: NewHandler,
 {
@@ -150,9 +172,7 @@ where
     fn call(&self, req: Self::Request) -> Self::Future {
         let mut state = State::new();
 
-        if let Some(addr) = req.remote_addr() {
-            put_client_addr(&mut state, addr);
-        }
+        put_client_addr(&mut state, self.client_addr);
 
         let (method, uri, version, headers, body) = req.deconstruct();
 
@@ -173,4 +193,3 @@ where
         trap::call_handler(self.t.as_ref(), AssertUnwindSafe(state))
     }
 }
-

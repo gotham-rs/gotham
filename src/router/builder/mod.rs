@@ -477,7 +477,10 @@ mod tests {
         let new_service = GothamService::new(Arc::new(router), core.handle());
 
         let mut call = move |req| {
-            let service = new_service.new_service().unwrap();
+            let service = new_service
+                .connect("127.0.0.1:10000".parse().unwrap())
+                .new_service()
+                .unwrap();
             core.run(service.call(req)).unwrap()
         };
 

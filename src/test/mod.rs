@@ -67,7 +67,7 @@ where
     core: RefCell<Core>,
     http: Http,
     timeout: u64,
-    new_service: GothamService<NH>,
+    gotham_service: GothamService<NH>,
 }
 
 /// The `TestRequestError` type represents all error states that can result from evaluating a
@@ -123,7 +123,7 @@ where
                 core: RefCell::new(core),
                 http: server::Http::new(),
                 timeout,
-                new_service: GothamService::new(Arc::new(new_handler), handle),
+                gotham_service: GothamService::new(Arc::new(new_handler), handle),
             };
 
             TestServer {
@@ -165,8 +165,10 @@ where
         let ss = mio::net::TcpStream::from_stream(ss)?;
         let ss = PollEvented::new(ss, &handle)?;
 
-        let service = self.data.new_service.new_service()?;
-        let f = self.data.http.serve_connection(ss, service)
+        let service = self.data.gotham_service.connect(client_addr).new_service()?;
+        let f = self.data
+            .http
+            .serve_connection(ss, service)
             .map(|_| ())
             .map_err(|_| ());
 
