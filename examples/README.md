@@ -2,7 +2,8 @@
 
 Standalone crates that act as examples for building web applications with Gotham.
 
-All include test cases that prove correctness and serve as an example of how to test your own applications.
+All include test cases that demonstrate correct behaviour and serve as an example of 
+how to test your own applications.
 
 These examples are best reviewed once you've understood the Rust language itself through resources
 such as [the Rust book](https://doc.rust-lang.org/book/second-edition/).

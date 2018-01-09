@@ -10,7 +10,7 @@ safety, security and speed.
 1.  Stability focused. All releases target **stable** Rust. This will never change.
     To ensure future compatibility, we also run automated builds against Rust beta and
     nightly releases.
-1.  Statically typed. Unlike other web frameworks Gotham is statically typed ensuring your
+1.  Statically typed. Gotham is statically typed ensuring your
     entire application is **correctly expressed** at compile time.
 1.  Async everything. By leveraging the [Tokio project](https://tokio.rs), all Gotham types are
     async out of the box.  Our async story is further enhanced by [Hyper](https://hyper.rs),
