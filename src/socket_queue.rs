@@ -116,7 +116,14 @@ where
         }).and_then(|_| {
             queue.for_each(|(socket, addr)| {
                 match new_service.new_service() {
-                    Ok(service) => protocol.bind_connection(&handle, socket, addr, service),
+                    Ok(service) => {
+                        let f = protocol.serve_connection(socket, service)
+                            .map(|_| ())
+                            .map_err(|_| ());
+
+                        // TODO: Client address
+                        handle.spawn(f);
+                    }
                     Err(e) => error!(" unable to spawn service: {:?}", e),
                 }
                 Ok(())

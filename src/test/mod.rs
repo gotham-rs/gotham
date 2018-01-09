@@ -162,9 +162,12 @@ where
         let ss = PollEvented::new(ss, &handle)?;
 
         let service = self.data.new_service.new_service()?;
-        self.data
-            .http
-            .bind_connection(&handle, ss, client_addr, service);
+        let f = self.data.http.serve_connection(ss, service)
+            .map(|_| ())
+            .map_err(|_| ());
+
+        // TODO: Client address
+        handle.spawn(f);
 
         let client = Client::configure()
             .connector(TestConnect {
