@@ -4,18 +4,19 @@
 
 use std::{cell, io, net, time};
 use std::cell::RefCell;
-use std::net::{TcpListener, TcpStream, SocketAddr, IpAddr};
+use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 
-use mime;
-use hyper::{self, Request, Response, Uri, Method, Body};
-use hyper::header::ContentType;
-use hyper::error::UriError;
-use hyper::client::{self, Client};
-use hyper::server::{self, Http, NewService};
 use futures::{future, Future, Stream};
-use tokio_core::reactor::{Core, PollEvented, Timeout};
+use hyper::{self, Body, Method, Request, Response, Uri};
+use hyper::client::{self, Client};
+use hyper::error::UriError;
+use hyper::header::ContentType;
+use hyper::server::{self, Http, NewService};
+use mime;
 use mio;
+use tokio_core::reactor::{Core, PollEvented, Timeout};
 
 use handler::{NewHandler, NewHandlerService};
 use router::Router;
@@ -54,6 +55,13 @@ pub struct TestServer<NH = Router>
 where
     NH: NewHandler + 'static,
 {
+    data: Rc<TestServerData<NH>>,
+}
+
+struct TestServerData<NH = Router>
+where
+    NH: NewHandler + 'static,
+{
     core: RefCell<Core>,
     http: Http,
     timeout: u64,
@@ -80,6 +88,17 @@ impl From<UriError> for TestRequestError {
     }
 }
 
+impl<NH> Clone for TestServer<NH>
+where
+    NH: NewHandler + 'static,
+{
+    fn clone(&self) -> TestServer<NH> {
+        TestServer {
+            data: self.data.clone(),
+        }
+    }
+}
+
 impl<NH> TestServer<NH>
 where
     NH: NewHandler + 'static,
@@ -87,43 +106,44 @@ where
     /// Creates a `TestServer` instance for the service spawned by `new_service`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
     /// for each connection.
+    ///
+    /// Timeout will be set to 10 seconds.
     pub fn new(new_handler: NH) -> Result<TestServer<NH>, io::Error> {
+        TestServer::with_timeout(new_handler, 10)
+    }
+
+    /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
+    pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
         Core::new().map(|core| {
-            TestServer {
+            let data = TestServerData {
                 core: RefCell::new(core),
                 http: server::Http::new(),
-                timeout: 10,
+                timeout,
                 new_service: NewHandlerService::new(new_handler),
+            };
+
+            TestServer {
+                data: Rc::new(data),
             }
         })
     }
 
-    /// Sets the request timeout to `t` seconds and returns a new `TestServer`. The default timeout
-    /// value is 10 seconds.
-    pub fn timeout(self, t: u64) -> TestServer<NH> {
-        TestServer { timeout: t, ..self }
-    }
-
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see a default value as the source address for the connection.
-    pub fn client<'a>(&'a self) -> TestClient<'a, NH> {
+    pub fn client(&self) -> TestClient<NH> {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any value, and need not be contactable.
-    pub fn client_with_address<'a>(&'a self, client_addr: net::SocketAddr) -> TestClient<'a, NH> {
-        self.try_client_with_address(client_addr).expect(
-            "TestServer: unable to spawn client",
-        )
+    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<NH> {
+        self.try_client_with_address(client_addr)
+            .expect("TestServer: unable to spawn client")
     }
 
-    fn try_client_with_address<'a>(
-        &'a self,
-        client_addr: net::SocketAddr,
-    ) -> io::Result<TestClient<'a, NH>> {
-        let handle = self.core.borrow().handle();
+    fn try_client_with_address(&self, client_addr: net::SocketAddr) -> io::Result<TestClient<NH>> {
+        let handle = self.data.core.borrow().handle();
 
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
@@ -141,16 +161,20 @@ where
         let ss = mio::net::TcpStream::from_stream(ss)?;
         let ss = PollEvented::new(ss, &handle)?;
 
-        let service = self.new_service.new_service()?;
-        self.http.bind_connection(&handle, ss, client_addr, service);
+        let service = self.data.new_service.new_service()?;
+        self.data
+            .http
+            .bind_connection(&handle, ss, client_addr, service);
 
         let client = Client::configure()
-            .connector(TestConnect { stream: cell::RefCell::new(Some(cs)) })
-            .build(&self.core.borrow().handle());
+            .connector(TestConnect {
+                stream: cell::RefCell::new(Some(cs)),
+            })
+            .build(&self.data.core.borrow().handle());
 
         Ok(TestClient {
             client,
-            test_server: self,
+            test_server: self.clone(),
         })
     }
 
@@ -162,12 +186,12 @@ where
     where
         F: Future<Error = hyper::Error>,
     {
-        let timeout_duration = time::Duration::from_secs(self.timeout);
-        let timeout = Timeout::new(timeout_duration, &self.core.borrow().handle())
+        let timeout_duration = time::Duration::from_secs(self.data.timeout);
+        let timeout = Timeout::new(timeout_duration, &self.data.core.borrow().handle())
             .map_err(|e| TestRequestError::IoError(e))?;
 
         let run_result = {
-            let mut core = self.core.borrow_mut();
+            let mut core = self.data.core.borrow_mut();
             core.run(f.select2(timeout))
         };
 
@@ -191,7 +215,7 @@ where
             let f: hyper::Body = response.body();
             let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
 
-            let mut core = self.core.borrow_mut();
+            let mut core = self.data.core.borrow_mut();
             core.run(f)
         };
 
@@ -200,30 +224,30 @@ where
 }
 
 /// Client interface for issuing requests to a `TestServer`.
-pub struct TestClient<'a, NH>
+pub struct TestClient<NH>
 where
     NH: NewHandler + 'static,
 {
     client: Client<TestConnect>,
-    test_server: &'a TestServer<NH>,
+    test_server: TestServer<NH>,
 }
 
-impl<'a, NH> TestClient<'a, NH>
+impl<NH> TestClient<NH>
 where
     NH: NewHandler + 'static,
 {
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
-    pub fn get(self, uri: &str) -> RequestBuilder<'a, NH> {
+    pub fn get(self, uri: &str) -> RequestBuilder<NH> {
         self.build_request(Method::Get, uri)
     }
 
     /// Begin constructing a GET request using this `TestClient`.
-    pub fn get_uri(self, uri: Uri) -> RequestBuilder<'a, NH> {
+    pub fn get_uri(self, uri: Uri) -> RequestBuilder<NH> {
         self.build_request_uri(Method::Get, uri)
     }
 
     /// Parse the URI and begin constructing a POST request using this `TestClient`.
-    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<'a, NH>
+    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -233,7 +257,7 @@ where
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<'a, NH>
+    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -243,25 +267,25 @@ where
     }
 
     /// Parse the URI and begin constructing a request with the given HTTP method.
-    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<'a, NH> {
+    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<NH> {
         RequestBuilder::new(self, method, uri.parse())
     }
 
     /// Begin constructing a request with the given HTTP method and Uri.
-    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<'a, NH> {
+    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<NH> {
         RequestBuilder::new(self, method, Ok(uri))
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform(self, req: Request) -> Result<TestResponse<'a>, TestRequestError> {
-        self.test_server.run_request(self.client.request(req)).map(
-            |response| {
+    pub fn perform(self, req: Request) -> Result<TestResponse, TestRequestError> {
+        self.test_server
+            .run_request(self.client.request(req))
+            .map(|response| {
                 TestResponse {
                     response,
-                    reader: self.test_server,
+                    reader: Box::new(self.test_server.clone()),
                 }
-            },
-        )
+            })
     }
 }
 
@@ -306,12 +330,12 @@ trait BodyReader {
 /// assert_eq!(&body[..], b"This is the body content.");
 /// # }
 /// ```
-pub struct TestResponse<'a> {
+pub struct TestResponse {
     response: Response,
-    reader: &'a BodyReader,
+    reader: Box<BodyReader>,
 }
 
-impl<'a> Deref for TestResponse<'a> {
+impl Deref for TestResponse {
     type Target = Response;
 
     fn deref(&self) -> &Response {
@@ -319,13 +343,13 @@ impl<'a> Deref for TestResponse<'a> {
     }
 }
 
-impl<'a> DerefMut for TestResponse<'a> {
+impl DerefMut for TestResponse {
     fn deref_mut(&mut self) -> &mut Response {
         &mut self.response
     }
 }
 
-impl<'a> TestResponse<'a> {
+impl TestResponse {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
     pub fn read_body(self) -> hyper::Result<Vec<u8>> {
@@ -358,12 +382,10 @@ impl client::Service for TestConnect {
         match self.stream.try_borrow_mut().map(|ref mut o| o.take()) {
             Ok(Some(stream)) => future::ok(stream),
             Ok(None) => future::err(io::Error::new(io::ErrorKind::Other, "stream already taken")),
-            Err(_) => {
-                future::err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "stream.try_borrow_mut() failed",
-                ))
-            }
+            Err(_) => future::err(io::Error::new(
+                io::ErrorKind::Other,
+                "stream.try_borrow_mut() failed",
+            )),
         }
     }
 }
@@ -374,13 +396,13 @@ mod tests {
 
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use mime;
-    use hyper::{StatusCode, Uri, Body};
+    use hyper::{Body, StatusCode, Uri};
     use hyper::header::{ContentLength, ContentType};
+    use mime;
 
-    use handler::{Handler, NewHandler, HandlerFuture, IntoHandlerError};
-    use state::{State, FromState, client_addr};
+    use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
     use http::response::create_response;
+    use state::{client_addr, FromState, State};
 
     #[derive(Clone)]
     struct TestHandler {
@@ -425,7 +447,11 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let new_service = move || Ok(TestHandler { response: format!("time: {}", ticks) });
+        let new_service = move || {
+            Ok(TestHandler {
+                response: format!("time: {}", ticks),
+            })
+        };
 
         let test_server = TestServer::new(new_service).unwrap();
         let response = test_server
@@ -441,8 +467,12 @@ mod tests {
 
     #[test]
     fn times_out() {
-        let new_service = || Ok(TestHandler { response: "".to_owned() });
-        let test_server = TestServer::new(new_service).unwrap().timeout(1);
+        let new_service = || {
+            Ok(TestHandler {
+                response: "".to_owned(),
+            })
+        };
+        let test_server = TestServer::with_timeout(new_service, 1).unwrap();
 
         let res = test_server
             .client()
@@ -464,7 +494,11 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let new_service = move || Ok(TestHandler { response: format!("time: {}", ticks) });
+        let new_service = move || {
+            Ok(TestHandler {
+                response: format!("time: {}", ticks),
+            })
+        };
         let client_addr = "9.8.7.6:58901".parse().unwrap();
 
         let test_server = TestServer::new(new_service).unwrap();
@@ -483,24 +517,22 @@ mod tests {
     #[test]
     fn async_echo() {
         fn handler(mut state: State) -> Box<HandlerFuture> {
-            let f = Body::take_from(&mut state).concat2().then(
-                move |full_body| {
-                    match full_body {
-                        Ok(body) => {
-                            debug!("test");
-                            let resp_data = body.to_vec();
-                            let res = create_response(
-                                &state,
-                                StatusCode::Ok,
-                                Some((resp_data, mime::TEXT_PLAIN)),
-                            );
-                            future::ok((state, res))
-                        }
-
-                        Err(e) => future::err((state, e.into_handler_error())),
+            let f = Body::take_from(&mut state)
+                .concat2()
+                .then(move |full_body| match full_body {
+                    Ok(body) => {
+                        debug!("test");
+                        let resp_data = body.to_vec();
+                        let res = create_response(
+                            &state,
+                            StatusCode::Ok,
+                            Some((resp_data, mime::TEXT_PLAIN)),
+                        );
+                        future::ok((state, res))
                     }
-                },
-            );
+
+                    Err(e) => future::err((state, e.into_handler_error())),
+                });
 
             Box::new(f)
         }
@@ -508,8 +540,8 @@ mod tests {
         let server = TestServer::new(|| Ok(handler)).unwrap();
 
         let client = server.client();
-        let data = "This text should get reflected back to us. \
-                    Even this fancy piece of unicode: \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
+        let data = "This text should get reflected back to us. Even this fancy piece of unicode: \
+                    \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
 
         let res = client
             .post("http://host/echo", data, mime::TEXT_PLAIN)
@@ -530,8 +562,8 @@ mod tests {
             content_length.0
         };
 
-        let buf = String::from_utf8(res.read_body().expect("readable response"))
-            .expect("UTF8 response");
+        let buf =
+            String::from_utf8(res.read_body().expect("readable response")).expect("UTF8 response");
 
         assert_eq!(content_length, buf.len() as u64);
         assert_eq!(data, &buf);
