@@ -8,7 +8,6 @@ extern crate mime;
 use hyper::{Response, StatusCode};
 
 use gotham::http::response::create_response;
-use gotham::start;
 use gotham::state::State;
 
 /// This is an example of a Gotham `Handler` which will always respond regardless of
@@ -34,7 +33,7 @@ pub fn say_hello(state: State) -> (State, Response) {
 pub fn main() {
     let addr = "127.0.0.1:7878";
     println!("Listening for requests at http://{}", addr);
-    start(addr, || Ok(say_hello))
+    gotham::start(addr, || Ok(say_hello))
 }
 
 #[cfg(test)]
