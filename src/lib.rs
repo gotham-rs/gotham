@@ -44,6 +44,7 @@ pub mod handler;
 pub mod middleware;
 pub mod http;
 pub mod router;
+pub mod service;
 pub mod state;
 pub mod test;
 

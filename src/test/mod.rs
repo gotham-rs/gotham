@@ -18,7 +18,8 @@ use mime;
 use mio;
 use tokio_core::reactor::{Core, PollEvented, Timeout};
 
-use handler::{NewHandler, GothamService};
+use handler::NewHandler;
+use service::GothamService;
 use router::Router;
 
 mod request;

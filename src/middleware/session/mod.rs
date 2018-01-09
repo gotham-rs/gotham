@@ -140,7 +140,8 @@ impl SessionCookieConfig {
 /// #
 /// # use std::time::Duration;
 /// # use futures::{future, Future, Stream};
-/// # use gotham::handler::{GothamService, HandlerFuture};
+/// # use gotham::handler::HandlerFuture;
+/// # use gotham::service::GothamService;
 /// # use gotham::state::{State, FromState};
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,

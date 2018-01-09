@@ -294,7 +294,7 @@ mod tests {
     use middleware::pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
     use state::{State, StateData, FromState};
-    use handler::GothamService;
+    use service::GothamService;
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     use router::response::extender::StaticResponseExtender;
     use router::tree::SegmentMapping;

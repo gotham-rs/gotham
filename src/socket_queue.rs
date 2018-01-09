@@ -8,7 +8,8 @@ use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
 use futures::{future, task, Future, Stream, Poll, Async};
 
-use handler::{NewHandler, GothamService};
+use handler::NewHandler;
+use service::GothamService;
 
 use crossbeam::sync::SegQueue;
 
