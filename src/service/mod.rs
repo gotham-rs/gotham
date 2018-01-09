@@ -1,15 +1,21 @@
+//! Defines the `Service` which is used by a Gotham application to interface to Hyper.
+
 use std::{io, thread};
 use std::sync::Arc;
-use std::panic::{AssertUnwindSafe, RefUnwindSafe};
+use std::panic::AssertUnwindSafe;
 
 use hyper;
 use hyper::server::{NewService, Service};
 use hyper::{Request, Response};
-use futures::{future, Future};
+use futures::Future;
 
+use handler::NewHandler;
 use state::{State, request_id, set_request_id};
 use state::client_addr::put_client_addr;
 use http::request::path::RequestPathSegments;
+
+mod timing;
+mod trap;
 
 /// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
 /// handlers.

@@ -5,22 +5,15 @@
 //!
 //! [handler-impl]: trait.Handler.html#implementors
 
-use std::{io, thread};
-use std::sync::Arc;
-use std::panic::{AssertUnwindSafe, RefUnwindSafe};
+use std::io;
+use std::panic::RefUnwindSafe;
 
-use hyper;
-use hyper::server::{NewService, Service};
-use hyper::{Request, Response};
+use hyper::Response;
 use futures::{future, Future};
 
-use state::{State, request_id, set_request_id};
-use state::client_addr::put_client_addr;
-use http::request::path::RequestPathSegments;
+use state::State;
 
 mod error;
-mod timing;
-mod trap;
 
 pub use self::error::{HandlerError, IntoHandlerError};
 
