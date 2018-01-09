@@ -20,7 +20,7 @@ env:
 before_script:
   - cargo install cargo-travis -f
 script:
-  - cargo test --features ci
+  - cargo test --all --features ci
 after_success:
   - cargo coveralls
 matrix:
