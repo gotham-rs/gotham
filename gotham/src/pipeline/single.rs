@@ -22,13 +22,21 @@ pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
 ///
 /// ```rust
 /// # extern crate gotham;
+/// # #[macro_use]
+/// # extern crate serde_derive;
 /// # use gotham::pipeline::single::single_pipeline;
 /// # use gotham::pipeline::new_pipeline;
 /// # use gotham::router::builder::build_router;
+/// # use gotham::middleware::session::NewSessionMiddleware;
+/// #
+/// # #[derive(Serialize, Deserialize, Default)]
+/// # struct Session;
 /// #
 /// # fn main() {
 /// let (pipelines, chain) = single_pipeline(
-///     new_pipeline().build()
+///     new_pipeline()
+///         .add(NewSessionMiddleware::default().with_session_type::<Session>())
+///         .build()
 /// );
 ///
 /// build_router(chain, pipelines, |route| {
