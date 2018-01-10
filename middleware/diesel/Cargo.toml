@@ -22,9 +22,9 @@ futures = "0.1.0"
 gotham = { path = "../../gotham" }
 gotham_derive = { path = "../../gotham_derive" }
 
-diesel = "1.0.0-beta1"
-r2d2 = "0.8.1"
-r2d2-diesel = "1.0.0-beta1"
+diesel = "1.0.0"
+r2d2 = "0.8.2"
+r2d2-diesel = "1.0.0"
 
 [dev-dependencies]
-diesel = { version = "1.0.0-beta1", features = ["sqlite"] }
+diesel = { version = "1.0.0", features = ["sqlite"] }
