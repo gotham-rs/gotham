@@ -6,7 +6,7 @@ use std::error::Error;
 use std::str::FromStr;
 use std::string::ParseError;
 use std::str::ParseBoolError;
-use std::num::{ParseIntError, ParseFloatError};
+use std::num::{ParseFloatError, ParseIntError};
 
 use hyper::Response;
 
@@ -110,25 +110,33 @@ where
 
 impl From<ParseIntError> for FromQueryStringError {
     fn from(err: ParseIntError) -> FromQueryStringError {
-        FromQueryStringError { description: err.description().to_string() }
+        FromQueryStringError {
+            description: err.description().to_string(),
+        }
     }
 }
 
 impl From<ParseFloatError> for FromQueryStringError {
     fn from(err: ParseFloatError) -> FromQueryStringError {
-        FromQueryStringError { description: err.description().to_string() }
+        FromQueryStringError {
+            description: err.description().to_string(),
+        }
     }
 }
 
 impl From<ParseBoolError> for FromQueryStringError {
     fn from(err: ParseBoolError) -> FromQueryStringError {
-        FromQueryStringError { description: err.description().to_string() }
+        FromQueryStringError {
+            description: err.description().to_string(),
+        }
     }
 }
 
 impl From<ParseError> for FromQueryStringError {
     fn from(err: ParseError) -> FromQueryStringError {
-        FromQueryStringError { description: err.description().to_string() }
+        FromQueryStringError {
+            description: err.description().to_string(),
+        }
     }
 }
 

@@ -23,7 +23,9 @@ impl PercentDecoded {
         match percent_decode(raw.as_bytes()).decode_utf8() {
             Ok(pd) => {
                 trace!(" percent_decode: {}, src: {}", pd, raw);
-                Some(PercentDecoded { val: pd.into_owned() })
+                Some(PercentDecoded {
+                    val: pd.into_owned(),
+                })
             }
             Err(_) => {
                 trace!(" percent_decode: error, src: {}", raw);

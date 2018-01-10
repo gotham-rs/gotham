@@ -17,7 +17,9 @@ pub struct Handle<T, N> {
 
 /// Creates a new `Handle` of any given type.
 pub fn new_handle<T, N>() -> Handle<T, N> {
-    Handle { phantom: PhantomData }
+    Handle {
+        phantom: PhantomData,
+    }
 }
 
 impl<T, N> Clone for Handle<T, N> {

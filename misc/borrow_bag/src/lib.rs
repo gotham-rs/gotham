@@ -6,10 +6,8 @@
 
 #![doc(html_root_url = "https://docs.rs/borrow-bag/0.4.0")] // Update when changed in Cargo.toml
 #![warn(missing_docs, deprecated)]
-
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
-
 #![doc(test(attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -24,7 +22,7 @@ pub use lookup::Lookup;
 pub use handle::Handle;
 
 /// Creates a new, empty `BorrowBag`.
-#[deprecated(since="0.4.0", note="use `BorrowBag::new()`")]
+#[deprecated(since = "0.4.0", note = "use `BorrowBag::new()`")]
 pub fn new_borrow_bag() -> BorrowBag<()> {
     BorrowBag::new()
 }

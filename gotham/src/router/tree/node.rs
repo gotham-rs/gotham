@@ -6,10 +6,10 @@ use std::borrow::Borrow;
 use hyper::StatusCode;
 
 use http::PercentDecoded;
-use router::route::{Route, Delegation};
-use router::tree::{SegmentsProcessed, SegmentMapping, Path};
+use router::route::{Delegation, Route};
+use router::tree::{Path, SegmentMapping, SegmentsProcessed};
 use router::tree::regex::ConstrainedSegmentRegex;
-use state::{State, request_id};
+use state::{request_id, State};
 
 /// Indicates the type of segment which is being represented by this Node.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -194,7 +194,14 @@ impl Node {
         &self,
         req_path_segments: &'r [&PercentDecoded],
         mut consumed_segments: Vec<&'r PercentDecoded>,
-    ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, HashMap<&str, Vec<&'r PercentDecoded>>)> {
+    ) -> Option<
+        (
+            Vec<&Node>,
+            &Node,
+            SegmentsProcessed,
+            HashMap<&str, Vec<&'r PercentDecoded>>,
+        ),
+    > {
         match req_path_segments.split_first() {
             Some((x, _)) if self.is_delegating(x) => {
                 // A delegated node terminates processing, start building result
@@ -310,7 +317,6 @@ impl NodeBuilder {
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
     pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
-
         if route.delegation() == Delegation::External {
             if !self.routes.is_empty() {
                 panic!("Node which is externally delegating must have single Route");
@@ -351,9 +357,9 @@ impl NodeBuilder {
 
     /// Borrow a child that represents the exact segment provided here.
     pub fn borrow_child(&self, segment: &str, segment_type: SegmentType) -> Option<&NodeBuilder> {
-        self.children.iter().find(|n| {
-            n.segment_type == segment_type && n.segment == segment
-        })
+        self.children
+            .iter()
+            .find(|n| n.segment_type == segment_type && n.segment == segment)
     }
 
     /// Mutably borrow a child that represents the exact segment provided here.
@@ -362,9 +368,9 @@ impl NodeBuilder {
         segment: &str,
         segment_type: SegmentType,
     ) -> Option<&mut NodeBuilder> {
-        self.children.iter_mut().find(|n| {
-            n.segment_type == segment_type && n.segment == segment
-        })
+        self.children
+            .iter_mut()
+            .find(|n| n.segment_type == segment_type && n.segment == segment)
     }
 
     /// Finalizes and sorts all internal data, including all children.
@@ -434,10 +440,10 @@ mod tests {
     use hyper::Method;
     use hyper::Response;
 
-    use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineSet,
-                                  DispatcherImpl};
+    use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl,
+                                  PipelineSet};
     use router::route::matcher::MethodOnlyRouteMatcher;
-    use router::route::{Route, RouteImpl, Extractors};
+    use router::route::{Extractors, Route, RouteImpl};
     use router::request::path::NoopPathExtractor;
     use http::request::path::RequestPathSegments;
     use router::request::query_string::NoopQueryStringExtractor;
@@ -544,7 +550,9 @@ mod tests {
         let mut seg_resource = NodeBuilder::new("resource", SegmentType::Static);
         let mut seg_id = NodeBuilder::new(
             "id",
-            SegmentType::Constrained { regex: ConstrainedSegmentRegex::new("[0-9]+") },
+            SegmentType::Constrained {
+                regex: ConstrainedSegmentRegex::new("[0-9]+"),
+            },
         );
         seg_id.add_route(get_route(pipeline_set.clone()));
         seg_resource.add_child(seg_id);

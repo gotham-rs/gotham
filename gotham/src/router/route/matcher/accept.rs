@@ -1,11 +1,11 @@
 //! Defines the type `AcceptMatcher`
 
 use hyper::StatusCode;
-use hyper::header::{Headers, Accept};
+use hyper::header::{Accept, Headers};
 use mime;
 
 use router::route::matcher::RouteMatcher;
-use state::{State, FromState, request_id};
+use state::{request_id, FromState, State};
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with an `Accept` header that
 /// includes 1 or more supported media types. No `Accept` header value or the value of `*/*` will
@@ -72,7 +72,9 @@ pub struct AcceptHeaderRouteMatcher {
 impl AcceptHeaderRouteMatcher {
     /// Creates a new `AcceptHeaderRouteMatcher`
     pub fn new(supported_media_types: Vec<mime::Mime>) -> Self {
-        AcceptHeaderRouteMatcher { supported_media_types }
+        AcceptHeaderRouteMatcher {
+            supported_media_types,
+        }
     }
 }
 

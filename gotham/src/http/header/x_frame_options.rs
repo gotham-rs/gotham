@@ -8,7 +8,7 @@ use std::ascii::AsciiExt;
 
 use hyper;
 use hyper::Uri;
-use hyper::header::{Header, Raw, Formatter};
+use hyper::header::{Formatter, Header, Raw};
 
 use http::header::from_one_rws_delimited_raw_str;
 
@@ -83,16 +83,12 @@ impl Header for XFrameOptions {
         };
 
         match values.first() {
-            Some(fo) => {
-                match fo.to_ascii_uppercase().as_str() {
-                    "DENY" => Ok(XFrameOptions::Deny),
-                    "SAMEORIGIN" => Ok(XFrameOptions::SameOrigin),
-                    "ALLOW-FROM" if origin.is_some() => {
-                        Ok(XFrameOptions::AllowFrom(origin.unwrap()))
-                    }
-                    _ => Err(hyper::error::Error::Header),
-                }
-            }
+            Some(fo) => match fo.to_ascii_uppercase().as_str() {
+                "DENY" => Ok(XFrameOptions::Deny),
+                "SAMEORIGIN" => Ok(XFrameOptions::SameOrigin),
+                "ALLOW-FROM" if origin.is_some() => Ok(XFrameOptions::AllowFrom(origin.unwrap())),
+                _ => Err(hyper::error::Error::Header),
+            },
             None => Err(hyper::error::Error::Header),
         }
     }
@@ -146,8 +142,8 @@ mod tests {
 
     #[test]
     fn parse_allow_from() {
-        let a: XFrameOptions = Header::parse_header(&"allow-FROM https://example.com".into())
-            .unwrap();
+        let a: XFrameOptions =
+            Header::parse_header(&"allow-FROM https://example.com".into()).unwrap();
         let b = XFrameOptions::AllowFrom(String::from("https://example.com"));
         assert_eq!(a, b);
 

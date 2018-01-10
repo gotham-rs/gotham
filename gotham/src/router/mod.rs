@@ -12,13 +12,13 @@ use std::sync::Arc;
 use futures::{future, Future};
 use hyper::{Response, StatusCode};
 
-use handler::{NewHandler, Handler, HandlerFuture, IntoResponse};
+use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use http::request::path::RequestPathSegments;
 use http::response::create_response;
 use router::response::finalizer::ResponseFinalizer;
-use router::route::{Route, Delegation};
+use router::route::{Delegation, Route};
 use router::tree::{SegmentMapping, Tree};
-use state::{State, request_id};
+use state::{request_id, State};
 
 struct RouterData {
     tree: Tree,
@@ -91,26 +91,21 @@ impl Handler for Router {
             Some(rps) => {
                 if let Some((_, leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
                     match leaf.select_route(&state) {
-                        Ok(route) => {
-                            match route.delegation() {
-                                Delegation::External => {
-                                    trace!(
-                                        "[{}] delegating to secondary router",
-                                        request_id(&state)
-                                    );
+                        Ok(route) => match route.delegation() {
+                            Delegation::External => {
+                                trace!("[{}] delegating to secondary router", request_id(&state));
 
-                                    let mut rps = rps.clone();
-                                    rps.increase_offset(sp);
-                                    state.put(rps);
+                                let mut rps = rps.clone();
+                                rps.increase_offset(sp);
+                                state.put(rps);
 
-                                    route.dispatch(state)
-                                }
-                                Delegation::Internal => {
-                                    trace!("[{}] dispatching to route", request_id(&state));
-                                    self.dispatch(state, sm, route)
-                                }
+                                route.dispatch(state)
                             }
-                        }
+                            Delegation::Internal => {
+                                trace!("[{}] dispatching to route", request_id(&state));
+                                self.dispatch(state, sm, route)
+                            }
+                        },
                         Err(status) => {
                             trace!("[{}] responding with error status", request_id(&state));
                             let res = create_response(&state, status, None);
@@ -137,9 +132,10 @@ impl Handler for Router {
 impl Router {
     /// Creates a `Router` instance.
     pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
-
         let router_data = RouterData::new(tree, response_finalizer);
-        Router { data: Arc::new(router_data) }
+        Router {
+            data: Arc::new(router_data),
+        }
     }
 
     fn dispatch(
@@ -187,7 +183,7 @@ impl Router {
             .or_else(|(state, err)| {
                 trace!(
                     "[{}] converting error into http response \
-                                 during finalization: {:?}",
+                     during finalization: {:?}",
                     request_id(&state),
                     err
                 );
@@ -208,14 +204,14 @@ mod tests {
     use super::*;
     use std::str::FromStr;
     use hyper::{Method, Uri};
-    use hyper::header::{Headers, ContentLength};
+    use hyper::header::{ContentLength, Headers};
 
     use router::tree::TreeBuilder;
-    use router::tree::node::{SegmentType, NodeBuilder};
-    use router::route::{RouteImpl, Extractors};
+    use router::tree::node::{NodeBuilder, SegmentType};
+    use router::route::{Extractors, RouteImpl};
     use router::request::path::NoopPathExtractor;
     use router::request::query_string::NoopQueryStringExtractor;
-    use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+    use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl};
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;
     use state::set_request_id;
@@ -396,8 +392,9 @@ mod tests {
         let tree = tree_builder.finalize();
 
         let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
-        let not_found_extender =
-            |_s: &mut State, r: &mut Response| { r.headers_mut().set(ContentLength(3u64)); };
+        let not_found_extender = |_s: &mut State, r: &mut Response| {
+            r.headers_mut().set(ContentLength(3u64));
+        };
         response_finalizer_builder.add(StatusCode::NotFound, Box::new(not_found_extender));
         let response_finalizer = response_finalizer_builder.finalize();
         let router = Router::new(tree, response_finalizer);

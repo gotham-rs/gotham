@@ -2,7 +2,7 @@
 
 use std::panic::RefUnwindSafe;
 use hyper::Response;
-use state::{State, request_id};
+use state::{request_id, State};
 
 /// Extend the Response based on current State and Response data
 pub trait StaticResponseExtender: RefUnwindSafe {

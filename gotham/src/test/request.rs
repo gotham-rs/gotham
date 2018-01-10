@@ -1,9 +1,9 @@
-use hyper::{Request, Uri, Method, Body};
+use hyper::{Body, Method, Request, Uri};
 use hyper::error::UriError;
 use hyper::header::Header;
 
 use handler::NewHandler;
-use test::{TestClient, TestResponse, TestRequestError};
+use test::{TestClient, TestRequestError, TestResponse};
 
 /// Builder API for constructing `TestServer` requests.
 #[must_use]

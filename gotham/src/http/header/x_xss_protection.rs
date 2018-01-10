@@ -3,7 +3,7 @@
 use std::fmt;
 
 use hyper;
-use hyper::header::{Header, Raw, Formatter, parsing};
+use hyper::header::{parsing, Formatter, Header, Raw};
 
 static NAME: &'static str = "X-XSS-Protection";
 

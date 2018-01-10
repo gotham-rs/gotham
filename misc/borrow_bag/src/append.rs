@@ -34,7 +34,8 @@ pub trait Append<T> {
 }
 
 impl<T, U, V> Append<T> for (U, V)
-    where V: Append<T>
+where
+    V: Append<T>,
 {
     // We're mid-list. Return the head and append to the tail.
     type Output = (U, <V as Append<T>>::Output);
@@ -62,9 +63,17 @@ impl<T> Append<T> for () {
 
 /// Provides proof that the existing list elements don't move, which guarantees that existing
 /// `Handle` values continue to work.
-pub trait PrefixedWith<T> where T: ?Sized {}
+pub trait PrefixedWith<T>
+where
+    T: ?Sized,
+{
+}
 
-impl<U, V0, V1> PrefixedWith<(U, V0)> for (U, V1) where V1: PrefixedWith<V0> {}
+impl<U, V0, V1> PrefixedWith<(U, V0)> for (U, V1)
+where
+    V1: PrefixedWith<V0>,
+{
+}
 impl<U> PrefixedWith<()> for (U, ()) {}
 
 #[cfg(test)]

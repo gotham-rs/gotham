@@ -16,14 +16,14 @@ use router::response::finalizer::ResponseFinalizerBuilder;
 use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::RouteMatcher;
 use router::route::matcher::any::AnyRouteMatcher;
-use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, PipelineHandleChain,
-                              PipelineSet, DispatcherImpl};
-use router::request::path::{PathExtractor, NoopPathExtractor};
-use router::request::query_string::{QueryStringExtractor, NoopQueryStringExtractor};
+use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl,
+                              PipelineHandleChain, PipelineSet};
+use router::request::path::{NoopPathExtractor, PathExtractor};
+use router::request::query_string::{NoopQueryStringExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
 
 pub use self::single::DefineSingleRoute;
-pub use self::draw::{DrawRoutes, DefaultSingleRouteBuilder};
+pub use self::draw::{DefaultSingleRouteBuilder, DrawRoutes};
 pub use self::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
 
 /// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
@@ -174,10 +174,8 @@ where
     where
         E: ResponseExtender + Send + Sync + 'static,
     {
-        self.response_finalizer_builder.add(
-            status_code,
-            Box::new(extender),
-        )
+        self.response_finalizer_builder
+            .add(status_code, Box::new(extender))
     }
 }
 
@@ -212,7 +210,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
-/// Directs the delegated route to the given `Router`.
+    /// Directs the delegated route to the given `Router`.
     pub fn to_router(self, router: Router) {
         let dispatcher = DispatcherImpl::new(router, self.pipeline_chain, self.pipelines);
         let route: DelegatedRoute = DelegatedRoute::new(
@@ -246,23 +244,11 @@ where
 // Trait impls live with the traits.
 impl<'a, M, C, P, PE, QSE> SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
-    M: RouteMatcher
-        + Send
-        + Sync
-        + 'static,
-    C: PipelineHandleChain<P>
-        + Send
-        + Sync
-        + 'static,
+    M: RouteMatcher + Send + Sync + 'static,
+    C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: Send + Sync + 'static,
-    PE: PathExtractor
-        + Send
-        + Sync
-        + 'static,
-    QSE: QueryStringExtractor
-        + Send
-        + Sync
-        + 'static,
+    PE: PathExtractor + Send + Sync + 'static,
+    QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     /// Coerces the type of the internal `PhantomData`, to replace an extractor by changing the
     /// type parameter without changing anything else.
@@ -288,16 +274,16 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Arc;
 
-    use hyper::{Request, Response, StatusCode, Method, Uri};
+    use hyper::{Method, Request, Response, StatusCode, Uri};
     use hyper::server::Service;
     use futures::{Future, Stream};
     use tokio_core::reactor::Core;
 
     use pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
-    use state::{State, StateData, FromState};
+    use state::{FromState, State, StateData};
     use service::GothamService;
-    use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+    use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set};
     use router::response::extender::StaticResponseExtender;
     use router::tree::SegmentMapping;
     use http::FormUrlDecoded;
@@ -375,50 +361,44 @@ mod tests {
 
         pub fn hello(mut state: State) -> (State, Response) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new().with_status(StatusCode::Ok).with_body(
-                format!(
-                    "Hello, {}!",
-                    params.name
-                ),
-            );
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body(format!("Hello, {}!", params.name));
             (state, response)
         }
 
         pub fn globbed(state: State) -> (State, Response) {
-            let response = Response::new().with_status(StatusCode::Ok).with_body(
-                "Globbed",
-            );
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body("Globbed");
             (state, response)
         }
 
         pub fn delegated(state: State) -> (State, Response) {
-            let response = Response::new().with_status(StatusCode::Ok).with_body(
-                "Delegated",
-            );
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body("Delegated");
             (state, response)
         }
 
         pub fn goodbye(mut state: State) -> (State, Response) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new().with_status(StatusCode::Ok).with_body(
-                format!(
-                    "Goodbye, {}!",
-                    params.name
-                ),
-            );
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body(format!("Goodbye, {}!", params.name));
             (state, response)
         }
 
         pub fn add(mut state: State) -> (State, Response) {
             let params = state.take::<AddParams>();
-            let response = Response::new().with_status(StatusCode::Ok).with_body(
-                format!(
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body(format!(
                     "{} + {} = {}",
                     params.x,
                     params.y,
                     params.x + params.y,
-                ),
-            );
+                ));
             (state, response)
         }
     }
@@ -440,8 +420,9 @@ mod tests {
 
         let default_pipeline_chain = (default, ());
 
-        let delegated_router =
-            build_simple_router(|route| { route.get("/b").to(welcome::delegated); });
+        let delegated_router = build_simple_router(|route| {
+            route.get("/b").to(welcome::delegated);
+        });
 
         let router = build_router(default_pipeline_chain, pipelines, |route| {
             route.get("/").to(welcome::index);
@@ -468,7 +449,9 @@ mod tests {
 
             route.get(r"/literal/\:param/\*").to(welcome::literal);
 
-            route.scope("/api", |route| { route.post("/submit").to(api::submit); });
+            route.scope("/api", |route| {
+                route.post("/submit").to(api::submit);
+            });
 
             route.delegate("/delegated").to_router(delegated_router);
         });

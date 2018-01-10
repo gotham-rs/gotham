@@ -5,10 +5,10 @@ use std::sync::Arc;
 use std::collections::HashMap;
 
 use futures::future;
-use hyper::{StatusCode, Response};
+use hyper::{Response, StatusCode};
 
 use handler::HandlerFuture;
-use state::{State, request_id};
+use state::{request_id, State};
 
 use router::response::extender::ResponseExtender;
 
@@ -39,7 +39,9 @@ impl ResponseFinalizerBuilder {
 
     /// Finalize population of error handlers for the application, ready for use by a Router
     pub fn finalize(self) -> ResponseFinalizer {
-        ResponseFinalizer { data: Arc::new(self.data) }
+        ResponseFinalizer {
+            data: Arc::new(self.data),
+        }
     }
 }
 
@@ -55,7 +57,6 @@ impl ResponseFinalizer {
                     res.status()
                 );
                 extender.extend(&mut state, &mut res);
-
             }
             None => {
                 trace!(

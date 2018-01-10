@@ -82,10 +82,12 @@ impl RequestPathSegments {
         self.segments
             .iter()
             .enumerate()
-            .filter_map(|(i, v)| if i == 0 || i > self.offset {
-                Some(v)
-            } else {
-                None
+            .filter_map(|(i, v)| {
+                if i == 0 || i > self.offset {
+                    Some(v)
+                } else {
+                    None
+                }
             })
             .collect::<Vec<&PercentDecoded>>()
     }

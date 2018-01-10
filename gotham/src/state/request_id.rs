@@ -4,7 +4,7 @@ use hyper::header::Headers;
 use uuid::Uuid;
 
 use http::header::XRequestId;
-use state::{State, FromState};
+use state::{FromState, State};
 
 /// Holds details about the current Request that are useful for enhancing logging.
 pub struct RequestId {
@@ -28,7 +28,9 @@ pub fn set_request_id<'a>(state: &'a mut State) -> &'a str {
                     "[{}] RequestId set from external source via X-Request-ID header",
                     ex_req_id.0.clone()
                 );
-                RequestId { val: ex_req_id.0.clone() }
+                RequestId {
+                    val: ex_req_id.0.clone(),
+                }
             }
             None => {
                 let val = Uuid::new_v4().hyphenated().to_string();
@@ -103,7 +105,9 @@ mod tests {
     #[test]
     fn does_not_overwrite_existant_request_id() {
         let mut state = State::new();
-        state.put(RequestId { val: "1-2-3-4".to_string() });
+        state.put(RequestId {
+            val: "1-2-3-4".to_string(),
+        });
 
         {
             set_request_id(&mut state);

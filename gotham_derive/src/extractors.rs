@@ -1,7 +1,7 @@
 use syn;
 use quote;
 
-use helpers::{ty_params, ty_fields};
+use helpers::{ty_fields, ty_params};
 
 pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
     let (name, borrowed, where_clause) = ty_params(&ast, None);
@@ -20,8 +20,12 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
             fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
                 -> Result<(), String>
             {
-                fn parse<T>(s: &gotham::state::State, segments: Option<&Vec<&gotham::http::PercentDecoded>>) -> Result<T, String>
-                    where T: gotham::router::request::path::FromRequestPath
+                fn parse<T>(
+                    s: &gotham::state::State,
+                    segments: Option<&Vec<&gotham::http::PercentDecoded>>
+                ) -> Result<T, String>
+                where
+                    T: gotham::router::request::path::FromRequestPath,
                 {
                     let struct_name = #struct_name;
                     match segments {
@@ -33,7 +37,8 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
                                     Ok(val)
                                 }
                                 Err(_) => {
-                                    error!("[{}] unrecoverable error converting request path segment(s) into {}",
+                                    error!("[{}] unrecoverable error converting request path \
+                                            segment(s) into {}",
                                            gotham::state::request_id(s), struct_name);
                                     Err(String::from("unrecoverable error converting request path"))
                                 }
@@ -84,12 +89,17 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
     let struct_name = struct_name_token.as_str();
 
     quote! {
-        impl #borrowed gotham::router::request::query_string::QueryStringExtractor for #name #borrowed
-             #where_clause
+        impl #borrowed gotham::router::request::query_string::QueryStringExtractor for #name
+            #borrowed #where_clause
         {
             fn extract(s: &mut gotham::state::State) -> Result<(), String> {
-                fn parse<T>(s: &gotham::state::State, key: &str, values: Option<&Vec<gotham::http::FormUrlDecoded>>) -> Result<T, String>
-                    where T: gotham::router::request::query_string::FromQueryString
+                fn parse<T>(
+                    s: &gotham::state::State,
+                    key: &str,
+                    values: Option<&Vec<gotham::http::FormUrlDecoded>>
+                ) -> Result<T, String>
+                where
+                    T: gotham::router::request::query_string::FromQueryString,
                 {
                     let struct_name = #struct_name;
                     match values {
