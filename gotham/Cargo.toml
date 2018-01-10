@@ -1,0 +1,39 @@
+[package]
+name = "gotham"
+version = "0.1.2" # Alter html_root_url in lib.rs also
+authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
+           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
+description = "A flexible web framework that does not sacrifice safety, security or speed."
+license = "MIT/Apache-2.0"
+homepage = "https://gotham.rs"
+repository = "https://github.com/gotham-rs/gotham"
+readme = "README.md"
+categories = ["web-programming::http-server"]
+keywords = ["http", "async", "web", "framework", "gotham"]
+
+[dependencies]
+log = "0.3"
+hyper = "~0.11.7"
+serde = "~1.0"
+serde_derive = "~1.0"
+bincode = "0.8"
+mime = "0.3"
+futures = "~0.1.11"
+tokio-core = "0.1"
+mio = "0.6"
+borrow-bag = { path = "../misc/borrow_bag" }
+url = "1.4.0"
+uuid = { version = "0.5", features = ["v4"] }
+chrono = "0.4"
+base64 = "0.4"
+rand = "0.3"
+linked-hash-map = "0.4"
+num_cpus = "1"
+crossbeam = "0.3"
+regex = "0.2"
+
+[dev-dependencies]
+gotham_derive = { path = "../gotham_derive" }
+
+[badges]
+travis-ci = { repository = "gotham-rs/gotham", branch = "master" }
