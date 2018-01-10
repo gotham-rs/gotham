@@ -3,7 +3,7 @@ name = "hello_world"
 version = "0.2.0"
 authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
            "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
-description = "A hello world example application for Gotham"
+description = "A Hello World example application for working with Gotham."
 license = "MIT/Apache-2.0"
 readme = "README.md"
 publish = false

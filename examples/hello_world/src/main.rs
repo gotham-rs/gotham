@@ -1,4 +1,4 @@
-//! A Hello World example application for working with [Gotham](https://gotham.rs).
+//! A Hello World example application for working with Gotham.
 
 extern crate futures;
 extern crate gotham;
@@ -10,14 +10,10 @@ use hyper::{Response, StatusCode};
 use gotham::http::response::create_response;
 use gotham::state::State;
 
-/// This is an example of a Gotham `Handler` which will always respond regardless of
-/// the `Request` path.
-///
-/// Dealing with breaking up the Request path and dispatching to application code is a one part of
-/// what the full Gotham `Router` offers. This is shown in subsequent examples.
+/// Create a `Handler` which is invoked when responding to a `Request`.
 ///
 /// How does a function become a `Handler`?.
-/// We've simply implemented the `Handler` trait for functions that match the signature used here
+/// We've simply implemented the `Handler` trait, for functions that match the signature used here,
 /// within Gotham itself.
 pub fn say_hello(state: State) -> (State, Response) {
     let res = create_response(
