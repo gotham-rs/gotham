@@ -12,6 +12,9 @@ install:
   - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
   - rustc -vV
   - cargo -vV
+  - vcpkg install sqlite3:x86-windows
+  - vcpkg install sqlite3:x64-windows
+  - vcpkg integrate install
 build: false
 test_script:
   - cargo build
