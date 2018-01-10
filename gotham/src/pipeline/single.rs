@@ -33,7 +33,7 @@ pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
 /// # struct Session;
 /// #
 /// # fn main() {
-/// let (pipelines, chain) = single_pipeline(
+/// let (chain, pipelines) = single_pipeline(
 ///     new_pipeline()
 ///         .add(NewSessionMiddleware::default().with_session_type::<Session>())
 ///         .build()
@@ -45,7 +45,7 @@ pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
 /// });
 /// # }
 /// ```
-pub fn single_pipeline<C>(c: Pipeline<C>) -> (SinglePipelineSet<C>, SinglePipelineChain<C>)
+pub fn single_pipeline<C>(c: Pipeline<C>) -> (SinglePipelineChain<C>, SinglePipelineSet<C>)
 where
     C: NewMiddlewareChain,
 {
@@ -55,7 +55,7 @@ where
 
     let chain = (single, ());
 
-    (pipelines, chain)
+    (chain, pipelines)
 }
 
 #[cfg(test)]
@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_construction() {
-        let (pipelines, chain) = single_pipeline(new_pipeline().build());
+        let (chain, pipelines) = single_pipeline(new_pipeline().build());
 
         build_router(chain, pipelines, |_route| {});
     }
