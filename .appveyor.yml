@@ -1,18 +1,25 @@
 # Originally based on:
 # https://raw.githubusercontent.com/hyperium/hyper/207fca63ce/.appveyor.yml
+#
+# Also ripped off some good ideas from 
+# https://github.com/diesel-rs/diesel/blob/master/.appveyor.yml
+#
 environment:
   matrix:
   - TARGET: x86_64-pc-windows-msvc
-  - TARGET: i686-pc-windows-msvc
   - TARGET: x86_64-pc-windows-gnu
-  - TARGET: i686-pc-windows-gnu
 install:
-  - curl -sSf -o rustup-init.exe https://win.rustup.rs/
-  - rustup-init.exe -y --default-host %TARGET%
-  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - curl -fsS --retry 3 --retry-connrefused -o rustup-init.exe https://win.rustup.rs/
+  - rustup-init -yv --default-toolchain stable --default-host %target%
+  - set PATH=%PATH%;%USERPROFILE%\.cargo\bin
   - rustc -vV
   - cargo -vV
+  - curl -fsS --retry 3 --retry-connrefused -o sqlite3.zip https://www.sqlite.org/2017/sqlite-dll-win64-x64-3210000.zip 
+  - 7z e sqlite3.zip -y
+  - set SQLITE3_LIB_DIR=%APPVEYOR_BUILD_FOLDER%
+  - set PATH=%PATH%;%APPVEYOR_BUILD_FOLDER%
+  - '"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\lib.exe" /def:sqlite3.def /OUT:sqlite3.lib /machine:x64'
 build: false
 test_script:
   - cargo build
-  - cargo test
+  - cargo test --all
