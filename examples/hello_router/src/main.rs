@@ -1,4 +1,4 @@
-//! A Hello World example application for working with Gotham.
+//! A Hello World example application for working with the Gotham Router.
 
 extern crate futures;
 extern crate gotham;
@@ -9,27 +9,32 @@ use hyper::{Response, StatusCode};
 
 use gotham::http::response::create_response;
 use gotham::state::State;
+use gotham::router::Router;
+use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 
-/// Create a `Handler` which is invoked when responding to a `Request`.
-///
-/// How does a function become a `Handler`?.
-/// We've simply implemented the `Handler` trait, for functions that match the signature used here,
-/// within Gotham itself.
+/// Create a `Handler`
 pub fn say_hello(state: State) -> (State, Response) {
     let res = create_response(
         &state,
         StatusCode::Ok,
-        Some((String::from("Hello World!").into_bytes(), mime::TEXT_PLAIN)),
+        Some((String::from("Hello Router!").into_bytes(), mime::TEXT_PLAIN)),
     );
 
     (state, res)
 }
 
-/// Start a server and call the `Handler` we've defined above for each `Request` we receive.
+/// Create a `Router`
+fn router() -> Router {
+    build_simple_router(|route| {
+        route.get("/").to(say_hello);
+    })
+}
+
+/// Start a server and use a `Router` to dispatch requests
 pub fn main() {
     let addr = "127.0.0.1:7878";
     println!("Listening for requests at http://{}", addr);
-    gotham::start(addr, || Ok(say_hello))
+    gotham::start(addr, router())
 }
 
 #[cfg(test)]
@@ -38,8 +43,8 @@ mod tests {
     use gotham::test::TestServer;
 
     #[test]
-    fn recieve_hello_world_response() {
-        let test_server = TestServer::new(|| Ok(say_hello)).unwrap();
+    fn recieve_hello_router_response() {
+        let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
             .get("http://localhost")
@@ -49,6 +54,6 @@ mod tests {
         assert_eq!(response.status(), StatusCode::Ok);
 
         let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b"Hello World!");
+        assert_eq!(&body[..], b"Hello Router!");
     }
 }

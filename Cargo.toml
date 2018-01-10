@@ -9,4 +9,5 @@ members = [
     "misc/borrow_bag",
 
     "examples/hello_world",
+    "examples/hello_router",
 ]

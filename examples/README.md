@@ -2,7 +2,7 @@
 
 Standalone crates that act as examples for building web applications with Gotham.
 
-All include test cases that demonstrate correct behaviour and serve as an example of 
+All include test cases that demonstrate correct behaviour and serve as an example of
 how to test your own applications.
 
 These examples are best reviewed once you've understood the Rust language itself through resources
@@ -22,7 +22,8 @@ The following resources will also assist you in learning Gotham:
 Reviewing our examples in the order shown here will assist you in methodically learning the
 concepts and functionality provided by Gotham from introductory through to advanced levels.
 
-1. [Hello World](hello_world) - A simple introduction to working with Gotham.
+1. [Hello World](hello_world) - A Hello World example application for working with Gotham.
+1. [Hello Router](hello_router) - A Hello World example application for working with the Gotham Router.
 
 ## License
 
