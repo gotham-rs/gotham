@@ -172,7 +172,6 @@ where
             .map(|_| ())
             .map_err(|_| ());
 
-        // TODO: Client address
         handle.spawn(f);
 
         let client = Client::configure()

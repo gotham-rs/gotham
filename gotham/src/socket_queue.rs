@@ -125,7 +125,6 @@ where
                             .map(|_| ())
                             .map_err(|_| ());
 
-                        // TODO: Client address
                         handle.spawn(f);
                     }
                     Err(e) => error!(" unable to spawn service: {:?}", e),
