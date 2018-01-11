@@ -6,7 +6,7 @@ use borrow_bag::{BorrowBag, Handle, Lookup};
 use futures::future;
 
 use handler::{Handler, NewHandler, HandlerFuture, IntoHandlerError};
-use middleware::pipeline::{NewMiddlewareChain, Pipeline};
+use pipeline::{NewMiddlewareChain, Pipeline};
 use state::{State, request_id};
 
 /// Represents the set of all `Pipeline` instances that are available for use with `Routes`.
@@ -156,7 +156,7 @@ mod tests {
     use std::io;
     use test::TestServer;
     use middleware::{Middleware, NewMiddleware};
-    use middleware::pipeline::new_pipeline;
+    use pipeline::new_pipeline;
     use state::StateData;
     use hyper::Response;
     use hyper::StatusCode;

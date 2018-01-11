@@ -1,5 +1,7 @@
 //! Defines types for a middleware pipeline
 
+pub mod single;
+
 use std::io;
 use std::panic::RefUnwindSafe;
 
@@ -28,7 +30,7 @@ use state::{State, request_id};
 /// # use gotham::state::State;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::{Middleware, NewMiddleware};
-/// # use gotham::middleware::pipeline::new_pipeline;
+/// # use gotham::pipeline::new_pipeline;
 /// # use gotham::router::Router;
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
@@ -209,7 +211,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// # use gotham::state::State;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::{Middleware, NewMiddleware};
-/// # use gotham::middleware::pipeline::new_pipeline;
+/// # use gotham::pipeline::new_pipeline;
 /// #
 /// # #[derive(Clone)]
 /// # struct MiddlewareOne;

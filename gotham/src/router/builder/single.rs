@@ -22,7 +22,7 @@ use handler::{Handler, NewHandler};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
-/// # use gotham::middleware::pipeline::new_pipeline;
+/// # use gotham::pipeline::new_pipeline;
 /// # use gotham::middleware::session::NewSessionMiddleware;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
 /// fn my_handler(_: State) -> (State, Response) {
@@ -60,7 +60,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
+    /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// fn my_handler(_: State) -> (State, Response) {
@@ -100,7 +100,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
+    /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// struct MyNewHandler;
@@ -156,7 +156,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
+    /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// #[derive(StateData, PathExtractor, StaticResponseExtender)]
@@ -212,7 +212,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::middleware::pipeline::new_pipeline;
+    /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// #[derive(StateData, QueryStringExtractor, StaticResponseExtender)]

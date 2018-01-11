@@ -6,7 +6,6 @@ use std::panic::RefUnwindSafe;
 use handler::HandlerFuture;
 use state::State;
 
-pub mod pipeline;
 pub mod session;
 
 /// `Middleware` has the opportunity to provide additional behaviour to the `Request` / `Response`
