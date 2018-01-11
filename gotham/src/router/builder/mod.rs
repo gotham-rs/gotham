@@ -289,7 +289,7 @@ mod tests {
     use std::sync::Arc;
 
     use hyper::{Request, Response, StatusCode, Method, Uri};
-    use hyper::server::{NewService, Service};
+    use hyper::server::Service;
     use futures::{Future, Stream};
     use tokio_core::reactor::Core;
 
@@ -477,10 +477,7 @@ mod tests {
         let new_service = GothamService::new(Arc::new(router), core.handle());
 
         let mut call = move |req| {
-            let service = new_service
-                .connect("127.0.0.1:10000".parse().unwrap())
-                .new_service()
-                .unwrap();
+            let service = new_service.connect("127.0.0.1:10000".parse().unwrap());
             core.run(service.call(req)).unwrap()
         };
 

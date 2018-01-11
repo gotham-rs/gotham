@@ -14,7 +14,7 @@ use hyper::{self, Body, Method, Request, Response, Uri};
 use hyper::client::{self, Client};
 use hyper::error::UriError;
 use hyper::header::ContentType;
-use hyper::server::{self, Http, NewService};
+use hyper::server::{self, Http};
 use mime;
 use mio;
 use tokio_core::reactor::{Core, PollEvented, Timeout};
@@ -165,7 +165,7 @@ where
         let ss = mio::net::TcpStream::from_stream(ss)?;
         let ss = PollEvented::new(ss, &handle)?;
 
-        let service = self.data.gotham_service.connect(client_addr).new_service()?;
+        let service = self.data.gotham_service.connect(client_addr);
         let f = self.data
             .http
             .serve_connection(ss, service)

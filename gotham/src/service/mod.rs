@@ -1,12 +1,12 @@
 //! Defines the `Service` which is used by a Gotham application to interface to Hyper.
 
-use std::{io, thread};
+use std::thread;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::panic::AssertUnwindSafe;
 
 use hyper;
-use hyper::server::{NewService, Service};
+use hyper::server::Service;
 use hyper::{Request, Response};
 use futures::Future;
 use tokio_core::reactor::Handle;
@@ -33,9 +33,6 @@ impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    /// Creates a `GothamService` for the given `NewHandler`.
-    /// # }
-    /// ```
     pub(super) fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
         GothamService { t, handle }
     }
@@ -56,33 +53,6 @@ where
     t: Arc<T>,
     handle: Handle,
     client_addr: SocketAddr,
-}
-
-impl<T> Clone for ConnectedGothamService<T>
-where
-    T: NewHandler + 'static,
-{
-    fn clone(&self) -> Self {
-        ConnectedGothamService {
-            t: self.t.clone(),
-            handle: self.handle.clone(),
-            client_addr: self.client_addr,
-        }
-    }
-}
-
-impl<T> NewService for ConnectedGothamService<T>
-where
-    T: NewHandler + 'static,
-{
-    type Request = Request;
-    type Response = Response;
-    type Error = hyper::Error;
-    type Instance = Self;
-
-    fn new_service(&self) -> io::Result<Self::Instance> {
-        Ok(self.clone())
-    }
 }
 
 impl<T> Service for ConnectedGothamService<T>
