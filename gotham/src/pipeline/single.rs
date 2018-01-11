@@ -15,8 +15,11 @@ pub type SinglePipelineHandle<C> = Handle<Pipeline<C>, <() as Append<Pipeline<C>
 /// A pipeline chain which contains only the single pipeline in a `SinglePipelineSet`.
 pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
 
-/// Returns a set of pipelines containing a single pipeline, and a chain containing only that
-/// single pipeline.
+/// Creates a single pipeline for use in applications with straightforward use cases for
+/// middleware.
+///
+/// Returns instances of the required PipelineHandleChain and PipelineSet types ready for use with
+/// `build_router`.
 ///
 /// # Examples
 ///
