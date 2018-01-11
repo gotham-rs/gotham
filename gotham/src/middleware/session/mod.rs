@@ -137,19 +137,20 @@ impl SessionCookieConfig {
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// # extern crate bincode;
+/// # extern crate tokio_core;
 /// #
 /// # use std::time::Duration;
-/// # use futures::{future, Future, Stream};
-/// # use gotham::handler::{NewHandlerService, HandlerFuture};
+/// # use futures::future;
+/// # use gotham::handler::HandlerFuture;
 /// # use gotham::state::{State, FromState};
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
 /// #                                   SessionIdentifier};
 /// # use gotham::http::response::create_response;
+/// # use gotham::test::TestServer;
 /// # use hyper::header::Cookie;
-/// # use hyper::server::{Response, Service};
-/// # use hyper::{Request, Method, StatusCode};
-/// # use hyper::mime;
+/// # use hyper::server::Response;
+/// # use hyper::{mime, StatusCode};
 /// #
 /// #[derive(Default, Serialize, Deserialize)]
 /// struct MySessionType {
@@ -184,12 +185,9 @@ impl SessionCookieConfig {
 /// #   let mut cookies = Cookie::new();
 /// #   cookies.set("_gotham_session", identifier.value.clone());
 /// #
-/// #   let mut req = Request::new(Method::Get, "/".parse().unwrap());
-/// #   req.headers_mut().set(cookies);
-/// #
 /// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
 /// #
-/// #   let service = NewHandlerService::new(move || {
+/// #   let new_handler = move || {
 /// #       let handler = |state| {
 /// #           let m = nm.new_middleware().unwrap();
 /// #           let chain = |state| Box::new(future::ok(my_handler(state))) as Box<HandlerFuture>;
@@ -198,17 +196,16 @@ impl SessionCookieConfig {
 /// #       };
 /// #
 /// #       Ok(handler)
-/// #   });
+/// #   };
 /// #
-/// #   let response = service.call(req).wait().unwrap();
-/// #
-/// #   let response_bytes = response
-/// #       .body()
-/// #       .concat2()
-/// #       .wait()
-/// #       .unwrap()
-/// #       .to_vec();
-/// #
+/// #   let test_server = TestServer::new(new_handler).unwrap();
+/// #   let response = test_server
+/// #       .client()
+/// #       .get("http://localhost/")
+/// #       .with_header(cookies)
+/// #       .perform()
+/// #       .unwrap();
+/// #   let response_bytes = response.read_body().unwrap();
 /// #   assert_eq!(String::from_utf8(response_bytes).unwrap(),
 /// #              r#"["a", "b", "c"]"#);
 /// # }

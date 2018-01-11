@@ -7,18 +7,20 @@ use std::cell::RefCell;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
+use std::sync::Arc;
 
 use futures::{future, Future, Stream};
 use hyper::{self, Body, Method, Request, Response, Uri};
 use hyper::client::{self, Client};
 use hyper::error::UriError;
 use hyper::header::ContentType;
-use hyper::server::{self, Http, NewService};
+use hyper::server::{self, Http};
 use mime;
 use mio;
 use tokio_core::reactor::{Core, PollEvented, Timeout};
 
-use handler::{NewHandler, NewHandlerService};
+use handler::NewHandler;
+use service::GothamService;
 use router::Router;
 
 mod request;
@@ -65,7 +67,7 @@ where
     core: RefCell<Core>,
     http: Http,
     timeout: u64,
-    new_service: NewHandlerService<NH>,
+    gotham_service: GothamService<NH>,
 }
 
 /// The `TestRequestError` type represents all error states that can result from evaluating a
@@ -115,11 +117,13 @@ where
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
     pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
         Core::new().map(|core| {
+            let handle = core.handle();
+
             let data = TestServerData {
                 core: RefCell::new(core),
                 http: server::Http::new(),
                 timeout,
-                new_service: NewHandlerService::new(new_handler),
+                gotham_service: GothamService::new(Arc::new(new_handler), handle),
             };
 
             TestServer {
@@ -161,10 +165,14 @@ where
         let ss = mio::net::TcpStream::from_stream(ss)?;
         let ss = PollEvented::new(ss, &handle)?;
 
-        let service = self.data.new_service.new_service()?;
-        self.data
+        let service = self.data.gotham_service.connect(client_addr);
+        let f = self.data
             .http
-            .bind_connection(&handle, ss, client_addr, service);
+            .serve_connection(ss, service)
+            .map(|_| ())
+            .map_err(|_| ());
+
+        handle.spawn(f);
 
         let client = Client::configure()
             .connector(TestConnect {

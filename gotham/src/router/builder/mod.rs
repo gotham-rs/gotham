@@ -286,15 +286,17 @@ mod tests {
     use super::*;
 
     use std::str::FromStr;
+    use std::sync::Arc;
 
     use hyper::{Request, Response, StatusCode, Method, Uri};
-    use hyper::server::{NewService, Service};
+    use hyper::server::Service;
     use futures::{Future, Stream};
+    use tokio_core::reactor::Core;
 
     use pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
     use state::{State, StateData, FromState};
-    use handler::NewHandlerService;
+    use service::GothamService;
     use router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     use router::response::extender::StaticResponseExtender;
     use router::tree::SegmentMapping;
@@ -471,11 +473,12 @@ mod tests {
             route.delegate("/delegated").to_router(delegated_router);
         });
 
-        let new_service = NewHandlerService::new(router);
+        let mut core = Core::new().unwrap();
+        let new_service = GothamService::new(Arc::new(router), core.handle());
 
-        let call = move |req| {
-            let service = new_service.new_service().unwrap();
-            service.call(req).wait().unwrap()
+        let mut call = move |req| {
+            let service = new_service.connect("127.0.0.1:10000".parse().unwrap());
+            core.run(service.call(req)).unwrap()
         };
 
         let response = call(Request::new(Method::Get, "/".parse().unwrap()));

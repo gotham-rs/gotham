@@ -1,13 +1,14 @@
-use std::net::{SocketAddr, ToSocketAddrs, TcpListener};
+use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
 use std::thread;
 use std::sync::Arc;
 
-use hyper::server::{Http, NewService};
+use hyper::server::Http;
 use tokio_core;
 use tokio_core::reactor::Core;
-use futures::Stream;
+use futures::{Future, Stream};
 
-use handler::{NewHandler, NewHandlerService};
+use handler::NewHandler;
+use service::GothamService;
 
 /// Starts a Gotham application, with the given number of threads.
 pub fn start_with_num_threads<NH, A>(addr: A, threads: usize, new_handler: NH)
@@ -18,7 +19,7 @@ where
     let (listener, addr) = super::tcp_listener(addr);
 
     let protocol = Arc::new(Http::new());
-    let service = NewHandlerService::new(new_handler);
+    let new_handler = Arc::new(new_handler);
 
     info!(
         target: "gotham::start",
@@ -30,32 +31,30 @@ where
     for _ in 0..threads - 1 {
         let listener = listener.try_clone().expect("unable to clone TCP listener");
         let protocol = protocol.clone();
-        let service = service.clone();
-        thread::spawn(move || serve(listener, &addr, &protocol, &service));
+        let new_handler = new_handler.clone();
+        thread::spawn(move || serve(listener, &addr, &protocol, new_handler));
     }
 
-    serve(listener, &addr, &protocol, &service);
+    serve(listener, &addr, &protocol, new_handler);
 }
 
-fn serve<NH>(
-    listener: TcpListener,
-    addr: &SocketAddr,
-    protocol: &Http,
-    new_service: &NewHandlerService<NH>,
-) where
+fn serve<NH>(listener: TcpListener, addr: &SocketAddr, protocol: &Http, new_handler: Arc<NH>)
+where
     NH: NewHandler + 'static,
 {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
 
+    let gotham_service = GothamService::new(new_handler, handle.clone());
+
     let listener = tokio_core::net::TcpListener::from_listener(listener, addr, &handle)
         .expect("unable to convert TCP listener to tokio listener");
 
     core.run(listener.incoming().for_each(|(socket, addr)| {
-        match new_service.new_service() {
-            Ok(service) => protocol.bind_connection(&handle, socket, addr, service),
-            Err(e) => error!(" unable to spawn service: {:?}", e),
-        }
+        let service = gotham_service.connect(addr);
+        let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
+
+        handle.spawn(f);
         Ok(())
     })).expect("unable to run reactor over listener");
 }

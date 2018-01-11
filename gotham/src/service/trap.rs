@@ -11,7 +11,7 @@ use futures::Async;
 use futures::future::{self, Future, FutureResult};
 
 use handler::{NewHandler, Handler, HandlerError, IntoResponse};
-use handler::timing::Timer;
+use service::timing::Timer;
 use state::{State, request_id};
 
 pub(super) fn call_handler<T>(

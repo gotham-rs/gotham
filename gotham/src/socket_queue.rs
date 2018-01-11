@@ -1,14 +1,15 @@
-use std::net::{SocketAddr, ToSocketAddrs, TcpListener};
+use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
 use std::thread;
 use std::sync::{Arc, Mutex};
 
-use hyper::server::{Http, NewService};
+use hyper::server::Http;
 use tokio_core;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::Core;
-use futures::{future, task, Future, Stream, Poll, Async};
+use futures::{future, task, Async, Future, Poll, Stream};
 
-use handler::{NewHandler, NewHandlerService};
+use handler::NewHandler;
+use service::GothamService;
 
 use crossbeam::sync::SegQueue;
 
@@ -51,7 +52,7 @@ where
     let (listener, addr) = super::tcp_listener(addr);
 
     let protocol = Arc::new(Http::new());
-    let service = NewHandlerService::new(new_handler);
+    let new_handler = Arc::new(new_handler);
 
     let queue = SocketQueue::new();
 
@@ -69,12 +70,12 @@ where
 
     for _ in 0..threads - 1 {
         let protocol = protocol.clone();
-        let service = service.clone();
         let queue = queue.clone();
-        thread::spawn(move || serve(queue, &protocol, &service));
+        let new_handler = new_handler.clone();
+        thread::spawn(move || serve(queue, &protocol, new_handler));
     }
 
-    serve(queue, &protocol, &service);
+    serve(queue, &protocol, new_handler);
 }
 
 fn listen(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
@@ -88,9 +89,10 @@ fn listen(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
 
     core.run(listener.incoming().for_each(|conn| {
         queue.queue.push(conn);
-        let tasks = queue.notify.lock().expect(
-            "mutex poisoned, futures::task::Task::notify panicked?",
-        );
+        let tasks = queue
+            .notify
+            .lock()
+            .expect("mutex poisoned, futures::task::Task::notify panicked?");
 
         n = (n + 1) % tasks.len();
         tasks[n].notify();
@@ -98,27 +100,28 @@ fn listen(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
     })).expect("unable to run reactor over listener");
 }
 
-fn serve<NH>(queue: SocketQueue, protocol: &Http, new_service: &NewHandlerService<NH>)
+fn serve<NH>(queue: SocketQueue, protocol: &Http, new_handler: Arc<NH>)
 where
     NH: NewHandler + 'static,
 {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
+    let gotham_service = GothamService::new(new_handler, handle.clone());
     let tasks_m = queue.notify.clone();
 
     core.run(
         future::lazy(move || {
-            let mut tasks = tasks_m.lock().expect(
-                "mutex poisoned, futures::task::Task::notify panicked?",
-            );
+            let mut tasks = tasks_m
+                .lock()
+                .expect("mutex poisoned, futures::task::Task::notify panicked?");
             tasks.push(task::current());
             future::ok(())
         }).and_then(|_| {
             queue.for_each(|(socket, addr)| {
-                match new_service.new_service() {
-                    Ok(service) => protocol.bind_connection(&handle, socket, addr, service),
-                    Err(e) => error!(" unable to spawn service: {:?}", e),
-                }
+                let service = gotham_service.connect(addr);
+                let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
+
+                handle.spawn(f);
                 Ok(())
             })
         }),
