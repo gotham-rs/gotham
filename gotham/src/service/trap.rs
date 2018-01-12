@@ -1,7 +1,7 @@
 //! Defines functionality for processing a request and trapping errors and panics in response
 //! generation.
 
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::error::Error;
 use std::any::Any;
 use std::{io, mem};
@@ -10,9 +10,9 @@ use hyper::{self, Response, StatusCode};
 use futures::Async;
 use futures::future::{self, Future, FutureResult};
 
-use handler::{NewHandler, Handler, HandlerError, IntoResponse};
+use handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use service::timing::Timer;
-use state::{State, request_id};
+use state::{request_id, State};
 
 pub(super) fn call_handler<T>(
     t: &T,
@@ -45,9 +45,11 @@ where
     });
 
     match res {
-        Ok(f) => Box::new(UnwindSafeFuture::new(f).catch_unwind().then(
-            finalize_catch_unwind_response,
-        )),
+        Ok(f) => Box::new(
+            UnwindSafeFuture::new(f)
+                .catch_unwind()
+                .then(finalize_catch_unwind_response),
+        ),
         Err(_) => Box::new(finalize_panic_response(timer)),
     }
 }
@@ -80,9 +82,9 @@ fn finalize_error_response(
     {
         // HandlerError::cause() is far more interesting for logging, but the
         // API doesn't guarantee its presence (even though it always is).
-        let err_description = err.cause().map(Error::description).unwrap_or(
-            err.description(),
-        );
+        let err_description = err.cause()
+            .map(Error::description)
+            .unwrap_or(err.description());
 
         error!(
             "[ERROR][{}][Error: {}][{}]",
@@ -175,11 +177,11 @@ mod tests {
 
     use std::io;
 
-    use hyper::{StatusCode, Headers};
+    use hyper::{Headers, StatusCode};
 
     use http::response::create_response;
     use state::set_request_id;
-    use handler::{IntoHandlerError, HandlerFuture};
+    use handler::{HandlerFuture, IntoHandlerError};
 
     #[test]
     fn success() {
@@ -229,9 +231,10 @@ mod tests {
     fn error() {
         let new_handler = || {
             Ok(|state| {
-                Box::new(future::err(
-                    (state, io::Error::last_os_error().into_handler_error()),
-                )) as Box<HandlerFuture>
+                Box::new(future::err((
+                    state,
+                    io::Error::last_os_error().into_handler_error(),
+                ))) as Box<HandlerFuture>
             })
         };
 

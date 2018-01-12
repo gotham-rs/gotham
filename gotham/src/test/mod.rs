@@ -288,11 +288,9 @@ where
     pub fn perform(self, req: Request) -> Result<TestResponse, TestRequestError> {
         self.test_server
             .run_request(self.client.request(req))
-            .map(|response| {
-                TestResponse {
-                    response,
-                    reader: Box::new(self.test_server.clone()),
-                }
+            .map(|response| TestResponse {
+                response,
+                reader: Box::new(self.test_server.clone()),
             })
     }
 }

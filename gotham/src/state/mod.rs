@@ -46,7 +46,9 @@ pub struct State {
 impl State {
     /// Creates a new, empty `State`
     pub fn new() -> State {
-        State { data: HashMap::new() }
+        State {
+            data: HashMap::new(),
+        }
     }
 
     /// Puts a value into the `State` storage. One value of each type is retained. Successive calls
@@ -201,9 +203,8 @@ impl State {
     where
         T: StateData,
     {
-        self.try_borrow().expect(
-            "required type is not present in State container",
-        )
+        self.try_borrow()
+            .expect("required type is not present in State container")
     }
 
     /// Tries to mutably borrow a value from the `State` storage.
@@ -245,9 +246,9 @@ impl State {
     {
         let type_id = TypeId::of::<T>();
         trace!(" mutably borrowing state data for type_id `{:?}`", type_id);
-        self.data.get_mut(&type_id).and_then(
-            |b| b.downcast_mut::<T>(),
-        )
+        self.data
+            .get_mut(&type_id)
+            .and_then(|b| b.downcast_mut::<T>())
     }
 
     /// Mutably borrows a value from the `State` storage.
@@ -292,9 +293,8 @@ impl State {
     where
         T: StateData,
     {
-        self.try_borrow_mut().expect(
-            "required type is not present in State container",
-        )
+        self.try_borrow_mut()
+            .expect("required type is not present in State container")
     }
 
     /// Tries to move a value out of the `State` storage and return ownership.
@@ -380,8 +380,7 @@ impl State {
     where
         T: StateData,
     {
-        self.try_take().expect(
-            "required type is not present in State container",
-        )
+        self.try_take()
+            .expect("required type is not present in State container")
     }
 }

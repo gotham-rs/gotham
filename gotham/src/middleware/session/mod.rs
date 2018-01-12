@@ -10,20 +10,20 @@ use base64;
 use rand::Rng;
 use hyper::StatusCode;
 use hyper::server::Response;
-use hyper::header::{Headers, Cookie, SetCookie};
+use hyper::header::{Cookie, Headers, SetCookie};
 use futures::{future, Future};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use bincode;
 
-use super::{NewMiddleware, Middleware};
-use handler::{HandlerFuture, HandlerError, IntoHandlerError};
-use state::{self, State, FromState, StateData};
+use super::{Middleware, NewMiddleware};
+use handler::{HandlerError, HandlerFuture, IntoHandlerError};
+use state::{self, FromState, State, StateData};
 use http::response::create_response;
 
 mod backend;
 mod rng;
 
-pub use self::backend::{NewBackend, Backend};
+pub use self::backend::{Backend, NewBackend};
 pub use self::backend::memory::MemoryBackend;
 
 /// Represents the session identifier which is held in the user agent's session cookie.
@@ -233,7 +233,9 @@ where
     /// Discards the session, invalidating it for future use and removing the data from the
     /// `Backend`.
     pub fn discard(self, state: &mut State) -> Result<(), SessionError> {
-        state.put(SessionDropData { cookie_config: self.cookie_config });
+        state.put(SessionDropData {
+            cookie_config: self.cookie_config,
+        });
         self.backend.drop_session(self.identifier)
     }
 
@@ -344,7 +346,7 @@ impl StateData for SessionDropData {}
 
 trait SessionTypePhantom<T>: Send + Sync + RefUnwindSafe
 where
-    T: Send
+    T: Send,
 {
 }
 
@@ -426,32 +428,26 @@ where
 impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
 where
     B: NewBackend,
-    T: Default
-        + Serialize
-        + for<'de> Deserialize<'de>
-        + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
     type Instance = SessionMiddleware<B::Instance, T>;
 
     fn new_middleware(&self) -> io::Result<Self::Instance> {
-        self.new_backend.new_backend().map(|backend| {
-            SessionMiddleware {
+        self.new_backend
+            .new_backend()
+            .map(|backend| SessionMiddleware {
                 backend,
                 identifier_rng: self.identifier_rng.clone(),
                 cookie_config: self.cookie_config.clone(),
                 phantom: PhantomData,
-            }
-        })
+            })
     }
 }
 
 impl<B, T> Clone for NewSessionMiddleware<B, T>
 where
     B: NewBackend,
-    T: Default
-        + Serialize
-        + for<'de> Deserialize<'de>
-        + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
     fn clone(&self) -> Self {
         NewSessionMiddleware {
@@ -725,10 +721,7 @@ where
 impl<B, T> Middleware for SessionMiddleware<B, T>
 where
     B: Backend + 'static,
-    T: Default
-        + Serialize
-        + for<'de> Deserialize<'de>
-        + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
     where
@@ -738,8 +731,9 @@ where
         let session_identifier = Headers::borrow_from(&state)
             .get::<Cookie>()
             .and_then(|c| c.get(self.cookie_config.name.as_ref()))
-            .map(|value| SessionIdentifier { value: value.to_owned() });
-
+            .map(|value| SessionIdentifier {
+                value: value.to_owned(),
+            });
 
         match session_identifier {
             Some(id) => {
@@ -786,7 +780,9 @@ where
             Err(PoisonError { .. }) => unreachable!("identifier_rng lock poisoned. Rng panicked?"),
         };
 
-        SessionIdentifier { value: base64::encode_config(&bytes[..], base64::URL_SAFE_NO_PAD) }
+        SessionIdentifier {
+            value: base64::encode_config(&bytes[..], base64::URL_SAFE_NO_PAD),
+        }
     }
 }
 
@@ -833,16 +829,16 @@ fn send_cookie<T>(response: &mut Response, session_data: &SessionData<T>)
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    let cookie_string = session_data.cookie_config.to_cookie_string(
-        &session_data.identifier.value,
-    );
+    let cookie_string = session_data
+        .cookie_config
+        .to_cookie_string(&session_data.identifier.value);
     write_cookie(cookie_string, response);
 }
 
 fn reset_cookie(response: &mut Response, session_drop_data: &SessionDropData) {
-    let cookie_string = session_drop_data.cookie_config.to_cookie_string(
-        "discarded",
-    );
+    let cookie_string = session_drop_data
+        .cookie_config
+        .to_cookie_string("discarded");
     let cookie_string = format!(
         "{}; expires=Thu, 01 Jan 1970 00:00:00 GMT; max-age=0",
         cookie_string
@@ -885,10 +881,9 @@ where
     let identifier = session_data.identifier;
     let slice = &bytes[..];
 
-    let result = session_data.backend.persist_session(
-        identifier.clone(),
-        slice,
-    );
+    let result = session_data
+        .backend
+        .persist_session(identifier.clone(), slice);
 
     match result {
         Ok(_) => {
@@ -971,7 +966,7 @@ mod tests {
     use std::sync::Mutex;
     use std::time::Duration;
     use rand;
-    use hyper::{StatusCode, Response};
+    use hyper::{Response, StatusCode};
     use hyper::header::Headers;
 
     #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -1063,7 +1058,9 @@ mod tests {
         // Without padding that requires 86 base64 characters to represent.
         assert_eq!(identifier.value.len(), 86);
 
-        let session = TestSession { val: rand::random() };
+        let session = TestSession {
+            val: rand::random(),
+        };
         let bytes = bincode::serialize(&session, bincode::Infinite).unwrap();
 
         m.backend
@@ -1083,9 +1080,10 @@ mod tests {
                 session_data.val += 1;
             }
 
-            Box::new(future::ok(
-                (state, Response::new().with_status(StatusCode::Accepted)),
-            )) as Box<HandlerFuture>
+            Box::new(future::ok((
+                state,
+                Response::new().with_status(StatusCode::Accepted),
+            ))) as Box<HandlerFuture>
         };
 
         let mut state = State::new();

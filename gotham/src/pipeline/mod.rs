@@ -7,7 +7,7 @@ use std::panic::RefUnwindSafe;
 
 use handler::HandlerFuture;
 use middleware::{Middleware, NewMiddleware};
-use state::{State, request_id};
+use state::{request_id, State};
 
 /// When using middleware, one or more `Middleware` are combined to form a `Pipeline`.
 /// `Middleware` are invoked strictly in the order they're added to the `Pipeline`.
@@ -172,7 +172,9 @@ where
     /// Constructs an instance of this `Pipeline` by creating all `Middleware` instances required
     /// to serve a request. If any middleware fails creation, its error will be returned.
     pub fn construct(&self) -> io::Result<PipelineInstance<T::Instance>> {
-        Ok(PipelineInstance { chain: self.chain.construct()? })
+        Ok(PipelineInstance {
+            chain: self.chain.construct()?,
+        })
     }
 }
 
@@ -438,12 +440,9 @@ mod tests {
         let number = state.borrow::<Number>().value;
         (
             state,
-            Response::new().with_status(StatusCode::Ok).with_body(
-                format!(
-                    "{}",
-                    number
-                ),
-            ),
+            Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body(format!("{}", number)),
         )
     }
 

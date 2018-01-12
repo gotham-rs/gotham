@@ -77,7 +77,8 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #
 /// # use gotham::http::response::create_response;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set,
+/// #                                       DispatcherImpl};
 /// # use gotham::state::State;
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::tree::TreeBuilder;
@@ -105,7 +106,8 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// #     let methods = vec![Method::Get];
 /// #     let matcher = MethodOnlyRouteMatcher::new(methods);
 /// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-/// #     let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+/// #     let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
+/// #           Extractors::new();
 /// #     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 /// #     Box::new(route)
 ///   };
@@ -116,7 +118,8 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///
 ///   let tree = tree_builder.finalize();
 ///
-///   match tree.traverse(RequestPathSegments::new("/%61ctiv%61te/workflow5").segments().as_slice()) {
+///   let request_path_segments = RequestPathSegments::new("/%61ctiv%61te/workflow5");
+///   match tree.traverse(request_path_segments.segments().as_slice()) {
 ///       Some((path, leaf, segments_processed, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(path.last().unwrap().segment(), leaf.segment());
@@ -153,7 +156,6 @@ impl Tree {
     }
 }
 
-
 /// Constructs a `Tree` which is sorted and immutable.
 pub struct TreeBuilder {
     root: NodeBuilder,
@@ -163,7 +165,9 @@ impl TreeBuilder {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
         trace!(" creating new tree");
-        TreeBuilder { root: NodeBuilder::new("/", SegmentType::Static) }
+        TreeBuilder {
+            root: NodeBuilder::new("/", SegmentType::Static),
+        }
     }
 
     /// Adds a direct child to the root of the `TreeBuilder`.
@@ -192,6 +196,8 @@ impl TreeBuilder {
 
     /// Finalizes and sorts all internal data and creates a Tree for use with a `Router`.
     pub fn finalize(self) -> Tree {
-        Tree { root: self.root.finalize() }
+        Tree {
+            root: self.root.finalize(),
+        }
     }
 }

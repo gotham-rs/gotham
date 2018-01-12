@@ -8,7 +8,7 @@ use std::panic::RefUnwindSafe;
 
 use hyper::{Method, StatusCode};
 
-use state::{State, FromState, request_id};
+use state::{request_id, FromState, State};
 
 /// Determines if pre-defined conditions required for the associated `Route` to be invoked by
 /// the `Router` have been met.

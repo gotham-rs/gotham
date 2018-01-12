@@ -6,7 +6,7 @@ use router::builder::SingleRouteBuilder;
 use router::builder::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
 use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::RouteMatcher;
-use router::route::dispatch::{PipelineHandleChain, DispatcherImpl};
+use router::route::dispatch::{DispatcherImpl, PipelineHandleChain};
 use handler::{Handler, NewHandler};
 
 /// Describes the API for defining a single route, after determining which request paths will be
@@ -257,23 +257,11 @@ pub trait DefineSingleRoute {
 
 impl<'a, M, C, P, PE, QSE> DefineSingleRoute for SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
-    M: RouteMatcher
-        + Send
-        + Sync
-        + 'static,
-    C: PipelineHandleChain<P>
-        + Send
-        + Sync
-        + 'static,
+    M: RouteMatcher + Send + Sync + 'static,
+    C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor
-        + Send
-        + Sync
-        + 'static,
-    QSE: QueryStringExtractor
-        + Send
-        + Sync
-        + 'static,
+    PE: PathExtractor + Send + Sync + 'static,
+    QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     fn to<H>(self, handler: H)
     where
@@ -303,8 +291,9 @@ where
         self.replace_path_extractor()
     }
 
-    fn with_query_string_extractor<NQSE>(self)
-        -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
+    fn with_query_string_extractor<NQSE>(
+        self,
+    ) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
     where
         NQSE: QueryStringExtractor + Send + Sync + 'static,
     {

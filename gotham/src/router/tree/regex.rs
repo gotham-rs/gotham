@@ -3,7 +3,7 @@
 use regex::Regex;
 
 use std::cmp::Ordering;
-use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::process;
 
 /// A unwind-safe wrapper for Regex that implements PartialEq, Eq, PartialOrd, and Ord.  These
@@ -23,9 +23,7 @@ impl ConstrainedSegmentRegex {
     /// intended.
     pub fn new(regex: &str) -> Self {
         ConstrainedSegmentRegex {
-            regex: AssertUnwindSafe(
-                Regex::new(&format!("^{pattern}$", pattern = regex)).unwrap(),
-            ),
+            regex: AssertUnwindSafe(Regex::new(&format!("^{pattern}$", pattern = regex)).unwrap()),
         }
     }
 
@@ -66,7 +64,11 @@ impl Ord for ConstrainedSegmentRegex {
 
 impl Clone for ConstrainedSegmentRegex {
     fn clone(&self) -> ConstrainedSegmentRegex {
-        let ConstrainedSegmentRegex { regex: AssertUnwindSafe(ref regex) } = *self;
-        ConstrainedSegmentRegex { regex: AssertUnwindSafe(regex.clone()) }
+        let ConstrainedSegmentRegex {
+            regex: AssertUnwindSafe(ref regex),
+        } = *self;
+        ConstrainedSegmentRegex {
+            regex: AssertUnwindSafe(regex.clone()),
+        }
     }
 }

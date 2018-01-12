@@ -1,4 +1,4 @@
-use rand::{Rng, OsRng, SeedableRng};
+use rand::{OsRng, Rng, SeedableRng};
 use rand::reseeding::{Reseeder, ReseedingRng};
 use rand::chacha::ChaChaRng;
 
@@ -26,7 +26,7 @@ pub fn session_identifier_rng() -> SessionIdentifierRng {
         Err(e) => {
             error!(
                 "Backend::random_identifier failed at rand::OsRng::new(), \
-                    is the system RNG missing? {:?}",
+                 is the system RNG missing? {:?}",
                 e
             );
             unreachable!("no rng available, this should never happen");

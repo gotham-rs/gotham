@@ -1,10 +1,10 @@
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
-use hyper::{StatusCode, Response};
+use hyper::{Response, StatusCode};
 
 use handler::IntoResponse;
-use state::{State, request_id};
+use state::{request_id, State};
 use http::response::create_response;
 
 /// Describes an error which occurred during handler execution, and allows the creation of a HTTP
@@ -122,9 +122,9 @@ impl IntoResponse for HandlerError {
             "[{}] HandlerError generating HTTP response with status: {} {}",
             request_id(state),
             self.status_code.as_u16(),
-            self.status_code.canonical_reason().unwrap_or(
-                "(unregistered)",
-            )
+            self.status_code
+                .canonical_reason()
+                .unwrap_or("(unregistered)",)
         );
 
         create_response(state, self.status_code, None)

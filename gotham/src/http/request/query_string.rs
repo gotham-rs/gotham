@@ -89,6 +89,8 @@ pub fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
 
             QueryStringMapping { data }
         }
-        None => QueryStringMapping { data: HashMap::new() },
+        None => QueryStringMapping {
+            data: HashMap::new(),
+        },
     }
 }

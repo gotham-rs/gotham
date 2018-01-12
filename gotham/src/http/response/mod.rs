@@ -1,11 +1,11 @@
 //! Helpers for HTTP Response generation
 
-use hyper::{Response, StatusCode, Method};
-use hyper::header::{ContentType, ContentLength};
+use hyper::{Method, Response, StatusCode};
+use hyper::header::{ContentLength, ContentType};
 use mime::Mime;
 
-use state::{State, FromState, request_id};
-use http::header::{XRequestId, XFrameOptions, XXssProtection, XContentTypeOptions};
+use state::{request_id, FromState, State};
+use http::header::{XContentTypeOptions, XFrameOptions, XRequestId, XXssProtection};
 
 type Body = (Vec<u8>, Mime);
 

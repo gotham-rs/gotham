@@ -1,12 +1,12 @@
-use std::sync::{Arc, Weak, Mutex, PoisonError};
-use std::time::{Instant, Duration};
+use std::sync::{Arc, Mutex, PoisonError, Weak};
+use std::time::{Duration, Instant};
 use std::{io, thread};
 
 use linked_hash_map::LinkedHashMap;
 use futures::future;
 
 use middleware::session::{SessionError, SessionIdentifier};
-use middleware::session::backend::{NewBackend, Backend, SessionFuture};
+use middleware::session::backend::{Backend, NewBackend, SessionFuture};
 
 /// Defines the in-process memory based session storage.
 ///
@@ -91,15 +91,13 @@ impl Backend for MemoryBackend {
 
     fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture> {
         match self.storage.lock() {
-            Ok(mut storage) => {
-                match storage.get_refresh(&identifier.value) {
-                    Some(&mut (ref mut instant, ref value)) => {
-                        *instant = Instant::now();
-                        Box::new(future::ok(Some(value.clone())))
-                    }
-                    None => Box::new(future::ok(None)),
+            Ok(mut storage) => match storage.get_refresh(&identifier.value) {
+                Some(&mut (ref mut instant, ref value)) => {
+                    *instant = Instant::now();
+                    Box::new(future::ok(Some(value.clone())))
                 }
-            }
+                None => Box::new(future::ok(None)),
+            },
             Err(PoisonError { .. }) => {
                 unreachable!("session memory backend lock poisoned, HashMap panicked?")
             }
@@ -197,10 +195,10 @@ mod tests {
     fn cleanup_test() {
         let mut storage = LinkedHashMap::new();
 
-        storage.insert("abcd".to_owned(), (
-            Instant::now() - Duration::from_secs(2),
-            vec![],
-        ));
+        storage.insert(
+            "abcd".to_owned(),
+            (Instant::now() - Duration::from_secs(2), vec![]),
+        );
 
         cleanup_once(&mut storage, Duration::from_secs(1));
         assert!(storage.is_empty());
@@ -221,7 +219,9 @@ mod tests {
     fn memory_backend_test() {
         let new_backend = MemoryBackend::new(Duration::from_millis(100));
         let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
-        let identifier = SessionIdentifier { value: "totally_random_identifier".to_owned() };
+        let identifier = SessionIdentifier {
+            value: "totally_random_identifier".to_owned(),
+        };
 
         new_backend
             .new_backend()
@@ -244,14 +244,17 @@ mod tests {
     fn memory_backend_refresh_test() {
         let new_backend = MemoryBackend::new(Duration::from_millis(100));
         let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
-        let identifier = SessionIdentifier { value: "totally_random_identifier".to_owned() };
+        let identifier = SessionIdentifier {
+            value: "totally_random_identifier".to_owned(),
+        };
         let bytes2: Vec<u8> = (0..64).map(|_| rand::random()).collect();
-        let identifier2 =
-            SessionIdentifier { value: "another_totally_random_identifier".to_owned() };
+        let identifier2 = SessionIdentifier {
+            value: "another_totally_random_identifier".to_owned(),
+        };
 
-        let backend = new_backend.new_backend().expect(
-            "can't create backend for write",
-        );
+        let backend = new_backend
+            .new_backend()
+            .expect("can't create backend for write");
 
         backend
             .persist_session(identifier.clone(), &bytes[..])
@@ -274,9 +277,10 @@ mod tests {
             );
         }
 
-        backend.read_session(identifier.clone()).wait().expect(
-            "failed to read session",
-        );
+        backend
+            .read_session(identifier.clone())
+            .wait()
+            .expect("failed to read session");
 
         {
             // Identifiers have swapped

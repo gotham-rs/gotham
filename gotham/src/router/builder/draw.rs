@@ -7,8 +7,8 @@ use router::route::dispatch::{PipelineHandleChain, PipelineSet};
 use router::route::matcher::MethodOnlyRouteMatcher;
 use router::request::path::NoopPathExtractor;
 use router::request::query_string::NoopQueryStringExtractor;
-use router::builder::{SingleRouteBuilder, RouterBuilder, ScopeBuilder, DelegateRouteBuilder};
-use router::tree::node::{SegmentType, NodeBuilder};
+use router::builder::{DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder};
+use router::tree::node::{NodeBuilder, SegmentType};
 use router::tree::regex::ConstrainedSegmentRegex;
 
 /// The default type returned when building a single route. See
@@ -425,11 +425,7 @@ where
 
 impl<'a, C, P> DrawRoutes<C, P> for RouterBuilder<'a, C, P>
 where
-    C: PipelineHandleChain<P>
-        + Copy
-        + Send
-        + Sync
-        + 'static,
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
     fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
@@ -443,11 +439,7 @@ where
 
 impl<'a, C, P> DrawRoutes<C, P> for ScopeBuilder<'a, C, P>
 where
-    C: PipelineHandleChain<P>
-        + Copy
-        + Send
-        + Sync
-        + 'static,
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
     fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {

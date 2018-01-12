@@ -5,9 +5,9 @@ use std::panic::RefUnwindSafe;
 use borrow_bag::{BorrowBag, Handle, Lookup};
 use futures::future;
 
-use handler::{Handler, NewHandler, HandlerFuture, IntoHandlerError};
+use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
 use pipeline::{NewMiddlewareChain, Pipeline};
-use state::{State, request_id};
+use state::{request_id, State};
 
 /// Represents the set of all `Pipeline` instances that are available for use with `Routes`.
 pub type PipelineSet<P> = Arc<BorrowBag<P>>;
@@ -57,8 +57,10 @@ where
     /// Creates a new `DispatcherImpl`.
     ///
     /// * `new_handler` - The `Handler` that will be called once the `pipeline_chain` is complete.
-    /// * `pipeline_chain` - A chain of `Pipeline` instance handles that indicate which `Pipelines` will be invoked.
-    /// * `pipelines` - All `Pipeline` instances, accessible by the handles provided in `pipeline_chain`.
+    /// * `pipeline_chain` - A chain of `Pipeline` instance handles that indicate which `Pipelines`
+    ///   will be invoked.
+    /// * `pipelines` - All `Pipeline` instances, accessible by the handles provided in
+    ///   `pipeline_chain`.
     ///
     pub fn new(new_handler: H, pipeline_chain: C, pipelines: PipelineSet<P>) -> Self {
         DispatcherImpl {
@@ -80,11 +82,8 @@ where
         match self.new_handler.new_handler() {
             Ok(h) => {
                 trace!("[{}] cloning handler", request_id(&state));
-                self.pipeline_chain.call(
-                    &self.pipelines,
-                    state,
-                    move |state| h.handle(state),
-                )
+                self.pipeline_chain
+                    .call(&self.pipelines, state, move |state| h.handle(state))
             }
             Err(e) => {
                 trace!("[{}] error cloning handler", request_id(&state));
@@ -165,12 +164,9 @@ mod tests {
         let number = state.borrow::<Number>().value;
         (
             state,
-            Response::new().with_status(StatusCode::Ok).with_body(
-                format!(
-                    "{}",
-                    number
-                ),
-            ),
+            Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body(format!("{}", number)),
         )
     }
 

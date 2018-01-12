@@ -5,7 +5,7 @@ use std::error::Error;
 use std::fmt;
 use std::string::ParseError;
 use std::str::ParseBoolError;
-use std::num::{ParseIntError, ParseFloatError};
+use std::num::{ParseFloatError, ParseIntError};
 
 use hyper::Response;
 
@@ -97,32 +97,42 @@ where
 
 impl From<ParseIntError> for FromRequestPathError {
     fn from(err: ParseIntError) -> FromRequestPathError {
-        FromRequestPathError { description: err.description().to_string() }
+        FromRequestPathError {
+            description: err.description().to_string(),
+        }
     }
 }
 
 impl From<ParseFloatError> for FromRequestPathError {
     fn from(err: ParseFloatError) -> FromRequestPathError {
-        FromRequestPathError { description: err.description().to_string() }
+        FromRequestPathError {
+            description: err.description().to_string(),
+        }
     }
 }
 
 impl From<ParseBoolError> for FromRequestPathError {
     fn from(err: ParseBoolError) -> FromRequestPathError {
-        FromRequestPathError { description: err.description().to_string() }
+        FromRequestPathError {
+            description: err.description().to_string(),
+        }
     }
 }
 
 impl From<ParseError> for FromRequestPathError {
     fn from(err: ParseError) -> FromRequestPathError {
-        FromRequestPathError { description: err.description().to_string() }
+        FromRequestPathError {
+            description: err.description().to_string(),
+        }
     }
 }
 
 macro_rules! fstr {
     ($($t:ident),*) => { $(
         impl FromRequestPath for $t {
-            fn from_request_path(segments: &[&PercentDecoded]) -> Result<Self, FromRequestPathError> {
+            fn from_request_path(
+                segments: &[&PercentDecoded]
+            ) -> Result<Self, FromRequestPathError> {
                 if segments.len() == 1 {
                     Ok($t::from_str(segments[0].val())?)
                 } else {
