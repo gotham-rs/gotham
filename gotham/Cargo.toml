@@ -1,6 +1,6 @@
 [package]
 name = "gotham"
-version = "0.1.2" # Alter html_root_url in lib.rs also
+version = "0.2.0-dev" # Alter html_root_url in lib.rs also
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
            "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 description = "A flexible web framework that does not sacrifice safety, security or speed."
