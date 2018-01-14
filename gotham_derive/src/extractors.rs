@@ -14,18 +14,19 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
     let struct_name = struct_name_token.as_str();
 
     quote! {
-        impl #borrowed gotham::router::request::path::PathExtractor for #name #borrowed
+        impl #borrowed ::gotham::router::request::path::PathExtractor for #name #borrowed
              #where_clause
         {
-            fn extract(s: &mut gotham::state::State, mut sm: gotham::router::tree::SegmentMapping)
-                -> Result<(), String>
-            {
+            fn extract(
+                s: &mut ::gotham::state::State,
+                mut sm: ::gotham::router::tree::SegmentMapping
+            ) -> Result<(), String> {
                 fn parse<T>(
-                    s: &gotham::state::State,
-                    segments: Option<&Vec<&gotham::http::PercentDecoded>>
+                    s: &::gotham::state::State,
+                    segments: Option<&Vec<&::gotham::http::PercentDecoded>>
                 ) -> Result<T, String>
                 where
-                    T: gotham::router::request::path::FromRequestPath,
+                    T: ::gotham::router::request::path::FromRequestPath,
                 {
                     let struct_name = #struct_name;
                     match segments {
@@ -33,13 +34,13 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
                             match T::from_request_path(segments.as_slice()) {
                                 Ok(val) => {
                                     trace!("[{}] extracted request path segment(s) into {}",
-                                           gotham::state::request_id(s), struct_name);
+                                           ::gotham::state::request_id(s), struct_name);
                                     Ok(val)
                                 }
                                 Err(_) => {
                                     error!("[{}] unrecoverable error converting request path \
                                             segment(s) into {}",
-                                           gotham::state::request_id(s), struct_name);
+                                           ::gotham::state::request_id(s), struct_name);
                                     Err(String::from("unrecoverable error converting request path"))
                                 }
                             }
@@ -89,17 +90,17 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
     let struct_name = struct_name_token.as_str();
 
     quote! {
-        impl #borrowed gotham::router::request::query_string::QueryStringExtractor for #name
+        impl #borrowed ::gotham::router::request::query_string::QueryStringExtractor for #name
             #borrowed #where_clause
         {
-            fn extract(s: &mut gotham::state::State) -> Result<(), String> {
+            fn extract(s: &mut ::gotham::state::State) -> Result<(), String> {
                 fn parse<T>(
-                    s: &gotham::state::State,
+                    s: &::gotham::state::State,
                     key: &str,
-                    values: Option<&Vec<gotham::http::FormUrlDecoded>>
+                    values: Option<&Vec<::gotham::http::FormUrlDecoded>>
                 ) -> Result<T, String>
                 where
-                    T: gotham::router::request::query_string::FromQueryString,
+                    T: ::gotham::router::request::query_string::FromQueryString,
                 {
                     let struct_name = #struct_name;
                     match values {
@@ -107,12 +108,12 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
                             match T::from_query_string(key, values.as_slice()) {
                                 Ok(val) => {
                                     trace!("[{}] extracted query string value(s) into {}",
-                                           gotham::state::request_id(&s), struct_name);
+                                           ::gotham::state::request_id(&s), struct_name);
                                     Ok(val)
                                 }
                                 Err(_) => {
                                     error!("[{}] unrecoverable error converting query string value(s) into {}",
-                                           gotham::state::request_id(&s), struct_name);
+                                           ::gotham::state::request_id(&s), struct_name);
                                     Err(String::from("unrecoverable error converting query string"))
                                 }
                             }
@@ -122,13 +123,14 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
                 }
 
                 let mut qsm = {
-                    use gotham::state::FromState;
-                    let uri = hyper::Uri::borrow_from(s);
+                    use ::gotham::state::FromState;
+                    let uri = ::hyper::Uri::borrow_from(s);
                     let query = uri.query();
-                    gotham::http::request::query_string::split(query)
+                    ::gotham::http::request::query_string::split(query)
                 };
 
-                trace!("[{}] query string mappings recieved from client: {:?}", gotham::state::request_id(s), qsm);
+                trace!("[{}] query string mappings recieved from client: {:?}",
+                       ::gotham::state::request_id(s), qsm);
 
                 // Add an empty Vec for Optional segments that have not been provided.
                 //
@@ -142,14 +144,16 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
                     }
                 }
 
-                trace!("[{}] query string mappings to be parsed: {:?}", gotham::state::request_id(s), qsm);
+                trace!("[{}] query string mappings to be parsed: {:?}",
+                       ::gotham::state::request_id(s), qsm);
 
                 let qss = #name {
                     #(
                         #fields: parse(s, #keys, qsm.get(#keys2))?,
                      )*
                 };
-                trace!("[{}] query string struct created and stored in state", gotham::state::request_id(s));
+                trace!("[{}] query string struct created and stored in state",
+                       ::gotham::state::request_id(s));
 
                 s.put(qss);
                 Ok(())
