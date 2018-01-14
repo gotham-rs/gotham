@@ -46,16 +46,9 @@ pub mod router;
 mod service;
 pub mod state;
 pub mod test;
+mod os;
 
-#[cfg(not(windows))]
-mod clone_sockets;
-#[cfg(not(windows))]
-pub use clone_sockets::start_with_num_threads;
-
-#[cfg(windows)]
-mod socket_queue;
-#[cfg(windows)]
-pub use socket_queue::start_with_num_threads;
+pub use os::current::start_with_num_threads;
 
 use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
 use handler::NewHandler;
