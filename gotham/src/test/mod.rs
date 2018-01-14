@@ -244,6 +244,11 @@ impl<NH> TestClient<NH>
 where
     NH: NewHandler + 'static,
 {
+    /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
+    pub fn head(self, uri: &str) -> RequestBuilder<NH> {
+        self.build_request(Method::Head, uri)
+    }
+
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
     pub fn get(self, uri: &str) -> RequestBuilder<NH> {
         self.build_request(Method::Get, uri)
@@ -272,6 +277,56 @@ where
         self.build_request_uri(Method::Post, uri)
             .with_body(body)
             .with_header(ContentType(content_type))
+    }
+
+    /// Parse the URI and begin constructing a PUT request using this `TestClient`.
+    pub fn put<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request(Method::Put, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Begin constructing a PUT request using this `TestClient`.
+    pub fn put_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request_uri(Method::Put, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Parse the URI and begin constructing a PATCH request using this `TestClient`.
+    pub fn patch<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request(Method::Patch, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Begin constructing a PATCH request using this `TestClient`.
+    pub fn patch_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request_uri(Method::Patch, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Parse the URI and begin constructing a DELETE request using this `TestClient`.
+    pub fn delete(self, uri: &str) -> RequestBuilder<NH> {
+        self.build_request(Method::Delete, uri)
+    }
+
+    /// Begin constructing a DELETE request using this `TestClient`.
+    pub fn delete_uri(self, uri: Uri) -> RequestBuilder<NH> {
+        self.build_request_uri(Method::Delete, uri)
     }
 
     /// Parse the URI and begin constructing a request with the given HTTP method.
