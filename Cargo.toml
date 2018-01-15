@@ -10,4 +10,5 @@ members = [
 
     "examples/hello_world",
     "examples/hello_router",
+    "examples/basic_router",
 ]
