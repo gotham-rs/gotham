@@ -7,7 +7,8 @@ use router::route::dispatch::{PipelineHandleChain, PipelineSet};
 use router::route::matcher::MethodOnlyRouteMatcher;
 use router::request::path::NoopPathExtractor;
 use router::request::query_string::NoopQueryStringExtractor;
-use router::builder::{DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder};
+use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
+                      SingleRouteBuilder};
 use router::tree::node::{NodeBuilder, SegmentType};
 use router::tree::regex::ConstrainedSegmentRegex;
 
@@ -419,6 +420,22 @@ where
             pipeline_chain: (),
             pipelines: pipelines.clone(),
         }
+    }
+
+    fn associate<'b, F>(&'b mut self, path: &str, f: F)
+    where
+        F: FnOnce(&mut AssociatedRouteBuilder<'b, C, P>),
+    {
+        let (node_builder, pipeline_chain, pipelines) = self.component_refs();
+        let node_builder = descend(node_builder, path);
+
+        let mut builder = AssociatedRouteBuilder {
+            node_builder,
+            pipeline_chain: *pipeline_chain,
+            pipelines: pipelines.clone(),
+        };
+
+        f(&mut builder)
     }
 
     /// Return the components that comprise this builder. For internal use only.

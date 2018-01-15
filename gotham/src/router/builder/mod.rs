@@ -7,14 +7,14 @@ mod replace;
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use hyper::StatusCode;
+use hyper::{Method, StatusCode};
 
 use router::Router;
 use router::tree::TreeBuilder;
 use router::response::extender::ResponseExtender;
 use router::response::finalizer::ResponseFinalizerBuilder;
 use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::matcher::RouteMatcher;
+use router::route::matcher::{MethodOnlyRouteMatcher, RouteMatcher};
 use router::route::matcher::any::AnyRouteMatcher;
 use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl,
                               PipelineHandleChain, PipelineSet};
@@ -267,6 +267,83 @@ where
     }
 }
 
+/// Implements the methods required for associating a number of routes with a single path. See
+/// `DrawRoutes::associated`.
+pub struct AssociatedRouteBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + 'static,
+{
+    node_builder: &'a mut NodeBuilder,
+    pipeline_chain: C,
+    pipelines: PipelineSet<P>,
+}
+
+impl<'a, C, P> AssociatedRouteBuilder<'a, C, P>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + 'static,
+{
+    /// Associates a route which matches `GET` and `HEAD` requests with the current path.
+    pub fn request<'b>(&'b mut self, methods: Vec<Method>) -> DefaultSingleRouteBuilder<'b, C, P> {
+        let AssociatedRouteBuilder {
+            ref mut node_builder,
+            ref pipeline_chain,
+            ref pipelines,
+        } = *self;
+
+        let matcher = MethodOnlyRouteMatcher::new(methods);
+
+        SingleRouteBuilder {
+            matcher,
+            node_builder: *node_builder,
+            pipeline_chain: *pipeline_chain,
+            pipelines: pipelines.clone(),
+            phantom: PhantomData,
+        }
+    }
+
+    /// Associates a route which matches `HEAD` requests to the current path.
+    pub fn head<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Head])
+    }
+
+    /// Associates a route which matches `GET` or `HEAD` requests to the current path.
+    pub fn get_or_head<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Get, Method::Head])
+    }
+
+    /// Associates a route which matches `GET` requests to the current path.
+    pub fn get<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Get])
+    }
+
+    /// Associates a route which matches `POST` requests to the current path.
+    pub fn post<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Post])
+    }
+
+    /// Associates a route which matches `PUT` requests to the current path.
+    pub fn put<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Put])
+    }
+
+    /// Associates a route which matches `PATCH` requests to the current path.
+    pub fn patch<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Patch])
+    }
+
+    /// Associates a route which matches `DELETE` requests to the current path.
+    pub fn delete<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Delete])
+    }
+
+    /// Associates a route which matches `OPTIONS` requests to the current path.
+    pub fn options<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+        self.request(vec![Method::Options])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -403,6 +480,31 @@ mod tests {
         }
     }
 
+    mod resource {
+        use super::*;
+        pub fn create(state: State) -> (State, Response) {
+            let response = Response::new().with_status(StatusCode::Created);
+            (state, response)
+        }
+
+        pub fn destroy(state: State) -> (State, Response) {
+            let response = Response::new().with_status(StatusCode::Accepted);
+            (state, response)
+        }
+
+        pub fn show(state: State) -> (State, Response) {
+            let response = Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body("It's a resource.");
+            (state, response)
+        }
+
+        pub fn update(state: State) -> (State, Response) {
+            let response = Response::new().with_status(StatusCode::Accepted);
+            (state, response)
+        }
+    }
+
     mod api {
         use super::*;
         pub fn submit(state: State) -> (State, Response) {
@@ -451,6 +553,13 @@ mod tests {
 
             route.scope("/api", |route| {
                 route.post("/submit").to(api::submit);
+            });
+
+            route.associate("/resource", |route| {
+                route.post().to(resource::create);
+                route.patch().to(resource::update);
+                route.delete().to(resource::destroy);
+                route.get_or_head().to(resource::show);
             });
 
             route.delegate("/delegated").to_router(delegated_router);
@@ -514,5 +623,19 @@ mod tests {
         assert_eq!(response.status(), StatusCode::Ok);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "16 + 71 = 87");
+
+        let response = call(Request::new(Method::Post, "/resource".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::Created);
+
+        let response = call(Request::new(Method::Patch, "/resource".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::Accepted);
+
+        let response = call(Request::new(Method::Delete, "/resource".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::Accepted);
+
+        let response = call(Request::new(Method::Get, "/resource".parse().unwrap()));
+        assert_eq!(response.status(), StatusCode::Ok);
+        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        assert_eq!(&response_bytes[..], b"It's a resource.");
     }
 }
