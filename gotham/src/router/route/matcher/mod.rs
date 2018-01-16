@@ -15,6 +15,14 @@ use state::{request_id, FromState, State};
 pub trait RouteMatcher: RefUnwindSafe {
     /// Determines if the `Request` meets pre-defined conditions.
     fn is_match(&self, state: &State) -> Result<(), StatusCode>;
+
+    /// Determines the set of HTTP methods which should be added into a 405 response that
+    /// considered this `RouteMatcher`.
+    ///
+    /// This is **only** used to inform the `Allow` header which is sent for a 405 response, and
+    /// may not be suitable for other purposes. In particular, matchers which don't restrict the
+    /// HTTP method may return an empty `Vec`.
+    fn allow_header_method_list(&self) -> Vec<Method>;
 }
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with one
@@ -70,5 +78,9 @@ impl RouteMatcher for MethodOnlyRouteMatcher {
             );
             Err(StatusCode::MethodNotAllowed)
         }
+    }
+
+    fn allow_header_method_list(&self) -> Vec<Method> {
+        self.methods.clone()
     }
 }

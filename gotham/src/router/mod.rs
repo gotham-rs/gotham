@@ -11,6 +11,7 @@ use std::sync::Arc;
 
 use futures::{future, Future};
 use hyper::{Response, StatusCode};
+use hyper::header::Allow;
 
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use http::request::path::RequestPathSegments;
@@ -108,7 +109,13 @@ impl Handler for Router {
                         },
                         Err(status) => {
                             trace!("[{}] responding with error status", request_id(&state));
-                            let res = create_response(&state, status, None);
+                            let mut res = create_response(&state, status, None);
+
+                            if let StatusCode::MethodNotAllowed = status {
+                                res.headers_mut()
+                                    .set(Allow(leaf.allow_header_method_list()));
+                            }
+
                             Box::new(future::ok((state, res)))
                         }
                     }
@@ -214,6 +221,7 @@ mod tests {
     use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl};
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;
+    use router::builder::*;
     use state::set_request_id;
     use handler::HandlerError;
 
@@ -259,6 +267,25 @@ mod tests {
             }
             Err(_) => panic!("Router should have handled request"),
         };
+    }
+
+    #[test]
+    fn allow_header_if_method_not_allowed() {
+        let router = build_simple_router(|route| {
+            route.get_or_head("/test").to(handler);
+            route.delete("/test").to(handler);
+            route.options("/test/2").to(handler);
+        });
+
+        let (_state, res) = send_request(router, Method::Options, "https://test.gotham.rs/test")
+            .map_err(|_| ())
+            .unwrap();
+
+        assert_eq!(StatusCode::MethodNotAllowed, res.status());
+        assert_eq!(
+            vec![Method::Delete, Method::Get, Method::Head],
+            **res.headers().get::<Allow>().unwrap()
+        )
     }
 
     #[test]

@@ -1,6 +1,6 @@
 //! Defines the type `AnyRouteMatcher`
 
-use hyper::StatusCode;
+use hyper::{Method, StatusCode};
 
 use router::route::RouteMatcher;
 use state::State;
@@ -35,5 +35,9 @@ impl AnyRouteMatcher {
 impl RouteMatcher for AnyRouteMatcher {
     fn is_match(&self, _state: &State) -> Result<(), StatusCode> {
         Ok(())
+    }
+
+    fn allow_header_method_list(&self) -> Vec<Method> {
+        vec![]
     }
 }
