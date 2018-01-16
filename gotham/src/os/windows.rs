@@ -82,7 +82,7 @@ where
 fn start_listen_core(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
-    core.run(listen(listener, addr, queue, handle))
+    core.run(listen(listener, addr, queue, &handle))
         .expect("unable to run reactor over listener");
 }
 
@@ -90,9 +90,9 @@ fn listen(
     listener: TcpListener,
     addr: SocketAddr,
     queue: SocketQueue,
-    handle: Handle,
+    handle: &Handle,
 ) -> Box<Future<Item = (), Error = io::Error>> {
-    let listener = tokio_core::net::TcpListener::from_listener(listener, &addr, &handle)
+    let listener = tokio_core::net::TcpListener::from_listener(listener, &addr, handle)
         .expect("unable to convert TCP listener to tokio listener");
 
     let mut n: usize = 0;
@@ -116,7 +116,7 @@ where
 {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
-    core.run(serve(queue, protocol, new_handler, handle))
+    core.run(serve(queue, protocol, new_handler, &handle))
         .expect("unable to run reactor for work stealing");
 }
 
@@ -124,7 +124,7 @@ fn serve<'a, NH>(
     queue: SocketQueue,
     protocol: &'a Http,
     new_handler: Arc<NH>,
-    handle: Handle,
+    handle: &'a Handle,
 ) -> Box<Future<Item = (), Error = ()> + 'a>
 where
     NH: NewHandler + 'static,

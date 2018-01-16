@@ -45,7 +45,7 @@ where
 {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
-    core.run(serve(listener, addr, protocol, new_handler, handle))
+    core.run(serve(listener, addr, protocol, new_handler, &handle))
         .expect("unable to run reactor over listener");
 }
 
@@ -54,14 +54,14 @@ fn serve<'a, NH>(
     addr: &SocketAddr,
     protocol: &'a Http,
     new_handler: Arc<NH>,
-    handle: Handle,
+    handle: &'a Handle,
 ) -> Box<Future<Item = (), Error = io::Error> + 'a>
 where
     NH: NewHandler + 'static,
 {
     let gotham_service = GothamService::new(new_handler, handle.clone());
 
-    let listener = tokio_core::net::TcpListener::from_listener(listener, addr, &handle)
+    let listener = tokio_core::net::TcpListener::from_listener(listener, addr, handle)
         .expect("unable to convert TCP listener to tokio listener");
 
     Box::new(listener.incoming().for_each(move |(socket, addr)| {
