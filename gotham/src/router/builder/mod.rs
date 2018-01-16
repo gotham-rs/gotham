@@ -284,7 +284,35 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    /// Associates a route which matches `GET` and `HEAD` requests with the current path.
+    /// Associates a route which matches requests with any of the specified methods, to the current
+    /// path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::{Response, Method};
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.request(vec![Method::Get, Method::Head, Method::Post]).to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     pub fn request<'b>(&'b mut self, methods: Vec<Method>) -> DefaultSingleRouteBuilder<'b, C, P> {
         let AssociatedRouteBuilder {
             ref mut node_builder,
@@ -304,41 +332,257 @@ where
     }
 
     /// Associates a route which matches `HEAD` requests to the current path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.head().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     pub fn head<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Head])
     }
 
     /// Associates a route which matches `GET` or `HEAD` requests to the current path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.get_or_head().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     pub fn get_or_head<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Get, Method::Head])
     }
 
     /// Associates a route which matches `GET` requests to the current path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.get().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     pub fn get<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Get])
     }
 
     /// Associates a route which matches `POST` requests to the current path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.post().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     pub fn post<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Post])
     }
 
     /// Associates a route which matches `PUT` requests to the current path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.put().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     pub fn put<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Put])
     }
 
     /// Associates a route which matches `PATCH` requests to the current path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.patch().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     pub fn patch<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Patch])
     }
 
     /// Associates a route which matches `DELETE` requests to the current path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.delete().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     pub fn delete<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Delete])
     }
 
     /// Associates a route which matches `OPTIONS` requests to the current path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.options().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     pub fn options<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::Options])
     }

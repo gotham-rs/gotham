@@ -422,6 +422,50 @@ where
         }
     }
 
+    /// Begins associating routes with a fixed path in the tree. In this way, multiple routes can
+    /// be quickly associated with a single location.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// mod resource {
+    /// #   use super::*;
+    ///     pub fn show(_state: State) -> (State, Response) {
+    ///         // Implementation elided.
+    /// #       unimplemented!()
+    ///     }
+    ///
+    ///     pub fn update(_state: State) -> (State, Response) {
+    ///         // Implementation elided.
+    /// #       unimplemented!()
+    ///     }
+    ///
+    ///     pub fn delete(_state: State) -> (State, Response) {
+    ///         // Implementation elided.
+    /// #       unimplemented!()
+    ///     }
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.get_or_head().to(resource::show);
+    ///         assoc.patch().to(resource::update);
+    ///         assoc.delete().to(resource::delete);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
     fn associate<'b, F>(&'b mut self, path: &str, f: F)
     where
         F: FnOnce(&mut AssociatedRouteBuilder<'b, C, P>),
