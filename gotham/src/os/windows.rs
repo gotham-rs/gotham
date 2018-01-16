@@ -1,3 +1,4 @@
+use std::io;
 use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
 use std::thread;
 use std::sync::{Arc, Mutex};
@@ -5,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use hyper::server::Http;
 use tokio_core;
 use tokio_core::net::TcpStream;
-use tokio_core::reactor::Core;
+use tokio_core::reactor::{Core, Handle};
 use futures::{future, task, Async, Future, Poll, Stream};
 
 use handler::NewHandler;
@@ -58,7 +59,7 @@ where
 
     {
         let queue = queue.clone();
-        thread::spawn(move || listen(listener, addr, queue));
+        thread::spawn(move || start_listen_core(listener, addr, queue));
     }
 
     info!(
@@ -72,22 +73,31 @@ where
         let protocol = protocol.clone();
         let queue = queue.clone();
         let new_handler = new_handler.clone();
-        thread::spawn(move || serve(queue, &protocol, new_handler));
+        thread::spawn(move || start_serve_core(queue, &protocol, new_handler));
     }
 
-    serve(queue, &protocol, new_handler);
+    start_serve_core(queue, &protocol, new_handler);
 }
 
-fn listen(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
+fn start_listen_core(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
+    core.run(listen(listener, addr, queue, handle))
+        .expect("unable to run reactor over listener");
+}
 
+fn listen(
+    listener: TcpListener,
+    addr: SocketAddr,
+    queue: SocketQueue,
+    handle: Handle,
+) -> Box<Future<Item = (), Error = io::Error>> {
     let listener = tokio_core::net::TcpListener::from_listener(listener, &addr, &handle)
         .expect("unable to convert TCP listener to tokio listener");
 
     let mut n: usize = 0;
 
-    core.run(listener.incoming().for_each(|conn| {
+    Box::new(listener.incoming().for_each(move |conn| {
         queue.queue.push(conn);
         let tasks = queue
             .notify
@@ -97,27 +107,40 @@ fn listen(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
         n = (n + 1) % tasks.len();
         tasks[n].notify();
         Ok(())
-    })).expect("unable to run reactor over listener");
+    }))
 }
 
-fn serve<NH>(queue: SocketQueue, protocol: &Http, new_handler: Arc<NH>)
+fn start_serve_core<NH>(queue: SocketQueue, protocol: &Http, new_handler: Arc<NH>)
 where
     NH: NewHandler + 'static,
 {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
+    core.run(serve(queue, protocol, new_handler, handle))
+        .expect("unable to run reactor for work stealing");
+}
+
+fn serve<'a, NH>(
+    queue: SocketQueue,
+    protocol: &'a Http,
+    new_handler: Arc<NH>,
+    handle: Handle,
+) -> Box<Future<Item = (), Error = ()> + 'a>
+where
+    NH: NewHandler + 'static,
+{
     let gotham_service = GothamService::new(new_handler, handle.clone());
     let tasks_m = queue.notify.clone();
 
-    core.run(
+    Box::new(
         future::lazy(move || {
             let mut tasks = tasks_m
                 .lock()
                 .expect("mutex poisoned, futures::task::Task::notify panicked?");
             tasks.push(task::current());
             future::ok(())
-        }).and_then(|_| {
-            queue.for_each(|(socket, addr)| {
+        }).and_then(move |_| {
+            queue.for_each(move |(socket, addr)| {
                 let service = gotham_service.connect(addr);
                 let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
@@ -125,5 +148,5 @@ where
                 Ok(())
             })
         }),
-    ).expect("unable to run reactor for work stealing");
+    )
 }
