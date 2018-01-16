@@ -164,6 +164,18 @@ impl IntoResponse for Response {
     }
 }
 
+impl<T,E> IntoResponse for ::std::result::Result<T,E>
+where T: IntoResponse,
+      E: IntoResponse,
+{
+    fn into_response(self, state: &State) -> Response {
+        match self {
+            Ok(res) => res.into_response(state),
+            Err(e) => e.into_response(state),
+        }
+    }
+}
+
 impl<F, R> Handler for F
 where
     F: FnOnce(State) -> R,
