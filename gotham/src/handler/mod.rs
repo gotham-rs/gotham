@@ -4,7 +4,6 @@
 //! `Handler`][handler-impl], but the trait can also be implemented directly for greater control.
 //!
 //! [handler-impl]: trait.Handler.html#implementors
-
 use std::io;
 use std::panic::RefUnwindSafe;
 
@@ -49,9 +48,8 @@ pub trait NewHandler: Send + Sync + RefUnwindSafe {
 }
 
 impl<F, H> NewHandler for F
-where
-    F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
-    H: Handler,
+    where F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
+          H: Handler
 {
     type Instance = H;
 
@@ -70,8 +68,7 @@ pub trait IntoHandlerFuture {
 }
 
 impl<T> IntoHandlerFuture for (State, T)
-where
-    T: IntoResponse,
+    where T: IntoResponse
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;
@@ -148,11 +145,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 ///     Router::new(tree, finalizer);
 /// # }
 /// ```
-///
-/// # Default implementations
-///
-/// * `hyper::Response` &ndash; The response is wrapped in a completed future and boxed
-/// * `Box<HandlerFuture>` &ndash; The boxed future is returned directly
+
 pub trait IntoResponse {
     /// Converts this value into a `hyper::Response`
     fn into_response(self, state: &State) -> Response;
@@ -164,9 +157,9 @@ impl IntoResponse for Response {
     }
 }
 
-impl<T,E> IntoResponse for ::std::result::Result<T,E>
-where T: IntoResponse,
-      E: IntoResponse,
+impl<T, E> IntoResponse for ::std::result::Result<T, E>
+    where T: IntoResponse,
+          E: IntoResponse
 {
     fn into_response(self, state: &State) -> Response {
         match self {
@@ -177,9 +170,8 @@ where T: IntoResponse,
 }
 
 impl<F, R> Handler for F
-where
-    F: FnOnce(State) -> R,
-    R: IntoHandlerFuture,
+    where F: FnOnce(State) -> R,
+          R: IntoHandlerFuture
 {
     fn handle(self, state: State) -> Box<HandlerFuture> {
         self(state).into_handler_future()
