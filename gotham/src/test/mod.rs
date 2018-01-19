@@ -249,6 +249,11 @@ where
         self.build_request(Method::Head, uri)
     }
 
+    /// Begin constructing a HEAD request using this `TestClient`.
+    pub fn head_uri(self, uri: Uri) -> RequestBuilder<NH> {
+        self.build_request_uri(Method::Head, uri)
+    }
+
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
     pub fn get(self, uri: &str) -> RequestBuilder<NH> {
         self.build_request(Method::Get, uri)
