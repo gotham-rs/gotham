@@ -1,8 +1,8 @@
 #![deny(warnings)]
+extern crate borrow_bag;
 extern crate futures;
 extern crate gotham;
 extern crate gotham_middleware_r2d2;
-extern crate borrow_bag;
 
 extern crate hyper;
 extern crate mime;

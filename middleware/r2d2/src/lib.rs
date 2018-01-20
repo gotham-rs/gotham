@@ -17,9 +17,9 @@ extern crate gotham_derive;
 extern crate log;
 extern crate r2d2;
 #[cfg(test)]
-extern crate r2d2_sqlite;
-#[cfg(test)]
 extern crate r2d2_redis;
+#[cfg(test)]
+extern crate r2d2_sqlite;
 #[cfg(test)]
 extern crate redis;
 
@@ -35,7 +35,7 @@ use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::state::{request_id, State};
 use gotham::handler::HandlerFuture;
 
-use r2d2::{Pool};
+use r2d2::Pool;
 use r2d2::ManageConnection;
 use state_data::StateConnection;
 

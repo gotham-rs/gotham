@@ -17,16 +17,17 @@ pub fn database(state: State) -> Box<HandlerFuture> {
             create_response(
                 &state,
                 StatusCode::Ok,
-                Some((reply.to_string().into_bytes(), mime::TEXT_PLAIN))
+                Some((reply.to_string().into_bytes(), mime::TEXT_PLAIN)),
             )
-        },
-        Err(_err) => {
-            create_response(
-                &state,
-                StatusCode::InternalServerError,
-                Some(("Error connecting to redis".to_string().into_bytes(), mime::TEXT_PLAIN))
-            )
-        },
+        }
+        Err(_err) => create_response(
+            &state,
+            StatusCode::InternalServerError,
+            Some((
+                "Error connecting to redis".to_string().into_bytes(),
+                mime::TEXT_PLAIN,
+            )),
+        ),
     };
     Box::new(future::lazy(move || future::ok((state, res))))
 }
