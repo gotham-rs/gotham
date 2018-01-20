@@ -42,6 +42,7 @@ use state_data::StateConnection;
 /// A Gotham compatible Middleware that manages a pool of r2d2 connections via r2d2 and hands
 /// out connections to other Middleware and Handlers that require them via the Gotham `State`
 /// mechanism.
+/// Theoretically it should support all r2d2 adaptors listed on [https://github.com/sfackler/r2d2](https://github.com/sfackler/r2d2), but support may vary depending on the adaptors implementation.
 pub struct R2D2Middleware<T>
 where
     T: ManageConnection + 'static,
