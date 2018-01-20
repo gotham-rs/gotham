@@ -17,11 +17,7 @@ extern crate gotham_derive;
 extern crate log;
 extern crate r2d2;
 #[cfg(test)]
-extern crate r2d2_redis;
-#[cfg(test)]
 extern crate r2d2_sqlite;
-#[cfg(test)]
-extern crate redis;
 
 pub mod state_data;
 
@@ -156,8 +152,6 @@ where
 mod tests {
     use super::*;
     use r2d2_sqlite::SqliteConnectionManager;
-    use r2d2_redis::RedisConnectionManager;
-    use redis;
 
     #[test]
     fn sqlite_new_with_default_config() {
@@ -175,22 +169,4 @@ mod tests {
             .unwrap();
         let _middleware = R2D2Middleware::with_pool(pool);
     }
-
-    #[test]
-    fn redis_new_with_default_config() {
-        let manager = RedisConnectionManager::new("redis://localhost").unwrap();
-        let pool = Pool::new(manager).unwrap();
-        let _middleware = R2D2Middleware::with_pool(pool);
-    }
-
-    #[test]
-    fn redis_with_custom_pool_config() {
-        let manager = RedisConnectionManager::new("redis://localhost").unwrap();
-        let pool = Pool::<RedisConnectionManager>::builder()
-            .min_idle(Some(1))
-            .build(manager)
-            .unwrap();
-        let _middleware = R2D2Middleware::with_pool(pool);
-    }
-
 }

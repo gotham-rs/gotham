@@ -21,6 +21,3 @@ r2d2 = "0.8"
 
 [dev-dependencies]
 r2d2_sqlite = "0.5.0"
-r2d2_redis = "0.7.0"
-redis = "0.8"
-
