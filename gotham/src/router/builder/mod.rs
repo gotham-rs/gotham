@@ -269,21 +269,75 @@ where
 
 /// Implements the methods required for associating a number of routes with a single path. See
 /// `DrawRoutes::associated`.
-pub struct AssociatedRouteBuilder<'a, C, P>
+pub struct AssociatedRouteBuilder<'a, C, P, PE>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
+    PE: PathExtractor + Send + Sync + 'static,
 {
     node_builder: &'a mut NodeBuilder,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
+    phantom: PhantomData<PE>,
 }
 
-impl<'a, C, P> AssociatedRouteBuilder<'a, C, P>
+impl<'a, C, P, PE> AssociatedRouteBuilder<'a, C, P, PE>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
+    PE: PathExtractor + Send + Sync + 'static,
 {
+    /// Binds a new `PathExtractor` to the associated routes.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate log;
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #[derive(StateData, PathExtractor, StaticResponseExtender)]
+    /// struct MyPathExtractor {
+    /// #   #[allow(dead_code)]
+    ///     id: u32,
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource/:id", |assoc| {
+    ///         let mut assoc = assoc.with_path_extractor::<MyPathExtractor>();
+    ///         assoc.get().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    pub fn with_path_extractor<'b, NPE>(&'b mut self) -> AssociatedRouteBuilder<'b, C, P, NPE>
+    where
+        NPE: PathExtractor + Send + Sync + 'static,
+    {
+        AssociatedRouteBuilder {
+            node_builder: self.node_builder,
+            pipeline_chain: self.pipeline_chain,
+            pipelines: self.pipelines.clone(),
+            phantom: PhantomData,
+        }
+    }
+
     /// Associates a route which matches requests with any of the specified methods, to the current
     /// path.
     ///
@@ -318,6 +372,7 @@ where
             ref mut node_builder,
             ref pipeline_chain,
             ref pipelines,
+            ..
         } = *self;
 
         let matcher = MethodOnlyRouteMatcher::new(methods);
