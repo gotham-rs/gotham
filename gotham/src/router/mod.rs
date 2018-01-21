@@ -273,6 +273,7 @@ mod tests {
     fn allow_header_if_method_not_allowed() {
         let router = build_simple_router(|route| {
             route.get_or_head("/test").to(handler);
+            route.get("/test").to(handler); // Proves deduplication works.
             route.delete("/test").to(handler);
             route.options("/test/2").to(handler);
         });
