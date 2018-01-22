@@ -4,10 +4,12 @@ members = [
     "gotham_derive",
 
     "middleware/template",
+    "middleware/r2d2",
     "middleware/diesel",
 
     "misc/borrow_bag",
 
     "examples/hello_world",
     "examples/hello_router",
+    "examples/middleware_database",
 ]

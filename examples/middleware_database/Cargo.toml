@@ -1,0 +1,24 @@
+[package]
+name = "middleware_database_runner"
+version = "0.2.0"
+authors = ["Karuna Murti <karuna.murti@gmail.com>"]
+description = "An Gotham example with database middleware."
+license = "MIT/Apache-2.0"
+readme = "README.md"
+publish = false
+
+[lib]
+name = "middleware_database"
+path = "src/lib.rs"
+
+[dependencies]
+gotham = { path = "../../gotham" }
+gotham_derive = { path = "../../gotham_derive" }
+gotham_middleware_r2d2 = { path = "../../middleware/r2d2" }
+borrow-bag = { path = "../../misc/borrow_bag" }
+futures = "*"
+hyper = "0.11"
+mime = "0.3"
+r2d2 = "0.8"
+r2d2_redis = "0.7.0"
+redis = "0.8"

@@ -1,0 +1,23 @@
+[package]
+name = "gotham_middleware_r2d2"
+version = "0.1.0"
+authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
+           "Bradley Beddoes <bradleybeddoes@gmail.com>",
+           "Karuna Murti <karuna.murti@gmail.com>"]
+description = "A Gotham Middleware that provides access to a any supported connection via an R2D2 pool to allow other Middleware and Handlers to interact with a database like backend."
+license = "MIT/Apache-2.0"
+homepage = "https://gotham.rs"
+repository = "https://github.com/gotham-rs/gotham"
+readme = "README.md"
+categories = ["web-programming::http-server"]
+keywords = ["http", "async", "web", "gotham", "r2d2"]
+
+[dependencies]
+log = "0.3.0"
+futures = "0.1.0"
+gotham = { path = "../../gotham" }
+gotham_derive = { path = "../../gotham_derive" }
+r2d2 = "0.8"
+
+[dev-dependencies]
+r2d2_sqlite = "0.5.0"
