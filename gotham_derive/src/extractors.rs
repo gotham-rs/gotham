@@ -33,15 +33,11 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
                         Some(segments) => {
                             match T::from_request_path(segments.as_slice()) {
                                 Ok(val) => {
-                                    trace!("[{}] extracted request path segment(s) into {}",
-                                           ::gotham::state::request_id(s), struct_name);
                                     Ok(val)
                                 }
                                 Err(_) => {
-                                    error!("[{}] unrecoverable error converting request path \
-                                            segment(s) into {}",
-                                           ::gotham::state::request_id(s), struct_name);
-                                    Err(String::from("unrecoverable error converting request path"))
+                                    Err(format!("[{}] unrecoverable error converting request path, into {}",
+                                                ::gotham::state::request_id(s), struct_name))
                                 }
                             }
                         }
@@ -107,14 +103,11 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
                         Some(values) => {
                             match T::from_query_string(key, values.as_slice()) {
                                 Ok(val) => {
-                                    trace!("[{}] extracted query string value(s) into {}",
-                                           ::gotham::state::request_id(&s), struct_name);
                                     Ok(val)
                                 }
                                 Err(_) => {
-                                    error!("[{}] unrecoverable error converting query string value(s) into {}",
-                                           ::gotham::state::request_id(&s), struct_name);
-                                    Err(String::from("unrecoverable error converting query string"))
+                                    Err(format!("[{}] unrecoverable error converting query string into {}",
+                                            ::gotham::state::request_id(&s), struct_name))
                                 }
                             }
                         }
@@ -129,9 +122,6 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
                     ::gotham::http::request::query_string::split(query)
                 };
 
-                trace!("[{}] query string mappings recieved from client: {:?}",
-                       ::gotham::state::request_id(s), qsm);
-
                 // Add an empty Vec for Optional segments that have not been provided.
                 //
                 // Ideally `optional_fields` would be a const but this doesn't yet seem to be
@@ -139,21 +129,15 @@ pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
                 let ofl:[&str; #ofl_len] = [#(#ofl), *];
                 for label in ofl.iter() {
                     if !qsm.contains_key(label) {
-                        trace!(" adding unmapped value: {:?}", label);
                         qsm.add_unmapped_segment(label);
                     }
                 }
-
-                trace!("[{}] query string mappings to be parsed: {:?}",
-                       ::gotham::state::request_id(s), qsm);
 
                 let qss = #name {
                     #(
                         #fields: parse(s, #keys, qsm.get(#keys2))?,
                      )*
                 };
-                trace!("[{}] query string struct created and stored in state",
-                       ::gotham::state::request_id(s));
 
                 s.put(qss);
                 Ok(())
