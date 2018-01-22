@@ -6,6 +6,7 @@ use std::borrow::Borrow;
 use hyper::StatusCode;
 
 use http::PercentDecoded;
+use router::non_match::RouteNonMatch;
 use router::route::{Delegation, Route};
 use router::tree::{Path, SegmentMapping, SegmentsProcessed};
 use router::tree::regex::ConstrainedSegmentRegex;
@@ -129,24 +130,47 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub fn select_route(&self, state: &State) -> Result<&Box<Route + Send + Sync>, StatusCode> {
-        match self.routes.iter().find(|r| r.is_match(state).is_ok()) {
-            Some(route) => {
+    pub fn select_route<'a>(
+        &'a self,
+        state: &State,
+    ) -> Result<&'a Box<Route + Send + Sync>, RouteNonMatch> {
+        enum Selection<'b> {
+            Init,
+            Match(&'b Box<Route + Send + Sync>),
+            NonMatch(RouteNonMatch),
+        }
+
+        let iter = self.routes.iter();
+        let selection = iter.fold(Selection::Init, |s, r| match s {
+            Selection::Match(_) => s,
+            Selection::Init => match r.is_match(state) {
+                Ok(_) => Selection::Match(r),
+                Err(e) => Selection::NonMatch(e),
+            },
+            Selection::NonMatch(e) => match r.is_match(state) {
+                Ok(_) => Selection::Match(r),
+                Err(e1) => Selection::NonMatch(e.union(e1)),
+            },
+        });
+
+        match selection {
+            Selection::Match(route) => {
                 trace!("[{}] found matching route", request_id(state));
                 Ok(route)
             }
-            None => {
-                trace!("[{}] no matching route", request_id(state));
-                match self.routes.first() {
-                    Some(route) => {
-                        trace!("[{}] using error status code from route", request_id(state));
-                        Err(route.is_match(state).unwrap_err())
-                    }
-                    None => {
-                        trace!("[{}] using generic error status code", request_id(state));
-                        Err(StatusCode::InternalServerError)
-                    }
-                }
+            Selection::NonMatch(e) => {
+                trace!(
+                    "[{}] no matching route, using error status code from route",
+                    request_id(state)
+                );
+                Err(e)
+            }
+            Selection::Init => {
+                trace!(
+                    "[{}] invalid state, no routes. sending internal server error",
+                    request_id(state)
+                );
+                Err(RouteNonMatch::new(StatusCode::InternalServerError))
             }
         }
     }

@@ -11,10 +11,10 @@ use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
 use hyper::Response;
-use hyper::StatusCode;
 
 use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
+use router::non_match::RouteNonMatch;
 use router::request::query_string::QueryStringExtractor;
 use router::route::matcher::RouteMatcher;
 use router::tree::SegmentMapping;
@@ -43,7 +43,7 @@ pub enum Delegation {
 /// Applications".
 pub trait Route: RefUnwindSafe {
     /// Determines if this `Route` can be invoked, based on the `Request`.
-    fn is_match(&self, state: &State) -> Result<(), StatusCode>;
+    fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;
 
     /// Determines if this `Route` intends to delegate requests to a secondary `Router` instance.
     fn delegation(&self) -> Delegation;
@@ -221,7 +221,7 @@ where
     RE: PathExtractor,
     QSE: QueryStringExtractor,
 {
-    fn is_match(&self, state: &State) -> Result<(), StatusCode> {
+    fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         self.matcher.is_match(state)
     }
 
