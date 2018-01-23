@@ -5,7 +5,7 @@ pub mod tree;
 pub mod route;
 pub mod request;
 pub mod response;
-mod non_match;
+pub mod non_match;
 
 use std::io;
 use std::sync::Arc;

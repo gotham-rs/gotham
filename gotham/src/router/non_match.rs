@@ -1,30 +1,73 @@
+//! Defines the types used to indicate a non-matching route, and associated metadata.
+
 use std::collections::HashSet;
 
 use hyper::{Method, StatusCode};
 
+/// The error type used for a non-matching route, as returned by `RouteMatcher::is_match`. Multiple
+/// values of this type can be aggregated with the `intersection` / `union` methods to be returned.
+/// The data within is used by the `Router` to create a `Response` when no routes were successfully
+/// matched.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use hyper::{Method, StatusCode};
+/// # use gotham::router::non_match::RouteNonMatch;
+/// # use gotham::router::route::matcher::RouteMatcher;
+/// # use gotham::state::State;
+/// #
+/// struct MyRouteMatcher;
+///
+/// impl RouteMatcher for MyRouteMatcher {
+///     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
+///         match state.borrow::<Method>() {
+///             &Method::Get => Ok(()),
+///             _ => Err(RouteNonMatch::new(StatusCode::MethodNotAllowed)
+///                 .with_allow_list(&[Method::Get])),
+///         }
+///     }
+/// }
+/// #
+/// # fn main() {
+/// #   let mut state = State::new();
+/// #   state.put(Method::Post);
+/// #   assert!(MyRouteMatcher.is_match(&state).is_err());
+/// # }
+/// ```
 pub struct RouteNonMatch {
     status: StatusCode,
     allow: Option<HashSet<Method>>,
 }
 
 impl RouteNonMatch {
-    pub(super) fn new(status: StatusCode) -> RouteNonMatch {
-        use hyper::Method::*;
-
+    /// Creates a new `RouteNonMatch` value with the given HTTP status.
+    pub fn new(status: StatusCode) -> RouteNonMatch {
         RouteNonMatch {
             status,
             allow: None,
         }
     }
 
-    pub(super) fn with_allow_list(self, allow: &[Method]) -> RouteNonMatch {
+    /// Adds an allow list to a `RouteNonMatch`. Typically this is used with a `405 Method Not
+    /// Allowed` status code, so the `Router` can accurately populate the `Allow` header in the
+    /// response. It must be populated by any `RouteMatcher` which restricts the HTTP method.
+    pub fn with_allow_list(self, allow: &[Method]) -> RouteNonMatch {
         RouteNonMatch {
             allow: Some(allow.into_iter().cloned().collect()),
             ..self
         }
     }
 
-    pub(super) fn intersection(self, other: RouteNonMatch) -> RouteNonMatch {
+    /// Takes the intersection of two `RouteNonMatch` values, producing a single result.  This is
+    /// intended for use in cases where two `RouteMatcher` instances with a logical **AND**
+    /// connection have both indicated a non-match, and their results need to be aggregated.
+    ///
+    /// This is typically for Gotham internal use, but may be useful for implementors of advanced
+    /// `RouteMatcher` logic which wraps other `RouteMatcher` instances. See the
+    /// `gotham::router::route::matcher::AndRouteMatcher` implementation for an example.
+    pub fn intersection(self, other: RouteNonMatch) -> RouteNonMatch {
         let status = higher_precedence_status(self.status, other.status);
         let allow = match (self.allow, other.allow) {
             (Some(a0), Some(a1)) => Some(a0.intersection(&a1).cloned().collect()),
@@ -34,7 +77,14 @@ impl RouteNonMatch {
         RouteNonMatch { status, allow }
     }
 
-    pub(super) fn union(self, other: RouteNonMatch) -> RouteNonMatch {
+    /// Takes the union of two `RouteNonMatch` values, producing a single result. This is intended
+    /// for use in cases where two `RouteMatcher` instances with a logical **OR** connection have
+    /// both indicated a non-match, and their results need to be aggregated.
+    ///
+    /// This is typically for Gotham internal use, but may be useful for implementors of advanced
+    /// `RouteMatcher` logic which wraps other `RouteMatcher` instances. See the
+    /// `gotham::router::tree::Node::select_route` implementation for an example.
+    pub fn union(self, other: RouteNonMatch) -> RouteNonMatch {
         let status = higher_precedence_status(self.status, other.status);
         let allow = match (self.allow, other.allow) {
             (Some(a0), Some(a1)) => Some(a0.union(&a1).cloned().collect()),
@@ -50,7 +100,7 @@ impl RouteNonMatch {
 
         let mut allow: Vec<Method> = match allow {
             Some(a) => a.into_iter().collect(),
-            None => [Options, Get, Post, Put, Delete, Head, Patch]
+            None => [Delete, Get, Head, Patch, Post, Put, Options]
                 .into_iter()
                 .cloned()
                 .collect(),
