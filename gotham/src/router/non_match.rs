@@ -137,3 +137,61 @@ fn higher_precedence_status(lhs: StatusCode, rhs: StatusCode) -> StatusCode {
         (_, _) => lhs,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use hyper::Method::*;
+    use hyper::StatusCode::*;
+
+    #[test]
+    fn intersection_tests() {
+        let all = [Delete, Get, Head, Options, Patch, Post, Put];
+
+        let (status, allow_list) = RouteNonMatch::new(NotFound)
+            .intersection(RouteNonMatch::new(NotFound))
+            .deconstruct();
+        assert_eq!(status, NotFound);
+        assert_eq!(&allow_list[..], &all);
+
+        let (status, allow_list) = RouteNonMatch::new(NotFound)
+            .intersection(RouteNonMatch::new(MethodNotAllowed).with_allow_list(&[Get]))
+            .deconstruct();
+        assert_eq!(status, MethodNotAllowed);
+        assert_eq!(&allow_list[..], &[Get]);
+
+        let (status, allow_list) = RouteNonMatch::new(NotAcceptable)
+            .with_allow_list(&[Get, Patch, Post])
+            .intersection(
+                RouteNonMatch::new(MethodNotAllowed).with_allow_list(&[Get, Post, Options]),
+            )
+            .deconstruct();
+        assert_eq!(status, NotAcceptable);
+        assert_eq!(&allow_list[..], &[Get, Post]);
+    }
+
+    #[test]
+    fn union_tests() {
+        let all = [Delete, Get, Head, Options, Patch, Post, Put];
+
+        let (status, allow_list) = RouteNonMatch::new(NotFound)
+            .union(RouteNonMatch::new(NotFound))
+            .deconstruct();
+        assert_eq!(status, NotFound);
+        assert_eq!(&allow_list[..], &all);
+
+        let (status, allow_list) = RouteNonMatch::new(NotFound)
+            .union(RouteNonMatch::new(MethodNotAllowed).with_allow_list(&[Get]))
+            .deconstruct();
+        assert_eq!(status, MethodNotAllowed);
+        assert_eq!(&allow_list[..], &all);
+
+        let (status, allow_list) = RouteNonMatch::new(NotAcceptable)
+            .with_allow_list(&[Get, Patch, Post])
+            .union(RouteNonMatch::new(MethodNotAllowed).with_allow_list(&[Get, Post, Options]))
+            .deconstruct();
+        assert_eq!(status, NotAcceptable);
+        assert_eq!(&allow_list[..], &[Get, Options, Patch, Post]);
+    }
+}
