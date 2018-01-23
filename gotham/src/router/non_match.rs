@@ -38,7 +38,7 @@ use hyper::{Method, StatusCode};
 /// ```
 pub struct RouteNonMatch {
     status: StatusCode,
-    allow: Option<HashSet<Method>>,
+    allow: MethodSet,
 }
 
 impl RouteNonMatch {
@@ -46,7 +46,7 @@ impl RouteNonMatch {
     pub fn new(status: StatusCode) -> RouteNonMatch {
         RouteNonMatch {
             status,
-            allow: None,
+            allow: MethodSet::default(),
         }
     }
 
@@ -55,7 +55,7 @@ impl RouteNonMatch {
     /// response. It must be populated by any `RouteMatcher` which restricts the HTTP method.
     pub fn with_allow_list(self, allow: &[Method]) -> RouteNonMatch {
         RouteNonMatch {
-            allow: Some(allow.into_iter().cloned().collect()),
+            allow: allow.into(),
             ..self
         }
     }
@@ -69,11 +69,7 @@ impl RouteNonMatch {
     /// `gotham::router::route::matcher::AndRouteMatcher` implementation for an example.
     pub fn intersection(self, other: RouteNonMatch) -> RouteNonMatch {
         let status = higher_precedence_status(self.status, other.status);
-        let allow = match (self.allow, other.allow) {
-            (Some(a0), Some(a1)) => Some(a0.intersection(&a1).cloned().collect()),
-            (None, a) => a,
-            (a, None) => a,
-        };
+        let allow = self.allow.intersection(other.allow);
         RouteNonMatch { status, allow }
     }
 
@@ -86,28 +82,12 @@ impl RouteNonMatch {
     /// `gotham::router::tree::Node::select_route` implementation for an example.
     pub fn union(self, other: RouteNonMatch) -> RouteNonMatch {
         let status = higher_precedence_status(self.status, other.status);
-        let allow = match (self.allow, other.allow) {
-            (Some(a0), Some(a1)) => Some(a0.union(&a1).cloned().collect()),
-            (_, _) => None,
-        };
+        let allow = self.allow.union(other.allow);
         RouteNonMatch { status, allow }
     }
 
     pub(super) fn deconstruct(self) -> (StatusCode, Vec<Method>) {
-        use hyper::Method::*;
-
-        let RouteNonMatch { status, allow } = self;
-
-        let mut allow: Vec<Method> = match allow {
-            Some(a) => a.into_iter().collect(),
-            None => [Delete, Get, Head, Patch, Post, Put, Options]
-                .into_iter()
-                .cloned()
-                .collect(),
-        };
-
-        allow.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
-        (status, allow)
+        (self.status, self.allow.into())
     }
 }
 
@@ -135,6 +115,183 @@ fn higher_precedence_status(lhs: StatusCode, rhs: StatusCode) -> StatusCode {
         (_, _) if lhs.is_client_error() => lhs,
         (_, _) if rhs.is_client_error() => rhs,
         (_, _) => lhs,
+    }
+}
+
+// This customised set prevents memory allocations while computing `Allow` lists, except in the
+// case where extension methods are provided using the `hyper::Method::Extension` variant.
+struct MethodSet {
+    connect: bool,
+    delete: bool,
+    get: bool,
+    head: bool,
+    options: bool,
+    patch: bool,
+    post: bool,
+    put: bool,
+    trace: bool,
+    other: HashSet<Method>,
+}
+
+impl MethodSet {
+    fn intersection(self, other: MethodSet) -> MethodSet {
+        MethodSet {
+            connect: self.connect && other.connect,
+            delete: self.delete && other.delete,
+            get: self.get && other.get,
+            head: self.head && other.head,
+            options: self.options && other.options,
+            patch: self.patch && other.patch,
+            post: self.post && other.post,
+            put: self.put && other.put,
+            trace: self.trace && other.trace,
+            other: self.other.intersection(&other.other).cloned().collect(),
+        }
+    }
+
+    fn union(self, other: MethodSet) -> MethodSet {
+        MethodSet {
+            connect: self.connect || other.connect,
+            delete: self.delete || other.delete,
+            get: self.get || other.get,
+            head: self.head || other.head,
+            options: self.options || other.options,
+            patch: self.patch || other.patch,
+            post: self.post || other.post,
+            put: self.put || other.put,
+            trace: self.trace || other.trace,
+            other: self.other.union(&other.other).cloned().collect(),
+        }
+    }
+}
+
+impl Default for MethodSet {
+    fn default() -> MethodSet {
+        MethodSet {
+            connect: false,
+            delete: true,
+            get: true,
+            head: true,
+            options: true,
+            patch: true,
+            post: true,
+            put: true,
+            trace: false,
+            other: HashSet::default(),
+        }
+    }
+}
+
+impl<'a> From<&'a [Method]> for MethodSet {
+    fn from(methods: &[Method]) -> MethodSet {
+        use hyper::Method::*;
+
+        let (
+            mut connect,
+            mut delete,
+            mut get,
+            mut head,
+            mut options,
+            mut patch,
+            mut post,
+            mut put,
+            mut trace,
+        ) = (
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+        );
+
+        let mut other = HashSet::new();
+
+        for method in methods {
+            match *method {
+                Connect => {
+                    connect = true;
+                }
+                Delete => {
+                    delete = true;
+                }
+                Get => {
+                    get = true;
+                }
+                Head => {
+                    head = true;
+                }
+                Options => {
+                    options = true;
+                }
+                Patch => {
+                    patch = true;
+                }
+                Post => {
+                    post = true;
+                }
+                Put => {
+                    put = true;
+                }
+                Trace => {
+                    trace = true;
+                }
+                _ => {
+                    other.insert(method.clone());
+                }
+            }
+        }
+
+        MethodSet {
+            connect,
+            delete,
+            get,
+            head,
+            options,
+            patch,
+            post,
+            put,
+            trace,
+            other,
+        }
+    }
+}
+
+impl From<MethodSet> for Vec<Method> {
+    fn from(method_set: MethodSet) -> Vec<Method> {
+        use hyper::Method::*;
+
+        let MethodSet {
+            connect,
+            delete,
+            get,
+            head,
+            options,
+            patch,
+            post,
+            put,
+            trace,
+            other,
+        } = method_set;
+
+        let mut result = None.into_iter()
+            .chain(Some(Connect).into_iter().filter(|_| connect))
+            .chain(Some(Delete).into_iter().filter(|_| delete))
+            .chain(Some(Get).into_iter().filter(|_| get))
+            .chain(Some(Head).into_iter().filter(|_| head))
+            .chain(Some(Options).into_iter().filter(|_| options))
+            .chain(Some(Patch).into_iter().filter(|_| patch))
+            .chain(Some(Post).into_iter().filter(|_| post))
+            .chain(Some(Put).into_iter().filter(|_| put))
+            .chain(Some(Trace).into_iter().filter(|_| trace))
+            .chain(other.into_iter())
+            .collect::<Vec<Method>>();
+
+        result.sort_unstable_by(|a, b| a.as_ref().cmp(b.as_ref()));
+        result
     }
 }
 
@@ -193,5 +350,41 @@ mod tests {
             .deconstruct();
         assert_eq!(status, NotAcceptable);
         assert_eq!(&allow_list[..], &[Get, Options, Patch, Post]);
+    }
+
+    #[test]
+    fn deconstruct_tests() {
+        let (_, allow_list) = RouteNonMatch::new(NotFound)
+            .with_allow_list(&[
+                Delete,
+                Get,
+                Head,
+                Options,
+                Patch,
+                Post,
+                Put,
+                Connect,
+                Trace,
+                Extension("PROPFIND".to_owned()),
+                Extension("PROPSET".to_owned()),
+            ])
+            .deconstruct();
+
+        assert_eq!(
+            &allow_list[..],
+            &[
+                Connect,
+                Delete,
+                Get,
+                Head,
+                Options,
+                Patch,
+                Post,
+                Extension("PROPFIND".to_owned()),
+                Extension("PROPSET".to_owned()),
+                Put,
+                Trace,
+            ]
+        );
     }
 }
