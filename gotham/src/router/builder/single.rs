@@ -150,8 +150,6 @@ pub trait DefineSingleRoute {
     /// # #[macro_use]
     /// # extern crate gotham_derive;
     /// # extern crate hyper;
-    /// # #[macro_use]
-    /// # extern crate log;
     /// # use hyper::Response;
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
@@ -206,8 +204,6 @@ pub trait DefineSingleRoute {
     /// # #[macro_use]
     /// # extern crate gotham_derive;
     /// # extern crate hyper;
-    /// # #[macro_use]
-    /// # extern crate log;
     /// # use hyper::Response;
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;

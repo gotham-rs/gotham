@@ -49,7 +49,7 @@ where
     NH: NewHandler + 'static,
     A: ToSocketAddrs,
 {
-    let (listener, addr) = super::tcp_listener(addr);
+    let (listener, addr) = ::tcp_listener(addr);
 
     let protocol = Arc::new(Http::new());
     let new_handler = Arc::new(new_handler);
