@@ -468,7 +468,7 @@ where
     /// ```
     fn associate<'b, F>(&'b mut self, path: &str, f: F)
     where
-        F: FnOnce(&mut AssociatedRouteBuilder<'b, C, P, NoopPathExtractor>),
+        F: FnOnce(&mut AssociatedRouteBuilder<'b, C, P, NoopPathExtractor, NoopQueryStringExtractor>),
     {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);

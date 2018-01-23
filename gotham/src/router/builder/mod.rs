@@ -269,23 +269,25 @@ where
 
 /// Implements the methods required for associating a number of routes with a single path. See
 /// `DrawRoutes::associated`.
-pub struct AssociatedRouteBuilder<'a, C, P, PE>
+pub struct AssociatedRouteBuilder<'a, C, P, PE, QSE>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
+    QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     node_builder: &'a mut NodeBuilder,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
-    phantom: PhantomData<PE>,
+    phantom: PhantomData<(PE, QSE)>,
 }
 
-impl<'a, C, P, PE> AssociatedRouteBuilder<'a, C, P, PE>
+impl<'a, C, P, PE, QSE> AssociatedRouteBuilder<'a, C, P, PE, QSE>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
+    QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     /// Binds a new `PathExtractor` to the associated routes.
     ///
@@ -326,9 +328,62 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn with_path_extractor<'b, NPE>(&'b mut self) -> AssociatedRouteBuilder<'b, C, P, NPE>
+    pub fn with_path_extractor<'b, NPE>(&'b mut self) -> AssociatedRouteBuilder<'b, C, P, NPE, QSE>
     where
         NPE: PathExtractor + Send + Sync + 'static,
+    {
+        AssociatedRouteBuilder {
+            node_builder: self.node_builder,
+            pipeline_chain: self.pipeline_chain,
+            pipelines: self.pipelines.clone(),
+            phantom: PhantomData,
+        }
+    }
+
+    /// Binds a new `QueryStringExtractor` to the associated routes.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate log;
+    /// # extern crate gotham;
+    /// # #[macro_use]
+    /// # extern crate gotham_derive;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// fn handler(_state: State) -> (State, Response) {
+    ///     // Implementation elided.
+    /// #   unimplemented!()
+    /// }
+    ///
+    /// #[derive(StateData, QueryStringExtractor, StaticResponseExtender)]
+    /// struct MyQueryStringExtractor {
+    /// #   #[allow(dead_code)]
+    ///     val: String,
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         let mut assoc = assoc.with_query_string_extractor::<MyQueryStringExtractor>();
+    ///         assoc.get().to(handler);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    pub fn with_query_string_extractor<'b, NQSE>(
+        &'b mut self,
+    ) -> AssociatedRouteBuilder<'b, C, P, PE, NQSE>
+    where
+        NQSE: QueryStringExtractor + Send + Sync + 'static,
     {
         AssociatedRouteBuilder {
             node_builder: self.node_builder,
