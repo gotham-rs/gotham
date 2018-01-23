@@ -23,8 +23,13 @@ use router::request::query_string::{NoopQueryStringExtractor, QueryStringExtract
 use router::tree::node::NodeBuilder;
 
 pub use self::single::DefineSingleRoute;
-pub use self::draw::{DefaultSingleRouteBuilder, DrawRoutes};
+pub use self::draw::DrawRoutes;
 pub use self::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
+
+/// The default type returned when building a single associated route. See
+/// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
+pub type AssociatedSingleRouteBuilder<'a, C, P, PE, QSE> =
+    SingleRouteBuilder<'a, MethodOnlyRouteMatcher, C, P, PE, QSE>;
 
 /// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
 /// value passed to the closure, and the `Router` is constructed before returning.
@@ -422,22 +427,25 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn request<'b>(&'b mut self, methods: Vec<Method>) -> DefaultSingleRouteBuilder<'b, C, P> {
+    pub fn request<'b>(
+        &'b mut self,
+        methods: Vec<Method>,
+    ) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         let AssociatedRouteBuilder {
             ref mut node_builder,
             ref pipeline_chain,
             ref pipelines,
-            ..
+            phantom,
         } = *self;
 
         let matcher = MethodOnlyRouteMatcher::new(methods);
 
         SingleRouteBuilder {
             matcher,
+            phantom,
             node_builder: *node_builder,
             pipeline_chain: *pipeline_chain,
             pipelines: pipelines.clone(),
-            phantom: PhantomData,
         }
     }
 
@@ -469,7 +477,7 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn head<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+    pub fn head<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Head])
     }
 
@@ -501,7 +509,7 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn get_or_head<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+    pub fn get_or_head<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Get, Method::Head])
     }
 
@@ -533,7 +541,7 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn get<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+    pub fn get<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Get])
     }
 
@@ -565,7 +573,7 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn post<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+    pub fn post<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Post])
     }
 
@@ -597,7 +605,7 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn put<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+    pub fn put<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Put])
     }
 
@@ -629,7 +637,7 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn patch<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+    pub fn patch<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Patch])
     }
 
@@ -661,7 +669,7 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn delete<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+    pub fn delete<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Delete])
     }
 
@@ -693,7 +701,7 @@ where
     /// # }
     /// # fn main() { router(); }
     /// ```
-    pub fn options<'b>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+    pub fn options<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Options])
     }
 }

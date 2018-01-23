@@ -23,6 +23,11 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     NoopQueryStringExtractor,
 >;
 
+/// The type passed to the function used when building associated routes. See
+/// `AssociatedRouteBuilder` for information about the API available for associated routes.
+pub type DefaultAssociatedRouteBuilder<'a, C, P> =
+    AssociatedRouteBuilder<'a, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
+
 /// Defines functions used by a builder to determine which request paths will be dispatched to a
 /// route. This trait is implemented by the top-level `RouterBuilder`, and also the `ScopedBuilder`
 /// created by `DrawRoutes::scope`.
@@ -468,7 +473,7 @@ where
     /// ```
     fn associate<'b, F>(&'b mut self, path: &str, f: F)
     where
-        F: FnOnce(&mut AssociatedRouteBuilder<'b, C, P, NoopPathExtractor, NoopQueryStringExtractor>),
+        F: FnOnce(&mut DefaultAssociatedRouteBuilder<'b, C, P>),
     {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
