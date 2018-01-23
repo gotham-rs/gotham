@@ -4,7 +4,7 @@ use hyper::{Method, StatusCode};
 
 pub struct RouteNonMatch {
     status: StatusCode,
-    allow: HashSet<Method>,
+    allow: Option<HashSet<Method>>,
 }
 
 impl RouteNonMatch {
@@ -13,35 +13,49 @@ impl RouteNonMatch {
 
         RouteNonMatch {
             status,
-            allow: [Options, Get, Post, Put, Delete, Head, Patch]
-                .into_iter()
-                .cloned()
-                .collect(),
+            allow: None,
         }
     }
 
     pub(super) fn with_allow_list(self, allow: &[Method]) -> RouteNonMatch {
         RouteNonMatch {
-            allow: allow.into_iter().cloned().collect(),
+            allow: Some(allow.into_iter().cloned().collect()),
             ..self
         }
     }
 
     pub(super) fn intersection(self, other: RouteNonMatch) -> RouteNonMatch {
         let status = higher_precedence_status(self.status, other.status);
-        let allow = self.allow.intersection(&other.allow).cloned().collect();
+        let allow = match (self.allow, other.allow) {
+            (Some(a0), Some(a1)) => Some(a0.intersection(&a1).cloned().collect()),
+            (None, a) => a,
+            (a, None) => a,
+        };
         RouteNonMatch { status, allow }
     }
 
     pub(super) fn union(self, other: RouteNonMatch) -> RouteNonMatch {
         let status = higher_precedence_status(self.status, other.status);
-        let allow = self.allow.union(&other.allow).cloned().collect();
+        let allow = match (self.allow, other.allow) {
+            (Some(a0), Some(a1)) => Some(a0.union(&a1).cloned().collect()),
+            (_, _) => None,
+        };
         RouteNonMatch { status, allow }
     }
 
     pub(super) fn deconstruct(self) -> (StatusCode, Vec<Method>) {
+        use hyper::Method::*;
+
         let RouteNonMatch { status, allow } = self;
-        let mut allow: Vec<Method> = allow.into_iter().collect();
+
+        let mut allow: Vec<Method> = match allow {
+            Some(a) => a.into_iter().collect(),
+            None => [Options, Get, Post, Put, Delete, Head, Patch]
+                .into_iter()
+                .cloned()
+                .collect(),
+        };
+
         allow.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
         (status, allow)
     }
