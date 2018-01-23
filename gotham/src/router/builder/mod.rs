@@ -348,8 +348,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # #[macro_use]
-    /// # extern crate log;
     /// # extern crate gotham;
     /// # #[macro_use]
     /// # extern crate gotham_derive;
