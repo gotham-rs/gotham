@@ -7,7 +7,8 @@ use router::route::dispatch::{PipelineHandleChain, PipelineSet};
 use router::route::matcher::MethodOnlyRouteMatcher;
 use router::request::path::NoopPathExtractor;
 use router::request::query_string::NoopQueryStringExtractor;
-use router::builder::{DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder};
+use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
+                      SingleRouteBuilder};
 use router::tree::node::{NodeBuilder, SegmentType};
 use router::tree::regex::ConstrainedSegmentRegex;
 
@@ -21,6 +22,11 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     NoopPathExtractor,
     NoopQueryStringExtractor,
 >;
+
+/// The type passed to the function used when building associated routes. See
+/// `AssociatedRouteBuilder` for information about the API available for associated routes.
+pub type DefaultAssociatedRouteBuilder<'a, C, P> =
+    AssociatedRouteBuilder<'a, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
 /// Defines functions used by a builder to determine which request paths will be dispatched to a
 /// route. This trait is implemented by the top-level `RouterBuilder`, and also the `ScopedBuilder`
@@ -362,6 +368,126 @@ where
         }
     }
 
+    /// Begins delegating a subpath of the tree, but does not dispatch the requests via this
+    /// router's `PipelineChain`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::single::single_pipeline;
+    /// # use gotham::state::State;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct Session;
+    /// #
+    /// // API routes which don't require sessions.
+    /// fn api_router() -> Router {
+    ///     // Implementation elided
+    /// #   build_simple_router(|_route| {})
+    /// }
+    /// # fn handler(_state: State) -> (State, Response) {
+    /// #   unimplemented!()
+    /// # }
+    ///
+    /// # fn router() -> Router {
+    /// let (chain, pipelines) = single_pipeline(
+    ///     new_pipeline()
+    ///         .add(NewSessionMiddleware::default().with_session_type::<Session>())
+    ///         .build()
+    /// );
+    ///
+    /// build_router(chain, pipelines, |route| {
+    ///     // Requests dispatched to the `/api` router will not invoke the session middleware.
+    ///     route.delegate_without_pipelines("/api").to_router(api_router());
+    ///
+    ///     // Other requests will invoke the session middleware as normal.
+    ///     route.get("/").to(handler);
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn delegate_without_pipelines<'b>(&'b mut self, path: &str) -> DelegateRouteBuilder<'b, (), P> {
+        let (node_builder, _pipeline_chain, pipelines) = self.component_refs();
+        let node_builder = descend(node_builder, path);
+
+        DelegateRouteBuilder {
+            node_builder,
+            pipeline_chain: (),
+            pipelines: pipelines.clone(),
+        }
+    }
+
+    /// Begins associating routes with a fixed path in the tree. In this way, multiple routes can
+    /// be quickly associated with a single location.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::Response;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::state::State;
+    /// #
+    /// mod resource {
+    /// #   use super::*;
+    ///     pub fn show(_state: State) -> (State, Response) {
+    ///         // Implementation elided.
+    /// #       unimplemented!()
+    ///     }
+    ///
+    ///     pub fn update(_state: State) -> (State, Response) {
+    ///         // Implementation elided.
+    /// #       unimplemented!()
+    ///     }
+    ///
+    ///     pub fn delete(_state: State) -> (State, Response) {
+    ///         // Implementation elided.
+    /// #       unimplemented!()
+    ///     }
+    /// }
+    ///
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     route.associate("/resource", |assoc| {
+    ///         assoc.get_or_head().to(resource::show);
+    ///         assoc.patch().to(resource::update);
+    ///         assoc.delete().to(resource::delete);
+    ///     });
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn associate<'b, F>(&'b mut self, path: &str, f: F)
+    where
+        F: FnOnce(&mut DefaultAssociatedRouteBuilder<'b, C, P>),
+    {
+        let (node_builder, pipeline_chain, pipelines) = self.component_refs();
+        let node_builder = descend(node_builder, path);
+
+        let mut builder = AssociatedRouteBuilder {
+            node_builder,
+            pipeline_chain: *pipeline_chain,
+            pipelines: pipelines.clone(),
+            phantom: PhantomData,
+        };
+
+        f(&mut builder)
+    }
+
     /// Return the components that comprise this builder. For internal use only.
     #[doc(hidden)]
     fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>);
@@ -448,5 +574,96 @@ where
             &mut self.pipeline_chain,
             &self.pipelines,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+
+    use hyper::{Response, StatusCode};
+    use futures::future;
+
+    use handler::HandlerFuture;
+    use middleware::{Middleware, NewMiddleware};
+    use state::State;
+    use router::builder::*;
+    use pipeline::*;
+    use pipeline::single::*;
+    use http::response::create_response;
+    use test::TestServer;
+
+    #[derive(Clone, Copy)]
+    struct QuickExitMiddleware;
+
+    impl NewMiddleware for QuickExitMiddleware {
+        type Instance = Self;
+
+        fn new_middleware(&self) -> io::Result<Self> {
+            Ok(*self)
+        }
+    }
+
+    impl Middleware for QuickExitMiddleware {
+        fn call<Chain>(self, state: State, _chain: Chain) -> Box<HandlerFuture>
+        where
+            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        {
+            let f = future::ok((
+                state,
+                Response::new().with_status(StatusCode::InternalServerError),
+            ));
+
+            Box::new(f)
+        }
+    }
+
+    fn test_handler(state: State) -> (State, Response) {
+        let response = create_response(&state, StatusCode::Accepted, None);
+        (state, response)
+    }
+
+    #[test]
+    fn delegate_includes_pipelines() {
+        let (chain, pipelines) = single_pipeline(new_pipeline().add(QuickExitMiddleware).build());
+
+        let test_router = build_simple_router(|route| {
+            route.get("/").to(test_handler);
+        });
+
+        let router = build_router(chain, pipelines, |route| {
+            route.delegate("/test").to_router(test_router);
+        });
+
+        let test_server = TestServer::new(router).unwrap();
+        let response = test_server
+            .client()
+            .get("http://localhost/test/")
+            .perform()
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::InternalServerError);
+    }
+
+    #[test]
+    fn delegate_without_pipelines_skips_pipelines() {
+        let (chain, pipelines) = single_pipeline(new_pipeline().add(QuickExitMiddleware).build());
+
+        let test_router = build_simple_router(|route| {
+            route.get("/").to(test_handler);
+        });
+
+        let router = build_router(chain, pipelines, |route| {
+            route
+                .delegate_without_pipelines("/test")
+                .to_router(test_router);
+        });
+
+        let test_server = TestServer::new(router).unwrap();
+        let response = test_server
+            .client()
+            .get("http://localhost/test/")
+            .perform()
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::Accepted);
     }
 }
