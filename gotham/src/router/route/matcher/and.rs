@@ -1,6 +1,6 @@
 //! Defines the type `AndRouteMatcher`
 
-use hyper::StatusCode;
+use hyper::{Method, StatusCode};
 
 use router::route::RouteMatcher;
 use state::State;
@@ -78,5 +78,13 @@ where
         self.u.is_match(state)?;
 
         Ok(())
+    }
+
+    fn allow_header_method_list(&self) -> Vec<Method> {
+        let t_iter = self.t.allow_header_method_list().into_iter();
+        let u_iter = self.u.allow_header_method_list().into_iter();
+
+        // Deduplication happens later, we don't need to worry about it here.
+        t_iter.chain(u_iter).collect()
     }
 }

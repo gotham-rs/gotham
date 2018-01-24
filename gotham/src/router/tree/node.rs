@@ -3,7 +3,7 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::borrow::Borrow;
-use hyper::StatusCode;
+use hyper::{Method, StatusCode};
 
 use http::PercentDecoded;
 use router::route::{Delegation, Route};
@@ -103,6 +103,10 @@ pub struct Node {
 
     routes: Vec<Box<Route + Send + Sync>>,
 
+    // The list of methods to send in an `Allow` header, when a request that reaches this node
+    // results in a `405 Method Not Acceptable` response.
+    allow_header_method_list: Vec<Method>,
+
     delegating: bool,
     children: Vec<Node>,
 }
@@ -160,6 +164,10 @@ impl Node {
     /// leaf in a single path through the tree.
     pub fn is_routable(&self) -> bool {
         !self.routes.is_empty()
+    }
+
+    pub(in router) fn allow_header_method_list(&self) -> Vec<Method> {
+        self.allow_header_method_list.clone()
     }
 
     /// Recursively traverses children attempting to locate a path of nodes which indicate they
@@ -385,11 +393,22 @@ impl NodeBuilder {
         children.shrink_to_fit();
         self.routes.shrink_to_fit();
 
+        let mut allow_header_method_list: Vec<Method> = self.routes
+            .iter()
+            .flat_map(|r| r.allow_header_method_list())
+            .collect();
+
+        allow_header_method_list
+            .sort_by(|a, b| AsRef::<str>::as_ref(a).cmp(AsRef::<str>::as_ref(b)));
+
+        allow_header_method_list.dedup();
+
         Node {
             segment: self.segment,
             segment_type: self.segment_type,
             routes: self.routes,
             delegating: self.delegating,
+            allow_header_method_list,
             children,
         }
     }

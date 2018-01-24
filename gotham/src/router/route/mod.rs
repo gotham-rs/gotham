@@ -10,8 +10,7 @@ pub mod dispatch;
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use hyper::Response;
-use hyper::StatusCode;
+use hyper::{Method, Response, StatusCode};
 
 use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
@@ -44,6 +43,15 @@ pub enum Delegation {
 pub trait Route: RefUnwindSafe {
     /// Determines if this `Route` can be invoked, based on the `Request`.
     fn is_match(&self, state: &State) -> Result<(), StatusCode>;
+
+    /// Determines the set of HTTP methods which should be returned in a 405 response that
+    /// otherwise matches this `Route`, i.e. where this `Route` has been restricted by a
+    /// `RouteMatcher` that constrains the HTTP method.
+    ///
+    /// This is **only** used to inform the `Allow` header which is sent for a 405 response, and
+    /// may not be suitable for other purposes. In particular, routes which don't restrict the HTTP
+    /// method may return an empty `Vec`.
+    fn allow_header_method_list(&self) -> Vec<Method>;
 
     /// Determines if this `Route` intends to delegate requests to a secondary `Router` instance.
     fn delegation(&self) -> Delegation;
@@ -223,6 +231,10 @@ where
 {
     fn is_match(&self, state: &State) -> Result<(), StatusCode> {
         self.matcher.is_match(state)
+    }
+
+    fn allow_header_method_list(&self) -> Vec<Method> {
+        self.matcher.allow_header_method_list()
     }
 
     fn delegation(&self) -> Delegation {

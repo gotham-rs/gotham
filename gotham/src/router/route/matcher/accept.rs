@@ -1,6 +1,6 @@
 //! Defines the type `AcceptMatcher`
 
-use hyper::StatusCode;
+use hyper::{Method, StatusCode};
 use hyper::header::{Accept, Headers};
 use mime;
 
@@ -106,5 +106,9 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
             // this is valid.
             None => Ok(()),
         }
+    }
+
+    fn allow_header_method_list(&self) -> Vec<Method> {
+        vec![]
     }
 }
