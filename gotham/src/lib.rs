@@ -30,13 +30,11 @@ extern crate num_cpus;
 extern crate rand;
 extern crate regex;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate tokio_core;
 extern crate url;
 extern crate uuid;
-
-#[cfg(test)]
-#[macro_use]
-extern crate serde_derive;
 
 pub mod handler;
 pub mod middleware;

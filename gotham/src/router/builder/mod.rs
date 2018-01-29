@@ -352,6 +352,9 @@ where
     /// # #[macro_use]
     /// # extern crate gotham_derive;
     /// # extern crate hyper;
+    /// # extern crate serde;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
     /// #
     /// # use hyper::Response;
     /// # use gotham::router::Router;
@@ -363,7 +366,7 @@ where
     /// #   unimplemented!()
     /// }
     ///
-    /// #[derive(StateData, QueryStringExtractor, StaticResponseExtender)]
+    /// #[derive(StateData, Deserialize, StaticResponseExtender)]
     /// struct MyQueryStringExtractor {
     /// #   #[allow(dead_code)]
     ///     val: String,
@@ -749,6 +752,7 @@ mod tests {
         }
     }
 
+    #[derive(Deserialize)]
     struct AddParams {
         x: u64,
         y: u64,
@@ -758,30 +762,6 @@ mod tests {
 
     impl StaticResponseExtender for AddParams {
         fn extend(_: &mut State, _: &mut Response) {}
-    }
-
-    impl QueryStringExtractor for AddParams {
-        fn extract(state: &mut State) -> Result<(), String> {
-            let mapping = {
-                let uri = Uri::borrow_from(state);
-                let query = uri.query();
-                query_string::split(query)
-            };
-
-            let parse = |vals: Option<&Vec<FormUrlDecoded>>| {
-                let s = vals.unwrap().first().unwrap().val();
-                println!("{}", s);
-                u64::from_str(s).unwrap()
-            };
-
-            let params = AddParams {
-                x: parse(mapping.get("x")),
-                y: parse(mapping.get("y")),
-            };
-
-            state.put(params);
-            Ok(())
-        }
     }
 
     mod welcome {

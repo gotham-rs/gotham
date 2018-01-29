@@ -204,6 +204,9 @@ pub trait DefineSingleRoute {
     /// # #[macro_use]
     /// # extern crate gotham_derive;
     /// # extern crate hyper;
+    /// # extern crate serde;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
     /// # use hyper::Response;
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
@@ -211,7 +214,8 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// #[derive(StateData, QueryStringExtractor, StaticResponseExtender)]
+    /// #
+    /// #[derive(StateData, Deserialize, StaticResponseExtender)]
     /// struct MyQueryParams {
     /// #   #[allow(dead_code)]
     ///     id: u64,

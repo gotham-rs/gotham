@@ -10,8 +10,7 @@ pub mod dispatch;
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use hyper::Response;
-use hyper::StatusCode;
+use hyper::{Response, StatusCode, Uri};
 
 use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
@@ -246,7 +245,13 @@ where
     }
 
     fn extract_query_string(&self, state: &mut State) -> Result<(), String> {
-        QSE::extract(state)
+        let val: QSE = {
+            let uri = state.borrow::<Uri>();
+            let query = uri.query().unwrap_or("");
+            unimplemented!() // TODO
+        };
+        state.put(val);
+        Ok(())
     }
 
     fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response) {
