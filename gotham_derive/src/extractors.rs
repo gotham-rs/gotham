@@ -74,75 +74,11 @@ pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
     }
 }
 
-pub fn base_query_string(ast: &syn::DeriveInput) -> quote::Tokens {
-    let (name, borrowed, where_clause) = ty_params(&ast, None);
-    let (fields, optional_fields) = ty_fields(&ast);
-    let ofl = optional_field_labels(optional_fields);
-    let ofl_len = ofl.len();
-    let keys = field_names(&fields);
-    let keys2 = keys.clone();
-
-    let struct_name_token = quote!{#name};
-    let struct_name = struct_name_token.as_str();
-
+pub fn base_query_string(_ast: &syn::DeriveInput) -> quote::Tokens {
     quote! {
-        impl #borrowed ::gotham::router::request::query_string::QueryStringExtractor for #name
-            #borrowed #where_clause
-        {
-            fn extract(s: &mut ::gotham::state::State) -> Result<(), String> {
-                fn parse<T>(
-                    s: &::gotham::state::State,
-                    key: &str,
-                    values: Option<&Vec<::gotham::http::FormUrlDecoded>>
-                ) -> Result<T, String>
-                where
-                    T: ::gotham::router::request::query_string::FromQueryString,
-                {
-                    let struct_name = #struct_name;
-                    match values {
-                        Some(values) => {
-                            match T::from_query_string(key, values.as_slice()) {
-                                Ok(val) => {
-                                    Ok(val)
-                                }
-                                Err(_) => {
-                                    Err(format!("[{}] unrecoverable error converting query string into {}",
-                                            ::gotham::state::request_id(&s), struct_name))
-                                }
-                            }
-                        }
-                        None => Err(format!("error converting query string value `{}`", key))
-                    }
-                }
-
-                let mut qsm = {
-                    use ::gotham::state::FromState;
-                    let uri = ::hyper::Uri::borrow_from(s);
-                    let query = uri.query();
-                    ::gotham::http::request::query_string::split(query)
-                };
-
-                // Add an empty Vec for Optional segments that have not been provided.
-                //
-                // Ideally `optional_fields` would be a const but this doesn't yet seem to be
-                // possible when using the `quote` crate as we are here.
-                let ofl:[&str; #ofl_len] = [#(#ofl), *];
-                for label in ofl.iter() {
-                    if !qsm.contains_key(label) {
-                        qsm.add_unmapped_segment(label);
-                    }
-                }
-
-                let qss = #name {
-                    #(
-                        #fields: parse(s, #keys, qsm.get(#keys2))?,
-                     )*
-                };
-
-                s.put(qss);
-                Ok(())
-            }
-        }
+        compile_error!("#[derive(QueryStringExtractor)] is no longer supported - please switch to \
+                        #[derive(Deserialize)]. The `StateData` and `StaticResponseExtender` \
+                        derives are still required.");
     }
 }
 
