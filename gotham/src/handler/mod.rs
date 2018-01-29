@@ -48,8 +48,9 @@ pub trait NewHandler: Send + Sync + RefUnwindSafe {
 }
 
 impl<F, H> NewHandler for F
-    where F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
-          H: Handler
+where
+    F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
+    H: Handler,
 {
     type Instance = H;
 
@@ -68,7 +69,8 @@ pub trait IntoHandlerFuture {
 }
 
 impl<T> IntoHandlerFuture for (State, T)
-    where T: IntoResponse
+where
+    T: IntoResponse,
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;
@@ -158,8 +160,9 @@ impl IntoResponse for Response {
 }
 
 impl<T, E> IntoResponse for ::std::result::Result<T, E>
-    where T: IntoResponse,
-          E: IntoResponse
+where
+    T: IntoResponse,
+    E: IntoResponse,
 {
     fn into_response(self, state: &State) -> Response {
         match self {
@@ -170,8 +173,9 @@ impl<T, E> IntoResponse for ::std::result::Result<T, E>
 }
 
 impl<F, R> Handler for F
-    where F: FnOnce(State) -> R,
-          R: IntoHandlerFuture
+where
+    F: FnOnce(State) -> R,
+    R: IntoHandlerFuture,
 {
     fn handle(self, state: State) -> Box<HandlerFuture> {
         self(state).into_handler_future()
