@@ -2,11 +2,9 @@
 //! pool so a connection can be established if required by Middleware or Handlers.
 
 use diesel::Connection;
+use gotham::state::{FromState, State};
 use r2d2::{Error, Pool, PooledConnection};
 use r2d2_diesel::ConnectionManager;
-
-use gotham;
-use gotham::state::{FromState, State};
 
 /// Convenience function for usage within 3rd party Middleware and Handlers to obtain a
 /// Diesel connection.

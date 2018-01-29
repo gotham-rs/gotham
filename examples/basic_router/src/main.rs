@@ -42,12 +42,12 @@ fn router() -> Router {
         route.scope("/checkout", |route| {
             route.get("/start").to(checkout::start);
 
-            // TODO: Clean this up once 'associate' hits Gotham master
-            // https://github.com/gotham-rs/gotham/issues/96
-            route.post("/address").to(checkout::address::create);
-            route.put("/address").to(checkout::address::update);
-            route.patch("/address").to(checkout::address::update);
-            route.delete("/address").to(checkout::address::delete);
+            route.associate("/address", |assoc| {
+                assoc.post().to(checkout::address::create);
+                assoc.put().to(checkout::address::update);
+                assoc.patch().to(checkout::address::update);
+                assoc.delete().to(checkout::address::delete);
+            });
 
             route
                 .post("/payment_details")
