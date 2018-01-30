@@ -1,7 +1,5 @@
 //! Extracts query string parameters into type safe structs
 
-use std;
-
 use serde::{Deserialize, Deserializer};
 use hyper::Response;
 

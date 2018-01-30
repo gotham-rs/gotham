@@ -67,6 +67,8 @@ pub trait Route: RefUnwindSafe {
     fn dispatch(&self, state: State) -> Box<HandlerFuture>;
 }
 
+/// Returned in the `Err` variant from `extract_query_string` or `extract_request_path`, this
+/// signals that the extractor has failed and the request should not proceed.
 pub struct ExtractorFailed;
 
 /// Default implementation for `Route`.

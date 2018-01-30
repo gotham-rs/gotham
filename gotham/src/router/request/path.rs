@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{self, Display};
-use std::str::{FromStr, ParseBoolError};
+use std::str::FromStr;
 
 use hyper::Response;
 use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess,
@@ -66,12 +66,14 @@ pub struct SegmentMapping<'a> {
 }
 
 impl<'a> SegmentMapping<'a> {
+    /// Creates a new, empty `SegmentMapping` collection.
     pub fn new() -> SegmentMapping<'a> {
         SegmentMapping {
             data: HashMap::new(),
         }
     }
 
+    /// Inserts a mapping into this `SegmentMapping` collection.
     pub fn insert(&mut self, key: &'a str, val: Vec<&'a PercentDecoded>) {
         self.data.insert(key, val);
     }
