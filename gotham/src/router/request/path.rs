@@ -176,7 +176,7 @@ macro_rules! single_value_type {
         where
             V: Visitor<'de>
         {
-            let v = parse_single_value(self.values, stringify!($trait_fn))?;
+            let v = parse_single_value(self.values)?;
             visitor.$visitor_fn(v)
         }
     }
@@ -413,10 +413,7 @@ struct DeserializeValues<'de> {
 /// Convert the value from a single-item list of percent-decoded strings by using
 /// `<T as FromStr>::parse`. Returns an error if the list didn't have exactly one item in it, or if
 /// the value failed to parse.
-fn parse_single_value<'de, T>(
-    values: Vec<&'de PercentDecoded>,
-    fn_name: &'static str,
-) -> Result<T, SegmentMappingError>
+fn parse_single_value<'de, T>(values: Vec<&'de PercentDecoded>) -> Result<T, SegmentMappingError>
 where
     T: FromStr,
     T::Err: Display,
