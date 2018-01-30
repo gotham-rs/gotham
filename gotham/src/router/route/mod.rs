@@ -154,40 +154,40 @@ pub trait Route: RefUnwindSafe {
 ///   RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
 /// # }
 /// ```
-pub struct RouteImpl<RM, RE, QSE>
+pub struct RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
     matcher: RM,
     dispatcher: Box<Dispatcher + Send + Sync>,
-    _extractors: Extractors<RE, QSE>,
+    _extractors: Extractors<PE, QSE>,
     delegation: Delegation,
 }
 
 /// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
 /// for use by custom `Middleware` and `Handler` implementations.
-pub struct Extractors<RE, QSE>
+pub struct Extractors<PE, QSE>
 where
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
-    rpe_phantom: PhantomData<RE>,
+    rpe_phantom: PhantomData<PE>,
     qse_phantom: PhantomData<QSE>,
 }
 
-impl<RM, RE, QSE> RouteImpl<RM, RE, QSE>
+impl<RM, PE, QSE> RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
     /// Creates a new `RouteImpl`
     pub fn new(
         matcher: RM,
         dispatcher: Box<Dispatcher + Send + Sync>,
-        _extractors: Extractors<RE, QSE>,
+        _extractors: Extractors<PE, QSE>,
         delegation: Delegation,
     ) -> Self {
         RouteImpl {
@@ -199,9 +199,9 @@ where
     }
 }
 
-impl<RE, QSE> Extractors<RE, QSE>
+impl<PE, QSE> Extractors<PE, QSE>
 where
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
     /// Creates a new set of Extractors for use with a `RouteImpl`
@@ -213,10 +213,10 @@ where
     }
 }
 
-impl<RM, RE, QSE> Route for RouteImpl<RM, RE, QSE>
+impl<RM, PE, QSE> Route for RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
     fn is_match(&self, state: &State) -> Result<(), StatusCode> {
@@ -236,13 +236,13 @@ where
         state: &mut State,
         segment_mapping: SegmentMapping,
     ) -> Result<(), String> {
-        let val = RE::deserialize(segment_mapping).unwrap(); // TODO
+        let val = PE::deserialize(segment_mapping).unwrap(); // TODO
         state.put(val);
         Ok(())
     }
 
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response) {
-        RE::extend(state, res)
+        PE::extend(state, res)
     }
 
     fn extract_query_string(&self, state: &mut State) -> Result<(), String> {
