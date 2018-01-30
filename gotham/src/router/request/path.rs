@@ -107,6 +107,7 @@ pub enum SegmentMappingError {
     /// attached.
     ///
     /// ```rust,no_run
+    /// # #[allow(dead_code)]
     /// enum MyEnum {
     ///     // This variant is supported.
     ///     UnitVariant,
@@ -117,6 +118,8 @@ pub enum SegmentMappingError {
     ///     TupleVariant(i32, i32, i32),
     ///     StructVariant { i: i32 },
     /// }
+    /// #
+    /// # fn main() {}
     /// ```
     UnexpectedEnumVariantType(&'static str),
 
