@@ -132,7 +132,7 @@ macro_rules! single_value_type {
 /// can be provided as a trailing parameter list.
 macro_rules! reject_deserialize_type {
     ($trait_fn:ident, $err:expr) => {
-        reject_deserialize_type!($trait_fn, $err, (visitor: V));
+        reject_deserialize_type!($trait_fn, $err, (_visitor: V));
     };
 
     {$trait_fn:ident, $err:expr, ($($arg_i:ident : $arg_t:ty),+)} => {
@@ -148,7 +148,7 @@ macro_rules! reject_deserialize_type {
 /// with the provided `$err` as the descriptive string.
 macro_rules! reject_target_type {
     ($trait_fn:ident, $name:expr) => {
-        reject_target_type!($trait_fn, $name, (visitor: V));
+        reject_target_type!($trait_fn, $name, (_visitor: V));
     };
 
     ($trait_fn:ident, $name:expr, ($($arg_i:ident : $arg_t:ty),+)) => {
@@ -166,7 +166,7 @@ macro_rules! reject_target_type {
 /// with the provided `$err` as the descriptive string.
 macro_rules! reject_value_type {
     ($trait_fn:ident, $name:expr) => {
-        reject_value_type!($trait_fn, $name, (visitor: V));
+        reject_value_type!($trait_fn, $name, (_visitor: V));
     };
 
     ($trait_fn:ident, $name:expr, ($($arg_i:ident : $arg_t:ty),+)) => {
@@ -260,11 +260,11 @@ impl<'de> Deserializer<'de> for SegmentMapping<'de, 'de> {
     reject_target_type!(deserialize_byte_buf, "byte buffer");
     reject_target_type!(deserialize_option, "Option<T>");
     reject_target_type!(deserialize_seq, "sequence");
-    reject_target_type!(deserialize_tuple, "tuple", (_len: usize, visitor: V));
+    reject_target_type!(deserialize_tuple, "tuple", (_len: usize, _visitor: V));
     reject_target_type!(
         deserialize_tuple_struct,
         "tuple struct",
-        (_name: &'static str, _len: usize, visitor: V)
+        (_name: &'static str, _len: usize, _visitor: V)
     );
     reject_target_type!(
         deserialize_enum,
@@ -272,7 +272,7 @@ impl<'de> Deserializer<'de> for SegmentMapping<'de, 'de> {
         (
             _name: &'static str,
             _variants: &'static [&'static str],
-            visitor: V
+            _visitor: V
         )
     );
     reject_target_type!(deserialize_identifier, "identifier");
@@ -501,14 +501,14 @@ impl<'de> Deserializer<'de> for DeserializeValues<'de> {
         (
             _name: &'static str,
             _fields: &'static [&'static str],
-            visitor: V
+            _visitor: V
         )
     );
-    reject_value_type!(deserialize_tuple, "tuple", (_len: usize, visitor: V));
+    reject_value_type!(deserialize_tuple, "tuple", (_len: usize, _visitor: V));
     reject_value_type!(
         deserialize_tuple_struct,
         "tuple struct",
-        (_name: &'static str, _len: usize, visitor: V)
+        (_name: &'static str, _len: usize, _visitor: V)
     );
 }
 
