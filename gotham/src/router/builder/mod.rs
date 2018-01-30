@@ -711,23 +711,19 @@ where
 mod tests {
     use super::*;
 
-    use std::str::FromStr;
     use std::sync::Arc;
 
-    use hyper::{Method, Request, Response, StatusCode, Uri};
+    use hyper::{Method, Request, Response, StatusCode};
     use hyper::server::Service;
     use futures::{Future, Stream};
     use tokio_core::reactor::Core;
 
     use pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
-    use state::{FromState, State, StateData};
+    use state::{State, StateData};
     use service::GothamService;
     use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set};
     use router::response::extender::StaticResponseExtender;
-    use router::request::path::SegmentMapping;
-    use http::FormUrlDecoded;
-    use http::request::query_string;
 
     #[derive(Deserialize)]
     struct SalutationParams {
