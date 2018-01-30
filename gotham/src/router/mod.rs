@@ -154,8 +154,7 @@ impl Router {
                         trace!("[{}] dispatching", request_id(&state));
                         route.dispatch(state)
                     }
-                    Err(e) => {
-                        trace!("[{}] {}", request_id(&state), e);
+                    Err(_) => {
                         error!("[{}] the server cannot or will not process the request due to a client error within the query string",
                                request_id(&state));
 
@@ -165,8 +164,7 @@ impl Router {
                     }
                 }
             }
-            Err(e) => {
-                trace!("[{}] {}", request_id(&state), e);
+            Err(_) => {
                 error!(
                     "[{}] the server cannot or will not process the request due to a client error on the request path",
                     request_id(&state)

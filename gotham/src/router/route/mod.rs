@@ -16,8 +16,8 @@ use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
 use router::request::query_string::QueryStringExtractor;
 use router::route::matcher::RouteMatcher;
-use router::request::path::{PathExtractor, SegmentMapping};
-use state::State;
+use router::request::path::{PathExtractor, SegmentMapping, SegmentMappingError};
+use state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]
 /// Indicates how this Route behaves in relation to external `Router` instances.
@@ -51,13 +51,13 @@ pub trait Route: RefUnwindSafe {
         &self,
         state: &mut State,
         segment_mapping: SegmentMapping,
-    ) -> Result<(), String>;
+    ) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when path extraction fails
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response);
 
     /// Extracts the `Request` query string and stores it in `State`
-    fn extract_query_string(&self, state: &mut State) -> Result<(), String>;
+    fn extract_query_string(&self, state: &mut State) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when query string extraction fails
     fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response);
@@ -66,6 +66,8 @@ pub trait Route: RefUnwindSafe {
     /// application specific logic to respond to the request.
     fn dispatch(&self, state: State) -> Box<HandlerFuture>;
 }
+
+pub struct ExtractorFailed;
 
 /// Default implementation for `Route`.
 ///
@@ -235,24 +237,38 @@ where
         &self,
         state: &mut State,
         segment_mapping: SegmentMapping,
-    ) -> Result<(), String> {
-        let val = PE::deserialize(segment_mapping).unwrap(); // TODO
-        state.put(val);
-        Ok(())
+    ) -> Result<(), ExtractorFailed> {
+        match PE::deserialize(segment_mapping) {
+            Ok(val) => Ok(state.put(val)),
+            Err(e) => {
+                debug!("[{}] path extractor failed: {}", request_id(&state), e);
+                Err(ExtractorFailed)
+            }
+        }
     }
 
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response) {
         PE::extend(state, res)
     }
 
-    fn extract_query_string(&self, state: &mut State) -> Result<(), String> {
-        let val: QSE = {
+    fn extract_query_string(&self, state: &mut State) -> Result<(), ExtractorFailed> {
+        let result: Result<QSE, _> = {
             let uri = state.borrow::<Uri>();
             let query = uri.query().unwrap_or("");
             unimplemented!() // TODO
         };
-        state.put(val);
-        Ok(())
+
+        match result {
+            Ok(val) => Ok(state.put(val)),
+            Err(e) => {
+                debug!(
+                    "[{}] query string extractor failed: {}",
+                    request_id(&state),
+                    e
+                );
+                Err(ExtractorFailed)
+            }
+        }
     }
 
     fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response) {
