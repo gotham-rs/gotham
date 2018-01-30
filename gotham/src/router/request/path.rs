@@ -142,6 +142,9 @@ pub enum SegmentMappingError {
     /// in the implementation of the `serde::de::Error` trait for external types to provide
     /// informative error messages.
     Custom(String),
+
+    // Variants may be added in future, and it will not be considered a breaking change.
+    #[doc(hidden)] __NonExhaustive,
 }
 
 impl Display for SegmentMappingError {
