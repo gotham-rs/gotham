@@ -16,8 +16,7 @@ use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
 use router::request::query_string::QueryStringExtractor;
 use router::route::matcher::RouteMatcher;
-use router::tree::SegmentMapping;
-use router::request::path::PathExtractor;
+use router::request::path::{PathExtractor, SegmentMapping};
 use state::State;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -237,7 +236,9 @@ where
         state: &mut State,
         segment_mapping: SegmentMapping,
     ) -> Result<(), String> {
-        RE::extract(state, segment_mapping)
+        let val = RE::deserialize(segment_mapping).unwrap(); // TODO
+        state.put(val);
+        Ok(())
     }
 
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response) {

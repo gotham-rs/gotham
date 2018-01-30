@@ -15,9 +15,10 @@ use hyper::{Response, StatusCode};
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use http::request::path::RequestPathSegments;
 use http::response::create_response;
+use router::request::path::SegmentMapping;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Delegation, Route};
-use router::tree::{SegmentMapping, Tree};
+use router::tree::Tree;
 use state::{request_id, State};
 
 struct RouterData {

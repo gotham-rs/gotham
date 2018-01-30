@@ -29,6 +29,7 @@ extern crate mio;
 extern crate num_cpus;
 extern crate rand;
 extern crate regex;
+#[macro_use]
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;

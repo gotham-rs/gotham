@@ -302,6 +302,8 @@ where
     /// # extern crate gotham;
     /// # #[macro_use]
     /// # extern crate gotham_derive;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
     /// # extern crate hyper;
     /// #
     /// # use hyper::Response;
@@ -314,7 +316,7 @@ where
     /// #   unimplemented!()
     /// }
     ///
-    /// #[derive(StateData, PathExtractor, StaticResponseExtender)]
+    /// #[derive(Deserialize, StateData, StaticResponseExtender)]
     /// struct MyPathExtractor {
     /// #   #[allow(dead_code)]
     ///     id: u32,
@@ -723,10 +725,11 @@ mod tests {
     use service::GothamService;
     use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set};
     use router::response::extender::StaticResponseExtender;
-    use router::tree::SegmentMapping;
+    use router::request::path::SegmentMapping;
     use http::FormUrlDecoded;
     use http::request::query_string;
 
+    #[derive(Deserialize)]
     struct SalutationParams {
         name: String,
     }
@@ -735,21 +738,6 @@ mod tests {
 
     impl StaticResponseExtender for SalutationParams {
         fn extend(_: &mut State, _: &mut Response) {}
-    }
-
-    impl PathExtractor for SalutationParams {
-        fn extract(state: &mut State, segment_mapping: SegmentMapping) -> Result<(), String> {
-            let name = segment_mapping
-                .get("name")
-                .unwrap()
-                .first()
-                .unwrap()
-                .val()
-                .to_owned();
-            let params = SalutationParams { name };
-            state.put(params);
-            Ok(())
-        }
     }
 
     #[derive(Deserialize)]
