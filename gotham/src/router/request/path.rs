@@ -389,7 +389,7 @@ impl<'de> Deserializer<'de> for DeserializeKey<'de> {
         visitor.visit_str(self.key)
     }
 
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -535,7 +535,7 @@ impl<'de> Deserializer<'de> for DeserializeValues<'de> {
         visitor.visit_newtype_struct(self)
     }
 
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_any<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -617,7 +617,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
         Ok(())
     }
 
-    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value, Self::Error>
+    fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value, Self::Error>
     where
         T: DeserializeSeed<'de>,
     {
@@ -626,7 +626,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
         ))
     }
 
-    fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -637,8 +637,8 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 
     fn struct_variant<V>(
         self,
-        fields: &'static [&'static str],
-        visitor: V,
+        _fields: &'static [&'static str],
+        _visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
