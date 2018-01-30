@@ -63,18 +63,18 @@ impl StaticResponseExtender for NoopPathExtractor {
 ///
 /// Data is Percent and UTF8 decoded.
 #[derive(Debug)]
-pub struct SegmentMapping<'a, 'b> {
-    data: HashMap<&'a str, Vec<&'b PercentDecoded>>,
+pub struct SegmentMapping<'a> {
+    data: HashMap<&'a str, Vec<&'a PercentDecoded>>,
 }
 
-impl<'a, 'b> SegmentMapping<'a, 'b> {
-    pub fn new() -> SegmentMapping<'a, 'b> {
+impl<'a> SegmentMapping<'a> {
+    pub fn new() -> SegmentMapping<'a> {
         SegmentMapping {
             data: HashMap::new(),
         }
     }
 
-    pub fn insert(&mut self, key: &'a str, val: Vec<&'b PercentDecoded>) {
+    pub fn insert(&mut self, key: &'a str, val: Vec<&'a PercentDecoded>) {
         self.data.insert(key, val);
     }
 }
@@ -236,7 +236,7 @@ macro_rules! reject_value_type {
 /// of the serde side of path extraction. Primarily, we're only checking that we're deserializing
 /// into a supported type. In the "normal" case, `deserialize_struct` is the only thing invoked
 /// here, and we use `SegmentMappingAccess` to loop through the mappings populating the struct.
-impl<'de> Deserializer<'de> for SegmentMapping<'de, 'de> {
+impl<'de> Deserializer<'de> for SegmentMapping<'de> {
     type Error = SegmentMappingError;
 
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>

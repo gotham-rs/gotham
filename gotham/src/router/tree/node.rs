@@ -175,10 +175,10 @@ impl Node {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'r, 'n>(
-        &'n self,
+    pub fn traverse<'r>(
+        &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
+    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, leaf, c, sm)) => {
                 path.reverse();
@@ -189,11 +189,11 @@ impl Node {
     }
 
     #[allow(unknown_lints, type_complexity)]
-    fn inner_traverse<'r, 'n>(
-        &'n self,
+    fn inner_traverse<'r>(
+        &'r self,
         req_path_segments: &'r [&PercentDecoded],
         mut consumed_segments: Vec<&'r PercentDecoded>,
-    ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
+    ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match req_path_segments.split_first() {
             Some((x, _)) if self.is_delegating(x) => {
                 // A delegated node terminates processing, start building result

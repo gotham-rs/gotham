@@ -115,10 +115,10 @@ impl Tree {
     }
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
-    pub fn traverse<'r, 'n>(
-        &'n self,
+    pub fn traverse<'r>(
+        &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
+    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
