@@ -16,7 +16,7 @@ use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
 use router::request::query_string::QueryStringExtractor;
 use router::route::matcher::RouteMatcher;
-use router::request::path::{PathExtractor, SegmentMapping, SegmentMappingError};
+use router::request::path::{PathExtractor, SegmentMapping};
 use state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]

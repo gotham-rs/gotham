@@ -3,9 +3,7 @@
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{self, Display};
-use std::string::ParseError;
 use std::str::{FromStr, ParseBoolError};
-use std::num::{ParseFloatError, ParseIntError};
 
 use hyper::Response;
 use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess,

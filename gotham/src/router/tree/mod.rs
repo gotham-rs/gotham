@@ -1,8 +1,5 @@
 //! Defines a hierarchial `Tree` with subtrees of `Node`.
 
-use std::error;
-use std::fmt::{self, Display};
-
 use http::PercentDecoded;
 use router::route::Route;
 use router::tree::node::{Node, NodeBuilder, SegmentType};

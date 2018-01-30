@@ -2,17 +2,10 @@
 
 use std;
 
-use std::error::Error;
-use std::str::FromStr;
-use std::string::ParseError;
-use std::str::ParseBoolError;
-use std::num::{ParseFloatError, ParseIntError};
-
 use serde::{Deserialize, Deserializer};
 use hyper::Response;
 
 use state::{State, StateData};
-use http::FormUrlDecoded;
 use router::response::extender::StaticResponseExtender;
 
 /// Extracts the `Request` query string into `State`. On failure is capable of extending `Response`

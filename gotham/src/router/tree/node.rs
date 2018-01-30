@@ -1,7 +1,6 @@
 //! Defines `Node` and `SegmentType` for `Tree`
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::borrow::Borrow;
 use hyper::StatusCode;
 
