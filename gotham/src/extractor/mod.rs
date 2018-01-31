@@ -8,6 +8,8 @@ use hyper::Response;
 use state::{State, StateData};
 use router::response::extender::StaticResponseExtender;
 
+mod internal;
+
 /// Extracts the `Request` query string into `State`. On failure is capable of extending `Response`
 /// to indicate why the extraction process failed.
 ///

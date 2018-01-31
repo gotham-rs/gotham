@@ -3,7 +3,6 @@
 pub mod builder;
 pub mod tree;
 pub mod route;
-pub mod request;
 pub mod response;
 
 use std::io;
