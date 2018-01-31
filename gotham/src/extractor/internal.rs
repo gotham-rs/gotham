@@ -1,11 +1,12 @@
-//! Extracts request path segments into type-safe structs using Serde. The `SegmentMapping` type is
-//! populated by the `Router` while traversing the tree, and the `Route` implementation performs
-//! deserialization before dispatching to the `Handler`.
+//! Extracts request path segments into type-safe structs using Serde. The `ExtractorDeserializer`
+//! type is populated by the `Router` while traversing the tree, and the `Route` implementation
+//! performs deserialization before dispatching to the `Handler`.
 
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{self, Display};
 use std::str::FromStr;
+use std::marker::PhantomData;
 
 use hyper::Response;
 use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess,
@@ -15,47 +16,25 @@ use http::PercentDecoded;
 use state::{State, StateData};
 
 use router::response::extender::StaticResponseExtender;
+use router::tree::SegmentMapping;
 
-/// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
-/// which have been matched against the `Request` path.
-///
-/// Data is Percent and UTF8 decoded.
-#[derive(Debug)]
-pub struct SegmentMapping<'a> {
-    data: HashMap<&'a str, Vec<&'a PercentDecoded>>,
-}
-
-impl<'a> SegmentMapping<'a> {
-    /// Creates a new, empty `SegmentMapping` collection.
-    pub fn new() -> SegmentMapping<'a> {
-        SegmentMapping {
-            data: HashMap::new(),
-        }
-    }
-
-    /// Inserts a mapping into this `SegmentMapping` collection.
-    pub fn insert(&mut self, key: &'a str, val: Vec<&'a PercentDecoded>) {
-        self.data.insert(key, val);
-    }
-}
-
-/// Describes the error cases which can result from deserializing a `SegmentMapping` into a
+/// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
 /// `PathExtractor` provided by the application.
 #[derive(Debug)]
-pub enum SegmentMappingError {
-    /// The `PathExtractor` type is not one which can be deserialized from a `SegmentMapping`.
-    /// This deserializer requires a structured type (usually a custom struct) which can be
-    /// deserialized from key / value pairs.
+pub(crate) enum ExtractorError {
+    /// The `PathExtractor` type is not one which can be deserialized from a
+    /// `ExtractorDeserializer`.  This deserializer requires a structured type (usually a custom
+    /// struct) which can be deserialized from key / value pairs.
     UnexpectedTargetType(&'static str),
 
     /// An invalid state occurred wherein a "key" (i.e. the name of a route segment) was
     /// deserialized as something other than an `identifier`.
     UnexpectedKeyType,
 
-    /// The type of a value is not one which can be deserialized from `SegmentMapping` values. The
-    /// value types are typically primitives, `String`, `Option<T>`, `Vec<T>`, or something which
-    /// deserializes in the same manner as one of these (e.g. a custom `enum` can be deserialized
-    /// in the same manner as a `String`).
+    /// The type of a value is not one which can be deserialized from `ExtractorDeserializer`
+    /// values. The value types are typically primitives, `String`, `Option<T>`, `Vec<T>`, or
+    /// something which deserializes in the same manner as one of these (e.g. a custom `enum` can
+    /// be deserialized in the same manner as a `String`).
     ///
     /// Attempting to deserialize a value into a struct is one example where this error will be
     /// triggered, since a list of `0..n` values can't be converted into key/value pairs for
@@ -110,24 +89,24 @@ pub enum SegmentMappingError {
     #[doc(hidden)] __NonExhaustive,
 }
 
-impl Display for SegmentMappingError {
+impl Display for ExtractorError {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         out.write_fmt(format_args!("{:?}", self))
     }
 }
 
-impl Error for SegmentMappingError {
+impl Error for ExtractorError {
     fn description(&self) -> &str {
         unimplemented!()
     }
 }
 
-impl de::Error for SegmentMappingError {
-    fn custom<T>(t: T) -> SegmentMappingError
+impl de::Error for ExtractorError {
+    fn custom<T>(t: T) -> ExtractorError
     where
         T: Display,
     {
-        SegmentMappingError::Custom(format!("{}", t))
+        ExtractorError::Custom(format!("{}", t))
     }
 }
 
@@ -172,7 +151,7 @@ macro_rules! reject_target_type {
     ($trait_fn:ident, $name:expr, ($($arg_i:ident : $arg_t:ty),+)) => {
         reject_deserialize_type!(
             $trait_fn,
-            SegmentMappingError::UnexpectedTargetType(
+            ExtractorError::UnexpectedTargetType(
                 concat!("unsupported target type for path extractor: ", $name)
             ),
             ($($arg_i: $arg_t),+)
@@ -190,7 +169,7 @@ macro_rules! reject_value_type {
     ($trait_fn:ident, $name:expr, ($($arg_i:ident : $arg_t:ty),+)) => {
         reject_deserialize_type!(
             $trait_fn,
-            SegmentMappingError::UnexpectedValueType(
+            ExtractorError::UnexpectedValueType(
                 concat!("unsupported value type for path extractor: ", $name)
             ),
             ($($arg_i: $arg_t),+)
@@ -198,20 +177,94 @@ macro_rules! reject_value_type {
     };
 }
 
+/// This trait represents the possible types that we can deserialize from when we're using
+/// extractors. The concrete values of this are all `IteratorAdaptor` types, and this trait is
+/// primarily giving us one place to deal with the type structure and expose the `next` function
+/// that we require.
+///
+/// See `from_segment_mapping` and TODO: `from_query_string` for how the values are constructed.
+trait ExtractorDataSource<'a> {
+    type Iterator: Iterator<Item = (&'a str, Self::ValueIterator)>;
+    type ValueIterator: IntoIterator<Item = &'a Self::Value>;
+    type Value: AsRef<str> + 'a + ?Sized;
+
+    /// Returns the next value from the underlying iterator.
+    fn next(&mut self) -> Option<(&'a str, Self::ValueIterator)>;
+}
+
+/// Concrete type which implements `ExtractorDataSource`. See `from_segment_mapping` and TODO:
+/// `from_query_string` for how this is constructed and used.
+struct IteratorAdaptor<'a, I, VI, V>
+where
+    I: Iterator<Item = (&'a str, VI)>,
+    VI: IntoIterator<Item = &'a V>,
+    V: AsRef<str> + 'a + ?Sized,
+{
+    iter: I,
+}
+
+impl<'a, I, VI, V> ExtractorDataSource<'a> for IteratorAdaptor<'a, I, VI, V>
+where
+    I: Iterator<Item = (&'a str, VI)>,
+    VI: IntoIterator<Item = &'a V>,
+    V: AsRef<str> + 'a + ?Sized,
+{
+    type Iterator = I;
+    type ValueIterator = VI;
+    type Value = V;
+
+    fn next(&mut self) -> Option<(&'a str, Self::ValueIterator)> {
+        self.iter.next()
+    }
+}
+
+/// Holds data which is parsed from the request, depending on the source.
+#[derive(Debug)]
+struct ExtractorDeserializer<'a, D>
+where
+    D: ExtractorDataSource<'a>,
+{
+    data_source: D,
+    phantom: PhantomData<&'a str>,
+}
+
+/// Deserializes a value of type `T`, from a set of path segments extracted while walking the route
+/// tree.
+pub(crate) fn from_segment_mapping<'de, T>(sm: SegmentMapping<'de>) -> Result<T, ExtractorError>
+where
+    T: Deserialize<'de>,
+{
+    let data_source = IteratorAdaptor {
+        iter: sm.into_iter(),
+    };
+
+    let deserializer = ExtractorDeserializer {
+        data_source,
+        phantom: PhantomData,
+    };
+
+    T::deserialize(deserializer)
+}
+
 /// Implements a `Deserializer` for the full set of extracted path segments. This is the top level
 /// of the serde side of path extraction. Primarily, we're only checking that we're deserializing
 /// into a supported type. In the "normal" case, `deserialize_struct` is the only thing invoked
-/// here, and we use `SegmentMappingAccess` to loop through the mappings populating the struct.
-impl<'de> Deserializer<'de> for SegmentMapping<'de> {
-    type Error = SegmentMappingError;
+/// here, and we use `ExtractorDeserializerAccess` to loop through the mappings populating the
+/// struct.
+impl<'de, D> Deserializer<'de> for ExtractorDeserializer<'de, D>
+where
+    D: ExtractorDataSource<'de>,
+{
+    type Error = ExtractorError;
 
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-        visitor.visit_map(SegmentMappingAccess {
-            iter: self.data.into_iter(),
+        visitor.visit_map(ExtractorDeserializerAccess {
+            data_source: self.data_source,
             current: None,
+            phantom: PhantomData,
         })
     }
 
@@ -298,25 +351,33 @@ impl<'de> Deserializer<'de> for SegmentMapping<'de> {
 }
 
 /// Iterates through the segment mappings, yielding each pair of (key, values).
-struct SegmentMappingAccess<'a, I>
+struct ExtractorDeserializerAccess<'a, D>
 where
-    I: Iterator<Item = (&'a str, Vec<&'a PercentDecoded>)>,
+    D: ExtractorDataSource<'a>,
 {
-    iter: I,
-    current: Option<I::Item>,
+    data_source: D,
+    current: Option<(&'a str, D::ValueIterator)>,
+    phantom: PhantomData<&'a str>,
 }
 
-impl<'de, 'a: 'de, I> MapAccess<'de> for SegmentMappingAccess<'a, I>
+fn convert_to_string_ref<'a, T>(t: &'a T) -> &'a str
 where
-    I: Iterator<Item = (&'a str, Vec<&'a PercentDecoded>)>,
+    T: AsRef<str> + ?Sized,
 {
-    type Error = SegmentMappingError;
+    t.as_ref()
+}
+
+impl<'de, D> MapAccess<'de> for ExtractorDeserializerAccess<'de, D>
+where
+    D: ExtractorDataSource<'de>,
+{
+    type Error = ExtractorError;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
     where
         K: DeserializeSeed<'de>,
     {
-        self.current = self.iter.next();
+        self.current = self.data_source.next();
         match self.current {
             Some((ref key, ref _v)) => {
                 let key = seed.deserialize(DeserializeKey { key })?;
@@ -331,8 +392,13 @@ where
         V: DeserializeSeed<'de>,
     {
         match self.current.take() {
-            Some((_k, values)) => seed.deserialize(DeserializeValues { values }),
-            None => Err(SegmentMappingError::NoCurrentItem),
+            Some((_k, values)) => {
+                let deserializer = DeserializeValues {
+                    values: values.into_iter().map(convert_to_string_ref),
+                };
+                seed.deserialize(deserializer)
+            }
+            None => Err(ExtractorError::NoCurrentItem),
         }
     }
 }
@@ -343,7 +409,7 @@ struct DeserializeKey<'de> {
 }
 
 impl<'de> Deserializer<'de> for DeserializeKey<'de> {
-    type Error = SegmentMappingError;
+    type Error = ExtractorError;
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -357,7 +423,7 @@ impl<'de> Deserializer<'de> for DeserializeKey<'de> {
         V: Visitor<'de>,
     {
         // This really should be unreachable, but we return an error here to be polite.
-        Err(SegmentMappingError::UnexpectedKeyType)
+        Err(ExtractorError::UnexpectedKeyType)
     }
 
     forward_to_deserialize_any! {
@@ -369,37 +435,44 @@ impl<'de> Deserializer<'de> for DeserializeKey<'de> {
 
 /// Deserializes one or multiple values into the value type. This is (indirectly) where the actual
 /// conversion from percent-decoded strings into the _actual_ values occurs.
-struct DeserializeValues<'de> {
-    values: Vec<&'de PercentDecoded>,
+struct DeserializeValues<'de, I>
+where
+    I: Iterator<Item = &'de str>,
+{
+    values: I,
 }
 
 /// Convert the value from a single-item list of percent-decoded strings by using
 /// `<T as FromStr>::parse`. Returns an error if the list didn't have exactly one item in it, or if
 /// the value failed to parse.
-fn parse_single_value<'de, T>(values: Vec<&'de PercentDecoded>) -> Result<T, SegmentMappingError>
+fn parse_single_value<'de, T, I>(values: I) -> Result<T, ExtractorError>
 where
     T: FromStr,
     T::Err: Display,
+    I: Iterator<Item = &'de str>,
 {
-    extract_single_value(values).and_then(|value| match value.val().parse() {
+    extract_single_value(values).and_then(|value| match value.parse() {
         Ok(t) => Ok(t),
-        Err(e) => Err(SegmentMappingError::ParseError(format!("{}", e))),
+        Err(e) => Err(ExtractorError::ParseError(format!("{}", e))),
     })
 }
 
-fn extract_single_value<'de>(
-    values: Vec<&'de PercentDecoded>,
-) -> Result<&'de PercentDecoded, SegmentMappingError> {
-    let mut iter = values.into_iter();
-    match (iter.next(), iter.next()) {
+fn extract_single_value<'de, I>(mut values: I) -> Result<&'de str, ExtractorError>
+where
+    I: Iterator<Item = &'de str>,
+{
+    match (values.next(), values.next()) {
         (Some(val), None) => Ok(val),
-        (Some(_), Some(_)) => Err(SegmentMappingError::MultipleValues),
-        (None, _) => Err(SegmentMappingError::NoValues),
+        (Some(_), Some(_)) => Err(ExtractorError::MultipleValues),
+        (None, _) => Err(ExtractorError::NoValues),
     }
 }
 
-impl<'de> Deserializer<'de> for DeserializeValues<'de> {
-    type Error = SegmentMappingError;
+impl<'de, I> Deserializer<'de> for DeserializeValues<'de, I>
+where
+    I: Iterator<Item = &'de str>,
+{
+    type Error = ExtractorError;
 
     // Handle all the primitive types via `parse_single_value`
     single_value_type!(deserialize_bool, visit_bool);
@@ -447,7 +520,7 @@ impl<'de> Deserializer<'de> for DeserializeValues<'de> {
         V: Visitor<'de>,
     {
         let val = extract_single_value(self.values)?;
-        visitor.visit_borrowed_bytes(val.val().as_bytes())
+        visitor.visit_borrowed_bytes(val.as_bytes())
     }
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -455,7 +528,7 @@ impl<'de> Deserializer<'de> for DeserializeValues<'de> {
         V: Visitor<'de>,
     {
         let val = extract_single_value(self.values)?;
-        visitor.visit_borrowed_str(val.val())
+        visitor.visit_borrowed_str(val)
     }
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -483,7 +556,7 @@ impl<'de> Deserializer<'de> for DeserializeValues<'de> {
         V: Visitor<'de>,
     {
         visitor.visit_seq(ValueSeq {
-            values: self.values.iter().map(|&p| p),
+            values: self.values,
         })
     }
 
@@ -527,16 +600,16 @@ impl<'de> Deserializer<'de> for DeserializeValues<'de> {
 
 struct ValueSeq<'de, I>
 where
-    I: Iterator<Item = &'de PercentDecoded>,
+    I: Iterator<Item = &'de str>,
 {
     values: I,
 }
 
 impl<'de, I> SeqAccess<'de> for ValueSeq<'de, I>
 where
-    I: Iterator<Item = &'de PercentDecoded>,
+    I: Iterator<Item = &'de str>,
 {
-    type Error = SegmentMappingError;
+    type Error = ExtractorError;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
     where
@@ -544,7 +617,9 @@ where
     {
         match self.values.next() {
             Some(val) => {
-                let val = seed.deserialize(DeserializeValues { values: vec![val] })?;
+                let val = seed.deserialize(DeserializeValues {
+                    values: vec![val].into_iter(),
+                })?;
                 Ok(Some(val))
             }
             None => Ok(None),
@@ -553,20 +628,18 @@ where
 }
 
 struct ValueEnum<'de> {
-    value: &'de PercentDecoded,
+    value: &'de str,
 }
 
 impl<'de> EnumAccess<'de> for ValueEnum<'de> {
-    type Error = SegmentMappingError;
+    type Error = ExtractorError;
     type Variant = UnitVariant;
 
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Self::Error>
     where
         V: DeserializeSeed<'de>,
     {
-        let variant_name = seed.deserialize(DeserializeKey {
-            key: self.value.val(),
-        })?;
+        let variant_name = seed.deserialize(DeserializeKey { key: self.value })?;
         Ok((variant_name, UnitVariant))
     }
 }
@@ -574,7 +647,7 @@ impl<'de> EnumAccess<'de> for ValueEnum<'de> {
 struct UnitVariant;
 
 impl<'de> VariantAccess<'de> for UnitVariant {
-    type Error = SegmentMappingError;
+    type Error = ExtractorError;
 
     fn unit_variant(self) -> Result<(), Self::Error> {
         Ok(())
@@ -584,7 +657,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
     where
         T: DeserializeSeed<'de>,
     {
-        Err(SegmentMappingError::UnexpectedEnumVariantType(
+        Err(ExtractorError::UnexpectedEnumVariantType(
             "enum newtype variants are unsupported in path extractors",
         ))
     }
@@ -593,7 +666,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
     where
         V: Visitor<'de>,
     {
-        Err(SegmentMappingError::UnexpectedEnumVariantType(
+        Err(ExtractorError::UnexpectedEnumVariantType(
             "enum tuple variants are unsupported in path extractors",
         ))
     }
@@ -606,7 +679,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
     where
         V: Visitor<'de>,
     {
-        Err(SegmentMappingError::UnexpectedEnumVariantType(
+        Err(ExtractorError::UnexpectedEnumVariantType(
             "enum struct variants are unsupported in path extractors",
         ))
     }
@@ -668,7 +741,7 @@ mod tests {
         sm.insert("char_val", vec![&char_val]);
         sm.insert("optional_val", vec![&optional_val]);
 
-        let p = SimpleValues::deserialize(sm).unwrap();
+        let p = from_segment_mapping::<SimpleValues>(sm).unwrap();
 
         assert_eq!(p.bool_val, true);
         assert_eq!(p.i8_val, 15);
@@ -729,7 +802,7 @@ mod tests {
         let mut sm = SegmentMapping::new();
         sm.insert("bytes_val", vec![&bytes_val]);
 
-        let p = WithByteBuf::deserialize(sm).unwrap();
+        let p = from_segment_mapping::<WithByteBuf>(sm).unwrap();
 
         assert_eq!(&p.bytes_val[..], b"bytes");
     }
@@ -779,7 +852,7 @@ mod tests {
         let mut sm = SegmentMapping::new();
         sm.insert("bytes_val", vec![&bytes_val]);
 
-        let p = WithBorrowedBytes::deserialize(sm).unwrap();
+        let p = from_segment_mapping::<WithBorrowedBytes>(sm).unwrap();
 
         assert_eq!(&p.bytes_val[..], b"borrowed_bytes");
     }
@@ -826,7 +899,7 @@ mod tests {
         let mut sm = SegmentMapping::new();
         sm.insert("str_val", vec![&str_val]);
 
-        let p = WithBorrowedString::deserialize(sm).unwrap();
+        let p = from_segment_mapping::<WithBorrowedString>(sm).unwrap();
 
         assert_eq!(p.str_val, "borrowed_str");
     }
@@ -851,7 +924,7 @@ mod tests {
         let mut sm = SegmentMapping::new();
         sm.insert("enum_val", vec![&enum_val]);
 
-        let p = WithEnum::deserialize(sm).unwrap();
+        let p = from_segment_mapping::<WithEnum>(sm).unwrap();
 
         assert_eq!(p.enum_val, MyEnumType::B);
     }
@@ -875,7 +948,7 @@ mod tests {
             vec![&seq_val_1, &seq_val_2, &seq_val_3, &seq_val_4, &seq_val_5],
         );
 
-        let p = WithSeq::deserialize(sm).unwrap();
+        let p = from_segment_mapping::<WithSeq>(sm).unwrap();
 
         assert_eq!(p.seq_val, vec![15, 16, 17, 18, 19]);
     }
@@ -895,7 +968,7 @@ mod tests {
         let mut sm = SegmentMapping::new();
         sm.insert("wrapped_int_val", vec![&wrapped_int_val]);
 
-        let p = WithNewtypeStruct::deserialize(sm).unwrap();
+        let p = from_segment_mapping::<WithNewtypeStruct>(sm).unwrap();
 
         assert_eq!(p.wrapped_int_val, IntWrapper(100));
     }

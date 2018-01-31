@@ -40,6 +40,12 @@ impl PercentDecoded {
     }
 }
 
+impl AsRef<str> for PercentDecoded {
+    fn as_ref(&self) -> &str {
+        &self.val
+    }
+}
+
 /// Decode form-urlencoded strings
 pub fn form_url_decode(raw: &str) -> Result<String, std::str::Utf8Error> {
     match percent_decode(raw.replace("+", " ").as_bytes()).decode_utf8() {

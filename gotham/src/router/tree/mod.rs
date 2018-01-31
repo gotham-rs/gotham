@@ -18,7 +18,7 @@ pub type Path<'a> = Vec<&'a Node>;
 type SegmentsProcessed = usize;
 
 /// Mapping of segment names into the collection of values for that segment.
-type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
+pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
 
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.
