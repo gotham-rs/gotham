@@ -1,4 +1,6 @@
-//! Extracts Request path segments into type safe structs
+//! Extracts request path segments into type-safe structs using Serde. The `SegmentMapping` type is
+//! populated by the `Router` while traversing the tree, and the `Route` implementation performs
+//! deserialization before dispatching to the `Handler`.
 
 use std::collections::HashMap;
 use std::error::Error;
@@ -17,12 +19,72 @@ use router::response::extender::StaticResponseExtender;
 /// Extracts the `Request` path into `State`. On failure is capable of extending `Response`
 /// to indicate why the extraction process failed.
 ///
-/// This functionality can be simply derived for application structs via `PathExtractor`,
-/// which will attempt to populate the associated struct. Combine with the derive
-/// `StaticResponseExtender` to have invalid query string data result in "400 Bad Request".
+/// This trait is automatically implemented when the struct implements the `Deserialize`,
+/// `StateData` and `StaticResponseExtender` traits. These traits can be derived, or implemented
+/// manually for greater control.
 ///
-/// Custom responses can be created by using the `PathExtractor` derive and then
-/// implementing `StaticResponseExtender` independently.
+/// The default behaviour given by deriving all three traits will use the automatically derived
+/// behaviour from Serde, and result in a `400 Bad Request` HTTP response if the path segments are
+/// not able to be deserialized.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # #[macro_use]
+/// # extern crate gotham_derive;
+/// # extern crate hyper;
+/// # extern crate mime;
+/// # extern crate serde;
+/// # #[macro_use]
+/// # extern crate serde_derive;
+/// #
+/// # use hyper::{Response, StatusCode};
+/// # use gotham::state::{FromState, State};
+/// # use gotham::http::response::create_response;
+/// # use gotham::router::Router;
+/// # use gotham::router::builder::*;
+/// # use gotham::test::TestServer;
+/// #
+/// #[derive(Deserialize, StateData, StaticResponseExtender)]
+/// struct MyPathParams {
+///     id: i32,
+///     slug: String,
+/// }
+///
+/// fn handler(mut state: State) -> (State, Response) {
+///     let MyPathParams { id, slug } = MyPathParams::take_from(&mut state);
+///     let body = format!("id = {}, slug = {}", id, slug);
+///
+///     let response = create_response(
+///         &state,
+///         StatusCode::Ok,
+///         Some((body.into_bytes(), mime::TEXT_PLAIN)),
+///     );
+///
+///     (state, response)
+/// }
+///
+/// fn router() -> Router {
+///     build_simple_router(|route| {
+///         route
+///             .get("/article/:id/:slug")
+///             .with_path_extractor::<MyPathParams>()
+///             .to(handler);
+///     })
+/// }
+/// #
+/// # fn main() {
+/// #   let test_server = TestServer::new(router()).unwrap();
+/// #   let response = test_server
+/// #       .client()
+/// #       .get("http://example.com/article/1551/ten-reasons-serde-is-amazing")
+/// #       .perform()
+/// #       .unwrap();
+/// #   assert_eq!(response.status(), StatusCode::Ok);
+/// #   let body = response.read_utf8_body().unwrap();
+/// #   assert_eq!(body, "id = 1551, slug = ten-reasons-serde-is-amazing");
+/// # }
 pub trait PathExtractor
     : for<'de> Deserialize<'de> + StaticResponseExtender + StateData {
 }

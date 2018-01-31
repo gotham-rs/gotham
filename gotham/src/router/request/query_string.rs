@@ -1,4 +1,6 @@
-//! Extracts query string parameters into type safe structs
+//! Extracts query string parameters into type-safe structs using Serde. The query string is
+//! processed via the `serde_urlencoded` crate by the `Route` implementation, before dispatching to
+//! the `Handler`.
 
 use serde::{Deserialize, Deserializer};
 use hyper::Response;
@@ -9,12 +11,72 @@ use router::response::extender::StaticResponseExtender;
 /// Extracts the `Request` query string into `State`. On failure is capable of extending `Response`
 /// to indicate why the extraction process failed.
 ///
-/// This functionality can be simply derived for application structs via `QueryStringExtractor`,
-/// which will attempt to populate the associated struct. Combine with the derive
-/// `StaticResponseExtender` to have invalid query string data result in "400 Bad Request".
+/// This trait is automatically implemented when the struct implements the `Deserialize`,
+/// `StateData` and `StaticResponseExtender` traits. These traits can be derived, or implemented
+/// manually for greater control.
 ///
-/// Custom responses can be created by using the `QueryStringExtractor` derive and then
-/// implementing `StaticResponseExtender` independently.
+/// The default behaviour given by deriving all three traits will use the automatically derived
+/// behaviour from Serde, and result in a `400 Bad Request` HTTP response if the query string is
+/// not able to be deserialized.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # #[macro_use]
+/// # extern crate gotham_derive;
+/// # extern crate hyper;
+/// # extern crate mime;
+/// # extern crate serde;
+/// # #[macro_use]
+/// # extern crate serde_derive;
+/// #
+/// # use hyper::{Response, StatusCode};
+/// # use gotham::state::{FromState, State};
+/// # use gotham::http::response::create_response;
+/// # use gotham::router::Router;
+/// # use gotham::router::builder::*;
+/// # use gotham::test::TestServer;
+/// #
+/// #[derive(Deserialize, StateData, StaticResponseExtender)]
+/// struct MyQueryParams {
+///     x: i32,
+///     y: bool,
+/// }
+///
+/// fn handler(state: State) -> (State, Response) {
+///     let &MyQueryParams { x, y } = MyQueryParams::borrow_from(&state);
+///     let body = format!("x = {}, y = {}", x, y);
+///
+///     let response = create_response(
+///         &state,
+///         StatusCode::Ok,
+///         Some((body.into_bytes(), mime::TEXT_PLAIN)),
+///     );
+///
+///     (state, response)
+/// }
+///
+/// fn router() -> Router {
+///     build_simple_router(|route| {
+///         route
+///             .get("/test")
+///             .with_query_string_extractor::<MyQueryParams>()
+///             .to(handler);
+///     })
+/// }
+/// #
+/// # fn main() {
+/// #   let test_server = TestServer::new(router()).unwrap();
+/// #   let response = test_server
+/// #       .client()
+/// #       .get("http://example.com/test?x=15&y=true")
+/// #       .perform()
+/// #       .unwrap();
+/// #   assert_eq!(response.status(), StatusCode::Ok);
+/// #   let body = response.read_utf8_body().unwrap();
+/// #   assert_eq!(body, "x = 15, y = true");
+/// # }
 pub trait QueryStringExtractor
     : for<'de> Deserialize<'de> + StaticResponseExtender + StateData {
 }
