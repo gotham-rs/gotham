@@ -14,9 +14,8 @@ use hyper::{Response, StatusCode, Uri};
 
 use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
-use router::request::query_string::QueryStringExtractor;
+use extractor::{PathExtractor, QueryStringExtractor};
 use router::route::matcher::RouteMatcher;
-use router::request::path::{PathExtractor, SegmentMapping};
 use state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -84,8 +83,7 @@ pub struct ExtractorFailed;
 /// # use hyper::{Response, Method, StatusCode};
 /// #
 /// # use gotham::http::response::create_response;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
@@ -115,8 +113,7 @@ pub struct ExtractorFailed;
 /// # use hyper::{Response, StatusCode, Method};
 /// #
 /// # use gotham::http::response::create_response;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;

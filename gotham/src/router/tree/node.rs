@@ -6,7 +6,7 @@ use hyper::StatusCode;
 
 use http::PercentDecoded;
 use router::route::{Delegation, Route};
-use router::tree::{Path, SegmentMapping, SegmentsProcessed};
+use router::tree::{Path, SegmentsProcessed};
 use router::tree::regex::ConstrainedSegmentRegex;
 use state::{request_id, State};
 
@@ -50,8 +50,7 @@ pub enum SegmentType {
 /// #
 /// # use gotham::http::PercentDecoded;
 /// # use gotham::http::response::create_response;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
@@ -435,9 +434,8 @@ mod tests {
                                   PipelineSet};
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Extractors, Route, RouteImpl};
-    use router::request::path::NoopPathExtractor;
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use http::request::path::RequestPathSegments;
-    use router::request::query_string::NoopQueryStringExtractor;
     use state::State;
 
     fn handler(state: State) -> (State, Response) {

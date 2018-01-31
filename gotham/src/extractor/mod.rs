@@ -8,5 +8,5 @@ mod query_string;
 mod path;
 mod internal;
 
-pub use query_string::*;
-pub use path::*;
+pub use self::query_string::*;
+pub use self::path::*;

@@ -3,7 +3,6 @@
 use http::PercentDecoded;
 use router::route::Route;
 use router::tree::node::{Node, NodeBuilder, SegmentType};
-use router::request::path::SegmentMapping;
 
 pub mod node;
 pub mod regex;
@@ -50,8 +49,7 @@ type SegmentsProcessed = usize;
 /// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::SegmentType;
 /// # use gotham::http::request::path::RequestPathSegments;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::http::PercentDecoded;
 /// #
 /// # fn handler(state: State) -> (State, Response) {

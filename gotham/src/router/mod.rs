@@ -14,7 +14,6 @@ use hyper::{Response, StatusCode};
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use http::request::path::RequestPathSegments;
 use http::response::create_response;
-use router::request::path::SegmentMapping;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Delegation, Route};
 use router::tree::Tree;
@@ -207,8 +206,7 @@ mod tests {
     use router::tree::TreeBuilder;
     use router::tree::node::{NodeBuilder, SegmentType};
     use router::route::{Extractors, RouteImpl};
-    use router::request::path::NoopPathExtractor;
-    use router::request::query_string::NoopQueryStringExtractor;
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl};
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;

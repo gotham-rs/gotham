@@ -1,7 +1,6 @@
 use std::panic::RefUnwindSafe;
 
-use router::request::path::PathExtractor;
-use router::request::query_string::QueryStringExtractor;
+use extractor::{PathExtractor, QueryStringExtractor};
 use router::builder::SingleRouteBuilder;
 use router::builder::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
 use router::route::{Delegation, Extractors, RouteImpl};

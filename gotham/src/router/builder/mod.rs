@@ -18,8 +18,7 @@ use router::route::matcher::{MethodOnlyRouteMatcher, RouteMatcher};
 use router::route::matcher::any::AnyRouteMatcher;
 use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl,
                               PipelineHandleChain, PipelineSet};
-use router::request::path::{NoopPathExtractor, PathExtractor};
-use router::request::query_string::{NoopQueryStringExtractor, QueryStringExtractor};
+use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
 
 pub use self::single::DefineSingleRoute;
