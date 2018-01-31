@@ -1,5 +1,7 @@
 //! Defines a hierarchial `Tree` with subtrees of `Node`.
 
+use std::collections::HashMap;
+
 use http::PercentDecoded;
 use router::route::Route;
 use router::tree::node::{Node, NodeBuilder, SegmentType};
@@ -14,6 +16,9 @@ pub type Path<'a> = Vec<&'a Node>;
 /// Number of segments from a `Request` path that are considered to have been processed
 /// by an `Router` traversing its `Tree`.
 type SegmentsProcessed = usize;
+
+/// Mapping of segment names into the collection of values for that segment.
+type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
 
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.

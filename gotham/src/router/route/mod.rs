@@ -49,7 +49,7 @@ pub trait Route: RefUnwindSafe {
     fn extract_request_path(
         &self,
         state: &mut State,
-        segment_mapping: SegmentMapping,
+        segment_mapping: (),
     ) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when path extraction fails
@@ -235,15 +235,9 @@ where
     fn extract_request_path(
         &self,
         state: &mut State,
-        segment_mapping: SegmentMapping,
+        segment_mapping: (), // TODO: Obviously `()` doesn't work here.
     ) -> Result<(), ExtractorFailed> {
-        match PE::deserialize(segment_mapping) {
-            Ok(val) => Ok(state.put(val)),
-            Err(e) => {
-                debug!("[{}] path extractor failed: {}", request_id(&state), e);
-                Err(ExtractorFailed)
-            }
-        }
+        Err(ExtractorFailed)
     }
 
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response) {

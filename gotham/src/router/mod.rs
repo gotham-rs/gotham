@@ -102,7 +102,7 @@ impl Handler for Router {
                             }
                             Delegation::Internal => {
                                 trace!("[{}] dispatching to route", request_id(&state));
-                                self.dispatch(state, sm, route)
+                                self.dispatch(state, (), route) // TODO: Obviously `()` doesn't work here.
                             }
                         },
                         Err(status) => {
@@ -140,10 +140,10 @@ impl Router {
     fn dispatch(
         &self,
         mut state: State,
-        sm: SegmentMapping,
+        segment_mapping: (), // TODO: Obviously `()` doesn't work here.
         route: &Box<Route + Send + Sync>,
     ) -> Box<HandlerFuture> {
-        match route.extract_request_path(&mut state, sm) {
+        match route.extract_request_path(&mut state, segment_mapping) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
                 match route.extract_query_string(&mut state) {

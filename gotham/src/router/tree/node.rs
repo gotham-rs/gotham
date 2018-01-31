@@ -6,7 +6,7 @@ use hyper::StatusCode;
 
 use http::PercentDecoded;
 use router::route::{Delegation, Route};
-use router::tree::{Path, SegmentsProcessed};
+use router::tree::{Path, SegmentMapping, SegmentsProcessed};
 use router::tree::regex::ConstrainedSegmentRegex;
 use state::{request_id, State};
 
