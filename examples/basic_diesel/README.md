@@ -9,7 +9,7 @@ From the `examples/basic_diesel` directory:
 ```
 Terminal 1:
 $ cargo run
-   Compiling basic_router (file:///.../examples/basic_diesel)
+   Compiling basic_diesel (file:///.../examples/basic_diesel)
     Finished dev [unoptimized + debuginfo] target(s) in 3.32 secs
      Running `../basic_diesel`
   Listening for requests at http://127.0.0.1:7878
