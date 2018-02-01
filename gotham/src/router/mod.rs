@@ -16,7 +16,7 @@ use http::request::path::RequestPathSegments;
 use http::response::create_response;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Delegation, Route};
-use router::tree::Tree;
+use router::tree::{SegmentMapping, Tree};
 use state::{request_id, State};
 
 struct RouterData {
@@ -102,7 +102,7 @@ impl Handler for Router {
                             }
                             Delegation::Internal => {
                                 trace!("[{}] dispatching to route", request_id(&state));
-                                self.dispatch(state, (), route) // TODO: Obviously `()` doesn't work here.
+                                self.dispatch(state, sm, route)
                             }
                         },
                         Err(status) => {
@@ -140,10 +140,10 @@ impl Router {
     fn dispatch(
         &self,
         mut state: State,
-        segment_mapping: (), // TODO: Obviously `()` doesn't work here.
+        sm: SegmentMapping,
         route: &Box<Route + Send + Sync>,
     ) -> Box<HandlerFuture> {
-        match route.extract_request_path(&mut state, segment_mapping) {
+        match route.extract_request_path(&mut state, sm) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
                 match route.extract_query_string(&mut state) {

@@ -14,8 +14,9 @@ use hyper::{Response, StatusCode, Uri};
 
 use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
-use extractor::{PathExtractor, QueryStringExtractor};
+use extractor::{self, PathExtractor, QueryStringExtractor};
 use router::route::matcher::RouteMatcher;
+use router::tree::SegmentMapping;
 use state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -49,7 +50,7 @@ pub trait Route: RefUnwindSafe {
     fn extract_request_path(
         &self,
         state: &mut State,
-        segment_mapping: (),
+        segment_mapping: SegmentMapping,
     ) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when path extraction fails
@@ -235,9 +236,15 @@ where
     fn extract_request_path(
         &self,
         state: &mut State,
-        segment_mapping: (), // TODO: Obviously `()` doesn't work here.
+        segment_mapping: SegmentMapping,
     ) -> Result<(), ExtractorFailed> {
-        Err(ExtractorFailed)
+        match extractor::internal::from_segment_mapping::<PE>(segment_mapping) {
+            Ok(val) => Ok(state.put(val)),
+            Err(e) => {
+                debug!("[{}] path extractor failed: {}", request_id(&state), e);
+                Err(ExtractorFailed)
+            }
+        }
     }
 
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response) {

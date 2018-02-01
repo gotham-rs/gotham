@@ -2,20 +2,14 @@
 //! type is populated by the `Router` while traversing the tree, and the `Route` implementation
 //! performs deserialization before dispatching to the `Handler`.
 
-use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{self, Display};
 use std::str::FromStr;
 use std::marker::PhantomData;
 
-use hyper::Response;
 use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess,
                 SeqAccess, VariantAccess, Visitor};
 
-use http::PercentDecoded;
-use state::{State, StateData};
-
-use router::response::extender::StaticResponseExtender;
 use router::tree::SegmentMapping;
 
 /// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
@@ -688,6 +682,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use http::PercentDecoded;
 
     #[derive(Deserialize)]
     struct SimpleValues {

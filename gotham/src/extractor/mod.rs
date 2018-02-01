@@ -6,7 +6,7 @@
 
 mod query_string;
 mod path;
-mod internal;
+pub(crate) mod internal;
 
 pub use self::query_string::*;
 pub use self::path::*;
