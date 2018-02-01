@@ -1,7 +1,7 @@
 use syn;
 use quote;
 
-pub fn base_path(ast: &syn::DeriveInput) -> quote::Tokens {
+pub fn base_path(_ast: &syn::DeriveInput) -> quote::Tokens {
     quote! {
         compile_error!("#[derive(PathExtractor)] is no longer supported - please switch to \
                         #[derive(Deserialize)]. The `StateData` and `StaticResponseExtender` \
