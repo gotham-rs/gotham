@@ -1,6 +1,6 @@
 //! Defines helper functions for the Request query string
 
-use std::collections::HashMap;
+use std::collections::{hash_map, HashMap};
 
 use http::{form_url_decode, FormUrlDecoded};
 
@@ -36,6 +36,11 @@ impl QueryStringMapping {
                 )
             }
         };
+    }
+
+    /// Returns an iterator over the contents of the query string.
+    pub fn iter(&self) -> hash_map::Iter<String, Vec<FormUrlDecoded>> {
+        self.data.iter()
     }
 }
 

@@ -12,6 +12,7 @@ use std::panic::RefUnwindSafe;
 
 use hyper::{Response, StatusCode, Uri};
 
+use http::request::query_string;
 use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
 use extractor::{self, PathExtractor, QueryStringExtractor};
@@ -254,8 +255,8 @@ where
     fn extract_query_string(&self, state: &mut State) -> Result<(), ExtractorFailed> {
         let result: Result<QSE, _> = {
             let uri = state.borrow::<Uri>();
-            let query = uri.query().unwrap_or("");
-            unimplemented!() // TODO
+            let query_string_mapping = query_string::split(uri.query());
+            extractor::internal::from_query_string_mapping(query_string_mapping)
         };
 
         match result {

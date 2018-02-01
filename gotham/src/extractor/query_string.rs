@@ -37,12 +37,20 @@ use router::response::extender::StaticResponseExtender;
 /// #[derive(Deserialize, StateData, StaticResponseExtender)]
 /// struct MyQueryParams {
 ///     x: i32,
-///     y: bool,
+///     y: MyEnum,
+/// }
+///
+/// #[derive(Deserialize, Clone, Copy, Debug)]
+/// #[serde(rename_all = "kebab-case")]
+/// enum MyEnum {
+///     A,
+///     B,
+///     C,
 /// }
 ///
 /// fn handler(state: State) -> (State, Response) {
 ///     let &MyQueryParams { x, y } = MyQueryParams::borrow_from(&state);
-///     let body = format!("x = {}, y = {}", x, y);
+///     let body = format!("x = {}, y = {:?}", x, y);
 ///
 ///     let response = create_response(
 ///         &state,
@@ -66,12 +74,12 @@ use router::response::extender::StaticResponseExtender;
 /// #   let test_server = TestServer::new(router()).unwrap();
 /// #   let response = test_server
 /// #       .client()
-/// #       .get("http://example.com/test?x=15&y=true")
+/// #       .get("http://example.com/test?x=15&y=b")
 /// #       .perform()
 /// #       .unwrap();
 /// #   assert_eq!(response.status(), StatusCode::Ok);
 /// #   let body = response.read_utf8_body().unwrap();
-/// #   assert_eq!(body, "x = 15, y = true");
+/// #   assert_eq!(body, "x = 15, y = B");
 /// # }
 pub trait QueryStringExtractor
     : for<'de> Deserialize<'de> + StaticResponseExtender + StateData {

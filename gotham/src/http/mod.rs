@@ -86,6 +86,12 @@ impl FormUrlDecoded {
     }
 }
 
+impl AsRef<str> for FormUrlDecoded {
+    fn as_ref(&self) -> &str {
+        &self.val
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

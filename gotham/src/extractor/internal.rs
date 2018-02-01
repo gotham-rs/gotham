@@ -11,6 +11,7 @@ use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, Ma
                 SeqAccess, VariantAccess, Visitor};
 
 use router::tree::SegmentMapping;
+use http::request::query_string::QueryStringMapping;
 
 /// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
 /// `PathExtractor` provided by the application.
@@ -222,22 +223,36 @@ where
     phantom: PhantomData<&'a str>,
 }
 
-/// Deserializes a value of type `T`, from a set of path segments extracted while walking the route
-/// tree.
-pub(crate) fn from_segment_mapping<'de, T>(sm: SegmentMapping<'de>) -> Result<T, ExtractorError>
+fn from_data_source<'de, D, T>(data_source: D) -> Result<T, ExtractorError>
 where
     T: Deserialize<'de>,
+    D: ExtractorDataSource<'de>,
 {
-    let data_source = IteratorAdaptor {
-        iter: sm.into_iter(),
-    };
-
     let deserializer = ExtractorDeserializer {
         data_source,
         phantom: PhantomData,
     };
 
     T::deserialize(deserializer)
+}
+
+/// Deserializes a value of type `T`, from a set of path segments extracted while walking the route
+/// tree.
+pub(crate) fn from_segment_mapping<'de, T>(sm: SegmentMapping<'de>) -> Result<T, ExtractorError>
+where
+    T: Deserialize<'de>,
+{
+    from_data_source(IteratorAdaptor {
+        iter: sm.into_iter(),
+    })
+}
+
+pub(crate) fn from_query_string_mapping<T>(qsm: QueryStringMapping) -> Result<T, ExtractorError>
+where
+    for<'de> T: Deserialize<'de>,
+{
+    let iter = qsm.iter().map(|(k, v)| (k.as_str(), v));
+    from_data_source(IteratorAdaptor { iter })
 }
 
 /// Implements a `Deserializer` for the full set of extracted path segments. This is the top level
