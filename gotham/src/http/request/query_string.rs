@@ -1,6 +1,6 @@
 //! Defines helper functions for the Request query string
 
-use std::collections::{hash_map, HashMap};
+use std::collections::HashMap;
 
 use http::{form_url_decode, FormUrlDecoded};
 

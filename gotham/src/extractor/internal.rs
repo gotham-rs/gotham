@@ -247,9 +247,11 @@ where
     })
 }
 
-pub(crate) fn from_query_string_mapping<T>(qsm: QueryStringMapping) -> Result<T, ExtractorError>
+pub(crate) fn from_query_string_mapping<'de, T>(
+    qsm: &'de QueryStringMapping,
+) -> Result<T, ExtractorError>
 where
-    for<'de> T: Deserialize<'de>,
+    T: Deserialize<'de>,
 {
     let iter = qsm.iter().map(|(k, v)| (k.as_str(), v));
     from_data_source(IteratorAdaptor { iter })
@@ -697,7 +699,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use http::PercentDecoded;
+    use http::{FormUrlDecoded, PercentDecoded};
 
     #[derive(Deserialize)]
     struct SimpleValues {
@@ -719,7 +721,7 @@ mod tests {
     }
 
     #[test]
-    fn simple_values_tests() {
+    fn simple_values_path_tests() {
         let bool_val = PercentDecoded::new("true").unwrap();
         let i8_val = PercentDecoded::new("15").unwrap();
         let i16_val = PercentDecoded::new("511").unwrap();
@@ -752,6 +754,85 @@ mod tests {
         sm.insert("optional_val", vec![&optional_val]);
 
         let p = from_segment_mapping::<SimpleValues>(sm).unwrap();
+
+        assert_eq!(p.bool_val, true);
+        assert_eq!(p.i8_val, 15);
+        assert_eq!(p.i16_val, 511);
+        assert_eq!(p.i32_val, 90000);
+        assert_eq!(p.i64_val, 3000000000);
+        assert_eq!(p.u8_val, 215);
+        assert_eq!(p.u16_val, 40511);
+        assert_eq!(p.u32_val, 4000000000);
+        assert_eq!(p.u64_val, 9000000000);
+        assert_eq!(p.f32_val, 1.4);
+        assert_eq!(p.f64_val, 2.6);
+        assert_eq!(p.string_val, "this is an owned string");
+        assert_eq!(p.char_val, 'a');
+        assert_eq!(p.optional_val, Some("this is optional".to_owned()));
+        assert!(p.missing_optional_val.is_none());
+    }
+
+    #[test]
+    fn simple_values_query_tests() {
+        let mut qsm = QueryStringMapping::new();
+        qsm.insert(
+            "bool_val".to_owned(),
+            vec![FormUrlDecoded::new("true").unwrap()],
+        );
+        qsm.insert(
+            "i8_val".to_owned(),
+            vec![FormUrlDecoded::new("15").unwrap()],
+        );
+        qsm.insert(
+            "i16_val".to_owned(),
+            vec![FormUrlDecoded::new("511").unwrap()],
+        );
+        qsm.insert(
+            "i32_val".to_owned(),
+            vec![FormUrlDecoded::new("90000").unwrap()],
+        );
+        qsm.insert(
+            "i64_val".to_owned(),
+            vec![FormUrlDecoded::new("3000000000").unwrap()],
+        );
+        qsm.insert(
+            "u8_val".to_owned(),
+            vec![FormUrlDecoded::new("215").unwrap()],
+        );
+        qsm.insert(
+            "u16_val".to_owned(),
+            vec![FormUrlDecoded::new("40511").unwrap()],
+        );
+        qsm.insert(
+            "u32_val".to_owned(),
+            vec![FormUrlDecoded::new("4000000000").unwrap()],
+        );
+        qsm.insert(
+            "u64_val".to_owned(),
+            vec![FormUrlDecoded::new("9000000000").unwrap()],
+        );
+        qsm.insert(
+            "f32_val".to_owned(),
+            vec![FormUrlDecoded::new("1.4").unwrap()],
+        );
+        qsm.insert(
+            "f64_val".to_owned(),
+            vec![FormUrlDecoded::new("2.6").unwrap()],
+        );
+        qsm.insert(
+            "string_val".to_owned(),
+            vec![FormUrlDecoded::new("this is an owned string").unwrap()],
+        );
+        qsm.insert(
+            "char_val".to_owned(),
+            vec![FormUrlDecoded::new("a").unwrap()],
+        );
+        qsm.insert(
+            "optional_val".to_owned(),
+            vec![FormUrlDecoded::new("this is optional").unwrap()],
+        );
+
+        let p = from_query_string_mapping::<SimpleValues>(&qsm).unwrap();
 
         assert_eq!(p.bool_val, true);
         assert_eq!(p.i8_val, 15);
@@ -806,13 +887,26 @@ mod tests {
     }
 
     #[test]
-    fn byte_buf_values_tests() {
+    fn byte_buf_values_path_tests() {
         let bytes_val = PercentDecoded::new("bytes").unwrap();
 
         let mut sm = SegmentMapping::new();
         sm.insert("bytes_val", vec![&bytes_val]);
 
         let p = from_segment_mapping::<WithByteBuf>(sm).unwrap();
+
+        assert_eq!(&p.bytes_val[..], b"bytes");
+    }
+
+    #[test]
+    fn byte_buf_values_query_tests() {
+        let mut qsm = QueryStringMapping::new();
+        qsm.insert(
+            "bytes_val".to_owned(),
+            vec![FormUrlDecoded::new("bytes").unwrap()],
+        );
+
+        let p = from_query_string_mapping::<WithByteBuf>(&qsm).unwrap();
 
         assert_eq!(&p.bytes_val[..], b"bytes");
     }
@@ -856,13 +950,26 @@ mod tests {
     }
 
     #[test]
-    fn borrowed_bytes_tests() {
+    fn borrowed_bytes_path_tests() {
         let bytes_val = PercentDecoded::new("borrowed_bytes").unwrap();
 
         let mut sm = SegmentMapping::new();
         sm.insert("bytes_val", vec![&bytes_val]);
 
         let p = from_segment_mapping::<WithBorrowedBytes>(sm).unwrap();
+
+        assert_eq!(&p.bytes_val[..], b"borrowed_bytes");
+    }
+
+    #[test]
+    fn borrowed_bytes_query_tests() {
+        let mut qsm = QueryStringMapping::new();
+        qsm.insert(
+            "bytes_val".to_owned(),
+            vec![FormUrlDecoded::new("borrowed_bytes").unwrap()],
+        );
+
+        let p = from_query_string_mapping::<WithBorrowedBytes>(&qsm).unwrap();
 
         assert_eq!(&p.bytes_val[..], b"borrowed_bytes");
     }
@@ -903,13 +1010,26 @@ mod tests {
     }
 
     #[test]
-    fn borrowed_str_tests() {
+    fn borrowed_str_path_tests() {
         let str_val = PercentDecoded::new("borrowed_str").unwrap();
 
         let mut sm = SegmentMapping::new();
         sm.insert("str_val", vec![&str_val]);
 
         let p = from_segment_mapping::<WithBorrowedString>(sm).unwrap();
+
+        assert_eq!(p.str_val, "borrowed_str");
+    }
+
+    #[test]
+    fn borrowed_str_query_tests() {
+        let mut qsm = QueryStringMapping::new();
+        qsm.insert(
+            "str_val".to_owned(),
+            vec![FormUrlDecoded::new("borrowed_str").unwrap()],
+        );
+
+        let p = from_query_string_mapping::<WithBorrowedString>(&qsm).unwrap();
 
         assert_eq!(p.str_val, "borrowed_str");
     }
@@ -928,7 +1048,7 @@ mod tests {
     }
 
     #[test]
-    fn enum_tests() {
+    fn enum_path_tests() {
         let enum_val = PercentDecoded::new("b").unwrap();
 
         let mut sm = SegmentMapping::new();
@@ -939,13 +1059,26 @@ mod tests {
         assert_eq!(p.enum_val, MyEnumType::B);
     }
 
+    #[test]
+    fn enum_query_tests() {
+        let mut qsm = QueryStringMapping::new();
+        qsm.insert(
+            "enum_val".to_owned(),
+            vec![FormUrlDecoded::new("b").unwrap()],
+        );
+
+        let p = from_query_string_mapping::<WithEnum>(&qsm).unwrap();
+
+        assert_eq!(p.enum_val, MyEnumType::B);
+    }
+
     #[derive(Deserialize)]
     struct WithSeq {
         seq_val: Vec<i32>,
     }
 
     #[test]
-    fn seq_tests() {
+    fn seq_path_tests() {
         let seq_val_1 = PercentDecoded::new("15").unwrap();
         let seq_val_2 = PercentDecoded::new("16").unwrap();
         let seq_val_3 = PercentDecoded::new("17").unwrap();
@@ -963,6 +1096,25 @@ mod tests {
         assert_eq!(p.seq_val, vec![15, 16, 17, 18, 19]);
     }
 
+    #[test]
+    fn seq_query_tests() {
+        let mut qsm = QueryStringMapping::new();
+        qsm.insert(
+            "seq_val".to_owned(),
+            vec![
+                FormUrlDecoded::new("15").unwrap(),
+                FormUrlDecoded::new("16").unwrap(),
+                FormUrlDecoded::new("17").unwrap(),
+                FormUrlDecoded::new("18").unwrap(),
+                FormUrlDecoded::new("19").unwrap(),
+            ],
+        );
+
+        let p = from_query_string_mapping::<WithSeq>(&qsm).unwrap();
+
+        assert_eq!(p.seq_val, vec![15, 16, 17, 18, 19]);
+    }
+
     #[derive(Deserialize, Eq, PartialEq, Debug)]
     struct IntWrapper(i32);
 
@@ -972,13 +1124,26 @@ mod tests {
     }
 
     #[test]
-    fn newtype_struct_tests() {
+    fn newtype_struct_path_tests() {
         let wrapped_int_val = PercentDecoded::new("100").unwrap();
 
         let mut sm = SegmentMapping::new();
         sm.insert("wrapped_int_val", vec![&wrapped_int_val]);
 
         let p = from_segment_mapping::<WithNewtypeStruct>(sm).unwrap();
+
+        assert_eq!(p.wrapped_int_val, IntWrapper(100));
+    }
+
+    #[test]
+    fn newtype_struct_query_tests() {
+        let mut qsm = QueryStringMapping::new();
+        qsm.insert(
+            "wrapped_int_val".to_owned(),
+            vec![FormUrlDecoded::new("100").unwrap()],
+        );
+
+        let p = from_query_string_mapping::<WithNewtypeStruct>(&qsm).unwrap();
 
         assert_eq!(p.wrapped_int_val, IntWrapper(100));
     }

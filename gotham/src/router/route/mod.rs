@@ -256,7 +256,7 @@ where
         let result: Result<QSE, _> = {
             let uri = state.borrow::<Uri>();
             let query_string_mapping = query_string::split(uri.query());
-            extractor::internal::from_query_string_mapping(query_string_mapping)
+            extractor::internal::from_query_string_mapping(&query_string_mapping)
         };
 
         match result {
