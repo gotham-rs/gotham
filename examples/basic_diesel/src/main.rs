@@ -45,15 +45,20 @@ fn handler(state: State) -> (State, Response) {
     )
 }
 
-
-
-/// Start a server and use a `Router` to dispatch requests
-pub fn main() {
+/// Create a `Router`
+///
+/// The resulting tree looks like:
+///
+/// /                         --> GET
+///
+/// It returns the content of the SQLite DB file located in `.posts.db`
+/// This DB consists of `Post` entries.
+fn router() -> Router {
     let manager = ConnectionManager::new(DATABASE_URL);
     let pool = Pool::<ConnectionManager<SqliteConnection>>::new(manager).unwrap();
     // Create the `DieselMiddleware`
     let middleware = DieselMiddleware::with_pool(pool);
-    let addr = "127.0.0.1:7878";
+
 
     // Create a new pipeline set
     let editable_pipeline_set = new_pipeline_set();
@@ -86,8 +91,49 @@ pub fn main() {
     let response_finalizer = ResponseFinalizerBuilder::new().finalize();
 
     // Create the router
-    let router = Router::new(tree, response_finalizer);
+    Router::new(tree, response_finalizer)
+}
+
+
+
+/// Start a server and use a `Router` to dispatch requests
+fn main() {
+    let addr = "127.0.0.1:7878";
 
     println!("Listening for requests at http://{}", addr);
-    gotham::start(addr, router);
+    gotham::start(addr, router());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gotham::test::TestServer;
+    use hyper::StatusCode;
+    use std::str;
+
+    #[test]
+    fn index_get() {
+        let test_server = TestServer::new(router()).unwrap();
+        let response = test_server
+            .client()
+            .get("http://localhost")
+            .perform()
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::Ok);
+
+        let body = response.read_body().unwrap();
+        let str_body = str::from_utf8(&body).unwrap();
+        let index = "[Post { \
+        id: Some(1), \
+        title: \"test\", \
+        body: \"this a test post\", \
+        published: true }, \
+        Post { \
+        id: Some(2), \
+        title: \"another\", \
+        body: \"another post\", \
+        published: true }]";
+        assert_eq!(str_body, index);
+    }
 }
