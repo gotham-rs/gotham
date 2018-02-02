@@ -8,18 +8,13 @@ extern crate r2d2_diesel;
 extern crate r2d2;
 extern crate basic_diesel;
 
-use hyper::{Response, StatusCode, Method};
+use hyper::{Response, StatusCode};
 
 use gotham::state::State;
 use gotham::router::Router;
 use gotham::pipeline::new_pipeline;
-use gotham::router::tree::TreeBuilder;
-use gotham::router::route::{RouteImpl, Extractors, Delegation};
-use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
-use gotham::router::request::path::NoopPathExtractor;
-use gotham::router::request::query_string::NoopQueryStringExtractor;
-use gotham::router::response::finalizer::ResponseFinalizerBuilder;
+use gotham::router::builder::*;
+use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
 use gotham_middleware_diesel::DieselMiddleware;
 use diesel::sqlite::SqliteConnection;
 use r2d2_diesel::ConnectionManager;
@@ -68,30 +63,11 @@ fn router() -> Router {
         editable_pipeline_set.add(new_pipeline().add(middleware).build());
     let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
 
-    // Create a `TreeBuilder`
-    let mut tree_builder = TreeBuilder::new();
+    let default_pipeline_chain = (pipeline, ());
 
-    // Create a matcher that will match the `GET` HTTP verb
-    let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
-
-    // Place the pipeline and the pipeline_set in a dispatcher
-    let dispatcher = Box::new(DispatcherImpl::new(
-        || Ok(handler),
-        (pipeline, ()),
-        pipeline_set,
-    ));
-    let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-
-    // Create the route
-    let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-
-    // Add the route to the tree and finalize it
-    tree_builder.add_route(Box::new(route));
-    let tree = tree_builder.finalize();
-    let response_finalizer = ResponseFinalizerBuilder::new().finalize();
-
-    // Create the router
-    Router::new(tree, response_finalizer)
+    build_router(default_pipeline_chain, pipeline_set, |route| {
+        route.get("/").to(handler);
+    })
 }
 
 
