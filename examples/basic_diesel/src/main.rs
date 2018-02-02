@@ -7,6 +7,7 @@ extern crate diesel;
 extern crate r2d2_diesel;
 extern crate r2d2;
 extern crate basic_diesel;
+extern crate serde_json;
 
 use hyper::{Response, StatusCode};
 
@@ -33,8 +34,8 @@ fn handler(state: State) -> (State, Response) {
         state,
         Response::new().with_status(StatusCode::Ok).with_body(
             format!(
-                "{:?}",
-                posts
+                "{}",
+                serde_json::to_string(&posts).unwrap()
             ),
         ),
     )
@@ -65,6 +66,7 @@ fn router() -> Router {
 
     let default_pipeline_chain = (pipeline, ());
 
+    // Build the router
     build_router(default_pipeline_chain, pipeline_set, |route| {
         route.get("/").to(handler);
     })
@@ -100,16 +102,15 @@ mod tests {
 
         let body = response.read_body().unwrap();
         let str_body = str::from_utf8(&body).unwrap();
-        let index = "[Post { \
-        id: Some(1), \
-        title: \"test\", \
-        body: \"this a test post\", \
-        published: true }, \
-        Post { \
-        id: Some(2), \
-        title: \"another\", \
-        body: \"another post\", \
-        published: true }]";
+        let index = "[\
+        {\"id\":1,\
+        \"title\":\"test\",\
+        \"body\":\"this a test post\",\
+        \"published\":true},\
+        {\"id\":2,\
+        \"title\":\"another\",\
+        \"body\":\"another post\",\
+        \"published\":true}]";
         assert_eq!(str_body, index);
     }
 }

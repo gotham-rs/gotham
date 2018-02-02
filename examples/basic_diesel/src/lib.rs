@@ -6,6 +6,9 @@ pub mod models;
 
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;

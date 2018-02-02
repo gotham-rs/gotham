@@ -5,7 +5,7 @@ use super::schema::posts;
 
 /// Represents a post in the DB.
 /// It is `Queryable`
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Serialize, Debug)]
 pub struct Post {
     pub id: Option<i32>,
     pub title: String,
