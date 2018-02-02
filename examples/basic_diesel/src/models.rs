@@ -14,7 +14,7 @@ pub struct Post {
 }
 
 /// Represents a new post to insert in the DB.
-#[derive(Insertable)]
+#[derive(Insertable, Deserialize)]
 #[table_name = "posts"]
 pub struct NewPost<'a> {
     pub title: &'a str,
