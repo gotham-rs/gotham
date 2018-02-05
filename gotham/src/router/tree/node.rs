@@ -134,38 +134,31 @@ impl Node {
         &'a self,
         state: &State,
     ) -> Result<&'a Box<Route + Send + Sync>, RouteNonMatch> {
-        enum Selection<'b> {
-            Init,
-            Match(&'b Box<Route + Send + Sync>),
-            NonMatch(RouteNonMatch),
+        let mut err: Result<(), RouteNonMatch> = Ok(());
+
+        for r in self.routes.iter() {
+            match r.is_match(state) {
+                Ok(()) => {
+                    trace!("[{}] found matching route", request_id(state));
+                    return Ok(r);
+                }
+                Err(e) => match err {
+                    Err(e0) => err = Err(e.union(e0)),
+                    Ok(()) => err = Err(e),
+                },
+            }
         }
 
-        let iter = self.routes.iter();
-        let selection = iter.fold(Selection::Init, |s, r| match s {
-            Selection::Match(_) => s,
-            Selection::Init => match r.is_match(state) {
-                Ok(_) => Selection::Match(r),
-                Err(e) => Selection::NonMatch(e),
-            },
-            Selection::NonMatch(e) => match r.is_match(state) {
-                Ok(_) => Selection::Match(r),
-                Err(e1) => Selection::NonMatch(e.union(e1)),
-            },
-        });
-
-        match selection {
-            Selection::Match(route) => {
-                trace!("[{}] found matching route", request_id(state));
-                Ok(route)
-            }
-            Selection::NonMatch(e) => {
+        match err {
+            Err(e) => {
                 trace!(
                     "[{}] no matching route, using error status code from route",
                     request_id(state)
                 );
                 Err(e)
             }
-            Selection::Init => {
+
+            Ok(()) => {
                 trace!(
                     "[{}] invalid state, no routes. sending internal server error",
                     request_id(state)
@@ -461,8 +454,7 @@ mod tests {
 
     use std::panic::RefUnwindSafe;
 
-    use hyper::Method;
-    use hyper::Response;
+    use hyper::{Headers, Method, Response};
 
     use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl,
                                   PipelineSet};
@@ -471,7 +463,7 @@ mod tests {
     use router::request::path::NoopPathExtractor;
     use http::request::path::RequestPathSegments;
     use router::request::query_string::NoopQueryStringExtractor;
-    use state::State;
+    use state::{set_request_id, State};
 
     fn handler(state: State) -> (State, Response) {
         (state, Response::new())
@@ -697,6 +689,44 @@ mod tests {
                 assert_eq!(path.last().unwrap().segment(), expected_segment);
                 assert_eq!(sp, 2);
             }
+            None => panic!("traversal should have succeeded here"),
+        }
+    }
+
+    #[test]
+    fn non_matching_routes_allow_list_tests() {
+        let root = test_structure().finalize();
+
+        let mut state = State::new();
+        state.put(Method::Options);
+        state.put(::hyper::Headers::new());
+        ::state::request_id::set_request_id(&mut state);
+
+        let rs = RequestPathSegments::new("/seg2");
+        match root.traverse(&rs.segments()) {
+            Some((_, node, _, _)) => match node.select_route(&state) {
+                Err(e) => {
+                    let (status, mut allow_list) = e.deconstruct();
+                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
+                    assert_eq!(allow_list, vec![Method::Patch, Method::Post]);
+                }
+                Ok(_) => panic!("expected mismatched route to test allow header"),
+            },
+            None => panic!("traversal should have succeeded here"),
+        }
+
+        let rs = RequestPathSegments::new("/resource/100");
+        match root.traverse(&rs.segments()) {
+            Some((_, node, _, _)) => match node.select_route(&state) {
+                Err(e) => {
+                    let (status, mut allow_list) = e.deconstruct();
+                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
+                    assert_eq!(allow_list, vec![Method::Get]);
+                }
+                Ok(_) => panic!("expected mismatched route to test allow header"),
+            },
             None => panic!("traversal should have succeeded here"),
         }
     }
