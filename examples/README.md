@@ -23,6 +23,7 @@ Reviewing our examples in the order shown here will assist you in methodically l
 concepts and functionality provided by Gotham from introductory through to advanced levels.
 
 1. [Hello World](hello_world) - A Hello World example application for working with Gotham.
+1. [Hello Header](hello_header) - A simple introduction to working with Gotham and custom headers.
 1. [Hello Router](hello_router) - A Hello World example application for working with the Gotham Router.
 1. [Basic Router](basic_router) - An example of the Gotham Router showing usage of HTTP verbs such as Get and Post.
 
