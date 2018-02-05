@@ -26,6 +26,9 @@ mod rng;
 pub use self::backend::{Backend, NewBackend};
 pub use self::backend::memory::MemoryBackend;
 
+const SECURE_COOKIE_PREFIX: &'static str = "__Secure-";
+const HOST_COOKIE_PREFIX: &'static str = "__Host-";
+
 /// Represents the session identifier which is held in the user agent's session cookie.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SessionIdentifier {
@@ -64,7 +67,7 @@ enum SameSiteEnforcement {
 /// By default, the cookie has the name "_gotham_session", and the cookie header includes the
 /// `secure` flag.  `NewSessionMiddleware` provides functions for adjusting the
 /// `SessionCookieConfig`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SessionCookieConfig {
     // If `Expires` / `Max-Age` are ever added update `reset_session` to allow for them.
     name: String,
@@ -120,6 +123,53 @@ impl SessionCookieConfig {
         cookie_value.push_str(&self.path);
 
         cookie_value
+    }
+
+    /// Validates cookie attributes if the name includes a Cookie Prefix.
+    /// see: https://tools.ietf.org/html/draft-west-cookie-prefixes-05
+    /// Returns an updated `SessionCookieConfig` with any invalid attributes overridden and emits a warning.
+    fn validate_prefix(self) -> SessionCookieConfig {
+        if self.invalid_secure_config() {
+            self.warn_overriding_attrs(SECURE_COOKIE_PREFIX, "Secure");
+            SessionCookieConfig {
+                secure: true,
+                ..self
+            }
+        } else if self.invalid_host_config() {
+            if !self.secure {
+                self.warn_overriding_attrs(HOST_COOKIE_PREFIX, "Secure")
+            };
+            if self.domain.is_some() {
+                self.warn_overriding_attrs(HOST_COOKIE_PREFIX, "Domain")
+            };
+            if self.path != "/".to_string() {
+                self.warn_overriding_attrs(HOST_COOKIE_PREFIX, "Path")
+            };
+            SessionCookieConfig {
+                secure: true,
+                path: "/".to_string(),
+                domain: None,
+                ..self
+            }
+        } else {
+            self
+        }
+    }
+
+    fn invalid_secure_config(&self) -> bool {
+        self.name.starts_with(SECURE_COOKIE_PREFIX) && !self.secure
+    }
+
+    fn invalid_host_config(&self) -> bool {
+        self.name.starts_with(HOST_COOKIE_PREFIX)
+            && (!self.secure || self.domain.is_some() || self.path != "/".to_string())
+    }
+
+    fn warn_overriding_attrs(&self, prefix: &str, attribute: &str) {
+        warn!(
+            "{} prefix is used for cookie but {} attribute is not set correctly! This will be overridden. Cookie is: {:?}",
+            prefix, attribute, self
+        )
     }
 }
 
@@ -491,7 +541,7 @@ where
         cookie_config: SessionCookieConfig,
     ) -> NewSessionMiddleware<B, T> {
         NewSessionMiddleware {
-            cookie_config: Arc::new(cookie_config),
+            cookie_config: Arc::new(cookie_config.validate_prefix()),
             ..self
         }
     }
@@ -1004,6 +1054,34 @@ mod tests {
                 &identifier.value
             )
         );
+    }
+
+    #[test]
+    fn enforce_secure_cookie_prefix_attributes() {
+        let backend = MemoryBackend::new(Duration::from_secs(1));
+        let nm = NewSessionMiddleware::new(backend.clone())
+            .with_cookie_name("__Secure-my_session")
+            .insecure()
+            .with_session_type::<TestSession>();
+
+        let m = nm.new_middleware().unwrap();
+        assert!(m.cookie_config.secure);
+    }
+
+    #[test]
+    fn enforce_host_cookie_prefix_attributes() {
+        let backend = MemoryBackend::new(Duration::from_secs(1));
+        let nm = NewSessionMiddleware::new(backend.clone())
+            .with_cookie_name("__Host-my_session")
+            .insecure()
+            .with_cookie_domain("example.com")
+            .with_cookie_path("/myapp")
+            .with_session_type::<TestSession>();
+
+        let m = nm.new_middleware().unwrap();
+        assert!(m.cookie_config.secure);
+        assert!(m.cookie_config.domain.is_none());
+        assert!(m.cookie_config.path == "/".to_string());
     }
 
     #[test]
