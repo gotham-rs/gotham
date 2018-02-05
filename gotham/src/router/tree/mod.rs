@@ -68,7 +68,7 @@ pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
 ///
 ///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
 ///
-///   let mut thing_node_builder = NodeBuilder::new(":thing", SegmentType::Dynamic);
+///   let mut thing_node_builder = NodeBuilder::new("thing", SegmentType::Dynamic);
 ///   let thing_route = {
 ///       // elided ...
 /// #     let methods = vec![Method::Get];
@@ -88,11 +88,11 @@ pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
 ///
 ///   let request_path_segments = RequestPathSegments::new("/%61ctiv%61te/workflow5");
 ///   match tree.traverse(request_path_segments.segments().as_slice()) {
-///       Some((path, leaf, segments_processed, _segment_mapping)) => {
+///       Some((path, leaf, segments_processed, segment_mapping)) => {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(path.last().unwrap().segment(), leaf.segment());
 ///         assert_eq!(segments_processed, 2);
-///         // TODO: assert_eq!(segment_mapping.get(":thing").unwrap().last().unwrap().val(), "workflow5");
+///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap().val(), "workflow5");
 ///       }
 ///       None => panic!(),
 ///   }

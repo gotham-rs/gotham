@@ -373,7 +373,6 @@ unsafe impl NewMiddlewareChain for () {
 /// and is subject to change without notice.
 #[doc(hidden)]
 pub unsafe trait MiddlewareChain: Sized {
-    // TODO: Update this after implementing the `dispatch` module.
     /// Recursive function for processing middleware and chaining to the given function.
     fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where

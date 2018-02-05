@@ -62,7 +62,6 @@ pub(crate) enum ExtractorError {
     NoValues,
 
     /// Multiple values were present, but the target type expected only a single value.
-    // TODO: How is this triggered?
     MultipleValues,
 
     /// An invalid internal state occurred where the deserializer attempted to access a value but
@@ -177,7 +176,7 @@ macro_rules! reject_value_type {
 /// primarily giving us one place to deal with the type structure and expose the `next` function
 /// that we require.
 ///
-/// See `from_segment_mapping` and TODO: `from_query_string` for how the values are constructed.
+/// See `from_segment_mapping` and `from_query_string` for how the values are constructed.
 trait ExtractorDataSource<'a> {
     type Iterator: Iterator<Item = (&'a str, Self::ValueIterator)>;
     type ValueIterator: IntoIterator<Item = &'a Self::Value>;
@@ -187,7 +186,7 @@ trait ExtractorDataSource<'a> {
     fn next(&mut self) -> Option<(&'a str, Self::ValueIterator)>;
 }
 
-/// Concrete type which implements `ExtractorDataSource`. See `from_segment_mapping` and TODO:
+/// Concrete type which implements `ExtractorDataSource`. See `from_segment_mapping` and
 /// `from_query_string` for how this is constructed and used.
 struct IteratorAdaptor<'a, I, VI, V>
 where
@@ -247,6 +246,7 @@ where
     })
 }
 
+/// Deserializes a value of type `T` from a set of query parameters.
 pub(crate) fn from_query_string_mapping<'de, T>(
     qsm: &'de QueryStringMapping,
 ) -> Result<T, ExtractorError>
