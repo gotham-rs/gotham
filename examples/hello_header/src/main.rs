@@ -9,6 +9,8 @@ extern crate mime;
 use hyper::{Response, StatusCode};
 use gotham::http::response::create_response;
 use gotham::state::State;
+use gotham::router::Router;
+use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 
 // this macro defines our custom header
 header! { (GothamHeader, "X-Gotham") => [String] }
@@ -28,11 +30,16 @@ pub fn say_hello_through_header(state: State) -> (State, Response) {
     (state, res)
 }
 
+/// Create a `Router`
+fn router() -> Router {
+    build_simple_router(|route| { route.get("/").to(say_hello_through_header); })
+}
+
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.
 pub fn main() {
     let addr = "127.0.0.1:7878";
     println!("Listening for requests at http://{}", addr);
-    gotham::start(addr, || Ok(say_hello_through_header))
+    gotham::start(addr, router())
 }
 
 
