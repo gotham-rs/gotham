@@ -1,4 +1,4 @@
-//! This module holds the functions to get and create posts from the DB.
+//! This module holds the functions to get and create products from the DB.
 
 pub mod schema;
 pub mod models;
@@ -15,42 +15,42 @@ extern crate serde;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 
-use self::models::{Post, NewPost};
-use self::schema::posts::dsl::{posts, published};
+use self::models::{Product, NewProduct};
+use self::schema::products::dsl::products;
 
 embed_migrations!();
 
-/// Get the published posts in the DB. Limitted to 5 posts.
-pub fn get_posts(conn: &SqliteConnection) -> Vec<Post> {
-    // Run the migrations to be sure that the `posts` table is present
+/// Get the published products in the DB. Limitted to 5 products.
+pub fn get_products(conn: &SqliteConnection) -> Vec<Product> {
+    // Run the migrations to be sure that the `products` table is present
     let _result = embedded_migrations::run(conn);
 
-    posts
-        .filter(published.eq(true))
+    products 
         .limit(5)
-        .load::<Post>(conn)
+        .load::<Product>(conn)
         .unwrap()
 }
 
-/// Create a new post in the DB.
-pub fn create_post<'a>(
+/// Create a new product in the DB.
+pub fn create_product<'a>(
     conn: &SqliteConnection,
     title: &'a str,
-    body: &'a str,
+    price: f32,
+    link: String
 ) -> QueryResult<usize> {
-    use schema::posts;
-    // Run the migrations to be sure that the `posts` table is present
+    use schema::products;
+    // Run the migrations to be sure that the `products` table is present
     let _result = embedded_migrations::run(conn);
 
-    let new_post = NewPost {
+    let new_product = NewProduct{
         title: title,
-        body: body,
-        published: true,
+        price: price,
+        link: link,
     };
 
-    // Insert the `NewPost` in the DB 
-    diesel::insert_into(posts::table)
-        .values(&new_post)
+    // Insert the `NewProduct` in the DB 
+    diesel::insert_into(products::table)
+        .values(&new_product)
         .execute(conn)
 }
 

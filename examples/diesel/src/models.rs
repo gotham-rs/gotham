@@ -1,23 +1,23 @@
 //! Holds the two possible structs that are `Queryable` and
 //! `Insertable` in the DB
 
-use super::schema::posts;
+use super::schema::products;
 
-/// Represents a post in the DB.
+/// Represents a product in the DB.
 /// It is `Queryable`
 #[derive(Queryable, Serialize, Debug)]
-pub struct Post {
+pub struct Product {
     pub id: Option<i32>,
     pub title: String,
-    pub body: String,
-    pub published: bool,
+    pub price: f32,
+    pub link: String,
 }
 
-/// Represents a new post to insert in the DB.
+/// Represents a new product to insert in the DB.
 #[derive(Insertable, Deserialize)]
-#[table_name = "posts"]
-pub struct NewPost<'a> {
+#[table_name = "products"]
+pub struct NewProduct<'a> {
     pub title: &'a str,
-    pub body: &'a str,
-    pub published: bool,
+    pub price: f32,
+    pub link: String,
 }

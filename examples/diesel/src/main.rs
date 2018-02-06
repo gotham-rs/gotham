@@ -24,11 +24,11 @@ use r2d2_diesel::ConnectionManager;
 use r2d2::{Pool, PooledConnection};
 use futures::{future, Future, Stream};
 use std::str;
-use basic_diesel::models::NewPost;
+use basic_diesel::models::NewProduct;
 
 
 // The URL of the database.
-static DATABASE_URL: &'static str = "posts.db";
+static DATABASE_URL: &'static str = "products.db";
 
 
 /// Creates the `DieselMiddleware` from an `url` that is passed to the function
@@ -39,36 +39,36 @@ fn create_middleware(url: &str) -> DieselMiddleware<SqliteConnection> {
     DieselMiddleware::with_pool(pool)
 }
 
-/// Handler function. Responsible of getting and displaying the posts from the DB
-fn get_posts_handler(state: State) -> (State, Response) {
+/// Handler function. Responsible of getting and displaying the products from the DB
+fn get_products_handler(state: State) -> (State, Response) {
     let conn: PooledConnection<ConnectionManager<SqliteConnection>> =
         gotham_middleware_diesel::state_data::connection(&state);
-    let posts = basic_diesel::get_posts(&conn);
+    let products = basic_diesel::get_products(&conn);
 
     (
         state,
         Response::new().with_status(StatusCode::Ok).with_body(
             format!(
                 "{}",
-                serde_json::to_string(&posts).unwrap()
+                serde_json::to_string(&products).unwrap()
             ),
         ),
     )
 }
 
-/// Handle function. Manages the `NewPost` to insert to the DB
-fn post_post_handler(mut state: State) -> Box<HandlerFuture> {
+/// Handle function. Manages the `NewProduct` to insert to the DB
+fn post_product_handler(mut state: State) -> Box<HandlerFuture> {
     let f = hyper::Body::take_from(&mut state).concat2().then(
         move |full_body| match full_body {
             Ok(valid_body) => {
-                let post: NewPost = match serde_json::from_slice(&valid_body) {
+                let product : NewProduct = match serde_json::from_slice(&valid_body) {
                     Ok(p) => p,
                     Err(e) => return future::err((state, e.into_handler_error())),
                 };
                 let conn: PooledConnection<ConnectionManager<SqliteConnection>> =
                     gotham_middleware_diesel::state_data::connection(&state);
                 let mut res: Response;
-                match basic_diesel::create_post(&conn, post.title, post.body) {
+                match basic_diesel::create_product(&conn, product.title, product.price, product.link){
                     Ok(_) => {
                         res = create_response(
                             &state,
@@ -94,8 +94,8 @@ fn post_post_handler(mut state: State) -> Box<HandlerFuture> {
 ///
 /// /                         --> GET, POST
 ///
-/// It returns the content of the SQLite DB file located in `.posts.db`
-/// This DB consists of `Post` entries.
+/// It returns the content of the SQLite DB file located in `products.db`
+/// This DB consists of `Products` entries.
 fn router(middleware: DieselMiddleware<SqliteConnection>) -> Router {
     // Create a new pipeline set
     let editable_pipeline_set = new_pipeline_set();
@@ -109,8 +109,8 @@ fn router(middleware: DieselMiddleware<SqliteConnection>) -> Router {
 
     // Build the router
     build_router(default_pipeline_chain, pipeline_set, |route| {
-        route.get("/").to(get_posts_handler);
-        route.post("/").to(post_post_handler);
+        route.get("/").to(get_products_handler);
+        route.post("/").to(post_product_handler);
     })
 }
 
@@ -135,7 +135,7 @@ mod tests {
 
 
     #[test]
-    fn get_empty_posts() {
+    fn get_empty_products() {
         let middleware = create_middleware("empty.db");
         let test_server = TestServer::new(router(middleware)).unwrap();
         let response = test_server
@@ -153,10 +153,10 @@ mod tests {
     }
 
     #[test]
-    fn create_post() {
-        let middleware = create_middleware("test_post.db");
+    fn create_product() {
+        let middleware = create_middleware("test_products.db");
         let test_server = TestServer::new(router(middleware)).unwrap();
-        let body = "{\"title\":\"test\",\"body\":\"test post\",\"published\":true}";
+        let body = "{\"title\":\"test\",\"price\":1.0,\"link\":\"http://localhost\"}";
         let response = test_server
             .client()
             .post("http://localhost", body, mime::APPLICATION_JSON)
