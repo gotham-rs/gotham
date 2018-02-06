@@ -1,4 +1,4 @@
-//! A basic example application for working with the Gotham Path Extractor 
+//! A basic example application for working with the Gotham Path Extractor
 
 extern crate futures;
 extern crate gotham;
@@ -19,7 +19,7 @@ use gotham::state::State;
 
 
 /// `Product` struct
-/// 
+///
 /// It contains only a `name` field for the sake of simplicity
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct MyProduct {
@@ -34,7 +34,10 @@ fn get_product_handler(mut state: State) -> (State, Response) {
     let res = create_response(
         &state,
         StatusCode::Ok,
-        Some((format!("Product: {}", name).into_bytes(), mime::TEXT_PLAIN)),
+        Some((
+            format!("Product: {}", name).into_bytes(),
+            mime::TEXT_PLAIN,
+        )),
     );
 
     (state, res)
@@ -45,7 +48,8 @@ fn get_product_handler(mut state: State) -> (State, Response) {
 /// /widgets/:name             --> GET
 fn router() -> Router {
     build_simple_router(|route| {
-        route.get("/widgets/:name")
+        route
+            .get("/widgets/:name")
             .with_path_extractor::<MyProduct>()
             .to(get_product_handler);
     })
@@ -71,7 +75,7 @@ mod tests {
             .get("http://localhost")
             .perform()
             .unwrap();
-        
+
         assert_eq!(response.status(), StatusCode::NotFound);
     }
 
