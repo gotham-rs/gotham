@@ -37,8 +37,7 @@ use state::{request_id, State};
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::test::TestServer;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::{Response, StatusCode, Method};
 /// #
@@ -374,7 +373,6 @@ unsafe impl NewMiddlewareChain for () {
 /// and is subject to change without notice.
 #[doc(hidden)]
 pub unsafe trait MiddlewareChain: Sized {
-    // TODO: Update this after implementing the `dispatch` module.
     /// Recursive function for processing middleware and chaining to the given function.
     fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where

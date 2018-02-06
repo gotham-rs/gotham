@@ -10,16 +10,16 @@ pub mod dispatch;
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use hyper::Response;
+use hyper::{Response, Uri};
 
+use http::request::query_string;
 use router::route::dispatch::Dispatcher;
 use handler::HandlerFuture;
+use extractor::{self, PathExtractor, QueryStringExtractor};
 use router::non_match::RouteNonMatch;
-use router::request::query_string::QueryStringExtractor;
 use router::route::matcher::RouteMatcher;
 use router::tree::SegmentMapping;
-use router::request::path::PathExtractor;
-use state::State;
+use state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]
 /// Indicates how this Route behaves in relation to external `Router` instances.
@@ -53,13 +53,13 @@ pub trait Route: RefUnwindSafe {
         &self,
         state: &mut State,
         segment_mapping: SegmentMapping,
-    ) -> Result<(), String>;
+    ) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when path extraction fails
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response);
 
     /// Extracts the `Request` query string and stores it in `State`
-    fn extract_query_string(&self, state: &mut State) -> Result<(), String>;
+    fn extract_query_string(&self, state: &mut State) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when query string extraction fails
     fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response);
@@ -68,6 +68,10 @@ pub trait Route: RefUnwindSafe {
     /// application specific logic to respond to the request.
     fn dispatch(&self, state: State) -> Box<HandlerFuture>;
 }
+
+/// Returned in the `Err` variant from `extract_query_string` or `extract_request_path`, this
+/// signals that the extractor has failed and the request should not proceed.
+pub struct ExtractorFailed;
 
 /// Default implementation for `Route`.
 ///
@@ -82,8 +86,7 @@ pub trait Route: RefUnwindSafe {
 /// # use hyper::{Response, Method, StatusCode};
 /// #
 /// # use gotham::http::response::create_response;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
@@ -113,8 +116,7 @@ pub trait Route: RefUnwindSafe {
 /// # use hyper::{Response, StatusCode, Method};
 /// #
 /// # use gotham::http::response::create_response;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
@@ -156,40 +158,40 @@ pub trait Route: RefUnwindSafe {
 ///   RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
 /// # }
 /// ```
-pub struct RouteImpl<RM, RE, QSE>
+pub struct RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
     matcher: RM,
     dispatcher: Box<Dispatcher + Send + Sync>,
-    _extractors: Extractors<RE, QSE>,
+    _extractors: Extractors<PE, QSE>,
     delegation: Delegation,
 }
 
 /// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
 /// for use by custom `Middleware` and `Handler` implementations.
-pub struct Extractors<RE, QSE>
+pub struct Extractors<PE, QSE>
 where
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
-    rpe_phantom: PhantomData<RE>,
+    rpe_phantom: PhantomData<PE>,
     qse_phantom: PhantomData<QSE>,
 }
 
-impl<RM, RE, QSE> RouteImpl<RM, RE, QSE>
+impl<RM, PE, QSE> RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
     /// Creates a new `RouteImpl`
     pub fn new(
         matcher: RM,
         dispatcher: Box<Dispatcher + Send + Sync>,
-        _extractors: Extractors<RE, QSE>,
+        _extractors: Extractors<PE, QSE>,
         delegation: Delegation,
     ) -> Self {
         RouteImpl {
@@ -201,9 +203,9 @@ where
     }
 }
 
-impl<RE, QSE> Extractors<RE, QSE>
+impl<PE, QSE> Extractors<PE, QSE>
 where
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
     /// Creates a new set of Extractors for use with a `RouteImpl`
@@ -215,10 +217,10 @@ where
     }
 }
 
-impl<RM, RE, QSE> Route for RouteImpl<RM, RE, QSE>
+impl<RM, PE, QSE> Route for RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    RE: PathExtractor,
+    PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
@@ -237,16 +239,38 @@ where
         &self,
         state: &mut State,
         segment_mapping: SegmentMapping,
-    ) -> Result<(), String> {
-        RE::extract(state, segment_mapping)
+    ) -> Result<(), ExtractorFailed> {
+        match extractor::internal::from_segment_mapping::<PE>(segment_mapping) {
+            Ok(val) => Ok(state.put(val)),
+            Err(e) => {
+                debug!("[{}] path extractor failed: {}", request_id(&state), e);
+                Err(ExtractorFailed)
+            }
+        }
     }
 
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response) {
-        RE::extend(state, res)
+        PE::extend(state, res)
     }
 
-    fn extract_query_string(&self, state: &mut State) -> Result<(), String> {
-        QSE::extract(state)
+    fn extract_query_string(&self, state: &mut State) -> Result<(), ExtractorFailed> {
+        let result: Result<QSE, _> = {
+            let uri = state.borrow::<Uri>();
+            let query_string_mapping = query_string::split(uri.query());
+            extractor::internal::from_query_string_mapping(&query_string_mapping)
+        };
+
+        match result {
+            Ok(val) => Ok(state.put(val)),
+            Err(e) => {
+                debug!(
+                    "[{}] query string extractor failed: {}",
+                    request_id(&state),
+                    e
+                );
+                Err(ExtractorFailed)
+            }
+        }
     }
 
     fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response) {

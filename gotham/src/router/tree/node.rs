@@ -1,7 +1,6 @@
 //! Defines `Node` and `SegmentType` for `Tree`
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::borrow::Borrow;
 use hyper::StatusCode;
 
@@ -52,8 +51,7 @@ pub enum SegmentType {
 /// #
 /// # use gotham::http::PercentDecoded;
 /// # use gotham::http::response::create_response;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::state::State;
@@ -192,14 +190,13 @@ impl Node {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'r, 'n>(
-        &'n self,
+    pub fn traverse<'r>(
+        &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
+    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, leaf, c, sm)) => {
                 path.reverse();
-                let sm = SegmentMapping { data: sm };
                 Some((path, leaf, c, sm))
             }
             None => None,
@@ -208,23 +205,16 @@ impl Node {
 
     #[allow(unknown_lints, type_complexity)]
     fn inner_traverse<'r>(
-        &self,
+        &'r self,
         req_path_segments: &'r [&PercentDecoded],
         mut consumed_segments: Vec<&'r PercentDecoded>,
-    ) -> Option<
-        (
-            Vec<&Node>,
-            &Node,
-            SegmentsProcessed,
-            HashMap<&str, Vec<&'r PercentDecoded>>,
-        ),
-    > {
+    ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match req_path_segments.split_first() {
             Some((x, _)) if self.is_delegating(x) => {
                 // A delegated node terminates processing, start building result
                 trace!(" found delegator node `{}`", self.segment);
 
-                let mut sm = HashMap::new();
+                let mut sm = SegmentMapping::new();
                 if self.segment_type != SegmentType::Static {
                     consumed_segments.push(x);
                     sm.insert(self.segment(), consumed_segments);
@@ -235,7 +225,7 @@ impl Node {
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 trace!(" found leaf node `{}`", self.segment);
 
-                let mut sm = HashMap::new();
+                let mut sm = SegmentMapping::new();
                 if self.segment_type != SegmentType::Static {
                     consumed_segments.push(x);
                     sm.insert(self.segment(), consumed_segments);
@@ -460,9 +450,8 @@ mod tests {
                                   PipelineSet};
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Extractors, Route, RouteImpl};
-    use router::request::path::NoopPathExtractor;
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use http::request::path::RequestPathSegments;
-    use router::request::query_string::NoopQueryStringExtractor;
     use state::{set_request_id, State};
 
     fn handler(state: State) -> (State, Response) {
@@ -699,8 +688,8 @@ mod tests {
 
         let mut state = State::new();
         state.put(Method::Options);
-        state.put(::hyper::Headers::new());
-        ::state::request_id::set_request_id(&mut state);
+        state.put(Headers::new());
+        set_request_id(&mut state);
 
         let rs = RequestPathSegments::new("/seg2");
         match root.traverse(&rs.segments()) {

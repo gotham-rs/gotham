@@ -1,7 +1,6 @@
 use std::panic::RefUnwindSafe;
 
-use router::request::path::PathExtractor;
-use router::request::query_string::QueryStringExtractor;
+use extractor::{PathExtractor, QueryStringExtractor};
 use router::builder::SingleRouteBuilder;
 use router::builder::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
 use router::route::{Delegation, Extractors, RouteImpl};
@@ -149,6 +148,8 @@ pub trait DefineSingleRoute {
     /// # extern crate gotham;
     /// # #[macro_use]
     /// # extern crate gotham_derive;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
     /// # extern crate hyper;
     /// # use hyper::Response;
     /// # use gotham::state::{State, FromState};
@@ -157,7 +158,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// #[derive(StateData, PathExtractor, StaticResponseExtender)]
+    /// #[derive(Deserialize, StateData, StaticResponseExtender)]
     /// struct MyPathParams {
     /// #   #[allow(dead_code)]
     ///     name: String,
@@ -204,6 +205,9 @@ pub trait DefineSingleRoute {
     /// # #[macro_use]
     /// # extern crate gotham_derive;
     /// # extern crate hyper;
+    /// # extern crate serde;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
     /// # use hyper::Response;
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
@@ -211,7 +215,8 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
-    /// #[derive(StateData, QueryStringExtractor, StaticResponseExtender)]
+    /// #
+    /// #[derive(StateData, Deserialize, StaticResponseExtender)]
     /// struct MyQueryParams {
     /// #   #[allow(dead_code)]
     ///     id: u64,

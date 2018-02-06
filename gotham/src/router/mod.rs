@@ -3,7 +3,6 @@
 pub mod builder;
 pub mod tree;
 pub mod route;
-pub mod request;
 pub mod response;
 pub mod non_match;
 
@@ -160,8 +159,7 @@ impl Router {
                         trace!("[{}] dispatching", request_id(&state));
                         route.dispatch(state)
                     }
-                    Err(e) => {
-                        trace!("[{}] {}", request_id(&state), e);
+                    Err(_) => {
                         error!("[{}] the server cannot or will not process the request due to a client error within the query string",
                                request_id(&state));
 
@@ -171,8 +169,7 @@ impl Router {
                     }
                 }
             }
-            Err(e) => {
-                trace!("[{}] {}", request_id(&state), e);
+            Err(_) => {
                 error!(
                     "[{}] the server cannot or will not process the request due to a client error on the request path",
                     request_id(&state)
@@ -216,8 +213,7 @@ mod tests {
     use router::tree::TreeBuilder;
     use router::tree::node::{NodeBuilder, SegmentType};
     use router::route::{Extractors, RouteImpl};
-    use router::request::path::NoopPathExtractor;
-    use router::request::query_string::NoopQueryStringExtractor;
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl};
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;

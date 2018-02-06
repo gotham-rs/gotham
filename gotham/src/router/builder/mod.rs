@@ -18,8 +18,7 @@ use router::route::matcher::{MethodOnlyRouteMatcher, RouteMatcher};
 use router::route::matcher::any::AnyRouteMatcher;
 use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl,
                               PipelineHandleChain, PipelineSet};
-use router::request::path::{NoopPathExtractor, PathExtractor};
-use router::request::query_string::{NoopQueryStringExtractor, QueryStringExtractor};
+use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
 
 pub use self::single::DefineSingleRoute;
@@ -302,6 +301,8 @@ where
     /// # extern crate gotham;
     /// # #[macro_use]
     /// # extern crate gotham_derive;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
     /// # extern crate hyper;
     /// #
     /// # use hyper::Response;
@@ -314,7 +315,7 @@ where
     /// #   unimplemented!()
     /// }
     ///
-    /// #[derive(StateData, PathExtractor, StaticResponseExtender)]
+    /// #[derive(Deserialize, StateData, StaticResponseExtender)]
     /// struct MyPathExtractor {
     /// #   #[allow(dead_code)]
     ///     id: u32,
@@ -352,6 +353,9 @@ where
     /// # #[macro_use]
     /// # extern crate gotham_derive;
     /// # extern crate hyper;
+    /// # extern crate serde;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
     /// #
     /// # use hyper::Response;
     /// # use gotham::router::Router;
@@ -363,7 +367,7 @@ where
     /// #   unimplemented!()
     /// }
     ///
-    /// #[derive(StateData, QueryStringExtractor, StaticResponseExtender)]
+    /// #[derive(StateData, Deserialize, StaticResponseExtender)]
     /// struct MyQueryStringExtractor {
     /// #   #[allow(dead_code)]
     ///     val: String,
@@ -706,24 +710,21 @@ where
 mod tests {
     use super::*;
 
-    use std::str::FromStr;
     use std::sync::Arc;
 
-    use hyper::{Method, Request, Response, StatusCode, Uri};
+    use hyper::{Method, Request, Response, StatusCode};
     use hyper::server::Service;
     use futures::{Future, Stream};
     use tokio_core::reactor::Core;
 
     use pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
-    use state::{FromState, State, StateData};
+    use state::{State, StateData};
     use service::GothamService;
     use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set};
     use router::response::extender::StaticResponseExtender;
-    use router::tree::SegmentMapping;
-    use http::FormUrlDecoded;
-    use http::request::query_string;
 
+    #[derive(Deserialize)]
     struct SalutationParams {
         name: String,
     }
@@ -734,21 +735,7 @@ mod tests {
         fn extend(_: &mut State, _: &mut Response) {}
     }
 
-    impl PathExtractor for SalutationParams {
-        fn extract(state: &mut State, segment_mapping: SegmentMapping) -> Result<(), String> {
-            let name = segment_mapping
-                .get("name")
-                .unwrap()
-                .first()
-                .unwrap()
-                .val()
-                .to_owned();
-            let params = SalutationParams { name };
-            state.put(params);
-            Ok(())
-        }
-    }
-
+    #[derive(Deserialize)]
     struct AddParams {
         x: u64,
         y: u64,
@@ -758,30 +745,6 @@ mod tests {
 
     impl StaticResponseExtender for AddParams {
         fn extend(_: &mut State, _: &mut Response) {}
-    }
-
-    impl QueryStringExtractor for AddParams {
-        fn extract(state: &mut State) -> Result<(), String> {
-            let mapping = {
-                let uri = Uri::borrow_from(state);
-                let query = uri.query();
-                query_string::split(query)
-            };
-
-            let parse = |vals: Option<&Vec<FormUrlDecoded>>| {
-                let s = vals.unwrap().first().unwrap().val();
-                println!("{}", s);
-                u64::from_str(s).unwrap()
-            };
-
-            let params = AddParams {
-                x: parse(mapping.get("x")),
-                y: parse(mapping.get("y")),
-            };
-
-            state.put(params);
-            Ok(())
-        }
     }
 
     mod welcome {
