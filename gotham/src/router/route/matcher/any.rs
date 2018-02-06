@@ -1,7 +1,6 @@
 //! Defines the type `AnyRouteMatcher`
 
-use hyper::StatusCode;
-
+use router::non_match::RouteNonMatch;
 use router::route::RouteMatcher;
 use state::State;
 
@@ -33,7 +32,7 @@ impl AnyRouteMatcher {
 }
 
 impl RouteMatcher for AnyRouteMatcher {
-    fn is_match(&self, _state: &State) -> Result<(), StatusCode> {
+    fn is_match(&self, _state: &State) -> Result<(), RouteNonMatch> {
         Ok(())
     }
 }

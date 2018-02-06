@@ -5,6 +5,7 @@ use std::borrow::Borrow;
 use hyper::StatusCode;
 
 use http::PercentDecoded;
+use router::non_match::RouteNonMatch;
 use router::route::{Delegation, Route};
 use router::tree::{Path, SegmentMapping, SegmentsProcessed};
 use router::tree::regex::ConstrainedSegmentRegex;
@@ -127,24 +128,40 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub fn select_route(&self, state: &State) -> Result<&Box<Route + Send + Sync>, StatusCode> {
-        match self.routes.iter().find(|r| r.is_match(state).is_ok()) {
-            Some(route) => {
-                trace!("[{}] found matching route", request_id(state));
-                Ok(route)
-            }
-            None => {
-                trace!("[{}] no matching route", request_id(state));
-                match self.routes.first() {
-                    Some(route) => {
-                        trace!("[{}] using error status code from route", request_id(state));
-                        Err(route.is_match(state).unwrap_err())
-                    }
-                    None => {
-                        trace!("[{}] using generic error status code", request_id(state));
-                        Err(StatusCode::InternalServerError)
-                    }
+    pub fn select_route<'a>(
+        &'a self,
+        state: &State,
+    ) -> Result<&'a Box<Route + Send + Sync>, RouteNonMatch> {
+        let mut err: Result<(), RouteNonMatch> = Ok(());
+
+        for r in self.routes.iter() {
+            match r.is_match(state) {
+                Ok(()) => {
+                    trace!("[{}] found matching route", request_id(state));
+                    return Ok(r);
                 }
+                Err(e) => match err {
+                    Err(e0) => err = Err(e.union(e0)),
+                    Ok(()) => err = Err(e),
+                },
+            }
+        }
+
+        match err {
+            Err(e) => {
+                trace!(
+                    "[{}] no matching route, using error status code from route",
+                    request_id(state)
+                );
+                Err(e)
+            }
+
+            Ok(()) => {
+                trace!(
+                    "[{}] invalid state, no routes. sending internal server error",
+                    request_id(state)
+                );
+                Err(RouteNonMatch::new(StatusCode::InternalServerError))
             }
         }
     }
@@ -427,8 +444,7 @@ mod tests {
 
     use std::panic::RefUnwindSafe;
 
-    use hyper::Method;
-    use hyper::Response;
+    use hyper::{Headers, Method, Response};
 
     use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl,
                                   PipelineSet};
@@ -436,7 +452,7 @@ mod tests {
     use router::route::{Extractors, Route, RouteImpl};
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use http::request::path::RequestPathSegments;
-    use state::State;
+    use state::{set_request_id, State};
 
     fn handler(state: State) -> (State, Response) {
         (state, Response::new())
@@ -662,6 +678,44 @@ mod tests {
                 assert_eq!(path.last().unwrap().segment(), expected_segment);
                 assert_eq!(sp, 2);
             }
+            None => panic!("traversal should have succeeded here"),
+        }
+    }
+
+    #[test]
+    fn non_matching_routes_allow_list_tests() {
+        let root = test_structure().finalize();
+
+        let mut state = State::new();
+        state.put(Method::Options);
+        state.put(Headers::new());
+        set_request_id(&mut state);
+
+        let rs = RequestPathSegments::new("/seg2");
+        match root.traverse(&rs.segments()) {
+            Some((_, node, _, _)) => match node.select_route(&state) {
+                Err(e) => {
+                    let (status, mut allow_list) = e.deconstruct();
+                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
+                    assert_eq!(allow_list, vec![Method::Patch, Method::Post]);
+                }
+                Ok(_) => panic!("expected mismatched route to test allow header"),
+            },
+            None => panic!("traversal should have succeeded here"),
+        }
+
+        let rs = RequestPathSegments::new("/resource/100");
+        match root.traverse(&rs.segments()) {
+            Some((_, node, _, _)) => match node.select_route(&state) {
+                Err(e) => {
+                    let (status, mut allow_list) = e.deconstruct();
+                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
+                    assert_eq!(allow_list, vec![Method::Get]);
+                }
+                Ok(_) => panic!("expected mismatched route to test allow header"),
+            },
             None => panic!("traversal should have succeeded here"),
         }
     }

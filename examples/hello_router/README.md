@@ -12,7 +12,7 @@ $ cargo run
    Compiling hello_router (file:///.../examples/hello_router)
     Finished dev [unoptimized + debuginfo] target(s) in 4.26 secs
      Running `../hello_router`
-  Accepting requests at http://127.0.0.1:7878
+  Listening for requests at http://127.0.0.1:7878
 
 Terminal 2:
 $ curl -v http://127.0.0.1:7878/
