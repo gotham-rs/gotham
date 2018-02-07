@@ -17,11 +17,7 @@ header! { (GothamHeader, "X-Gotham") => [String] }
 
 /// Create a `Handler` that adds a custom header.
 pub fn say_hello_through_header(state: State) -> (State, Response) {
-    let mut res = create_response(
-        &state,
-        StatusCode::Ok,
-        Some((b"".to_vec(), mime::TEXT_PLAIN)),
-    );
+    let mut res = create_response(&state, StatusCode::Ok, None);
     {
         let headers = res.headers_mut();
         headers.set(GothamHeader("Hello World!".to_owned()));
