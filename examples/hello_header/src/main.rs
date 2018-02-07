@@ -32,7 +32,9 @@ pub fn say_hello_through_header(state: State) -> (State, Response) {
 
 /// Create a `Router`
 fn router() -> Router {
-    build_simple_router(|route| { route.get("/").to(say_hello_through_header); })
+    build_simple_router(|route| {
+        route.get("/").to(say_hello_through_header);
+    })
 }
 
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.
@@ -41,7 +43,6 @@ pub fn main() {
     println!("Listening for requests at http://{}", addr);
     gotham::start(addr, router())
 }
-
 
 #[cfg(test)]
 mod tests {

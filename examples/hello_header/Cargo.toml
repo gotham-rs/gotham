@@ -2,7 +2,8 @@
 name = "hello_header"
 version = "0.1.0"
 authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
-           "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
+           "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
+           "Eren Güven <erenguven0@gmail.com>"]
 description = "A simple introduction to working with Gotham and custom headers."
 license = "MIT/Apache-2.0"
 readme = "README.md"
