@@ -11,5 +11,6 @@ members = [
     "examples/hello_world",
     "examples/hello_router",
     "examples/basic_router",
+    "examples/basic_query_extractor",
     "examples/basic_into_response",
 ]
