@@ -1,4 +1,4 @@
-//! A basic example application for working with the Gotham Query String Extractor 
+//! A basic example application for working with the Gotham Query String Extractor
 
 extern crate futures;
 extern crate gotham;
@@ -12,11 +12,11 @@ extern crate serde_json;
 extern crate gotham_derive;
 
 use hyper::{Response, StatusCode};
+use hyper::header::ContentType;
 
-use gotham::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
-use gotham::state::State;
+use gotham::state::{State, FromState};
 
 /// `QueryParam` struct
 ///
@@ -34,52 +34,44 @@ struct QueryParam {
 #[derive(Serialize)]
 struct Product {
     name: String,
-    price: f32,
+    description: String,
 }
 
 // Generate a `Vec<Product>`
 fn generate_products() -> Vec<Product> {
-    let mut products = Vec::with_capacity(3);
-    products.push(Product {
-        name: "t-shirt".to_string(),
-        price: 15.5,
-    });
-    products.push(Product {
-        name: "sticker".to_string(),
-        price: 1.5,
-    });
-    products.push(Product {
-        name: "mug".to_string(),
-        price: 10.0,
-    });
-    products
+    vec![
+        Product {
+            name: "t-shirt".to_string(),
+            description: "t-shirt".to_string(),
+        },
+    ]
+}
+
+/// Returns a `Response` with the `Product` serialized to JSON
+/// If no `Product` is found, a `Response` containing a `StatusCode::NotFound`
+/// is returned.
+fn product_matcher(requested: &str, products: &Vec<Product>) -> Response {
+    match products.iter().find(|p| p.name == requested) {
+        Some(product) => {
+            Response::new()
+                .with_status(StatusCode::Ok)
+                .with_body(serde_json::to_string(product).unwrap())
+                .with_header(ContentType(mime::APPLICATION_JSON))
+        }
+        None => Response::new().with_status(StatusCode::NotFound),
+    }
 }
 
 /// Function to handle the `GET` requests coming to `/widgets/:name`
-fn get_product_handler(mut state: State) -> (State, Response) {
-    // Extract `name` from `state`
-    let name = state.take::<QueryParam>().name;
-    // Generate the products and try to find a match
-    let products = generate_products()
-        .into_iter()
-        .filter(|p| p.name == name)
-        .collect::<Vec<Product>>();
-    // Check if a product is found. If not, return `StatusCode::NotFound`
-    let product = match products.get(0) {
-        Some(p) => p,
-        None => return (state, Response::new().with_status(StatusCode::NotFound)),
+fn get_product_handler(state: State) -> (State, Response) {
+    // Build a response
+    let res = {
+        // Extract the `QueryParam` from `state`
+        let query_param = QueryParam::borrow_from(&state);
+        let name = &query_param.name;
+        // Generate the response
+        product_matcher(&name, &generate_products())
     };
-    // Create a response using `Product` serialized to JSON
-    let res = create_response(
-        &state,
-        StatusCode::Ok,
-        Some((
-            format!("{}", serde_json::to_string(&product).unwrap())
-                .into_bytes(),
-            mime::TEXT_PLAIN,
-        )),
-    );
-
     (state, res)
 }
 
@@ -108,18 +100,6 @@ mod tests {
     use gotham::test::TestServer;
 
     #[test]
-    fn index_not_found() {
-        let test_server = TestServer::new(router()).unwrap();
-        let response = test_server
-            .client()
-            .get("http://localhost")
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::NotFound);
-    }
-
-    #[test]
     fn tshirt_found() {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
@@ -130,8 +110,20 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::Ok);
 
+        {
+            let content_type = response.headers().get::<ContentType>().expect(
+                "ContentType",
+            );
+            assert_eq!(content_type.0, mime::APPLICATION_JSON);
+        }
+
         let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b"{\"name\":\"t-shirt\",\"price\":15.5}");
+        let expected_product = Product {
+            name: "t-shirt".to_string(),
+            description: "t-shirt".to_string(),
+        };
+        let expected_body = serde_json::to_string(&expected_product).expect("Serialize product");
+        assert_eq!(&body[..], expected_body.as_bytes());
     }
 
     #[test]
