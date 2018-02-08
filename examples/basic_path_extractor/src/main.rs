@@ -15,7 +15,7 @@ use hyper::{Response, StatusCode};
 use gotham::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
-use gotham::state::State;
+use gotham::state::{State, FromState};
 
 
 /// `Product` struct
@@ -27,18 +27,20 @@ struct MyProduct {
 }
 
 /// Function to handle the `GET` requests coming to `/widgets/:name`
-fn get_product_handler(mut state: State) -> (State, Response) {
-    // Extract `name` from `state`
-    let name = state.take::<MyProduct>().name;
-    // Create a response using `name`
-    let res = create_response(
-        &state,
-        StatusCode::Ok,
-        Some((
-            format!("Product: {}", name).into_bytes(),
-            mime::TEXT_PLAIN,
-        )),
-    );
+fn get_product_handler(state: State) -> (State, Response) {
+    // Create the response
+    let res = {
+        // Extract `MyProduct` from `state`
+        let product = MyProduct::borrow_from(&state);
+        create_response(
+            &state,
+            StatusCode::Ok,
+            Some((
+                format!("Product: {}", product.name).into_bytes(),
+                mime::TEXT_PLAIN,
+            )),
+        )
+    };
 
     (state, res)
 }
@@ -68,18 +70,6 @@ mod tests {
     use gotham::test::TestServer;
 
     #[test]
-    fn index_not_found() {
-        let test_server = TestServer::new(router()).unwrap();
-        let response = test_server
-            .client()
-            .get("http://localhost")
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::NotFound);
-    }
-
-    #[test]
     fn product_name_is_extracted() {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
@@ -93,17 +83,4 @@ mod tests {
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Product: t-shirt");
     }
-
-    #[test]
-    fn not_found_if_uri_not_following_pattern() {
-        let test_server = TestServer::new(router()).unwrap();
-        let response = test_server
-            .client()
-            .get("http://localhost/widgets/foo/bar")
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::NotFound);
-    }
-
 }
