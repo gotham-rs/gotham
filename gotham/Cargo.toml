@@ -9,7 +9,7 @@ homepage = "https://gotham.rs"
 repository = "https://github.com/gotham-rs/gotham"
 readme = "README.md"
 categories = ["web-programming::http-server"]
-keywords = ["http", "async", "web", "framework", "gotham"]
+keywords = ["http", "async", "web", "framework", "blockchain"]
 
 [dependencies]
 log = "0.3"

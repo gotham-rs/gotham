@@ -13,43 +13,12 @@ pub mod regex;
 /// matched `Request` path.
 pub type Path<'a> = Vec<&'a Node>;
 
-/// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
-/// which have been matched against the `Request` path.
-///
-/// Data is Percent and UTF8 decoded.
-#[derive(Debug)]
-pub struct SegmentMapping<'a, 'b> {
-    data: HashMap<&'a str, Vec<&'b PercentDecoded>>,
-}
-
 /// Number of segments from a `Request` path that are considered to have been processed
 /// by an `Router` traversing its `Tree`.
 type SegmentsProcessed = usize;
 
-impl<'a, 'b> SegmentMapping<'a, 'b> {
-    /// Returns a reference for `Request` path segments mapped to the segment key.
-    pub fn get(&self, key: &'a str) -> Option<&Vec<&'b PercentDecoded>> {
-        self.data.get(key)
-    }
-
-    /// Determines if `Request` path segments are mapped to the segment key.
-    pub fn contains_key(&self, key: &'a str) -> bool {
-        self.data.contains_key(key)
-    }
-
-    /// Adds an empty value for a segment key, useful for segments that are considered
-    /// optional and haven't been explicitly provided as part of a `Request` path
-    pub fn add_unmapped_segment(&mut self, key: &'a str) {
-        if !self.data.contains_key(key) {
-            self.data.insert(key, Vec::new());
-        }
-    }
-
-    /// Number of segments from the Request path that have been mapped
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
-}
+/// Mapping of segment names into the collection of values for that segment.
+pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
 
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.
@@ -85,8 +54,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 /// # use gotham::router::tree::node::NodeBuilder;
 /// # use gotham::router::tree::node::SegmentType;
 /// # use gotham::http::request::path::RequestPathSegments;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::http::PercentDecoded;
 /// #
 /// # fn handler(state: State) -> (State, Response) {
@@ -100,7 +68,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///
 ///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
 ///
-///   let mut thing_node_builder = NodeBuilder::new(":thing", SegmentType::Dynamic);
+///   let mut thing_node_builder = NodeBuilder::new("thing", SegmentType::Dynamic);
 ///   let thing_route = {
 ///       // elided ...
 /// #     let methods = vec![Method::Get];
@@ -124,7 +92,7 @@ impl<'a, 'b> SegmentMapping<'a, 'b> {
 ///         assert!(path.last().unwrap().is_routable());
 ///         assert_eq!(path.last().unwrap().segment(), leaf.segment());
 ///         assert_eq!(segments_processed, 2);
-///         assert_eq!(segment_mapping.get(":thing").unwrap().last().unwrap().val(), "workflow5");
+///         assert_eq!(segment_mapping.get("thing").unwrap().last().unwrap().val(), "workflow5");
 ///       }
 ///       None => panic!(),
 ///   }
@@ -147,10 +115,10 @@ impl Tree {
     }
 
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
-    pub fn traverse<'r, 'n>(
-        &'n self,
+    pub fn traverse<'r>(
+        &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
+    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }

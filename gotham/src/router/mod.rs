@@ -3,14 +3,15 @@
 pub mod builder;
 pub mod tree;
 pub mod route;
-pub mod request;
 pub mod response;
+pub mod non_match;
 
 use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
 use hyper::{Response, StatusCode};
+use hyper::header::Allow;
 
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use http::request::path::RequestPathSegments;
@@ -106,9 +107,14 @@ impl Handler for Router {
                                 self.dispatch(state, sm, route)
                             }
                         },
-                        Err(status) => {
+                        Err(non_match) => {
+                            let (status, allow) = non_match.deconstruct();
+
                             trace!("[{}] responding with error status", request_id(&state));
-                            let res = create_response(&state, status, None);
+                            let mut res = create_response(&state, status, None);
+                            if let StatusCode::MethodNotAllowed = status {
+                                res.headers_mut().set(Allow(allow));
+                            }
                             Box::new(future::ok((state, res)))
                         }
                     }
@@ -153,8 +159,7 @@ impl Router {
                         trace!("[{}] dispatching", request_id(&state));
                         route.dispatch(state)
                     }
-                    Err(e) => {
-                        trace!("[{}] {}", request_id(&state), e);
+                    Err(_) => {
                         error!("[{}] the server cannot or will not process the request due to a client error within the query string",
                                request_id(&state));
 
@@ -164,8 +169,7 @@ impl Router {
                     }
                 }
             }
-            Err(e) => {
-                trace!("[{}] {}", request_id(&state), e);
+            Err(_) => {
                 error!(
                     "[{}] the server cannot or will not process the request due to a client error on the request path",
                     request_id(&state)
@@ -209,8 +213,7 @@ mod tests {
     use router::tree::TreeBuilder;
     use router::tree::node::{NodeBuilder, SegmentType};
     use router::route::{Extractors, RouteImpl};
-    use router::request::path::NoopPathExtractor;
-    use router::request::query_string::NoopQueryStringExtractor;
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl};
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::response::finalizer::ResponseFinalizerBuilder;

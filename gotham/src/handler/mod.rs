@@ -104,8 +104,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
 /// # use gotham::handler::IntoResponse;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;

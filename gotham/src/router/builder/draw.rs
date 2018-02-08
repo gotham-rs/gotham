@@ -5,8 +5,7 @@ use hyper::Method;
 
 use router::route::dispatch::{PipelineHandleChain, PipelineSet};
 use router::route::matcher::MethodOnlyRouteMatcher;
-use router::request::path::NoopPathExtractor;
-use router::request::query_string::NoopQueryStringExtractor;
+use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
                       SingleRouteBuilder};
 use router::tree::node::{NodeBuilder, SegmentType};

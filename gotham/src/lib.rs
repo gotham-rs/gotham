@@ -29,6 +29,7 @@ extern crate mio;
 extern crate num_cpus;
 extern crate rand;
 extern crate regex;
+#[macro_use]
 extern crate serde;
 extern crate tokio_core;
 extern crate url;
@@ -38,6 +39,7 @@ extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
 
+pub mod extractor;
 pub mod handler;
 pub mod middleware;
 pub mod pipeline;

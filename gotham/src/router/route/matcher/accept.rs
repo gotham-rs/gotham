@@ -4,7 +4,8 @@ use hyper::StatusCode;
 use hyper::header::{Accept, Headers};
 use mime;
 
-use router::route::matcher::RouteMatcher;
+use router::non_match::RouteNonMatch;
+use router::route::RouteMatcher;
 use state::{request_id, FromState, State};
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with an `Accept` header that
@@ -84,7 +85,7 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// will also positvely match.
     ///
     /// Quality values within `Accept` header values are not considered by the matcher.
-    fn is_match(&self, state: &State) -> Result<(), StatusCode> {
+    fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         // Request method is valid, ensure valid Accept header
         let headers = Headers::borrow_from(state);
         match headers.get::<Accept>() {
@@ -100,7 +101,7 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
                     "[{}] did not provide an Accept with media types supported by this Route",
                     request_id(&state)
                 );
-                Err(StatusCode::NotAcceptable)
+                Err(RouteNonMatch::new(StatusCode::NotAcceptable))
             }
             // The client has not specified an `Accept` header, as we can now respond with any type
             // this is valid.

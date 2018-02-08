@@ -5,39 +5,7 @@ use std::collections::HashMap;
 use http::{form_url_decode, FormUrlDecoded};
 
 /// Provides a mapping of keys from `Request` query string to their supplied values
-#[derive(Debug)]
-pub struct QueryStringMapping {
-    data: HashMap<String, Vec<FormUrlDecoded>>,
-}
-
-impl QueryStringMapping {
-    /// Returns a reference for `Request` query string values mapped to the key.
-    pub fn get(&self, key: &str) -> Option<&Vec<FormUrlDecoded>> {
-        self.data.get(key)
-    }
-
-    /// Determines if `Request` query string values exist for the key.
-    pub fn contains_key(&self, key: &str) -> bool {
-        self.data.contains_key(key)
-    }
-
-    /// Adds an empty value for a key, useful for keys that are considered
-    /// optional and haven't been explicitly provided as part of a `Request` query string.
-    pub fn add_unmapped_segment(&mut self, key: &str) {
-        match form_url_decode(key) {
-            Ok(key) => {
-                trace!(" unmapped segment {} was added to QueryStringMapping", key);
-                self.data.insert(key, Vec::new());
-            }
-            Err(_) => {
-                trace!(
-                    " unmapped segment {} was unable to be decoded and will not be added to QueryStringMapping",
-                    key
-                )
-            }
-        };
-    }
-}
+pub type QueryStringMapping = HashMap<String, Vec<FormUrlDecoded>>;
 
 /// Splits a query string into pairs and provides a mapping of keys to values.
 ///
@@ -71,12 +39,15 @@ pub fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
     match query {
         Some(query) => {
             let pairs = query.split("&").filter(|pair| pair.contains("="));
-            let data = pairs.fold(HashMap::new(), |mut acc, p| {
+
+            let mut query_string_mapping = QueryStringMapping::new();
+
+            for p in pairs {
                 let mut sp = p.split("=");
                 let (k, v) = (sp.next().unwrap(), sp.next().unwrap());
                 match form_url_decode(k) {
                     Ok(k) => {
-                        let vec = acc.entry(k).or_insert(Vec::new());
+                        let vec = query_string_mapping.entry(k).or_insert(Vec::new());
                         match FormUrlDecoded::new(v) {
                             Some(dv) => vec.push(dv),
                             None => (),
@@ -84,13 +55,10 @@ pub fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
                     }
                     Err(_) => (),
                 };
-                acc
-            });
+            }
 
-            QueryStringMapping { data }
+            query_string_mapping
         }
-        None => QueryStringMapping {
-            data: HashMap::new(),
-        },
+        None => QueryStringMapping::new(),
     }
 }

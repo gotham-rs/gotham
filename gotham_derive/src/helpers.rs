@@ -44,37 +44,3 @@ pub fn ty_params<'a>(
 
     (name, borrowed, where_clause)
 }
-
-pub fn ty_fields<'a>(ast: &'a syn::DeriveInput) -> (Vec<&syn::Ident>, Vec<&syn::Ident>) {
-    let fields = match ast.body {
-        syn::Body::Struct(syn::VariantData::Struct(ref body)) => body.iter()
-            .filter_map(|field| field.ident.as_ref())
-            .collect::<Vec<_>>(),
-        _ => panic!("Not implemented for tuple or unit like structs"),
-    };
-
-    let optional_fields = match ast.body {
-        syn::Body::Struct(syn::VariantData::Struct(ref body)) => body.iter()
-            .filter_map(|field| {
-                if is_option(&field.ty) {
-                    field.ident.as_ref()
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>(),
-        _ => panic!("Not implemented for tuple or unit like structs"),
-    };
-
-    (fields, optional_fields)
-}
-
-fn is_option(ty: &syn::Ty) -> bool {
-    match *ty {
-        syn::Ty::Path(_, ref p) => match p.segments.first() {
-            Some(segment) => segment.ident == syn::Ident::from("Option"),
-            None => false,
-        },
-        _ => false,
-    }
-}
