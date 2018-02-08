@@ -26,6 +26,7 @@ concepts and functionality provided by Gotham from introductory through to advan
 1. [Hello Router](hello_router) - A Hello World example application for working with the Gotham Router.
 1. [Basic Router](basic_router) - An example of the Gotham Router showing usage of HTTP verbs such as Get and Post.
 1. [Basic Query Extractor](basic_query_extractor) - An example of the Gotham Query String Extractor.
+1. [Into Response](basic_into_response) - An example of implementing the `IntoResponse` trait
 
 
 ## License
