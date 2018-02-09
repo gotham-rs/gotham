@@ -1,20 +1,20 @@
+extern crate basic_diesel;
+extern crate diesel;
 extern crate futures;
 extern crate gotham;
+extern crate gotham_middleware_diesel;
 extern crate hyper;
 extern crate mime;
-extern crate gotham_middleware_diesel;
-extern crate diesel;
-extern crate r2d2_diesel;
 extern crate r2d2;
-extern crate basic_diesel;
+extern crate r2d2_diesel;
 extern crate serde_json;
 
 use hyper::{Response, StatusCode};
-use gotham::state::{State, FromState};
+use gotham::state::{FromState, State};
 use gotham::router::Router;
 use gotham::pipeline::new_pipeline;
 use gotham::router::builder::*;
-use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+use gotham::router::route::dispatch::{finalize_pipeline_set, new_pipeline_set};
 use gotham::handler::HandlerFuture;
 use gotham::http::response::create_response;
 use gotham_middleware_diesel::DieselMiddleware;
@@ -26,10 +26,8 @@ use futures::{future, Future, Stream};
 use std::str;
 use basic_diesel::models::NewProduct;
 
-
 // The URL of the database.
 static DATABASE_URL: &'static str = "products.db";
-
 
 /// Creates the `DieselMiddleware` from an `url` that is passed to the function
 fn create_middleware(url: &str) -> DieselMiddleware<SqliteConnection> {
@@ -47,28 +45,31 @@ fn get_products_handler(state: State) -> (State, Response) {
 
     (
         state,
-        Response::new().with_status(StatusCode::Ok).with_body(
-            format!(
-                "{}",
-                serde_json::to_string(&products).unwrap()
-            ),
-        ),
+        Response::new()
+            .with_status(StatusCode::Ok)
+            .with_body(format!("{}", serde_json::to_string(&products).unwrap())),
     )
 }
 
 /// Handle function. Manages the `NewProduct` to insert to the DB
 fn post_product_handler(mut state: State) -> Box<HandlerFuture> {
-    let f = hyper::Body::take_from(&mut state).concat2().then(
-        move |full_body| match full_body {
+    let f = hyper::Body::take_from(&mut state)
+        .concat2()
+        .then(move |full_body| match full_body {
             Ok(valid_body) => {
-                let product : NewProduct = match serde_json::from_slice(&valid_body) {
+                let product: NewProduct = match serde_json::from_slice(&valid_body) {
                     Ok(p) => p,
                     Err(e) => return future::err((state, e.into_handler_error())),
                 };
                 let conn: PooledConnection<ConnectionManager<SqliteConnection>> =
                     gotham_middleware_diesel::state_data::connection(&state);
                 let mut res: Response;
-                match basic_diesel::create_product(&conn, product.title, product.price, product.link){
+                match basic_diesel::create_product(
+                    &conn,
+                    product.title,
+                    product.price,
+                    product.link,
+                ) {
                     Ok(_) => {
                         res = create_response(
                             &state,
@@ -81,12 +82,10 @@ fn post_product_handler(mut state: State) -> Box<HandlerFuture> {
                 future::ok((state, res))
             }
             Err(e) => future::err((state, e.into_handler_error())),
-        },
-    );
+        });
 
     Box::new(f)
 }
-
 
 /// Create a `Router`
 ///
@@ -114,8 +113,6 @@ fn router(middleware: DieselMiddleware<SqliteConnection>) -> Router {
     })
 }
 
-
-
 /// Start a server and use a `Router` to dispatch requests
 fn main() {
     let addr = "127.0.0.1:7878";
@@ -132,7 +129,6 @@ mod tests {
     use gotham::test::TestServer;
     use hyper::StatusCode;
     use std::str;
-
 
     #[test]
     fn get_empty_products() {
