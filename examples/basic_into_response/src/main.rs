@@ -17,7 +17,6 @@ use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes
 use gotham::state::State;
 use gotham::handler::IntoResponse;
 
-
 /// `Product` struct
 ///
 /// It represents products that can be queried
