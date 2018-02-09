@@ -2,21 +2,20 @@
 
 extern crate futures;
 extern crate gotham;
+#[macro_use]
+extern crate gotham_derive;
 extern crate hyper;
 extern crate mime;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
-extern crate gotham_derive;
 
 use hyper::{Response, StatusCode};
 
 use gotham::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
-use gotham::state::{State, FromState};
-
+use gotham::state::{FromState, State};
 
 /// `Product` struct
 ///
