@@ -80,7 +80,8 @@ pub(crate) enum ExtractorError {
     Custom(String),
 
     // Variants may be added in future, and it will not be considered a breaking change.
-    #[doc(hidden)] __NonExhaustive,
+    #[doc(hidden)]
+    __NonExhaustive,
 }
 
 impl Display for ExtractorError {

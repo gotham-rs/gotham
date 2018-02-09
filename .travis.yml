@@ -18,7 +18,11 @@ env:
   - PATH=$HOME/.cargo/bin:$PATH
 before_script:
   - cargo install cargo-travis -f
+  - rustup toolchain install nightly
+  - rustup component add --toolchain nightly rustfmt-preview
+  - cargo +nightly install --force rustfmt-nightly
 script:
+  - cargo +nightly fmt --all -- --write-mode=diff
   - cargo test --all --features ci
 after_success:
   - cargo coveralls
