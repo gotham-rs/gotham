@@ -28,6 +28,7 @@ concepts and functionality provided by Gotham from introductory through to advan
 1. [Basic Router](basic_router) - An example of the Gotham Router showing usage of HTTP verbs such as Get and Post.
 1. [Into Response](basic_into_response) - An example of implementing the `IntoResponse` trait
 1. [Basic Path Extractor](basic_path_extractor) - An example showing the usage of a Path Extractor
+1. [Basic Query Extractor](basic_query_extractor) - An example of the Gotham Query String Extractor.
 
 
 ## License
