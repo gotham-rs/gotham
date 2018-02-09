@@ -35,7 +35,7 @@ $ curl -v 'http://localhost:7878/widgets?name=t-shirt'
 < Date: Wed, 07 Feb 2018 18:52:15 GMT
 < 
 * Connection #0 to host localhost left intact
-{"name":"t-shirt","price":15.5}% 
+{"name":"t-shirt","description":"t-shirt"}% 
 ```
 
 ## License

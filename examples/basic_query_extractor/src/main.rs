@@ -12,8 +12,8 @@ extern crate serde_json;
 extern crate gotham_derive;
 
 use hyper::{Response, StatusCode};
-use hyper::header::ContentType;
 
+use gotham::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::state::{State, FromState};
@@ -50,13 +50,17 @@ fn generate_products() -> Vec<Product> {
 /// Returns a `Response` with the `Product` serialized to JSON
 /// If no `Product` is found, a `Response` containing a `StatusCode::NotFound`
 /// is returned.
-fn product_matcher(requested: &str, products: &Vec<Product>) -> Response {
+fn product_matcher(requested: &str, products: &Vec<Product>, state: &State) -> Response {
     match products.iter().find(|p| p.name == requested) {
         Some(product) => {
-            Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body(serde_json::to_string(product).unwrap())
-                .with_header(ContentType(mime::APPLICATION_JSON))
+            create_response(
+                state,
+                StatusCode::Ok,
+                Some((
+                    serde_json::to_vec(product).unwrap(),
+                    mime::APPLICATION_JSON,
+                )),
+            )
         }
         None => Response::new().with_status(StatusCode::NotFound),
     }
@@ -70,7 +74,7 @@ fn get_product_handler(state: State) -> (State, Response) {
         let query_param = QueryParam::borrow_from(&state);
         let name = &query_param.name;
         // Generate the response
-        product_matcher(&name, &generate_products())
+        product_matcher(&name, &generate_products(), &state)
     };
     (state, res)
 }
@@ -109,13 +113,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
-
-        {
-            let content_type = response.headers().get::<ContentType>().expect(
-                "ContentType",
-            );
-            assert_eq!(content_type.0, mime::APPLICATION_JSON);
-        }
 
         let body = response.read_body().unwrap();
         let expected_product = Product {
