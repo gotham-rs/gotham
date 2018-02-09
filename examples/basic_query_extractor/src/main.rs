@@ -2,21 +2,21 @@
 
 extern crate futures;
 extern crate gotham;
+#[macro_use]
+extern crate gotham_derive;
 extern crate hyper;
 extern crate mime;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-#[macro_use]
-extern crate gotham_derive;
 
 use hyper::{Response, StatusCode};
 
 use gotham::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
-use gotham::state::{State, FromState};
+use gotham::state::{FromState, State};
 
 /// `QueryParam` struct
 ///
@@ -52,16 +52,11 @@ fn generate_products() -> Vec<Product> {
 /// is returned.
 fn product_matcher(requested: &str, products: &Vec<Product>, state: &State) -> Response {
     match products.iter().find(|p| p.name == requested) {
-        Some(product) => {
-            create_response(
-                state,
-                StatusCode::Ok,
-                Some((
-                    serde_json::to_vec(product).unwrap(),
-                    mime::APPLICATION_JSON,
-                )),
-            )
-        }
+        Some(product) => create_response(
+            state,
+            StatusCode::Ok,
+            Some((serde_json::to_vec(product).unwrap(), mime::APPLICATION_JSON)),
+        ),
         None => Response::new().with_status(StatusCode::NotFound),
     }
 }
