@@ -22,6 +22,7 @@ before_script:
   - rustup component add --toolchain nightly rustfmt-preview
   - cargo +nightly install --force rustfmt-nightly
 script:
+  - echo "Checking Gotham codebase with rustfmt release `cargo +nightly fmt --version`."
   - cargo +nightly fmt --all -- --write-mode=diff
   - cargo test --all --features ci
 after_success:
