@@ -19,8 +19,8 @@ mysql = ["diesel/mysql"]
 [dependencies]
 log = "0.3.0"
 futures = "0.1.0"
-gotham = { path = "../../gotham" }
-gotham_derive = { path = "../../gotham_derive" }
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
 
 diesel = "1.0.0"
 r2d2 = "0.8.2"
