@@ -10,7 +10,7 @@ readme = "README.md"
 publish = false
 
 [dependencies]
-gotham = { path = "../../gotham" }
+gotham = { path = "../../../gotham" }
 
 hyper = "0.11"
 futures = "~0.1.11"
