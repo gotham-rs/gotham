@@ -13,8 +13,8 @@ members = [
     "examples/hello_world",
 
     # routing
-    "examples/routing/hello_router",
-    "examples/routing/basic_router",
+    "examples/routing/introduction",
+    "examples/routing/intermediate",
 
     # path
     "examples/path/basic_path_extractor",

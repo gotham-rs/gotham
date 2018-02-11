@@ -23,7 +23,7 @@ macro_rules! generic_handler {
 
 generic_handler!(index);
 
-pub mod widgets {
+pub mod products {
     use super::*;
     generic_handler!(index);
 }
@@ -50,7 +50,7 @@ pub mod checkout {
 
 pub mod api {
     use super::*;
-    pub mod widgets {
+    pub mod products {
         use super::*;
         generic_handler!(index);
     }

@@ -1,0 +1,12 @@
+[package]
+name = "gotham_examples_routing_introduction"
+version = "0.0.0"
+description = "An introduction to fundamental `Router` and `Router Builder` concepts to create a routing tree"
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+
+hyper = "0.11"
+futures = "~0.1.11"
+mime = "0.3"

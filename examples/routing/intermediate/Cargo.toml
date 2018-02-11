@@ -1,0 +1,14 @@
+[package]
+name = "gotham_examples_routing_intermediate"
+version = "0.0.0"
+description = "An example of the Gotham Router showing usage defining routes for HTTP verbs and using scopes to create deeper routing trees."
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
+
+hyper = "0.11"
+futures = "~0.1.11"
+mime = "0.3"
+log = "0.3"

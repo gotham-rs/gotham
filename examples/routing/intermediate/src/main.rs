@@ -1,4 +1,5 @@
-//! A basic example application for working with the Gotham Router.
+//! An example of the Gotham Router showing usage defining routes for HTTP verbs and using
+//! scopes to create deeper routing trees.
 
 extern crate futures;
 extern crate gotham;
@@ -6,7 +7,7 @@ extern crate hyper;
 extern crate mime;
 
 use gotham::router::Router;
-use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
+use gotham::router::builder::*;
 use hyper::{Get, Head};
 
 mod handlers;
@@ -17,7 +18,7 @@ use self::handlers::*;
 /// Results in a tree of routes that that looks like:
 ///
 /// /                     --> GET, HEAD
-/// | widgets             --> GET, HEAD
+/// | products            --> GET, HEAD
 /// | bag                 --> GET
 /// | checkout
 ///   | start             --> GET
@@ -25,7 +26,7 @@ use self::handlers::*;
 ///   | payment_details   --> POST, PUT
 ///   | complete          --> POST
 /// | api
-///   | widgets           --> GET
+///   | products           --> GET
 ///
 /// If no match for a request is found a 404 will be returned. Both the HTTP verb and the request
 /// path are considered when determining if the request matches a defined route.
@@ -36,12 +37,16 @@ fn router() -> Router {
     build_simple_router(|route| {
         // get_or_head is valid here, `request` used simply as API example
         route.request(vec![Get, Head], "/").to(index);
-        route.get_or_head("/widgets").to(widgets::index);
+        route.get_or_head("/products").to(products::index);
         route.get("/bag").to(bag::index);
 
+        // Scopes collect multiple paths under a common root node.
         route.scope("/checkout", |route| {
             route.get("/start").to(checkout::start);
 
+            // Associations allow a single path to be matched for multiple HTTP verbs
+            // with each delegating to a unique handler or the same handler, as shown here with
+            // put and patch.
             route.associate("/address", |assoc| {
                 assoc.post().to(checkout::address::create);
                 assoc.put().to(checkout::address::update);
@@ -52,6 +57,7 @@ fn router() -> Router {
             route
                 .post("/payment_details")
                 .to(checkout::payment_details::create);
+
             route
                 .put("/payment_details")
                 .to(checkout::payment_details::update);
@@ -60,7 +66,7 @@ fn router() -> Router {
         });
 
         route.scope("/api", |route| {
-            route.get("/widgets").to(api::widgets::index);
+            route.get("/products").to(api::products::index);
         });
     })
 }
@@ -123,7 +129,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .get("http://localhost/widgets")
+            .get("http://localhost/products")
             .perform()
             .unwrap();
 
@@ -309,7 +315,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .get("http://localhost/api/widgets")
+            .get("http://localhost/api/products")
             .perform()
             .unwrap();
 
