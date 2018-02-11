@@ -18,7 +18,7 @@ Our welcoming community is available to help:
 
 We recommend reviewing our routing examples in the order shown below:
 
-1. [Introduction](introduction) - Introduces fundamental `Router` and `Router Builder` concepts.
+1. [Introduction](introduction) - Introduces fundamental router and router builder concepts.
 2. [HTTP Verbs](http_verbs) - Shows how to route requests to handlers based on HTTP verbs.
 
 ## License

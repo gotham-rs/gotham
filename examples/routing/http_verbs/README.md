@@ -1,16 +1,17 @@
 # Routing using HTTP Verbs
 
-An example of the Gotham web framework router that shows how to route requests to handlers based on HTTP verbs.
+An example of the Gotham web framework `Router` that shows how to route `Requests` 
+to handlers based on HTTP verbs.
 
 ## Running
 
-From the `examples/routing/verbs` directory:
+From the `examples/routing/http_verbs` directory:
 
 ```
 Terminal 1:
 
 $ cargo run                                                                                                                                                                    101 ↵
-   Compiling gotham_examples_routing_verbs v0.0.0 (file:///.../examples/routing/verbs)
+   Compiling gotham_examples_routing_verbs v0.0.0 (file:///.../examples/routing/http_verbs)
     Finished dev [unoptimized + debuginfo] target(s) in 2.59 secs
      Running `.../target/debug/gotham_examples_routing_verbs`
 Listening for requests at http://127.0.0.1:7878
