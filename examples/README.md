@@ -1,35 +1,50 @@
-# Gotham Examples
+# Examples
 
-Standalone crates that act as examples for building web applications with Gotham.
+A collection of crates that provide examples for developing web applications
+with the Gotham web framework.
 
-All include test cases that demonstrate correct behaviour and serve as an example of
-how to test your own applications.
+All crates include test cases demonstrating correct behaviour and serve as an 
+example of how to test your applications.
 
-These examples are best reviewed once you've understood the Rust language itself through resources
-such as [the Rust book](https://doc.rust-lang.org/book/second-edition/).
+## Rust
 
-## Learning
+These examples assume a familiarity with the Rust programming language. If
+you're new to Rust itself the following resources will assist you to get
+started:
 
-The following resources will also assist you in learning Gotham:
+1. [The Rust book](https://doc.rust-lang.org/book/second-edition/).
+1. [Programming Rust](http://shop.oreilly.com/product/0636920040385.do)
+1. [Exercisms for Rust](http://exercism.io/languages/rust/about)
+1. [The Rust users community](https://users.rust-lang.org)
+1. [Rust subreddit](https://reddit.com/r/rust)
 
-* [The Gotham website](https://gotham.rs)
-* [Our API documentation](https://docs.rs/gotham/)
-* [Our Gitter chatroom](https://gitter.im/gotham-rs/gotham)
+## Help
+
+Our welcoming community is available to help:
+
+* [The Gotham web framework website](https://gotham.rs)
+* [Gotham web framework API documentation](https://docs.rs/gotham/)
+* [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
 * [Twitter](https://twitter.com/gotham_rs)
 
 ## Ordering
 
-Reviewing our examples in the order shown here will assist you in methodically learning the
-concepts and functionality provided by Gotham from introductory through to advanced levels.
+We've grouped our examples by areas of major functionality. Each area provides
+one or more examples so you can start with the basics and then ramp up as you 
+become more comfortable working with the Gotham web framework. 
 
-1. [Hello World](hello_world) - A Hello World example application for working with Gotham.
-1. [Hello Router](hello_router) - A Hello World example application for working with the Gotham Router.
-1. [Hello Header](hello_header) - A simple introduction to working with Gotham and custom headers.
-1. [Basic Router](basic_router) - An example of the Gotham Router showing usage of HTTP verbs such as Get and Post.
-1. [Into Response](basic_into_response) - An example of implementing the `IntoResponse` trait
-1. [Basic Path Extractor](basic_path_extractor) - An example showing the usage of a Path Extractor
-1. [Basic Query Extractor](basic_query_extractor) - An example of the Gotham Query String Extractor.
+We recommend reviewing in the order shown below as both a reasonable
+way to introduce yourself to the Gotham web framework and to allow examples to 
+build upon one another. Each group provides it's own README with information 
+on the functionality it exposes and further ordering suggestions.
 
+1. [Hello World](hello_world) - The famous Hello World example application.
+1. [Routing](routing) - Dispatching `Requests` to functionality provided by your application.
+1. [Path](path) - Extracting data from the `Request` path.
+1. [Query String](query_string) - Extracting data from the `Request` query string.
+1. [Cookies](cookies) - Working with Cookies.
+1. [Headers](headers) - Working with HTTP Headers.
+1. [Into Response](into_response) - Leveraging the Gotham `IntoResponse` trait.
 
 ## License
 
