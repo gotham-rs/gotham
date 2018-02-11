@@ -1,4 +1,5 @@
-//! An example of the Gotham Router showing usage defining routes for HTTP verbs and using scopes to create deeper routing trees.
+//! An example of the Gotham web framework Router that shows how to route requests to handlers
+//! based on HTTP verbs.
 
 extern crate futures;
 extern crate gotham;
