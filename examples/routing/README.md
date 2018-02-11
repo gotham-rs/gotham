@@ -19,7 +19,7 @@ Our welcoming community is available to help:
 We recommend reviewing Router examples in the order shown below:
 
 1. [Introduction](introduction) - An introduction to fundamental `Router` and `Router Builder` concepts to create a routing tree.
-2. [Intermediate](intermediate) - Defining routes for HTTP verbs and using scopes to create deeper routing trees.
+2. [HTTP Verbs](http_verbs) - An example of the Gotham web framework router that shows how to route requests to handlers based on HTTP verbs.
 
 ## License
 

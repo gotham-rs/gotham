@@ -1,5 +1,4 @@
-//! An example of the Gotham Router showing usage defining routes for HTTP verbs and using
-//! scopes to create deeper routing trees.
+//! An example of the Gotham Router showing usage defining routes for HTTP verbs and using scopes to create deeper routing trees.
 
 extern crate futures;
 extern crate gotham;
@@ -17,16 +16,10 @@ use self::handlers::*;
 ///
 /// Results in a tree of routes that that looks like:
 ///
-/// /                     --> GET, HEAD
-/// | products            --> GET, HEAD
-/// | bag                 --> GET
-/// | checkout
-///   | start             --> GET
-///   | address           --> POST, PUT, PATCH, DELETE
-///   | payment_details   --> POST, PUT
-///   | complete          --> POST
-/// | api
-///   | products           --> GET
+/// /                        --> GET, HEAD
+/// | products               --> GET, HEAD
+/// | bag                    --> GET
+/// | checkout/address       --> POST, PUT, PATCH, DELETE
 ///
 /// If no match for a request is found a 404 will be returned. Both the HTTP verb and the request
 /// path are considered when determining if the request matches a defined route.
@@ -40,34 +33,19 @@ fn router() -> Router {
         route.get_or_head("/products").to(products::index);
         route.get("/bag").to(bag::index);
 
-        // Scopes collect multiple paths under a common root node.
-        route.scope("/checkout", |route| {
-            route.get("/start").to(checkout::start);
+        route
+            .post("/checkout/address")
+            .to(checkout::address::create);
 
-            // Associations allow a single path to be matched for multiple HTTP verbs
-            // with each delegating to a unique handler or the same handler, as shown here with
-            // put and patch.
-            route.associate("/address", |assoc| {
-                assoc.post().to(checkout::address::create);
-                assoc.put().to(checkout::address::update);
-                assoc.patch().to(checkout::address::update);
-                assoc.delete().to(checkout::address::delete);
-            });
+        route.put("/checkout/address").to(checkout::address::update);
 
-            route
-                .post("/payment_details")
-                .to(checkout::payment_details::create);
+        route
+            .patch("/checkout/address")
+            .to(checkout::address::update);
 
-            route
-                .put("/payment_details")
-                .to(checkout::payment_details::update);
-
-            route.post("/complete").to(checkout::complete);
-        });
-
-        route.scope("/api", |route| {
-            route.get("/products").to(api::products::index);
-        });
+        route
+            .delete("/checkout/address")
+            .to(checkout::address::delete);
     })
 }
 
@@ -125,7 +103,7 @@ mod tests {
     }
 
     #[test]
-    fn widgets_get() {
+    fn products_get() {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
@@ -164,40 +142,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NotFound);
-    }
-
-    #[test]
-    fn checkout_start_get() {
-        let test_server = TestServer::new(router()).unwrap();
-        let response = test_server
-            .client()
-            .get("http://localhost/checkout/start")
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::Ok);
-
-        let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b"start");
-    }
-
-    #[test]
-    fn checkout_complete_post() {
-        let test_server = TestServer::new(router()).unwrap();
-        let response = test_server
-            .client()
-            .post(
-                "http://localhost/checkout/complete",
-                "data",
-                mime::TEXT_PLAIN,
-            )
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::Ok);
-
-        let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b"complete");
     }
 
     #[test]
@@ -270,58 +214,5 @@ mod tests {
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"delete");
-    }
-
-    #[test]
-    fn checkout_payment_details_post() {
-        let test_server = TestServer::new(router()).unwrap();
-        let response = test_server
-            .client()
-            .post(
-                "http://localhost/checkout/payment_details",
-                "data",
-                mime::TEXT_PLAIN,
-            )
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::Ok);
-
-        let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b"create");
-    }
-
-    #[test]
-    fn checkout_payment_details_put() {
-        let test_server = TestServer::new(router()).unwrap();
-        let response = test_server
-            .client()
-            .put(
-                "http://localhost/checkout/payment_details",
-                "data",
-                mime::TEXT_PLAIN,
-            )
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::Ok);
-
-        let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b"update");
-    }
-
-    #[test]
-    fn api_widgets_delete() {
-        let test_server = TestServer::new(router()).unwrap();
-        let response = test_server
-            .client()
-            .get("http://localhost/api/products")
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::Ok);
-
-        let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b"index");
     }
 }

@@ -35,23 +35,9 @@ pub mod bag {
 
 pub mod checkout {
     use super::*;
-    generic_handler!(start, complete);
 
     pub mod address {
         use super::*;
         generic_handler!(create, update, delete);
-    }
-
-    pub mod payment_details {
-        use super::*;
-        generic_handler!(create, update);
-    }
-}
-
-pub mod api {
-    use super::*;
-    pub mod products {
-        use super::*;
-        generic_handler!(index);
     }
 }

@@ -1,7 +1,7 @@
 [package]
-name = "gotham_examples_routing_intermediate"
+name = "gotham_examples_routing_http_verbs"
 version = "0.0.0"
-description = "An example of the Gotham Router showing usage defining routes for HTTP verbs and using scopes to create deeper routing trees."
+description = "An example of the Gotham web framework router that shows how to route requests to handlers based on HTTP verbs."
 publish = false
 
 [dependencies]

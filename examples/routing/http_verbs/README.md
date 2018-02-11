@@ -1,19 +1,18 @@
-# Intermediate Router Example
+# Routing using HTTP Verbs
 
-An example of the Gotham web framework Router showing usage defining routes for HTTP verbs and
-using scopes to create deeper routing trees.
+An example of the Gotham web framework router that shows how to route requests to handlers based on HTTP verbs.
 
 ## Running
 
-From the `examples/routing/intermediate` directory:
+From the `examples/routing/verbs` directory:
 
 ```
 Terminal 1:
 
 $ cargo run                                                                                                                                                                    101 ↵
-   Compiling gotham_examples_routing_intermediate v0.0.0 (file:///.../examples/routing/intermediate)
+   Compiling gotham_examples_routing_verbs v0.0.0 (file:///.../examples/routing/verbs)
     Finished dev [unoptimized + debuginfo] target(s) in 2.59 secs
-     Running `.../target/debug/gotham_examples_routing_intermediate`
+     Running `.../target/debug/gotham_examples_routing_verbs`
 Listening for requests at http://127.0.0.1:7878
 
 
