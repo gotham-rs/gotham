@@ -21,6 +21,7 @@ We recommend reviewing our routing examples in the order shown below:
 1. [Introduction](introduction) - Introduces fundamental router and router builder concepts.
 1. [HTTP Verbs](http_verbs) - Shows how to route requests to handlers based on HTTP verbs.
 1. [Scopes](scopes) - Combining routes under a common, nestable, root.
+1. [Associations](associations) - Associate multiple handlers to a single path.
 
 ## License
 

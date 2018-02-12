@@ -1,0 +1,14 @@
+[package]
+name = "gotham_examples_routing_associations"
+version = "0.0.0"
+description = "An example of the Gotham web framework `Router` that shows how to associate multiple handlers to a single path."
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
+
+hyper = "0.11"
+futures = "~0.1.11"
+mime = "0.3"
+log = "0.3"
