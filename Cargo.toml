@@ -15,6 +15,7 @@ members = [
     # routing
     "examples/routing/introduction",
     "examples/routing/http_verbs",
+    "examples/routing/scopes",
 
     # path
     "examples/path/basic_path_extractor",
