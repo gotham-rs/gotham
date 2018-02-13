@@ -46,7 +46,7 @@ mod tests {
     use gotham::test::TestServer;
 
     #[test]
-    fn recieve_hello_world_header() {
+    fn receive_hello_world_header() {
         let test_server = TestServer::new(|| Ok(say_hello_through_header)).unwrap();
         let response = test_server
             .client()

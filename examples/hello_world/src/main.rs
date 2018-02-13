@@ -38,7 +38,7 @@ mod tests {
     use gotham::test::TestServer;
 
     #[test]
-    fn recieve_hello_world_response() {
+    fn receive_hello_world_response() {
         let test_server = TestServer::new(|| Ok(say_hello)).unwrap();
         let response = test_server
             .client()

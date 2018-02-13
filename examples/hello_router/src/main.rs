@@ -43,7 +43,7 @@ mod tests {
     use gotham::test::TestServer;
 
     #[test]
-    fn recieve_hello_router_response() {
+    fn receive_hello_router_response() {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
