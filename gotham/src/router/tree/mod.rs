@@ -45,9 +45,9 @@ pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
 /// # use hyper::{Response, Method, StatusCode};
 /// #
 /// # use gotham::http::response::create_response;
+/// # use gotham::pipeline::set::*;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set,
-/// #                                       DispatcherImpl};
+/// # use gotham::router::route::dispatch::DispatcherImpl;
 /// # use gotham::state::State;
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::tree::TreeBuilder;

@@ -8,7 +8,7 @@ use futures::future;
 use handler::{HandlerFuture, IntoHandlerError};
 use middleware::chain::NewMiddlewareChain;
 use pipeline::Pipeline;
-use router::route::dispatch::PipelineSet;
+use pipeline::set::PipelineSet;
 use state::{request_id, State};
 
 /// A heterogeneous list of `Handle<P, _>` values, where `P` is a pipeline type. The pipelines are

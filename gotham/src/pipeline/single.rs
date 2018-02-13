@@ -3,8 +3,8 @@
 
 use borrow_bag::{Append, Handle};
 
-use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
 use pipeline::{NewMiddlewareChain, Pipeline};
+use pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
 
 /// A `PipelineSet` which contains only a single pipeline.
 pub type SinglePipelineSet<C> = PipelineSet<<() as Append<Pipeline<C>>>::Output>;

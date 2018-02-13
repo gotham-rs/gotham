@@ -210,15 +210,16 @@ mod tests {
     use hyper::{Method, Uri};
     use hyper::header::{ContentLength, Headers};
 
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use handler::HandlerError;
+    use pipeline::set::*;
+    use router::response::finalizer::ResponseFinalizerBuilder;
+    use router::route::dispatch::DispatcherImpl;
+    use router::route::matcher::MethodOnlyRouteMatcher;
+    use router::route::{Extractors, RouteImpl};
     use router::tree::TreeBuilder;
     use router::tree::node::{NodeBuilder, SegmentType};
-    use router::route::{Extractors, RouteImpl};
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl};
-    use router::route::matcher::MethodOnlyRouteMatcher;
-    use router::response::finalizer::ResponseFinalizerBuilder;
     use state::set_request_id;
-    use handler::HandlerError;
 
     fn handler(state: State) -> (State, Response) {
         (state, Response::new())

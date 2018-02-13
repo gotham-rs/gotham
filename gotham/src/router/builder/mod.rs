@@ -10,6 +10,7 @@ use std::panic::RefUnwindSafe;
 use hyper::{Method, StatusCode};
 
 use pipeline::chain::PipelineHandleChain;
+use pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
 use router::Router;
 use router::tree::TreeBuilder;
 use router::response::extender::ResponseExtender;
@@ -17,7 +18,7 @@ use router::response::finalizer::ResponseFinalizerBuilder;
 use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::{MethodOnlyRouteMatcher, RouteMatcher};
 use router::route::matcher::any::AnyRouteMatcher;
-use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl, PipelineSet};
+use router::route::dispatch::DispatcherImpl;
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
 
@@ -41,8 +42,9 @@ pub type AssociatedSingleRouteBuilder<'a, C, P, PE, QSE> =
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::pipeline::new_pipeline;
+/// # use gotham::pipeline::set::*;
 /// # use gotham::middleware::session::NewSessionMiddleware;
-/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+/// #
 /// # fn my_handler(_: State) -> (State, Response) {
 /// #   unreachable!()
 /// # }
@@ -147,8 +149,8 @@ where
     /// # use gotham::router::response::extender::ResponseExtender;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// #
     /// struct MyExtender;
     ///
@@ -721,7 +723,6 @@ mod tests {
     use middleware::session::NewSessionMiddleware;
     use state::{State, StateData};
     use service::GothamService;
-    use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set};
     use router::response::extender::StaticResponseExtender;
 
     #[derive(Deserialize)]

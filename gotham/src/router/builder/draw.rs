@@ -4,7 +4,7 @@ use std::panic::RefUnwindSafe;
 use hyper::Method;
 
 use pipeline::chain::PipelineHandleChain;
-use router::route::dispatch::PipelineSet;
+use pipeline::set::PipelineSet;
 use router::route::matcher::MethodOnlyRouteMatcher;
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,

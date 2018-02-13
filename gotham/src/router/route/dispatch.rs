@@ -1,32 +1,12 @@
 //! Defines Gotham's `Dispatcher` and supporting types.
 
-use std::sync::Arc;
 use std::panic::RefUnwindSafe;
-use borrow_bag::BorrowBag;
 use futures::future;
 
 use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
 use pipeline::chain::PipelineHandleChain;
+use pipeline::set::PipelineSet;
 use state::{request_id, State};
-
-/// Represents the set of all `Pipeline` instances that are available for use with `Routes`.
-pub type PipelineSet<P> = Arc<BorrowBag<P>>;
-
-/// A set of `Pipeline` instances that may continue to grow
-pub type EditablePipelineSet<P> = BorrowBag<P>;
-
-/// Create an empty set of `Pipeline` instances.
-///
-/// See BorrowBag#add to insert new `Pipeline` instances.
-pub fn new_pipeline_set() -> EditablePipelineSet<()> {
-    BorrowBag::new()
-}
-
-/// Wraps the current set of `Pipeline` instances into a thread-safe reference counting pointer for
-/// use with `DispatcherImpl` instances.
-pub fn finalize_pipeline_set<P>(eps: EditablePipelineSet<P>) -> PipelineSet<P> {
-    Arc::new(eps)
-}
 
 /// Used by `Router` to dispatch requests via `Pipeline`(s), through `Middleware`(s)
 /// and finally into the configured `Handler`.
@@ -97,12 +77,16 @@ where
 mod tests {
     use super::*;
     use std::io;
-    use test::TestServer;
-    use middleware::{Middleware, NewMiddleware};
-    use pipeline::new_pipeline;
-    use state::StateData;
+    use std::sync::Arc;
+
     use hyper::Response;
     use hyper::StatusCode;
+
+    use middleware::{Middleware, NewMiddleware};
+    use pipeline::new_pipeline;
+    use pipeline::set::*;
+    use state::StateData;
+    use test::TestServer;
 
     fn handler(state: State) -> (State, Response) {
         let number = state.borrow::<Number>().value;
