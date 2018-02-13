@@ -1,0 +1,14 @@
+[package]
+name = "basic_request_components"
+version = "0.1.0"
+authors = ["Nicolas Pochet <npochet@gmail.com>"]
+description = "A basic application showing the request components available"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+publish = false
+
+[dependencies]
+gotham = { path = "../../gotham" }
+
+hyper = "0.11"
+mime = "0.3"
