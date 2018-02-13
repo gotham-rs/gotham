@@ -6,7 +6,8 @@ use borrow_bag::{BorrowBag, Handle, Lookup};
 use futures::future;
 
 use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-use pipeline::{NewMiddlewareChain, Pipeline};
+use middleware::chain::NewMiddlewareChain;
+use pipeline::Pipeline;
 use state::{request_id, State};
 
 /// Represents the set of all `Pipeline` instances that are available for use with `Routes`.
