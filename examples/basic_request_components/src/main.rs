@@ -1,4 +1,4 @@
-//! A basic example showing the request components 
+//! A basic example showing the request components
 
 extern crate gotham;
 extern crate hyper;
