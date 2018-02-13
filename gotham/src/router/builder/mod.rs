@@ -9,6 +9,7 @@ use std::panic::RefUnwindSafe;
 
 use hyper::{Method, StatusCode};
 
+use pipeline::chain::PipelineHandleChain;
 use router::Router;
 use router::tree::TreeBuilder;
 use router::response::extender::ResponseExtender;
@@ -16,8 +17,7 @@ use router::response::finalizer::ResponseFinalizerBuilder;
 use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::{MethodOnlyRouteMatcher, RouteMatcher};
 use router::route::matcher::any::AnyRouteMatcher;
-use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl,
-                              PipelineHandleChain, PipelineSet};
+use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl, PipelineSet};
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
 

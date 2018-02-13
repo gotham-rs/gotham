@@ -1,5 +1,6 @@
 //! Defines types for a middleware pipeline
 
+pub mod chain;
 pub mod single;
 
 use std::io;

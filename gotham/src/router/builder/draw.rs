@@ -3,7 +3,8 @@ use std::panic::RefUnwindSafe;
 
 use hyper::Method;
 
-use router::route::dispatch::{PipelineHandleChain, PipelineSet};
+use pipeline::chain::PipelineHandleChain;
+use router::route::dispatch::PipelineSet;
 use router::route::matcher::MethodOnlyRouteMatcher;
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,

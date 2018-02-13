@@ -2,7 +2,7 @@ use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
 use router::route::matcher::RouteMatcher;
-use router::route::dispatch::PipelineHandleChain;
+use pipeline::chain::PipelineHandleChain;
 use router::builder::SingleRouteBuilder;
 use router::builder::single::DefineSingleRoute;
 
