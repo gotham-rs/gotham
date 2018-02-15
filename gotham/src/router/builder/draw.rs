@@ -334,6 +334,74 @@ where
         f(&mut scope_builder)
     }
 
+    /// Begins a new scope at the current location, with an alternate pipeline chain.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # #[macro_use]
+    /// # extern crate serde_derive;
+    /// # use hyper::Response;
+    /// # use gotham::state::State;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::single::single_pipeline;
+    /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct Session;
+    /// #
+    /// # mod resource {
+    /// #   use super::*;
+    /// #   pub fn list(_: State) -> (State, Response) {
+    /// #       unreachable!()
+    /// #   }
+    /// # }
+    /// #
+    /// # pub fn handler(_: State) -> (State, Response) {
+    /// #   unreachable!()
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// let (chain, pipelines) = single_pipeline(
+    ///     new_pipeline()
+    ///         .add(NewSessionMiddleware::default().with_session_type::<Session>())
+    ///         .build()
+    /// );
+    ///
+    /// build_router(chain, pipelines, |route| {
+    ///     // Requests for the root handler use an empty set of pipelines, skipping the session
+    ///     // middleware.
+    ///     route.with_pipeline_chain((), |route| {
+    ///         route.get("/").to(handler);
+    ///     });
+    ///
+    ///     // Requests dispatched to the rest of the application will invoke the session
+    ///     // middleware as usual.
+    ///     route.get("/resource/list").to(resource::list);
+    /// })
+    /// # }
+    /// # fn main() { router(); }
+    /// ```
+    fn with_pipeline_chain<F, NC>(&mut self, pipeline_chain: NC, f: F)
+    where
+        F: FnOnce(&mut ScopeBuilder<NC, P>),
+        NC: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    {
+        let (node_builder, _pipeline_chain, pipelines) = self.component_refs();
+
+        let mut scope_builder = ScopeBuilder {
+            node_builder,
+            pipeline_chain,
+            pipelines: pipelines.clone(),
+        };
+
+        f(&mut scope_builder)
+    }
+
     /// Begins delegating a subpath of the tree.
     ///
     /// # Examples
