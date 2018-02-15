@@ -1,11 +1,12 @@
 use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
+use pipeline::chain::PipelineHandleChain;
 use router::builder::SingleRouteBuilder;
 use router::builder::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
 use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::RouteMatcher;
-use router::route::dispatch::{DispatcherImpl, PipelineHandleChain};
+use router::route::dispatch::DispatcherImpl;
 use handler::{Handler, NewHandler};
 
 /// Describes the API for defining a single route, after determining which request paths will be
@@ -23,7 +24,8 @@ use handler::{Handler, NewHandler};
 /// # use gotham::router::builder::*;
 /// # use gotham::pipeline::new_pipeline;
 /// # use gotham::middleware::session::NewSessionMiddleware;
-/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+/// # use gotham::pipeline::set::*;
+/// #
 /// fn my_handler(_: State) -> (State, Response) {
 ///     // Handler implementation elided.
 /// #   unimplemented!()
@@ -60,8 +62,9 @@ pub trait DefineSingleRoute {
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+    /// #
     /// fn my_handler(_: State) -> (State, Response) {
     ///     // Handler implementation elided.
     /// #   unimplemented!()
@@ -100,8 +103,9 @@ pub trait DefineSingleRoute {
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+    /// #
     /// struct MyNewHandler;
     /// struct MyHandler;
     ///
@@ -156,8 +160,9 @@ pub trait DefineSingleRoute {
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
+    /// #
     /// #[derive(Deserialize, StateData, StaticResponseExtender)]
     /// struct MyPathParams {
     /// #   #[allow(dead_code)]
@@ -213,8 +218,8 @@ pub trait DefineSingleRoute {
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set};
     /// #
     /// #[derive(StateData, Deserialize, StaticResponseExtender)]
     /// struct MyQueryParams {

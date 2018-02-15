@@ -98,11 +98,12 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # extern crate hyper;
 /// #
 /// # use gotham::state::State;
+/// # use gotham::pipeline::set::*;
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::dispatch::DispatcherImpl;
 /// # use gotham::handler::IntoResponse;
 /// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
