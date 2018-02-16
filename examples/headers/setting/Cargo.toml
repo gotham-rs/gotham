@@ -1,0 +1,13 @@
+[package]
+name = "gotham_examples_headers_setting"
+version = "0.0.0"
+authors = ["Eren Güven <erenguven0@gmail.com>"]
+description = "Setting a header value for a Gotham web framework response"
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+
+hyper = "0.11"
+futures = "~0.1.11"
+mime = "0.3"
