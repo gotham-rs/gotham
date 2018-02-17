@@ -1,7 +1,9 @@
 [package]
-name = "basic_query_extractor"
-version = "0.1.0"
+name = "gotham_examples_query_string_introduction"
+description = "An introduction to extracting query string name/value pairs, in a type safe way, with the Gotham web framework"
+version = "0.0.0"
 authors = ["Nicolas Pochet <npochet@gmail.com>"]
+publish = false
 
 [dependencies]
 gotham = { path = "../../../gotham" }

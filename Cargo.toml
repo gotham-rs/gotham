@@ -22,7 +22,7 @@ members = [
     "examples/path/introduction",
 
     # query_string
-    "examples/query_string/basic_query_extractor",
+    "examples/query_string/introduction",
 
     # cookies
 
