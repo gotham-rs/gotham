@@ -1,4 +1,5 @@
-//! An introduction to extracting request path segments with the Gotham web framework
+//! An introduction to extracting request path segments, in a type safe way, with the
+//! Gotham web framework
 
 extern crate futures;
 extern crate gotham;
@@ -14,10 +15,10 @@ use hyper::{Response, StatusCode};
 
 use gotham::http::response::create_response;
 use gotham::router::Router;
-use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
+use gotham::router::builder::*;
 use gotham::state::{FromState, State};
 
-/// `ProductPathExtractor` struct
+/// Holds data extracted from the Request path.
 ///
 /// When a path extraction struct is configured for a route as part of `Router` creation the `Router`
 /// will attempt to extract data from each matching request path and store it in state ready for
@@ -27,33 +28,35 @@ use gotham::state::{FromState, State};
 /// The key requirements for struct to act as a path extractor are:
 ///
 ///     1. That the struct implements `serde::de::Deserialize` which we're doing here by simply
-///        deriving it. The Gotham router uses this property during Request path evaluation to create
-///        and instance of your struct, populate it and store it into state ready for access by
-///        application code.
+///        deriving it. The Gotham router uses this property during Request path evaluation to
+///        create and instance of your struct, populate it and store it into state ready for
+///        access by application code.
 ///     2. That the struct implements `gotham::state::data::StateData` so that it can be stored,
 ///        retrieved and removed from state. You generally get this for free by deriving
 ///        `StateData` as shown here.
 ///     3. That the struct implements the
-///        `gotham::router::response::extender::StaticResponseExtender` trait so that bad request path
-///        data can be appropriately refused by the Router. You generally get this for free by
+///        `gotham::router::response::extender::StaticResponseExtender` trait so that bad request
+///        path data can be appropriately refused by the Router. You generally get this for free by
 ///        deriving `StaticResponseExtender` as shown here which results in bad requests being
 ///        refuted with a HTTP 400 (BadRequest) response status code.
 ///
 /// Naming of fields in extraction structs is important, the same names must appear in the path,
 /// proceeded by a colon to indicate a variable, when defining routes.
 #[derive(Deserialize, StateData, StaticResponseExtender)]
-struct ProductPathExtractor {
+struct PathExtractor {
     name: String,
 }
 
 /// Handler function for `GET` requests directed to `/products/:name`
 fn get_product_handler(state: State) -> (State, Response) {
-    // Create the response
     let res = {
-        // Extract `ProductPathExtractor` from `state`. As well as permitting storage in `State` by
-        // deriving `StateData` our patch extractor struct automatically gains the `borrow_from`
-        // function and a number of other functions via the `gotham::state::FromState` trait.
-        let product = ProductPathExtractor::borrow_from(&state);
+        // Access the `PathExtractor` instance from `state` which was put there for us by the
+        // `Router` during request evaluation.
+        //
+        // As well as permitting storage in `State` by deriving `StateData` our path extractor
+        // struct automatically gains the `borrow_from` method and a number of other methods
+        // via the `gotham::state::FromState` trait.
+        let product = PathExtractor::borrow_from(&state);
         create_response(
             &state,
             StatusCode::Ok,
@@ -77,8 +80,8 @@ fn router() -> Router {
             // second (and last) segment of this path to the field `name` when extracting data.
             .get("/products/:name")
             // This tells the Router that for requests which match this route that path extraction
-            // should be invoked storing the result in a `ProductPathExtractor` instance.
-            .with_path_extractor::<ProductPathExtractor>()
+            // should be invoked storing the result in a `PathExtractor` instance.
+            .with_path_extractor::<PathExtractor>()
             .to(get_product_handler);
     })
 }
