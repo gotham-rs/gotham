@@ -39,8 +39,8 @@ information on functionality and ordering.
 
 1. [Hello World](hello_world) - The famous Hello World example application.
 1. [Routing](routing) - Dispatching `Requests` to functionality provided by your application.
-1. [Path](path) - Extracting data from the `Request` path.
-1. [Query String](query_string) - Extracting data from the `Request` query string.
+1. [Path](path) - Extracting data from the `Request` path ensuring type safety.
+1. [Query String](query_string) - Extracting data from the `Request` query string whilst ensuring type safety.
 1. [Cookies](cookies) - Working with Cookies.
 1. [Headers](headers) - Working with HTTP Headers.
 1. [Into Response](into_response) - Leveraging the Gotham `IntoResponse` trait.

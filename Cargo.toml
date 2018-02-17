@@ -19,7 +19,7 @@ members = [
     "examples/routing/associations",
 
     # path
-    "examples/path/basic_path_extractor",
+    "examples/path/introduction",
 
     # query_string
     "examples/query_string/basic_query_extractor",
