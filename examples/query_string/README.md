@@ -3,15 +3,6 @@
 A collection of crates that provide examples of working with the request query string and the
 Gotham web framework.
 
-## Help
-
-Our welcoming community is available to help:
-
-* [The Gotham web framework website](https://gotham.rs)
-* [Gotham web framework API documentation](https://docs.rs/gotham/)
-* [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
-* [Twitter](https://twitter.com/gotham_rs)
-
 ## Ordering
 
 We recommend reviewing our request query string examples in the order shown below:
@@ -19,6 +10,15 @@ We recommend reviewing our request query string examples in the order shown belo
 1. [Introduction](introduction) - Introduces having the Gotham web framework Router extract request
                                   query string name/value pairs, in a type safe way, for use in
                                   your application.
+
+## Help
+
+You can get help for the Gotham web framework at:
+
+* [The Gotham web framework website](https://gotham.rs)
+* [Gotham web framework API documentation](https://docs.rs/gotham/)
+* [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
+* [Twitter](https://twitter.com/gotham_rs)
 
 ## License
 

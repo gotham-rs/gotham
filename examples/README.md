@@ -18,15 +18,6 @@ started:
 1. [The Rust users community](https://users.rust-lang.org)
 1. [Rust subreddit](https://reddit.com/r/rust)
 
-## Help
-
-Our welcoming community is available to help:
-
-* [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
-* [Twitter](https://twitter.com/gotham_rs)
-* [Gotham web framework API documentation](https://docs.rs/gotham/)
-* [The Gotham web framework website](https://gotham.rs)
-
 ## Ordering
 
 We've grouped examples by functionality. Each group provides one or more
@@ -44,6 +35,15 @@ information on functionality and ordering.
 1. [Cookies](cookies) - Working with Cookies.
 1. [Headers](headers) - Working with HTTP Headers.
 1. [Into Response](into_response) - Implementing the Gotham web framework's `IntoResponse` trait.
+
+## Help
+
+You can get help for the Gotham web framework at:
+
+* [The Gotham web framework website](https://gotham.rs)
+* [Gotham web framework API documentation](https://docs.rs/gotham/)
+* [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
+* [Twitter](https://twitter.com/gotham_rs)
 
 ## License
 
