@@ -40,7 +40,12 @@ information on functionality and ordering.
 | [Into Response](into_response) | Implementing the Gotham web framework's `IntoResponse` trait. | 1 |
 
 ^ Gotham web framework examples are under active development. 
-  We appreciate contributions!
+
+## Contributing
+
+We welcome example contributions from the community. To get started please see
+the [example contribution template](example_contribution_template) README file
+and starter crate.
 
 ## Help
 

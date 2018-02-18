@@ -31,4 +31,7 @@ members = [
 
     # into_response
     "examples/into_response/introduction",
+
+    # example_contribution_template
+    "examples/example_contribution_template/name"
 ]
