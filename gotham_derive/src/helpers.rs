@@ -1,7 +1,7 @@
 use syn;
 use quote;
 
-pub fn ty_params<'a>(
+pub(crate) fn ty_params<'a>(
     ast: &'a syn::DeriveInput,
     additional_type_constraint: Option<quote::Tokens>,
 ) -> (&'a syn::Ident, quote::Tokens, quote::Tokens) {

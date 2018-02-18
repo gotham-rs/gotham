@@ -3,7 +3,7 @@ use quote;
 
 use helpers::ty_params;
 
-pub fn state_data(ast: &syn::DeriveInput) -> quote::Tokens {
+pub(crate) fn state_data(ast: &syn::DeriveInput) -> quote::Tokens {
     let (name, borrowed, where_clause) = ty_params(&ast, None);
 
     quote! {

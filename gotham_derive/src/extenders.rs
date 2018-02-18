@@ -3,7 +3,7 @@ use quote;
 
 use helpers::ty_params;
 
-pub fn bad_request_static_response_extender(ast: &syn::DeriveInput) -> quote::Tokens {
+pub(crate) fn bad_request_static_response_extender(ast: &syn::DeriveInput) -> quote::Tokens {
     let (name, borrowed, where_clause) = ty_params(&ast, None);
 
     quote! {
