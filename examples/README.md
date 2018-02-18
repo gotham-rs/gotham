@@ -43,7 +43,7 @@ information on functionality and ordering.
 1. [Query String](query_string) - Extracting data from the `Request` query string whilst ensuring type safety.
 1. [Cookies](cookies) - Working with Cookies.
 1. [Headers](headers) - Working with HTTP Headers.
-1. [Into Response](into_response) - Leveraging the Gotham `IntoResponse` trait.
+1. [Into Response](into_response) - Implementing the Gotham web framework's `IntoResponse` trait.
 
 ## License
 

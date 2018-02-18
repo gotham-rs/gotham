@@ -30,5 +30,5 @@ members = [
     "examples/headers/setting",
 
     # into_response
-    "examples/into_response/basic_into_response",
+    "examples/into_response/introduction",
 ]
