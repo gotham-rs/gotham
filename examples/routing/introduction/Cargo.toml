@@ -1,7 +1,7 @@
 [package]
 name = "gotham_examples_routing_introduction"
-version = "0.0.0"
 description = "An introduction to fundamental `Router` and `Router Builder` concepts to create a routing tree"
+version = "0.0.0"
 publish = false
 
 [dependencies]

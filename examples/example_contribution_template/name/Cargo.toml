@@ -4,8 +4,8 @@
 # replace `functionality` and `name` with your functionality area
 # anf example name respectively.
 name = "gotham_examples_functionality_name"
-version = "0.0.0"
 description = "<describe the example and what readers can learn"
+version = "0.0.0"
 publish = false
 
 [dependencies]

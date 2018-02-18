@@ -1,7 +1,7 @@
 [package]
 name = "gotham_examples_path_introduction"
-version = "0.0.0"
 description = "An introduction to extracting request path segments, in a type safe way, with the Gotham web framework"
+version = "0.0.0"
 authors = ["Nicolas Pochet <npochet@gmail.com>"]
 publish = false
 
