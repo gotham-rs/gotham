@@ -28,13 +28,19 @@ We recommend reading the examples in the order shown below to allow them to
 build upon one another. Each group provides it's own README with further
 information on functionality and ordering.
 
-1. [Hello World](hello_world) - The famous Hello World example application.
-1. [Routing](routing) - Dispatching `Requests` to functionality provided by your application.
-1. [Path](path) - Extracting data from the `Request` path ensuring type safety.
-1. [Query String](query_string) - Extracting data from the `Request` query string whilst ensuring type safety.
-1. [Cookies](cookies) - Working with Cookies.
-1. [Headers](headers) - Working with HTTP Headers.
-1. [Into Response](into_response) - Implementing the Gotham web framework's `IntoResponse` trait.
+| Functionality | Description | Count^
+| --- | --- | ---:|
+| [Hello World](hello_world) | The famous Hello World example application. | 1 |
+| [Routing](routing) | Dispatching `Requests` to functionality provided by your application. | 4 |
+| [Path](path) | Extracting data from the `Request` path ensuring type safety. | 1 |
+| [Query String](query_string) | Extracting data from the `Request` query string whilst ensuring type safety. | 1 |
+| [Cookies](cookies) | Working with Cookies. | 0 |
+| [Headers](headers) | Working with HTTP Headers. | 1 |
+| [Middleware](middleware) | Developing custom middleware for your application. | 0 |
+| [Into Response](into_response) | Implementing the Gotham web framework's `IntoResponse` trait. | 1 |
+
+^ Gotham web framework examples are under active development. 
+  We appreciate contributions!
 
 ## Help
 
