@@ -1,5 +1,5 @@
 [package]
-name = "hello_world"
+name = "gotham_examples_hello_world"
 description = "A Hello World example application for working with Gotham."
 version = "0.0.0"
 publish = false
