@@ -56,9 +56,9 @@ struct Product {
 
 /// Handler function for `GET` requests directed to `/products`
 ///
-/// This handler shows a very small amount of usage of the Serde project when generating responses.
-/// You don't need to know about Serde in order to understand the response that is being created
-/// here but if you're interested you can learn more at `http://serde.rs`.
+/// This handler uses the Serde project when generating responses. You don't need to
+/// know about Serde in order to understand the response that is being created here but if you're
+/// interested you can learn more at `http://serde.rs`.
 fn get_product_handler(mut state: State) -> (State, Response) {
     let res = {
         // Access the `QueryStringExtractor` instance from `state` which was put there for us by the
