@@ -17,7 +17,11 @@ Method: Get
 URI: "/"
 HTTP Version: Http11
 Headers: {"Host": "localhost:7878", "User-Agent": "curl/7.58.0", "Accept": "*/*"}
-Body: Body(Empty)
+Method: Post
+URI: "/"
+HTTP Version: Http11
+Headers: {"Host": "localhost:7878", "User-Agent": "curl/7.58.0", "Accept": "*/*", "Content-Length": "19", "Content-Type": "application/x-www-form-urlencoded"}
+Body: {'test':'it works'}
 
 Terminal 2:
 $ curl -v http://127.0.0.1:7878/
@@ -39,6 +43,31 @@ $ curl -v http://127.0.0.1:7878/
 < X-Content-Type-Options: nosniff
 < X-Runtime-Microseconds: 197
 < Date: Tue, 13 Feb 2018 19:42:02 GMT
+< 
+* Connection #0 to host localhost left intact
+
+$ curl -v -X POST -d "{'test':'it works'}" localhost:7878
+Note: Unnecessary use of -X or --request, POST is already inferred.
+* Rebuilt URL to: localhost:7878/
+*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 7878 (#0)
+> POST / HTTP/1.1
+> Host: localhost:7878
+> User-Agent: curl/7.58.0
+> Accept: */*
+> Content-Length: 19
+> Content-Type: application/x-www-form-urlencoded
+> 
+* upload completely sent off: 19 out of 19 bytes
+< HTTP/1.1 200 OK
+< Content-Length: 0
+< X-Request-ID: 51d35e0b-4659-464a-b7da-2ec859bb6955
+< X-Frame-Options: DENY
+< X-XSS-Protection: 1; mode=block
+< X-Content-Type-Options: nosniff
+< X-Runtime-Microseconds: 424
+< Date: Sun, 18 Feb 2018 13:03:50 GMT
 < 
 * Connection #0 to host localhost left intact
 ```
