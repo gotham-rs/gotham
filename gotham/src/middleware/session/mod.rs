@@ -285,6 +285,7 @@ where
 {
     /// Discards the session, invalidating it for future use and removing the data from the
     /// `Backend`.
+    // TODO: Add test case that covers this.
     pub fn discard(self, state: &mut State) -> Result<(), SessionError> {
         state.put(SessionDropData {
             cookie_config: self.cookie_config,

@@ -13,12 +13,14 @@ use state::State;
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # fn main() {
-/// # use hyper::Method;
-/// # use hyper::header::{Headers, Accept};
-/// # use gotham::state::State;
-/// # use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
-/// # use gotham::router::route::matcher::and::AndRouteMatcher;
-/// # use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
+/// #   use hyper::Method;
+/// #   use hyper::header::{Headers, Accept};
+/// #   use gotham::state::State;
+/// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
+/// #   use gotham::router::route::matcher::and::AndRouteMatcher;
+/// #   use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
+/// #
+/// #   State::with_new(|state| {
 /// #
 ///   let methods = vec![Method::Get, Method::Head];
 ///   let supported_media_types = vec![mime::APPLICATION_JSON];
@@ -26,7 +28,6 @@ use state::State;
 ///	  let accept_matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///   let matcher = AndRouteMatcher::new(method_matcher, accept_matcher);
 ///
-///   let mut state = State::new();
 ///   state.put(Method::Get);
 ///
 ///   // Request that matches both requirements
@@ -45,6 +46,8 @@ use state::State;
 ///   headers.set(Accept::text());
 ///   state.put(headers);
 ///   assert!(matcher.is_match(&state).is_err());
+/// #
+/// #   });
 /// # }
 /// ```
 pub struct AndRouteMatcher<T, U>

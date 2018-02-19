@@ -12,14 +12,17 @@ use state::State;
 /// ```rust
 /// # extern crate gotham;
 /// # fn main() {
-/// # use gotham::state::State;
-/// # use gotham::router::route::matcher::RouteMatcher;
-/// # use gotham::router::route::matcher::any::AnyRouteMatcher;
+/// #   use gotham::state::State;
+/// #   use gotham::router::route::matcher::RouteMatcher;
+/// #   use gotham::router::route::matcher::any::AnyRouteMatcher;
+/// #
+/// #   State::with_new(|state| {
 /// #
 ///   let matcher = AnyRouteMatcher::new();
-///   let state = State::new();
 ///
 ///   assert!(matcher.is_match(&state).is_ok());
+/// #
+/// #   });
 /// # }
 /// ```
 pub struct AnyRouteMatcher {}

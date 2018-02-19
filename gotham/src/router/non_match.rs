@@ -31,9 +31,10 @@ use hyper::{Method, StatusCode};
 /// }
 /// #
 /// # fn main() {
-/// #   let mut state = State::new();
-/// #   state.put(Method::Post);
-/// #   assert!(MyRouteMatcher.is_match(&state).is_err());
+/// #   State::with_new(|state| {
+/// #       state.put(Method::Post);
+/// #       assert!(MyRouteMatcher.is_match(&state).is_err());
+/// #   });
 /// # }
 /// ```
 pub struct RouteNonMatch {

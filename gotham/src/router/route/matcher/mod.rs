@@ -27,18 +27,21 @@ pub trait RouteMatcher: RefUnwindSafe {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # fn main() {
-/// # use hyper::Method;
-/// # use gotham::state::State;
-/// # use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
+/// #   use hyper::Method;
+/// #   use gotham::state::State;
+/// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
+/// #
+/// #   State::with_new(|state| {
+/// #
 ///   let methods = vec![Method::Get, Method::Head];
 ///   let matcher = MethodOnlyRouteMatcher::new(methods);
-///   let mut state = State::new();
 ///
 ///   state.put(Method::Get);
 ///   assert!(matcher.is_match(&state).is_ok());
 ///
 ///   state.put(Method::Post);
 ///   assert!(matcher.is_match(&state).is_err());
+/// #   });
 /// # }
 /// ```
 pub struct MethodOnlyRouteMatcher {

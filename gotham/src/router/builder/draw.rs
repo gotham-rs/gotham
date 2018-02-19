@@ -362,7 +362,7 @@ where
     /// #   }
     /// # }
     /// #
-    /// # pub fn handler(_: State) -> (State, Response) {
+    /// # fn handler(_: State) -> (State, Response) {
     /// #   unreachable!()
     /// # }
     /// #

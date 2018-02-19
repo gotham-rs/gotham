@@ -35,30 +35,35 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Response, Method, StatusCode};
-/// # use hyper::header::{Headers, ContentType, ContentLength};
-/// # use gotham::state::State;
-/// # use gotham::state::set_request_id;
+/// # use hyper::{Response, StatusCode};
+/// # use hyper::header::{ContentType, ContentLength};
+/// # use gotham::state::{State, request_id};
 /// # use gotham::http::response::extend_response;
 /// # use gotham::http::header::XRequestId;
+/// # use gotham::test::TestServer;
+/// #
+/// # fn handler(state: State) -> (State, Response) {
+///     let mut res = Response::new();
+///     let status = StatusCode::Ok;
+///     let body = String::from("Hello world!").into_bytes();
+///
+///     extend_response(&state, &mut res, status, Some((body.clone(), mime::TEXT_PLAIN)));
+///
+///     assert!(res.body_ref().is_some());
+///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(),
+///                request_id(&state));
+///     assert_eq!(*res.headers().get::<ContentType>().unwrap(),
+///                ContentType(mime::TEXT_PLAIN));
+///     assert_eq!(*res.headers().get::<ContentLength>().unwrap(),
+///                ContentLength(body.len() as u64));
+///
+/// #   (state, res)
+/// # }
 /// #
 /// # fn main() {
-/// #   let mut state = State::new();
-/// #   let m = Method::Get;
-/// #   state.put(m);
-/// #   state.put(Headers::new());
-/// #   let req_id = String::from(set_request_id(&mut state));
-///     let status = StatusCode::Ok;
-///     let mime = mime::TEXT_PLAIN;
-///     let expected_mime = mime.clone();
-///     let body = String::from("Hello world!");
-///     let expected_body = body.clone();
-///     let mut res = Response::new();
-///     extend_response(&state, &mut res, status, Some((body.into_bytes(), mime)));
-///     assert!(res.body_ref().is_some());
-///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(), req_id);
-///     assert_eq!(*res.headers().get::<ContentType>().unwrap(), ContentType(expected_mime));
-///     assert_eq!(*res.headers().get::<ContentLength>().unwrap(), ContentLength(expected_body.into_bytes().len() as u64));
+/// #   let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// #   let response = test_server.client().get("http://example.com/").perform().unwrap();
+/// #   assert_eq!(response.status(), StatusCode::Ok);
 /// # }
 /// ```
 pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, body: Option<Body>) {
@@ -102,24 +107,31 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::Response;
-/// # use hyper::header::{Headers, ContentType, ContentLength};
-/// # use gotham::state::State;
-/// # use gotham::state::set_request_id;
+/// # use hyper::{Response, StatusCode};
+/// # use hyper::header::{ContentType, ContentLength};
+/// # use gotham::state::{State, request_id};
 /// # use gotham::http::response::set_headers;
 /// # use gotham::http::header::XRequestId;
+/// # use gotham::test::TestServer;
+/// #
+/// # fn handler(state: State) -> (State, Response) {
+/// #   let mut res = Response::new().with_status(StatusCode::Ok);
+///     set_headers(&state, &mut res, Some(mime::TEXT_HTML), Some(100));
+///
+///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(),
+///                request_id(&state));
+///     assert_eq!(*res.headers().get::<ContentType>().unwrap(),
+///                ContentType(mime::TEXT_HTML));
+///     assert_eq!(*res.headers().get::<ContentLength>().unwrap(),
+///                ContentLength(100));
+/// #
+/// #   (state, res)
+/// # }
 /// #
 /// # fn main() {
-/// #   let mut state = State::new();
-/// #   state.put(Headers::new());
-/// #   let req_id = String::from(set_request_id(&mut state));
-/// #   let mut res = Response::new();
-///     let mime = mime::TEXT_HTML;
-///     let expected_mime = mime.clone();
-///     set_headers(&state, &mut res, Some(mime), Some(100));
-///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(), req_id);
-///     assert_eq!(*res.headers().get::<ContentType>().unwrap(), ContentType(expected_mime));
-///     assert_eq!(*res.headers().get::<ContentLength>().unwrap(), ContentLength(100));
+/// #   let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// #   let response = test_server.client().get("http://example.com/").perform().unwrap();
+/// #   assert_eq!(response.status(), StatusCode::Ok);
 /// # }
 /// ```
 ///
@@ -129,22 +141,30 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::Response;
-/// # use hyper::header::{Headers, ContentType, ContentLength};
+/// # use hyper::{Response, StatusCode};
+/// # use hyper::header::{ContentType, ContentLength};
 /// # use gotham::state::State;
-/// # use gotham::state::set_request_id;
+/// # use gotham::state::request_id;
 /// # use gotham::http::response::set_headers;
 /// # use gotham::http::header::XRequestId;
+/// # use gotham::test::TestServer;
 /// #
-/// # fn main() {
-/// #   let mut state = State::new();
-/// #   state.put(Headers::new());
-/// #   let req_id = String::from(set_request_id(&mut state));
-/// #   let mut res = Response::new();
+/// # fn handler(state: State) -> (State, Response) {
+/// #   let mut res = Response::new().with_status(StatusCode::Accepted);
+/// #   {
+/// #   let req_id = request_id(&state).clone();
 ///     set_headers(&state, &mut res, None, None);
 ///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(), req_id);
 ///     assert!(res.headers().get::<ContentType>().is_none());
 ///     assert_eq!(*res.headers().get::<ContentLength>().unwrap(), ContentLength(0));
+/// #   }
+/// #   (state, res)
+/// # }
+/// #
+/// # fn main() {
+/// #   let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// #   let response = test_server.client().get("http://example.com/").perform().unwrap();
+/// #   assert_eq!(response.status(), StatusCode::Accepted);
 /// # }
 /// ```
 pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length: Option<u64>) {

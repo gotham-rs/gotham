@@ -13,28 +13,6 @@ pub(crate) type QueryStringMapping = HashMap<String, Vec<FormUrlDecoded>>;
 /// populated with each value provided.
 ///
 /// For keys that are provided but don't have a value associated an empty string will be stored.
-///
-/// #Examples
-///
-/// ```rust
-/// # extern crate gotham;
-/// #
-/// # use gotham::http::request::query_string::split;
-/// #
-/// # pub fn main() {
-///       let res = split(Some("key=val&key2=val"));
-///       assert_eq!("val", res.get("key").unwrap().first().unwrap().val());
-///       assert_eq!("val", res.get("key2").unwrap().first().unwrap().val());
-///
-///       let res = split(Some("k%65y=val&key=%76al+2"));
-///       assert_eq!("val", res.get("key").unwrap().first().unwrap().val());
-///       assert_eq!("val 2", res.get("key").unwrap().last().unwrap().val());
-///
-///       let res = split(Some("key=val&key2="));
-///       assert_eq!("val", res.get("key").unwrap().first().unwrap().val());
-///       assert_eq!("", res.get("key2").unwrap().first().unwrap().val());
-/// # }
-/// ```
 pub(crate) fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
     match query {
         Some(query) => {

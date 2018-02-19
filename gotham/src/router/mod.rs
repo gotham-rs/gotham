@@ -53,6 +53,8 @@ impl RouterData {
 /// # Examples
 ///
 /// ```
+/// # #![allow(deprecated)] // TODO: Refactor this.
+/// #
 /// # extern crate gotham;
 /// #
 /// # use gotham::router::tree::TreeBuilder;

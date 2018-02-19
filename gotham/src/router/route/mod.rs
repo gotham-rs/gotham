@@ -111,6 +111,8 @@ pub struct ExtractorFailed;
 /// ## A `Route` which delegates remaining `Request` details to a secondary `Router` instance
 ///
 /// ```rust
+/// # #![allow(deprecated)] // TODO: Refactor this.
+/// #
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #

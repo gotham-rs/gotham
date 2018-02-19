@@ -21,6 +21,8 @@ use state::{request_id, State};
 /// # Examples
 ///
 /// ```rust
+/// # #![allow(deprecated)] // TODO: Refactor this.
+/// #
 /// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
