@@ -4,8 +4,9 @@ use hyper::Response;
 use state::{State, StateData};
 use router::response::extender::StaticResponseExtender;
 
-/// Extracts the `Request` query string into `State`. On failure is capable of extending `Response`
-/// to indicate why the extraction process failed.
+/// Defines a binding for storing the query parameters from the `Request` URI in `State`. On
+/// failure the `StaticResponseExtender` implementation extends the `Response` to indicate why the
+/// extraction process failed.
 ///
 /// This trait is automatically implemented when the struct implements the `Deserialize`,
 /// `StateData` and `StaticResponseExtender` traits. These traits can be derived, or implemented
@@ -93,7 +94,9 @@ where
 
 /// A `QueryStringExtractor` that does not extract/store any data.
 ///
-/// Useful in purely static routes and within documentation.
+/// This is the default `QueryStringExtractor` which is applied to a route when no other
+/// `QueryStringExtractor` is provided. It ignores any query parameters, and always succeeds during
+/// deserialization.
 #[derive(Debug)]
 pub struct NoopQueryStringExtractor;
 
