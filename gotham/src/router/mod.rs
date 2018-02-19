@@ -252,6 +252,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn internal_server_error_if_no_request_path_segments() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
@@ -275,6 +276,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn not_found_error_if_request_path_is_not_found() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
@@ -289,6 +291,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn custom_error_if_leaf_found_but_matching_route_not_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut tree_builder = TreeBuilder::new();
@@ -315,6 +318,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn success_if_leaf_and_route_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut tree_builder = TreeBuilder::new();
@@ -341,6 +345,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn delegates_to_secondary_router() {
         let delegated_router = {
             let pipeline_set = finalize_pipeline_set(new_pipeline_set());
@@ -400,6 +405,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn executes_response_finalizer_when_present() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();

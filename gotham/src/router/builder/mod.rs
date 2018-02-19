@@ -85,7 +85,7 @@ where
         builder.response_finalizer_builder.finalize()
     };
 
-    Router::new(tree_builder.finalize(), response_finalizer)
+    Router::internal_new(tree_builder.finalize(), response_finalizer)
 }
 
 /// Builds a `Router` with **no** middleware using the provided closure. Routes are defined using
