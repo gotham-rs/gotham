@@ -1,18 +1,37 @@
 [workspace]
 members = [
+    ## Gotham Core
     "gotham",
     "gotham_derive",
+    "misc/borrow_bag",
 
+    ## Middleware
     "middleware/template",
     "middleware/under_development/diesel",
 
-    "misc/borrow_bag",
-
+    ## Examples (these crates are not published)
     "examples/hello_world",
-    "examples/hello_router",
-    "examples/basic_router",
-    "examples/hello_header",
-    "examples/basic_into_response",
-    "examples/basic_path_extractor",
-    "examples/basic_query_extractor",
+
+    # routing
+    "examples/routing/introduction",
+    "examples/routing/http_verbs",
+    "examples/routing/scopes",
+    "examples/routing/associations",
+
+    # path
+    "examples/path/introduction",
+
+    # query_string
+    "examples/query_string/introduction",
+
+    # cookies
+
+    # headers
+    "examples/headers/setting",
+
+    # into_response
+    "examples/into_response/introduction",
+
+    # example_contribution_template
+    "examples/example_contribution_template/name"
 ]

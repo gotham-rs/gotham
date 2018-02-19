@@ -1,0 +1,18 @@
+# Remove all comments here from final version.
+[package]
+# Generic naming structure used on all examples, lowercase.
+# replace `functionality` and `name` with your functionality area
+# anf example name respectively.
+name = "gotham_examples_functionality_name"
+description = "<describe the example and what readers can learn"
+version = "0.0.0"
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+
+hyper = "0.11"
+futures = "~0.1.11"
+mime = "0.3"
+
+# Add other dependencies if necessary

@@ -1,0 +1,16 @@
+[package]
+name = "gotham_examples_path_introduction"
+description = "An introduction to extracting request path segments, in a type safe way, with the Gotham web framework"
+version = "0.0.0"
+authors = ["Nicolas Pochet <npochet@gmail.com>"]
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
+
+hyper = "0.11"
+futures = "~0.1.11"
+mime = "0.3"
+serde = "~1.0"
+serde_derive = "~1.0"

@@ -1,0 +1,17 @@
+[package]
+name = "gotham_examples_into_response_introduction"
+description = "An introduction to using the Gotham web framework's `IntoResponse` trait."
+version = "0.0.0"
+authors = ["Nicolas Pochet <npochet@gmail.com>"]
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
+
+hyper = "0.11"
+futures = "~0.1.11"
+mime = "0.3"
+serde = "~1.0"
+serde_derive = "~1.0"
+serde_json = "~1.0"
