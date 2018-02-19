@@ -1,4 +1,4 @@
-//! Helpers for HTTP Request handling
+//! Helpers for HTTP request handling
 
 pub mod path;
 pub mod query_string;

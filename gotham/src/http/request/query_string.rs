@@ -9,10 +9,10 @@ pub(crate) type QueryStringMapping = HashMap<String, Vec<FormUrlDecoded>>;
 
 /// Splits a query string into pairs and provides a mapping of keys to values.
 ///
-/// For keys which are represented 1..n times in the query string the mapped Vec will be
+/// For keys which are represented 1..n times in the query string the mapped `Vec` will be
 /// populated with each value provided.
 ///
-/// For keys that are provided but don't have a value associated an empty string will be stored.
+/// Keys that are provided but with no value associated are skipped.
 pub(crate) fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
     match query {
         Some(query) => {
@@ -38,5 +38,36 @@ pub(crate) fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
             query_string_mapping
         }
         None => QueryStringMapping::new(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn to_pairs<'a>(qsm: &'a QueryStringMapping) -> Vec<(&'a str, Vec<&'a str>)> {
+        let mut pairs: Vec<(&str, Vec<&str>)> = qsm.iter()
+            .map(|(k, v)| {
+                let mut values: Vec<&str> = v.iter().map(|s| s.as_ref()).collect();
+                values.sort();
+
+                (k.as_str(), values)
+            })
+            .collect();
+
+        pairs.sort_by(|&(ref a, ref _a_val), &(ref b, ref _b_val)| a.cmp(b));
+        pairs
+    }
+
+    #[test]
+    fn query_string_mapping_tests() {
+        let qsm = split(Some("a=b&c=d&e=f"));
+        assert_eq!(
+            to_pairs(&qsm),
+            vec![("a", vec!["b"]), ("c", vec!["d"]), ("e", vec!["f"])],
+        );
+
+        let qsm = split(Some("a&b"));
+        assert_eq!(to_pairs(&qsm), vec![],);
     }
 }
