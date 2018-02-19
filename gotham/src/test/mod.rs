@@ -434,7 +434,7 @@ impl TestResponse {
 
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
-pub struct TestConnect {
+struct TestConnect {
     stream: cell::RefCell<Option<PollEvented<mio::net::TcpStream>>>,
 }
 

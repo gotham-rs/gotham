@@ -10,8 +10,10 @@ use std::any::{Any, TypeId};
 
 pub use state::data::StateData;
 pub use state::from_state::FromState;
-pub use state::request_id::{request_id, set_request_id};
+pub use state::request_id::request_id;
 pub use state::client_addr::client_addr;
+
+pub(crate) use state::request_id::set_request_id;
 
 /// Provides storage for request state, and stores one item of each type. The types used for
 /// storage must implement the `gotham::state::StateData` trait to allow its storage.
@@ -45,10 +47,21 @@ pub struct State {
 
 impl State {
     /// Creates a new, empty `State`
-    pub fn new() -> State {
+    pub(crate) fn new() -> State {
         State {
             data: HashMap::new(),
         }
+    }
+
+    /// Creates a new, empty `State` and yields it into the provided closure. This is intended only
+    /// for use in the documentation tests for `State`, since the `State` container cannot be
+    /// constructed otherwise.
+    #[doc(hidden)]
+    pub fn with_new<F>(f: F)
+    where
+        F: FnOnce(&mut State),
+    {
+        f(&mut State::new())
     }
 
     /// Puts a value into the `State` storage. One value of each type is retained. Successive calls

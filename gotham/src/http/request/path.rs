@@ -35,7 +35,7 @@ impl RequestPathSegments {
     ///     assert_eq!("workflow", srp.segments()[2].val());
     /// # }
     /// ```
-    pub fn new<'r>(path: &'r str) -> Self {
+    pub(crate) fn new<'r>(path: &'r str) -> Self {
         let mut segments = vec!["/"];
         segments.extend(
             path.split('/')
@@ -78,7 +78,7 @@ impl RequestPathSegments {
     ///     assert_eq!("/", srp.segments()[0].val());
     ///     assert_eq!("workflow", srp.segments()[1].val());
     /// # }
-    pub fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
+    pub(crate) fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
         self.segments
             .iter()
             .enumerate()
@@ -95,14 +95,7 @@ impl RequestPathSegments {
     /// Increases the current offset value.
     ///
     /// * add: Indicates how much the offset should be increased by
-    pub fn increase_offset(&mut self, add: usize) {
+    pub(crate) fn increase_offset(&mut self, add: usize) {
         self.offset += add;
-    }
-
-    /// Sets the offset.
-    ///
-    /// * offset: Sets the offset to the supplied value
-    pub fn set_offset(&mut self, offset: usize) {
-        self.offset = offset;
     }
 }

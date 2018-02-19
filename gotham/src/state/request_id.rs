@@ -7,7 +7,7 @@ use http::header::XRequestId;
 use state::{FromState, State};
 
 /// Holds details about the current Request that are useful for enhancing logging.
-pub struct RequestId {
+pub(super) struct RequestId {
     val: String,
 }
 
@@ -20,7 +20,7 @@ pub struct RequestId {
 ///
 /// This method MUST be invoked by Gotham, before handing control to
 /// pipelines or Handlers to ensure that a value for `RequestId` is always available.
-pub fn set_request_id<'a>(state: &'a mut State) -> &'a str {
+pub(crate) fn set_request_id<'a>(state: &'a mut State) -> &'a str {
     if !state.has::<RequestId>() {
         let request_id = match Headers::borrow_from(state).get::<XRequestId>() {
             Some(ex_req_id) => {

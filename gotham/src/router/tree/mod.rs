@@ -11,7 +11,7 @@ pub mod regex;
 
 /// A depth ordered `Vec` of `Node` instances that create a routable path through the `Tree` for the
 /// matched `Request` path.
-pub type Path<'a> = Vec<&'a Node>;
+type Path<'a> = Vec<&'a Node>;
 
 /// Number of segments from a `Request` path that are considered to have been processed
 /// by an `Router` traversing its `Tree`.
@@ -107,15 +107,8 @@ pub struct Tree {
 }
 
 impl Tree {
-    /// Borrow the root `Node` of the `Tree`.
-    ///
-    /// To be used in building a `Tree` structure only.
-    pub fn borrow_root(&self) -> &Node {
-        &self.root
-    }
-
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
-    pub fn traverse<'r>(
+    pub(crate) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
     ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {

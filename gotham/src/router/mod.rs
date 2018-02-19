@@ -27,7 +27,7 @@ struct RouterData {
 }
 
 impl RouterData {
-    pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> RouterData {
+    fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> RouterData {
         RouterData {
             tree,
             response_finalizer,
@@ -137,7 +137,14 @@ impl Handler for Router {
 
 impl Router {
     /// Creates a `Router` instance.
+    #[deprecated(since = "0.2.0",
+                 note = "use the new `gotham::router::builder` API to construct a Router")]
     pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
+        Router::internal_new(tree, response_finalizer)
+    }
+
+    /// Same as `new`, but private and not deprecated.
+    fn internal_new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
         let router_data = RouterData::new(tree, response_finalizer);
         Router {
             data: Arc::new(router_data),

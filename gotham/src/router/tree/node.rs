@@ -109,13 +109,8 @@ pub struct Node {
 
 impl Node {
     /// Provides the segment this `Node` represents.
-    pub fn segment(&self) -> &str {
+    pub(crate) fn segment(&self) -> &str {
         &self.segment
-    }
-
-    /// Provides the type of segment this `Node` represents.
-    pub fn segment_type(&self) -> &SegmentType {
-        &self.segment_type
     }
 
     /// Determines if a `Route` instance associated with this `Node` is willing to `Handle` the
@@ -129,7 +124,7 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub fn select_route<'a>(
+    pub(crate) fn select_route<'a>(
         &'a self,
         state: &State,
     ) -> Result<&'a Box<Route + Send + Sync>, RouteNonMatch> {
@@ -167,14 +162,9 @@ impl Node {
         }
     }
 
-    /// True if there is at least one child `Node` present
-    pub fn is_parent(&self) -> bool {
-        !self.children.is_empty()
-    }
-
     /// True is there is a least one `Route` represented by this `Node`, that is it can act as a
     /// leaf in a single path through the tree.
-    pub fn is_routable(&self) -> bool {
+    pub(crate) fn is_routable(&self) -> bool {
         !self.routes.is_empty()
     }
 
@@ -191,7 +181,7 @@ impl Node {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'r>(
+    pub(crate) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
     ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
@@ -278,10 +268,8 @@ impl Node {
 
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
         match self.segment_type {
-            SegmentType::Static => self.segment == req_path_segment.val(),
-            SegmentType::Constrained { ref regex } => {
-                regex.is_match(req_path_segment.val().as_ref())
-            }
+            SegmentType::Static => self.segment == req_path_segment.as_ref(),
+            SegmentType::Constrained { ref regex } => regex.is_match(req_path_segment.as_ref()),
             SegmentType::Dynamic | SegmentType::Glob => true,
         }
     }

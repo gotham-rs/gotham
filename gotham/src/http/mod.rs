@@ -19,7 +19,7 @@ impl PercentDecoded {
     ///
     /// On success encapulate resultant data for use by components that expect this transformation
     /// has already occured.
-    pub fn new(raw: &str) -> Option<Self> {
+    pub(crate) fn new(raw: &str) -> Option<Self> {
         match percent_decode(raw.as_bytes()).decode_utf8() {
             Ok(pd) => {
                 trace!(" percent_decode: {}, src: {}", pd, raw);
@@ -33,11 +33,6 @@ impl PercentDecoded {
             }
         }
     }
-
-    /// Provide the decoded data this type encapsulates
-    pub fn val(&self) -> &str {
-        &self.val
-    }
 }
 
 impl AsRef<str> for PercentDecoded {
@@ -47,7 +42,7 @@ impl AsRef<str> for PercentDecoded {
 }
 
 /// Decode form-urlencoded strings
-pub fn form_url_decode(raw: &str) -> Result<String, std::str::Utf8Error> {
+fn form_url_decode(raw: &str) -> Result<String, std::str::Utf8Error> {
     match percent_decode(raw.replace("+", " ").as_bytes()).decode_utf8() {
         Ok(pd) => {
             trace!(" form_url_decode: {}, src: {}", pd, raw);
@@ -73,16 +68,11 @@ impl FormUrlDecoded {
     ///
     /// On success encapulate resultant data for use by components that expect this transformation
     /// has already occured.
-    pub fn new(raw: &str) -> Option<Self> {
+    pub(crate) fn new(raw: &str) -> Option<Self> {
         match form_url_decode(raw) {
             Ok(val) => Some(FormUrlDecoded { val }),
             Err(_) => None,
         }
-    }
-
-    /// Provide the decoded data this type encapsulates
-    pub fn val(&self) -> &str {
-        &self.val
     }
 }
 
@@ -99,12 +89,12 @@ mod tests {
     #[test]
     fn ensure_valid_percent_decode() {
         let pd = PercentDecoded::new("%41+%42%2B%63%20%64").unwrap();
-        assert_eq!("A+B+c d", pd.val());
+        assert_eq!("A+B+c d", pd.as_ref());
     }
 
     #[test]
     fn ensure_valid_www_form_url_encoded_value() {
         let f = FormUrlDecoded::new("%41+%42%2B%63%20%64").unwrap();
-        assert_eq!("A B+c d", f.val());
+        assert_eq!("A B+c d", f.as_ref());
     }
 }

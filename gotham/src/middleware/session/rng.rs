@@ -2,7 +2,7 @@ use rand::{OsRng, Rng, SeedableRng};
 use rand::reseeding::{Reseeder, ReseedingRng};
 use rand::chacha::ChaChaRng;
 
-pub struct OsRngReseeder {
+pub(super) struct OsRngReseeder {
     os_rng: OsRng,
 }
 
@@ -18,9 +18,9 @@ impl Reseeder<ChaChaRng> for OsRngReseeder {
 // Conventional wisdom seems to be that a securely seeded ChaCha20 PRNG is secure enough for
 // cryptographic purposes, so it's certainly secure enough for generating unpredictable session
 // identifiers.
-pub type SessionIdentifierRng = ReseedingRng<ChaChaRng, OsRngReseeder>;
+pub(super) type SessionIdentifierRng = ReseedingRng<ChaChaRng, OsRngReseeder>;
 
-pub fn session_identifier_rng() -> SessionIdentifierRng {
+pub(super) fn session_identifier_rng() -> SessionIdentifierRng {
     let os_rng = match OsRng::new() {
         Ok(rng) => rng,
         Err(e) => {

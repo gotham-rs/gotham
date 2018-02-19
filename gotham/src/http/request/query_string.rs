@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use http::{form_url_decode, FormUrlDecoded};
 
 /// Provides a mapping of keys from `Request` query string to their supplied values
-pub type QueryStringMapping = HashMap<String, Vec<FormUrlDecoded>>;
+pub(crate) type QueryStringMapping = HashMap<String, Vec<FormUrlDecoded>>;
 
 /// Splits a query string into pairs and provides a mapping of keys to values.
 ///
@@ -35,7 +35,7 @@ pub type QueryStringMapping = HashMap<String, Vec<FormUrlDecoded>>;
 ///       assert_eq!("", res.get("key2").unwrap().first().unwrap().val());
 /// # }
 /// ```
-pub fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
+pub(crate) fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
     match query {
         Some(query) => {
             let pairs = query.split("&").filter(|pair| pair.contains("="));

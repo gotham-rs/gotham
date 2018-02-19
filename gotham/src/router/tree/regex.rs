@@ -29,7 +29,7 @@ impl ConstrainedSegmentRegex {
 
     /// Wraps `regex::Regex::is_match` to return true if and only if the regex matches the string
     /// given.
-    pub fn is_match(&self, s: &str) -> bool {
+    pub(crate) fn is_match(&self, s: &str) -> bool {
         match catch_unwind(|| self.regex.is_match(s)) {
             Ok(b) => b,
             Err(_) => {
