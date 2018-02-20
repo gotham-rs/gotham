@@ -62,9 +62,7 @@ framework may not suit the needs of all projects. If that is the case for your
 project there are alternative Rust web frameworks you might like to consider:
 
 1. [Conduit](https://github.com/conduit-rust/conduit)
-1. [Iron](https://github.com/iron/iron)
 1. [Nickel](https://github.com/nickel-org/nickel.rs)
-1. [Pencil](https://github.com/fengsp/pencil)
 1. [Rocket](https://github.com/SergioBenitez/Rocket)
 1. [Rouille](https://github.com/tomaka/rouille)
 
