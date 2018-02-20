@@ -43,6 +43,9 @@ pub enum SessionError {
     Backend(String),
     /// The session was unable to be deserialized
     Deserialize,
+    /// Exhaustive match against this enum is unsupported.
+    #[doc(hidden)]
+    __NonExhaustive,
 }
 
 enum SessionCookieState {
@@ -68,7 +71,7 @@ enum SameSiteEnforcement {
 /// `secure` flag.  `NewSessionMiddleware` provides functions for adjusting the
 /// `SessionCookieConfig`.
 #[derive(Clone, Debug)]
-pub struct SessionCookieConfig {
+struct SessionCookieConfig {
     // If `Expires` / `Max-Age` are ever added update `reset_session` to allow for them.
     name: String,
     secure: bool,
@@ -282,6 +285,7 @@ where
 {
     /// Discards the session, invalidating it for future use and removing the data from the
     /// `Backend`.
+    // TODO: Add test case that covers this.
     pub fn discard(self, state: &mut State) -> Result<(), SessionError> {
         state.put(SessionDropData {
             cookie_config: self.cookie_config,

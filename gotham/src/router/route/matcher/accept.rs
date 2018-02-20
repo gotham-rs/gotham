@@ -21,49 +21,52 @@ use state::{request_id, FromState, State};
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # fn main() {
-/// # use hyper::header::{Headers, Accept};
-/// # use gotham::state::State;
-/// # use gotham::router::route::matcher::RouteMatcher;
-/// # use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
+/// #   use hyper::header::{Headers, Accept};
+/// #   use gotham::state::State;
+/// #   use gotham::router::route::matcher::RouteMatcher;
+/// #   use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
 /// #
-///   let supported_media_types = vec![mime::APPLICATION_JSON, mime::IMAGE_STAR];
-///   let matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
-///   let mut state = State::new();
+/// #   State::with_new(|state| {
+/// #
+/// let supported_media_types = vec![mime::APPLICATION_JSON, mime::IMAGE_STAR];
+/// let matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///
-///   // No accept header
-///   state.put(Headers::new());
-///   assert!(matcher.is_match(&state).is_ok());
+/// // No accept header
+/// state.put(Headers::new());
+/// assert!(matcher.is_match(&state).is_ok());
 ///
-///   // Accept header of `*/*`
-///   let mut headers = Headers::new();
-///   headers.set(Accept::star());
-///   state.put(headers);
-///   assert!(matcher.is_match(&state).is_ok());
+/// // Accept header of `*/*`
+/// let mut headers = Headers::new();
+/// headers.set(Accept::star());
+/// state.put(headers);
+/// assert!(matcher.is_match(&state).is_ok());
 ///
-///   // Accept header of `application/json`
-///   let mut headers = Headers::new();
-///   headers.set(Accept::json());
-///   state.put(headers);
-///   assert!(matcher.is_match(&state).is_ok());
+/// // Accept header of `application/json`
+/// let mut headers = Headers::new();
+/// headers.set(Accept::json());
+/// state.put(headers);
+/// assert!(matcher.is_match(&state).is_ok());
 ///
-///   // Not a valid Accept header
-///   let mut headers = Headers::new();
-///   headers.set(Accept::text());
-///   state.put(headers);
-///   assert!(matcher.is_match(&state).is_err());
+/// // Not a valid Accept header
+/// let mut headers = Headers::new();
+/// headers.set(Accept::text());
+/// state.put(headers);
+/// assert!(matcher.is_match(&state).is_err());
 ///
-///   // At least one supported accept header
-///   let mut headers = Headers::new();
-///   headers.set(Accept::text());
-///   headers.set(Accept::json());
-///   state.put(headers);
-///   assert!(matcher.is_match(&state).is_ok());
+/// // At least one supported accept header
+/// let mut headers = Headers::new();
+/// headers.set(Accept::text());
+/// headers.set(Accept::json());
+/// state.put(headers);
+/// assert!(matcher.is_match(&state).is_ok());
 
-///   // Accept header of `image/*`
-///   let mut headers = Headers::new();
-///   headers.set(Accept::image());
-///   state.put(headers);
-///   assert!(matcher.is_match(&state).is_ok());
+/// // Accept header of `image/*`
+/// let mut headers = Headers::new();
+/// headers.set(Accept::image());
+/// state.put(headers);
+/// assert!(matcher.is_match(&state).is_ok());
+/// #
+/// #   });
 /// # }
 /// ```
 pub struct AcceptHeaderRouteMatcher {

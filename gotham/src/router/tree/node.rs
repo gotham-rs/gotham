@@ -38,65 +38,6 @@ pub enum SegmentType {
 ///
 /// Ultimately provides `0..n` `Route` instances which are further evaluated by the `Router` if
 /// the `Node` is determined to be the routable end point for a single path through the tree.
-///
-/// # Examples
-///
-/// Representing the path `/activate/workflow`.
-///
-/// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// #
-/// # use hyper::{Response, Method, StatusCode};
-/// #
-/// # use gotham::http::PercentDecoded;
-/// # use gotham::http::response::create_response;
-/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-/// # use gotham::pipeline::set::*;
-/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::route::dispatch::DispatcherImpl;
-/// # use gotham::state::State;
-/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::tree::node::{NodeBuilder, SegmentType};
-/// #
-/// # fn handler(state: State) -> (State, Response) {
-/// #   let res = create_response(&state, StatusCode::Ok, None);
-/// #   (state, res)
-/// # }
-/// #
-/// # fn main() {
-/// #  let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-///   let mut root_node_builder = NodeBuilder::new("/", SegmentType::Static);
-///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
-///
-///   let mut workflow_node = NodeBuilder::new("workflow", SegmentType::Static);
-///   let route = {
-///       // elided ..
-/// #     let methods = vec![Method::Get];
-/// #     let matcher = MethodOnlyRouteMatcher::new(methods);
-/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-///       let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///       let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-///       Box::new(route)
-///   };
-///   workflow_node.add_route(route);
-///
-///   activate_node_builder.add_child(workflow_node);
-///   root_node_builder.add_child(activate_node_builder);
-///
-///   let root_node = root_node_builder.finalize();
-///   match root_node.traverse(&[&PercentDecoded::new("/").unwrap(),
-///                              &PercentDecoded::new("activate").unwrap(),
-///                              &PercentDecoded::new("workflow").unwrap()])
-///   {
-///       Some((path, _leaf, segments_processed, _segment_mapping)) =>  {
-///         assert!(path.last().unwrap().is_routable());
-///         assert_eq!(segments_processed, 2);
-///       }
-///       None => panic!(),
-///   }
-/// # }
-/// ```
 pub struct Node {
     segment: String,
     segment_type: SegmentType,
@@ -109,13 +50,8 @@ pub struct Node {
 
 impl Node {
     /// Provides the segment this `Node` represents.
-    pub fn segment(&self) -> &str {
+    pub(crate) fn segment(&self) -> &str {
         &self.segment
-    }
-
-    /// Provides the type of segment this `Node` represents.
-    pub fn segment_type(&self) -> &SegmentType {
-        &self.segment_type
     }
 
     /// Determines if a `Route` instance associated with this `Node` is willing to `Handle` the
@@ -129,7 +65,7 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub fn select_route<'a>(
+    pub(crate) fn select_route<'a>(
         &'a self,
         state: &State,
     ) -> Result<&'a Box<Route + Send + Sync>, RouteNonMatch> {
@@ -167,14 +103,9 @@ impl Node {
         }
     }
 
-    /// True if there is at least one child `Node` present
-    pub fn is_parent(&self) -> bool {
-        !self.children.is_empty()
-    }
-
     /// True is there is a least one `Route` represented by this `Node`, that is it can act as a
     /// leaf in a single path through the tree.
-    pub fn is_routable(&self) -> bool {
+    pub(crate) fn is_routable(&self) -> bool {
         !self.routes.is_empty()
     }
 
@@ -191,7 +122,7 @@ impl Node {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'r>(
+    pub(crate) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
     ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
@@ -278,10 +209,8 @@ impl Node {
 
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
         match self.segment_type {
-            SegmentType::Static => self.segment == req_path_segment.val(),
-            SegmentType::Constrained { ref regex } => {
-                regex.is_match(req_path_segment.val().as_ref())
-            }
+            SegmentType::Static => self.segment == req_path_segment.as_ref(),
+            SegmentType::Constrained { ref regex } => regex.is_match(req_path_segment.as_ref()),
             SegmentType::Dynamic | SegmentType::Glob => true,
         }
     }
@@ -751,5 +680,40 @@ mod tests {
 
         seg1.add_route(get_delegated_route(pipeline_set.clone()));
         seg1.add_route(get_delegated_route(pipeline_set));
+    }
+
+    #[test]
+    fn node_traversal_tests() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut root_node_builder = NodeBuilder::new("/", SegmentType::Static);
+        let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
+
+        let mut workflow_node = NodeBuilder::new("workflow", SegmentType::Static);
+        let route = {
+            let methods = vec![Method::Get];
+            let matcher = MethodOnlyRouteMatcher::new(methods);
+            let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
+            let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
+                Extractors::new();
+            let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
+            Box::new(route)
+        };
+        workflow_node.add_route(route);
+
+        activate_node_builder.add_child(workflow_node);
+        root_node_builder.add_child(activate_node_builder);
+
+        let root_node = root_node_builder.finalize();
+        match root_node.traverse(&[
+            &PercentDecoded::new("/").unwrap(),
+            &PercentDecoded::new("activate").unwrap(),
+            &PercentDecoded::new("workflow").unwrap(),
+        ]) {
+            Some((path, _leaf, segments_processed, _segment_mapping)) => {
+                assert!(path.last().unwrap().is_routable());
+                assert_eq!(segments_processed, 2);
+            }
+            None => panic!(),
+        }
     }
 }

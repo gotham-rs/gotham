@@ -21,6 +21,8 @@ use state::{request_id, State};
 /// # Examples
 ///
 /// ```rust
+/// # #![allow(deprecated)] // TODO: Refactor this.
+/// #
 /// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
@@ -160,7 +162,7 @@ where
 }
 
 /// Represents an instance of a `Pipeline`. Returned from `Pipeline::construct()`.
-pub struct PipelineInstance<T>
+struct PipelineInstance<T>
 where
     T: MiddlewareChain,
 {
@@ -173,7 +175,7 @@ where
 {
     /// Constructs an instance of this `Pipeline` by creating all `Middleware` instances required
     /// to serve a request. If any middleware fails creation, its error will be returned.
-    pub fn construct(&self) -> io::Result<PipelineInstance<T::Instance>> {
+    fn construct(&self) -> io::Result<PipelineInstance<T::Instance>> {
         Ok(PipelineInstance {
             chain: self.chain.construct()?,
         })
@@ -186,7 +188,7 @@ where
 {
     /// Serves a request using this `PipelineInstance`. Requests that pass through all `Middleware`
     /// will be served with the `f` function.
-    pub fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
         F: FnOnce(State) -> Box<HandlerFuture> + 'static,
     {

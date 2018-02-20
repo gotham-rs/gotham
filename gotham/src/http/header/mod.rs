@@ -17,7 +17,7 @@ use hyper;
 use hyper::header::Raw;
 
 /// Reads a single, space delimited, raw string into a Vec.
-pub fn from_one_rws_delimited_raw_str<T: str::FromStr>(raw: &Raw) -> hyper::error::Result<Vec<T>> {
+fn from_one_rws_delimited_raw_str<T: str::FromStr>(raw: &Raw) -> hyper::error::Result<Vec<T>> {
     if let Some(line) = raw.one() {
         if !line.is_empty() {
             return from_rws_delimited_raw_str(raw);
@@ -28,7 +28,7 @@ pub fn from_one_rws_delimited_raw_str<T: str::FromStr>(raw: &Raw) -> hyper::erro
 }
 
 /// Reads a space delimited, raw string into a Vec.
-pub fn from_rws_delimited_raw_str<T: str::FromStr>(raw: &Raw) -> hyper::error::Result<Vec<T>> {
+fn from_rws_delimited_raw_str<T: str::FromStr>(raw: &Raw) -> hyper::error::Result<Vec<T>> {
     let mut result = Vec::new();
     for line in raw {
         let line = try!(str::from_utf8(line.as_ref()));

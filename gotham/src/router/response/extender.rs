@@ -32,14 +32,7 @@ where
 /// Extender that does not further alter the response.
 ///
 /// This is likely to only be useful in documentation or example code.
-pub struct NoopResponseExtender {}
-
-impl NoopResponseExtender {
-    /// Creates a new NoopResponseExtender instance.
-    pub fn new() -> Self {
-        NoopResponseExtender {}
-    }
-}
+pub struct NoopResponseExtender;
 
 impl StaticResponseExtender for NoopResponseExtender {
     fn extend(state: &mut State, res: &mut Response) {

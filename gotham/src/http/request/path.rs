@@ -20,22 +20,7 @@ impl RequestPathSegments {
     ///
     /// * path: A `Request` uri path that will be split into indivdual segments with
     ///         a leading "/" to represent the root. Empty segments are removed.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// #
-    /// # use gotham::http::request::path::RequestPathSegments;
-    /// #
-    /// # pub fn main() {
-    ///     let srp = RequestPathSegments::new("/%61ctiv%61te//workflow");
-    ///     assert_eq!("/", srp.segments()[0].val());
-    ///     assert_eq!("activate", srp.segments()[1].val());
-    ///     assert_eq!("workflow", srp.segments()[2].val());
-    /// # }
-    /// ```
-    pub fn new<'r>(path: &'r str) -> Self {
+    pub(crate) fn new<'r>(path: &'r str) -> Self {
         let mut segments = vec!["/"];
         segments.extend(
             path.split('/')
@@ -63,22 +48,7 @@ impl RequestPathSegments {
     ///
     /// The offset starts at 0 meaning all segments of the initial Request path will be provided
     /// until the offset is updated.
-    ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// #
-    /// # use gotham::http::request::path::RequestPathSegments;
-    /// #
-    /// # pub fn main() {
-    ///     let mut srp = RequestPathSegments::new("/activate/workflow");
-    ///     assert_eq!("/", srp.segments()[0].val());
-    ///     assert_eq!("activate", srp.segments()[1].val());
-    ///     assert_eq!("workflow", srp.segments()[2].val());
-    ///     srp.increase_offset(1);
-    ///     assert_eq!("/", srp.segments()[0].val());
-    ///     assert_eq!("workflow", srp.segments()[1].val());
-    /// # }
-    pub fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
+    pub(crate) fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
         self.segments
             .iter()
             .enumerate()
@@ -95,14 +65,7 @@ impl RequestPathSegments {
     /// Increases the current offset value.
     ///
     /// * add: Indicates how much the offset should be increased by
-    pub fn increase_offset(&mut self, add: usize) {
+    pub(crate) fn increase_offset(&mut self, add: usize) {
         self.offset += add;
-    }
-
-    /// Sets the offset.
-    ///
-    /// * offset: Sets the offset to the supplied value
-    pub fn set_offset(&mut self, offset: usize) {
-        self.offset = offset;
     }
 }

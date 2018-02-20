@@ -10,8 +10,10 @@ use std::any::{Any, TypeId};
 
 pub use state::data::StateData;
 pub use state::from_state::FromState;
-pub use state::request_id::{request_id, set_request_id};
+pub use state::request_id::request_id;
 pub use state::client_addr::client_addr;
+
+pub(crate) use state::request_id::set_request_id;
 
 /// Provides storage for request state, and stores one item of each type. The types used for
 /// storage must implement the `gotham::state::StateData` trait to allow its storage.
@@ -33,10 +35,12 @@ pub use state::client_addr::client_addr;
 /// }
 ///
 /// # fn main() {
-/// let mut state = State::new();
-///
+/// #   State::with_new(|state| {
+/// #
 /// state.put(MyStruct { value: 1 });
 /// assert_eq!(state.borrow::<MyStruct>().value, 1);
+/// #
+/// #   });
 /// # }
 /// ```
 pub struct State {
@@ -45,10 +49,21 @@ pub struct State {
 
 impl State {
     /// Creates a new, empty `State`
-    pub fn new() -> State {
+    pub(crate) fn new() -> State {
         State {
             data: HashMap::new(),
         }
+    }
+
+    /// Creates a new, empty `State` and yields it into the provided closure. This is intended only
+    /// for use in the documentation tests for `State`, since the `State` container cannot be
+    /// constructed otherwise.
+    #[doc(hidden)]
+    pub fn with_new<F>(f: F)
+    where
+        F: FnOnce(&mut State),
+    {
+        f(&mut State::new())
     }
 
     /// Puts a value into the `State` storage. One value of each type is retained. Successive calls
@@ -74,7 +89,7 @@ impl State {
     /// # }
     /// #
     /// # fn main() {
-    /// # let mut state = State::new();
+    /// #   State::with_new(|state| {
     /// #
     /// state.put(MyStruct { value: 1 });
     /// assert_eq!(state.borrow::<MyStruct>().value, 1);
@@ -84,6 +99,8 @@ impl State {
     ///
     /// assert_eq!(state.borrow::<AnotherStruct>().value, "a string");
     /// assert_eq!(state.borrow::<MyStruct>().value, 100);
+    /// #
+    /// #   });
     /// # }
     /// ```
     pub fn put<T>(&mut self, t: T)
@@ -116,13 +133,15 @@ impl State {
     /// # }
     /// #
     /// # fn main() {
-    /// # let mut state = State::new();
+    /// #   State::with_new(|state| {
     /// #
     /// state.put(MyStruct { value: 1 });
     /// assert!(state.has::<MyStruct>());
     /// assert_eq!(state.borrow::<MyStruct>().value, 1);
     ///
     /// assert!(!state.has::<AnotherStruct>());
+    /// #
+    /// #   });
     /// # }
     /// ```
     pub fn has<T>(&self) -> bool
@@ -154,13 +173,15 @@ impl State {
     /// # }
     /// #
     /// # fn main() {
-    /// # let mut state = State::new();
+    /// #   State::with_new(|state| {
     /// #
     /// state.put(MyStruct { value: 1 });
     /// assert!(state.try_borrow::<MyStruct>().is_some());
     /// assert_eq!(state.try_borrow::<MyStruct>().unwrap().value, 1);
     ///
     /// assert!(state.try_borrow::<AnotherStruct>().is_none());
+    /// #
+    /// #   });
     /// # }
     /// ```
     pub fn try_borrow<T>(&self) -> Option<&T>
@@ -193,10 +214,12 @@ impl State {
     /// # }
     /// #
     /// # fn main() {
-    /// # let mut state = State::new();
+    /// #   State::with_new(|state| {
     /// #
     /// state.put(MyStruct { value: 1 });
     /// assert_eq!(state.borrow::<MyStruct>().value, 1);
+    /// #
+    /// #   });
     /// # }
     /// ```
     pub fn borrow<T>(&self) -> &T
@@ -228,7 +251,7 @@ impl State {
     /// # }
     /// #
     /// # fn main() {
-    /// # let mut state = State::new();
+    /// #   State::with_new(|state| {
     /// #
     /// state.put(MyStruct { value: 100 });
     ///
@@ -239,6 +262,7 @@ impl State {
     /// assert_eq!(state.borrow::<MyStruct>().value, 110);
     ///
     /// assert!(state.try_borrow_mut::<AnotherStruct>().is_none());
+    /// #   });
     /// # }
     pub fn try_borrow_mut<T>(&mut self) -> Option<&mut T>
     where
@@ -276,7 +300,7 @@ impl State {
     /// # }
     /// #
     /// # fn main() {
-    /// # let mut state = State::new();
+    /// #   State::with_new(|state| {
     /// #
     /// state.put(MyStruct { value: 100 });
     ///
@@ -288,6 +312,8 @@ impl State {
     /// assert_eq!(state.borrow::<MyStruct>().value, 110);
     ///
     /// assert!(state.try_borrow_mut::<AnotherStruct>().is_none());
+    /// #
+    /// #   });
     /// # }
     pub fn borrow_mut<T>(&mut self) -> &mut T
     where
@@ -318,7 +344,7 @@ impl State {
     /// # }
     /// #
     /// # fn main() {
-    /// # let mut state = State::new();
+    /// #   State::with_new(|state| {
     /// #
     /// state.put(MyStruct { value: 110 });
     ///
@@ -329,6 +355,8 @@ impl State {
     /// assert!(state.try_borrow::<MyStruct>().is_none());
     ///
     /// assert!(state.try_take::<AnotherStruct>().is_none());
+    /// #
+    /// #   });
     /// # }
     pub fn try_take<T>(&mut self) -> Option<T>
     where
@@ -366,7 +394,7 @@ impl State {
     /// # }
     /// #
     /// # fn main() {
-    /// # let mut state = State::new();
+    /// #   State::with_new(|state| {
     /// #
     /// state.put(MyStruct { value: 110 });
     ///
@@ -375,6 +403,8 @@ impl State {
     /// assert!(state.try_take::<MyStruct>().is_none());
     /// assert!(state.try_borrow_mut::<MyStruct>().is_none());
     /// assert!(state.try_borrow::<MyStruct>().is_none());
+    /// #
+    /// #   });
     /// # }
     pub fn take<T>(&mut self) -> T
     where

@@ -94,6 +94,8 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # Examples
 ///
 /// ```rust
+/// # #![allow(deprecated)] // TODO: Refactor this.
+/// #
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #

@@ -3,7 +3,7 @@ use quote;
 
 use helpers::ty_params;
 
-pub fn new_middleware(ast: &syn::DeriveInput) -> quote::Tokens {
+pub(crate) fn new_middleware(ast: &syn::DeriveInput) -> quote::Tokens {
     let (name, borrowed, where_clause) = ty_params(&ast, None);
 
     quote! {
