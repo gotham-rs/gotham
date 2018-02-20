@@ -21,42 +21,29 @@ use state::{request_id, State};
 /// # Examples
 ///
 /// ```rust
-/// # #![allow(deprecated)] // TODO: Refactor this.
-/// #
 /// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use std::io;
 /// # use gotham::http::response::create_response;
 /// # use gotham::state::State;
 /// # use gotham::handler::HandlerFuture;
-/// # use gotham::middleware::{Middleware, NewMiddleware};
+/// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::new_pipeline;
-/// # use gotham::pipeline::set::*;
-/// # use gotham::router::Router;
-/// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::route::dispatch::DispatcherImpl;
+/// # use gotham::pipeline::single::*;
+/// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
-/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-/// # use hyper::{Response, StatusCode, Method};
+/// # use hyper::{Response, StatusCode};
 /// #
 /// #[derive(StateData)]
 /// struct MiddlewareData {
 ///     vec: Vec<i32>
 /// }
 ///
-/// # #[derive(Clone)]
+/// #[derive(NewMiddleware, Copy, Clone)]
 /// struct MiddlewareOne;
-/// # #[derive(Clone)]
-/// struct MiddlewareTwo;
-/// # #[derive(Clone)]
-/// struct MiddlewareThree;
 ///
 /// impl Middleware for MiddlewareOne {
 ///     // Implementation elided.
@@ -68,13 +55,9 @@ use state::{request_id, State};
 /// #         chain(state)
 /// #     }
 /// }
-/// #
-/// # impl NewMiddleware for MiddlewareOne {
-/// #     type Instance = MiddlewareOne;
-/// #     fn new_middleware(&self) -> io::Result<MiddlewareOne> {
-/// #         Ok(self.clone())
-/// #     }
-/// # }
+///
+/// #[derive(NewMiddleware, Copy, Clone)]
+/// struct MiddlewareTwo;
 ///
 /// impl Middleware for MiddlewareTwo {
 ///     // Implementation elided.
@@ -86,13 +69,9 @@ use state::{request_id, State};
 /// #         chain(state)
 /// #     }
 /// }
-/// #
-/// # impl NewMiddleware for MiddlewareTwo {
-/// #     type Instance = MiddlewareTwo;
-/// #     fn new_middleware(&self) -> io::Result<MiddlewareTwo> {
-/// #         Ok(self.clone())
-/// #     }
-/// # }
+///
+/// #[derive(NewMiddleware, Copy, Clone)]
+/// struct MiddlewareThree;
 ///
 /// impl Middleware for MiddlewareThree {
 ///     // Implementation elided.
@@ -104,13 +83,6 @@ use state::{request_id, State};
 /// #         chain(state)
 /// #     }
 /// }
-/// #
-/// # impl NewMiddleware for MiddlewareThree {
-/// #     type Instance = MiddlewareThree;
-/// #     fn new_middleware(&self) -> io::Result<MiddlewareThree> {
-/// #         Ok(self.clone())
-/// #     }
-/// # }
 ///
 /// fn handler(state: State) -> (State, Response) {
 ///     let body = {
@@ -126,32 +98,22 @@ use state::{request_id, State};
 /// }
 ///
 /// fn main() {
-///     let editable_pipeline_set = new_pipeline_set();
-///     let (editable_pipeline_set, pipeline) = editable_pipeline_set.add(new_pipeline()
-///         .add(MiddlewareOne)
-///         .add(MiddlewareTwo)
-///         .add(MiddlewareThree)
-///         .build());
+///     let (chain, pipelines) = single_pipeline(
+///         new_pipeline()
+///             .add(MiddlewareOne)
+///             .add(MiddlewareTwo)
+///             .add(MiddlewareThree)
+///             .build()
+///     );
 ///
-///     let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
+///     let router = build_router(chain, pipelines, |route| {
+///         route.get("/").to(handler);
+///     });
 ///
-///     // Router / TestServer definitions elided
-/// #   let mut tree_builder = TreeBuilder::new();
-/// #
-/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
-/// #   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (pipeline, ()), pipeline_set));
-/// #   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-/// #   let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-/// #   tree_builder.add_route(Box::new(route));
-/// #   let tree = tree_builder.finalize();
-/// #
-/// #   let response_finalizer = ResponseFinalizerBuilder::new().finalize();
-/// #   let router = Router::new(tree, response_finalizer);
-/// #
-/// #   let test_server = TestServer::new(router).unwrap();
+///     let test_server = TestServer::new(router).unwrap();
 ///     let response = test_server.client().get("http://example.com/").perform().unwrap();
 ///     assert_eq!(response.status(), StatusCode::Ok);
-///     assert_eq!(response.read_body().unwrap(), "[1, 2, 3]".as_bytes());
+///     assert_eq!(response.read_utf8_body().unwrap(), "[1, 2, 3]");
 /// }
 /// ```
 pub struct Pipeline<T>
@@ -219,11 +181,13 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// # use gotham::middleware::{Middleware, NewMiddleware};
 /// # use gotham::pipeline::new_pipeline;
 /// #
-/// # #[derive(Clone)]
+/// # #[derive(NewMiddleware, Copy, Clone)]
 /// # struct MiddlewareOne;
-/// # #[derive(Clone)]
+/// #
+/// # #[derive(NewMiddleware, Copy, Clone)]
 /// # struct MiddlewareTwo;
-/// # #[derive(Clone)]
+/// #
+/// # #[derive(NewMiddleware, Copy, Clone)]
 /// # struct MiddlewareThree;
 /// #
 /// # impl Middleware for MiddlewareOne {
@@ -231,13 +195,6 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
 /// #   {
 /// #       chain(state)
-/// #   }
-/// # }
-/// #
-/// # impl NewMiddleware for MiddlewareOne {
-/// #   type Instance = MiddlewareOne;
-/// #   fn new_middleware(&self) -> io::Result<MiddlewareOne> {
-/// #       Ok(self.clone())
 /// #   }
 /// # }
 /// #
@@ -249,25 +206,11 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #   }
 /// # }
 /// #
-/// # impl NewMiddleware for MiddlewareTwo {
-/// #   type Instance = MiddlewareTwo;
-/// #   fn new_middleware(&self) -> io::Result<MiddlewareTwo> {
-/// #       Ok(self.clone())
-/// #   }
-/// # }
-/// #
 /// # impl Middleware for MiddlewareThree {
 /// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
 /// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
 /// #   {
 /// #       chain(state)
-/// #   }
-/// # }
-/// #
-/// # impl NewMiddleware for MiddlewareThree {
-/// #   type Instance = MiddlewareThree;
-/// #   fn new_middleware(&self) -> io::Result<MiddlewareThree> {
-/// #       Ok(self.clone())
 /// #   }
 /// # }
 /// #
@@ -282,8 +225,8 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 ///
 /// The pipeline defined here is invoked in this order:
 ///
-/// `(&mut stateuest)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree`
-/// &rarr; `handler` (provided later)
+/// `(&mut state)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree` &rarr;
+/// `handler` (provided later, when building the router)
 pub struct PipelineBuilder<T>
 where
     T: NewMiddlewareChain,
@@ -296,9 +239,7 @@ where
     T: NewMiddlewareChain,
 {
     /// Builds a `Pipeline`, which contains all middleware in the order provided via `add` and is
-    /// ready to process requests via a `NewHandler` provided to [`Pipeline::call`][Pipeline::call]
-    ///
-    /// [Pipeline::call]: struct.Pipeline.html#method.call
+    /// ready to process requests via a `NewHandler` provided to `Pipeline::call`.
     pub fn build(self) -> Pipeline<T>
     where
         T: NewMiddlewareChain,
