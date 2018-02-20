@@ -174,11 +174,12 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 ///
 /// ```rust
 /// # extern crate gotham;
+/// # #[macro_use]
+/// # extern crate gotham_derive;
 /// #
-/// # use std::io;
 /// # use gotham::state::State;
 /// # use gotham::handler::HandlerFuture;
-/// # use gotham::middleware::{Middleware, NewMiddleware};
+/// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::new_pipeline;
 /// #
 /// # #[derive(NewMiddleware, Copy, Clone)]
