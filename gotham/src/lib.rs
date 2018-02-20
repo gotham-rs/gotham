@@ -1,6 +1,6 @@
-//! Gotham - A flexible web framework that does not sacrifice safety, security or speed.
+//! Gotham &ndash; A flexible web framework that promotes stability, safety, security and speed.
 //!
-//! You can find out more about Gotham, including where to get help,  at https://gotham.rs.
+//! You can find out more about Gotham, including where to get help, at <https://gotham.rs>.
 //!
 //! We look forward to welcoming you into the Gotham community!
 #![doc(html_root_url = "https://docs.rs/gotham/0.1.2")] // Update when changed in Cargo.toml
