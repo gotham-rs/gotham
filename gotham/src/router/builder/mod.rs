@@ -37,32 +37,46 @@ pub type AssociatedSingleRouteBuilder<'a, C, P, PE, QSE> =
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # use hyper::Response;
+/// # #[macro_use]
+/// # extern crate serde_derive;
+/// #
+/// # use hyper::{Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::pipeline::new_pipeline;
-/// # use gotham::pipeline::set::*;
-/// # use gotham::middleware::session::NewSessionMiddleware;
+/// # use gotham::pipeline::single::*;
+/// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
+/// # use gotham::test::TestServer;
 /// #
-/// # fn my_handler(_: State) -> (State, Response) {
-/// #   unreachable!()
+/// # #[derive(Serialize, Deserialize, Default)]
+/// # struct Session;
+/// #
+/// # fn my_handler(state: State) -> (State, Response) {
+/// #   assert!(state.has::<SessionData<Session>>());
+/// #   (state, Response::new().with_status(StatusCode::Accepted))
 /// # }
 /// #
 /// fn router() -> Router {
-///     let pipelines = new_pipeline_set();
-///     let (pipelines, default) =
-///         pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+///     let (chain, pipelines) = single_pipeline(
+///         new_pipeline()
+///             .add(NewSessionMiddleware::default().with_session_type::<Session>())
+///             .build()
+///     );
 ///
-///     let pipelines = finalize_pipeline_set(pipelines);
-///
-///     let default_pipeline_chain = (default, ());
-///
-///     build_router(default_pipeline_chain, pipelines, |route| {
+///     build_router(chain, pipelines, |route| {
 ///         route.get("/request/path").to(my_handler);
 ///     })
 /// }
-/// # fn main() { router(); }
+/// #
+/// # fn main() {
+/// #   let test_server = TestServer::new(router()).unwrap();
+/// #   let response = test_server.client()
+/// #       .get("https://example.com/request/path")
+/// #       .perform()
+/// #       .unwrap();
+/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// # }
 /// ```
 pub fn build_router<C, P, F>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F) -> Router
 where
@@ -95,12 +109,15 @@ where
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # use hyper::Response;
+/// #
+/// # use hyper::{Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
-/// # fn my_handler(_: State) -> (State, Response) {
-/// #   unreachable!()
+/// # use gotham::test::TestServer;
+/// #
+/// # fn my_handler(state: State) -> (State, Response) {
+/// #   (state, Response::new().with_status(StatusCode::Accepted))
 /// # }
 /// #
 /// fn router() -> Router {
@@ -108,7 +125,15 @@ where
 ///         route.get("/request/path").to(my_handler);
 ///     })
 /// }
-/// # fn main() { router(); }
+/// #
+/// # fn main() {
+/// #   let test_server = TestServer::new(router()).unwrap();
+/// #   let response = test_server.client()
+/// #       .get("https://example.com/request/path")
+/// #       .perform()
+/// #       .unwrap();
+/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// # }
 /// ```
 pub fn build_simple_router<F>(f: F) -> Router
 where
@@ -143,38 +168,60 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// #
     /// # use hyper::{Response, StatusCode};
+    /// # use hyper::header::Warning;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::response::extender::ResponseExtender;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::set::*;
-    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// # fn my_handler(state: State) -> (State, Response) {
+    /// #   (state, Response::new().with_status(StatusCode::InternalServerError))
+    /// # }
     /// #
     /// struct MyExtender;
     ///
     /// impl ResponseExtender for MyExtender {
-    ///     fn extend(&self, state: &mut State, res: &mut Response) {
+    ///     fn extend(&self, state: &mut State, response: &mut Response) {
     ///         // Extender implementation omitted.
-    /// #       let _ = (state, res);
+    /// #       let _ = state;
+    /// #       response.headers_mut().set(
+    /// #           Warning {
+    /// #               code: 299,
+    /// #               agent: "example.com".to_owned(),
+    /// #               text: "Deprecated".to_owned(),
+    /// #               date: None,
+    /// #           }
+    /// #       );
     ///     }
     /// }
     ///
     /// fn router() -> Router {
-    ///     let pipelines = new_pipeline_set();
-    ///     let (pipelines, default) =
-    ///         pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    ///
-    ///     let pipelines = finalize_pipeline_set(pipelines);
-    ///
-    ///     let default_pipeline_chain = (default, ());
-    ///
-    ///     build_router(default_pipeline_chain, pipelines, |route| {
+    ///     build_simple_router(|route| {
     ///         route.add_response_extender(StatusCode::InternalServerError, MyExtender);
+    /// #
+    /// #       route.get("/").to(my_handler);
     ///     })
     /// }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::InternalServerError);
+    /// #
+    /// #   {
+    /// #       let warning = response.headers().get::<Warning>().unwrap();
+    /// #       assert_eq!(warning.code, 299);
+    /// #       assert_eq!(warning.agent, "example.com");
+    /// #       assert_eq!(warning.text, "Deprecated");
+    /// #       assert!(warning.date.is_none());
+    /// #   }
+    /// # }
     /// ```
     pub fn add_response_extender<E>(&mut self, status_code: StatusCode, extender: E)
     where
@@ -186,7 +233,7 @@ where
 }
 
 /// A scoped builder, which is created by `DrawRoutes::scope` and passed to the provided closure.
-/// See the `DrawRoutes` trait for usage.
+/// The `DrawRoutes` trait has documentation for using this type.
 pub struct ScopeBuilder<'a, C, P>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
@@ -197,8 +244,8 @@ where
     pipelines: PipelineSet<P>,
 }
 
-/// A delegated builder, which is created by `DrawRoutes::delegate` and returned. See the
-/// `DrawRoutes` trait for usage.
+/// A delegated builder, which is created by `DrawRoutes::delegate` and returned. The `DrawRoutes`
+/// trait has documentation for using this type.
 pub struct DelegateRouteBuilder<'a, C, P>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
@@ -273,8 +320,8 @@ where
     }
 }
 
-/// Implements the methods required for associating a number of routes with a single path. See
-/// `DrawRoutes::associated`.
+/// Implements the methods required for associating a number of routes with a single path. This is
+/// used by `DrawRoutes::associated`.
 pub struct AssociatedRouteBuilder<'a, C, P, PE, QSE>
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
@@ -307,14 +354,16 @@ where
     /// # extern crate serde_derive;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   assert_eq!(state.borrow::<MyPathExtractor>().id, 42);
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #[derive(Deserialize, StateData, StaticResponseExtender)]
@@ -332,7 +381,15 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/resource/42")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn with_path_extractor<'b, NPE>(&'b mut self) -> AssociatedRouteBuilder<'b, C, P, NPE, QSE>
     where
@@ -359,14 +416,16 @@ where
     /// # #[macro_use]
     /// # extern crate serde_derive;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   assert_eq!(state.borrow::<MyQueryStringExtractor>().val.as_str(), "test_val");
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #[derive(StateData, Deserialize, StaticResponseExtender)]
@@ -384,7 +443,15 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/resource?val=test_val")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn with_query_string_extractor<'b, NQSE>(
         &'b mut self,
@@ -408,15 +475,17 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, Method};
+    /// # use hyper::{Response, Method, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #
@@ -427,7 +496,28 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/resource")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .head("https://example.com/resource")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .post("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn request<'b>(
         &'b mut self,
@@ -459,14 +549,15 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #
@@ -477,7 +568,15 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .head("https://example.com/resource")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn head<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Head])
@@ -491,14 +590,15 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #
@@ -509,7 +609,22 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/resource")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .head("https://example.com/resource")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn get_or_head<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Get, Method::Head])
@@ -523,14 +638,15 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #
@@ -541,7 +657,15 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/resource")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn get<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Get])
@@ -554,15 +678,17 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate mime;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #
@@ -573,7 +699,15 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .post("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn post<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Post])
@@ -586,15 +720,17 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate mime;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #
@@ -605,7 +741,15 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .put("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn put<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Put])
@@ -618,15 +762,17 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate mime;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #
@@ -637,7 +783,15 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .patch("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn patch<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Patch])
@@ -651,14 +805,15 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #
@@ -669,7 +824,15 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .delete("https://example.com/resource")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn delete<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Delete])
@@ -683,14 +846,15 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::Response;
+    /// # use hyper::{Method, Request, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(_state: State) -> (State, Response) {
+    /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     ///
     /// #
@@ -701,7 +865,16 @@ where
     ///     });
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let request = Request::new(
+    /// #       Method::Options,
+    /// #       "https://example.com/resource".parse().unwrap()
+    /// #   );
+    /// #   let response = test_server.client().perform(request).unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     pub fn options<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         self.request(vec![Method::Options])

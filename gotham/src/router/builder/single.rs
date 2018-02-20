@@ -18,34 +18,40 @@ use handler::{Handler, NewHandler};
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # use hyper::Response;
+/// #
+/// # use hyper::{Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::pipeline::new_pipeline;
+/// # use gotham::pipeline::single::*;
 /// # use gotham::middleware::session::NewSessionMiddleware;
-/// # use gotham::pipeline::set::*;
+/// # use gotham::test::TestServer;
 /// #
-/// fn my_handler(_: State) -> (State, Response) {
+/// fn my_handler(state: State) -> (State, Response) {
 ///     // Handler implementation elided.
-/// #   unimplemented!()
+/// #   (state, Response::new().with_status(StatusCode::Accepted))
 /// }
 /// #
 /// # fn router() -> Router {
-/// #   let pipelines = new_pipeline_set();
-/// #   let (pipelines, default) =
-/// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+/// #   let (chain, pipelines) = single_pipeline(
+/// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+/// #   );
 /// #
-/// #   let pipelines = finalize_pipeline_set(pipelines);
-/// #
-/// #   let default_pipeline_chain = (default, ());
-///
-/// build_router(default_pipeline_chain, pipelines, |route| {
+/// build_router(chain, pipelines, |route| {
 ///     route.get("/request/path") // <- This value implements `DefineSingleRoute`
 ///          .to(my_handler);
 /// })
 /// # }
-/// # fn main() { router(); }
+/// #
+/// # fn main() {
+/// #   let test_server = TestServer::new(router()).unwrap();
+/// #   let response = test_server.client()
+/// #       .get("https://example.com/request/path")
+/// #       .perform()
+/// #       .unwrap();
+/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// # }
 /// ```
 pub trait DefineSingleRoute {
     /// Directs the route to the given `Handler`, automatically creating a `NewHandler` which
@@ -57,33 +63,40 @@ pub trait DefineSingleRoute {
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::Response;
+    /// #
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::set::*;
+    /// # use gotham::pipeline::single::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
     /// #
-    /// fn my_handler(_: State) -> (State, Response) {
+    /// fn my_handler(state: State) -> (State, Response) {
     ///     // Handler implementation elided.
-    /// #   unimplemented!()
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
+    /// #   let (chain, pipelines) = single_pipeline(
+    /// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+    /// #   );
     ///
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_router(chain, pipelines, |route| {
     ///     route.get("/request/path").to(my_handler);
     /// })
+    /// #
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     fn to<H>(self, handler: H)
     where
@@ -97,14 +110,19 @@ pub trait DefineSingleRoute {
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate futures;
+    /// #
     /// # use std::io;
+    /// # use hyper::{Response, StatusCode};
+    /// # use futures::future;
     /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::set::*;
+    /// # use gotham::pipeline::single::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
     /// #
     /// struct MyNewHandler;
     /// struct MyHandler;
@@ -118,26 +136,31 @@ pub trait DefineSingleRoute {
     /// }
     ///
     /// impl Handler for MyHandler {
-    ///     fn handle(self, _state: State) -> Box<HandlerFuture> {
+    ///     fn handle(self, state: State) -> Box<HandlerFuture> {
     ///         // Handler implementation elided.
-    /// #       unimplemented!()
+    /// #       let response = Response::new().with_status(StatusCode::Accepted);
+    /// #       Box::new(future::ok((state, response)))
     ///     }
     /// }
     /// #
     /// # fn router() -> Router {
-    /// #   let pipelines = new_pipeline_set();
-    /// #   let (pipelines, default) =
-    /// #       pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
-    /// #
-    /// #   let pipelines = finalize_pipeline_set(pipelines);
-    /// #
-    /// #   let default_pipeline_chain = (default, ());
+    /// #   let (chain, pipelines) = single_pipeline(
+    /// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+    /// #   );
     ///
-    /// build_router(default_pipeline_chain, pipelines, |route| {
+    /// build_router(chain, pipelines, |route| {
     ///     route.get("/request/path").to_new_handler(MyNewHandler);
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     fn to_new_handler<NH>(self, new_handler: NH)
     where
@@ -155,13 +178,15 @@ pub trait DefineSingleRoute {
     /// # #[macro_use]
     /// # extern crate serde_derive;
     /// # extern crate hyper;
-    /// # use hyper::Response;
+    /// #
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
     /// #
     /// #[derive(Deserialize, StateData, StaticResponseExtender)]
     /// struct MyPathParams {
@@ -170,11 +195,13 @@ pub trait DefineSingleRoute {
     /// }
     ///
     /// fn my_handler(state: State) -> (State, Response) {
-    /// #   #[allow(unused_variables)]
+    /// #   {
     ///     let params = MyPathParams::borrow_from(&state);
     ///
     ///     // Handler implementation elided.
-    /// #   unimplemented!()
+    /// #   assert_eq!(params.name, "world");
+    /// #   }
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     /// #
     /// # fn router() -> Router {
@@ -187,12 +214,20 @@ pub trait DefineSingleRoute {
     /// #   let default_pipeline_chain = (default, ());
     ///
     /// build_router(default_pipeline_chain, pipelines, |route| {
-    ///     route.get("/request/path")
+    ///     route.get("/hello/:name")
     ///          .with_path_extractor::<MyPathParams>()
     ///          .to(my_handler);
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/hello/world")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
     where
@@ -213,13 +248,15 @@ pub trait DefineSingleRoute {
     /// # extern crate serde;
     /// # #[macro_use]
     /// # extern crate serde_derive;
-    /// # use hyper::Response;
+    /// #
+    /// # use hyper::{Response, StatusCode};
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
     /// #
     /// #[derive(StateData, Deserialize, StaticResponseExtender)]
     /// struct MyQueryParams {
@@ -228,11 +265,11 @@ pub trait DefineSingleRoute {
     /// }
     ///
     /// fn my_handler(state: State) -> (State, Response) {
-    /// #   #[allow(unused_variables)]
     ///     let id = MyQueryParams::borrow_from(&state).id;
     ///
     ///     // Handler implementation elided.
-    /// #   unimplemented!()
+    /// #   assert_eq!(id, 42);
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// }
     /// #
     /// # fn router() -> Router {
@@ -250,7 +287,15 @@ pub trait DefineSingleRoute {
     ///          .to(my_handler);
     /// })
     /// # }
-    /// # fn main() { router(); }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path?id=42")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
     /// ```
     fn with_query_string_extractor<NQSE>(
         self,
