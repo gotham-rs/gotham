@@ -14,6 +14,12 @@ use handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use service::timing::Timer;
 use state::{request_id, State};
 
+/// Instantiates a `Handler` from the given `NewHandler`, and invokes it with the request. If a
+/// panic occurs from `NewHandler::new_handler` or `Handler::handle`, it is trapped and will result
+/// in a `500 Internal Server Error` response.
+///
+/// Timing information is recorded and logged, except in the case of a panic where the timer is
+/// moved and cannot be recovered.
 pub(super) fn call_handler<T>(
     t: &T,
     state: AssertUnwindSafe<State>,
@@ -128,11 +134,15 @@ fn finalize_catch_unwind_response(
     future::ok(response)
 }
 
+/// Wraps a future to ensure that a panic does not escape and terminate the event loop.
 enum UnwindSafeFuture<F>
 where
     F: Future<Error = hyper::Error>,
 {
+    /// The future is available for polling.
     Available(AssertUnwindSafe<F>),
+
+    /// The future has been poisoned because a previous call to `poll` caused a panic.
     Poisoned,
 }
 
@@ -144,9 +154,12 @@ where
     type Error = hyper::Error;
 
     fn poll(&mut self) -> Result<Async<Self::Item>, hyper::Error> {
+        // Mark as poisoned in case `f.poll()` panics below.
         match mem::replace(self, UnwindSafeFuture::Poisoned) {
             UnwindSafeFuture::Available(mut f) => {
                 let r = f.poll();
+                // Replace with the original value again, now that the potential panic has not
+                // occurred. This allows for a poll to occur next time.
                 *self = UnwindSafeFuture::Available(f);
                 r
             }

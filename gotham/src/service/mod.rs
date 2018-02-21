@@ -1,4 +1,5 @@
-//! Defines the `Service` which is used by a Gotham application to interface to Hyper.
+//! Defines the `GothamService` type which is used to wrap a Gotham application and interface with
+//! Hyper.
 
 use std::thread;
 use std::net::SocketAddr;
@@ -19,9 +20,9 @@ use http::request::path::RequestPathSegments;
 mod timing;
 mod trap;
 
-/// Wraps a `NewHandler` to provide a `hyper::server::NewService` implementation for Gotham
-/// handlers.
-pub(super) struct GothamService<T>
+/// Wraps a `NewHandler` which will be used to serve requests. Used in `gotham::os::*` to bind
+/// incoming connections to `ConnectedGothamService` values.
+pub(crate) struct GothamService<T>
 where
     T: NewHandler + 'static,
 {
@@ -33,11 +34,11 @@ impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    pub(super) fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
+    pub(crate) fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
         GothamService { t, handle }
     }
 
-    pub(super) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
+    pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
         ConnectedGothamService {
             t: self.t.clone(),
             handle: self.handle.clone(),
@@ -46,7 +47,9 @@ where
     }
 }
 
-pub(super) struct ConnectedGothamService<T>
+/// A `GothamService` which has been connected to a client. The major difference is that a
+/// `client_addr` has been assigned (as this isn't available from Hyper).
+pub(crate) struct ConnectedGothamService<T>
 where
     T: NewHandler + 'static,
 {
