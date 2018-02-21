@@ -11,15 +11,15 @@ use hyper::{Method, StatusCode};
 use state::{request_id, FromState, State};
 use router::non_match::RouteNonMatch;
 
-/// Determines if pre-defined conditions required for the associated `Route` to be invoked by
-/// the `Router` have been met.
+/// Determines if conditions required for the associated `Route` to be invoked by the `Router` have
+/// been met.
 pub trait RouteMatcher: RefUnwindSafe {
     /// Determines if the `Request` meets pre-defined conditions.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;
 }
 
-/// A `RouteMatcher` that succeeds when the `Request` has been made with one
-/// or more acceptable HTTP request methods.
+/// A `RouteMatcher` that succeeds when the `Request` has been made with an accepted HTTP request
+/// method.
 ///
 /// # Examples
 ///

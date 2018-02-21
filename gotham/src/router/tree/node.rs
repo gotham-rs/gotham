@@ -61,7 +61,7 @@ impl Node {
     /// per creation, is invoked.
     ///
     /// Where no `Route` instances will accept the `Request` the resulting Error will be the
-    /// erroneous status code provided by the first `Route` instance, ordered per creation.
+    /// union of the `RouteNonMatch` values returned from each `Route`.
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.

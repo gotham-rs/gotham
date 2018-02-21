@@ -23,72 +23,8 @@ pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.
 ///
-/// Allows the `Router` to supply a `Request` path and obtain `[0..n]` valid
-/// `Route` instances for that path for further evaluation.
-///
-/// # Examples
-///
-/// Desired tree:
-///
-/// ```text
-///    /                       (Static Match)
-///    | -- activate           (Static Match)
-///         | -- workflow      (Dynamic Match, Routable)
-/// ```
-///
-/// Code:
-///
-/// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// #
-/// # use hyper::{Response, Method, StatusCode};
-/// #
-/// # use gotham::http::response::create_response;
-/// # use gotham::pipeline::set::*;
-/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::route::dispatch::DispatcherImpl;
-/// # use gotham::state::State;
-/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::tree::{Tree, TreeBuilder};
-/// # use gotham::router::tree::node::NodeBuilder;
-/// # use gotham::router::tree::node::SegmentType;
-/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-/// #
-/// # fn handler(state: State) -> (State, Response) {
-/// #   let res = create_response(&state, StatusCode::Ok, None);
-/// #   (state, res)
-/// # }
-/// #
-/// # fn main() {
-/// #   build_tree();
-/// # }
-/// #
-/// # fn build_tree() -> Tree {
-/// # let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-///   let mut tree_builder: TreeBuilder = TreeBuilder::new();
-///
-///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
-///
-///   let mut thing_node_builder = NodeBuilder::new("thing", SegmentType::Dynamic);
-///   let thing_route = {
-///       // elided ...
-/// #     let methods = vec![Method::Get];
-/// #     let matcher = MethodOnlyRouteMatcher::new(methods);
-/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-/// #     let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
-/// #           Extractors::new();
-/// #     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-/// #     Box::new(route)
-///   };
-///   thing_node_builder.add_route(thing_route);
-///
-///   activate_node_builder.add_child(thing_node_builder);
-///   tree_builder.add_child(activate_node_builder);
-///
-///   tree_builder.finalize()
-/// # }
-/// ```
+/// The `Tree` is created by the `gotham::router::builder` API and used internally by the `Router`
+/// to determine the valid `Route` instances for a request path before dispatch.
 pub struct Tree {
     root: Node,
 }
@@ -123,8 +59,8 @@ impl TreeBuilder {
         self.root.add_child(child);
     }
 
-    /// Determines if a child `Node` representing the exact segment provided
-    /// exists at the root of the `Tree`.
+    /// Determines if a child `Node` representing the exact segment provided exists at the root of
+    /// the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
     pub fn has_child(&self, segment: &str, segment_type: SegmentType) -> bool {
@@ -136,8 +72,7 @@ impl TreeBuilder {
         &mut self.root
     }
 
-    /// Adds a `Route` be evaluated by the `Router` when the root of the
-    /// `Tree` is requested.
+    /// Adds a `Route` be evaluated by the `Router` when the root of the `Tree` is requested.
     pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
         self.root.add_route(route);
     }

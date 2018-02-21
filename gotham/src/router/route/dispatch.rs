@@ -1,4 +1,4 @@
-//! Defines Gotham's `Dispatcher` and supporting types.
+//! Defines the route `Dispatcher` and supporting types.
 
 use std::panic::RefUnwindSafe;
 use futures::future;
@@ -8,8 +8,7 @@ use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
 use state::{request_id, State};
 
-/// Used by `Router` to dispatch requests via `Pipeline`(s), through `Middleware`(s)
-/// and finally into the configured `Handler`.
+/// Used by `Router` to dispatch requests via pipelines and finally into the configured `Handler`.
 pub trait Dispatcher: RefUnwindSafe {
     /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
     fn dispatch(&self, state: State) -> Box<HandlerFuture>;
@@ -41,7 +40,6 @@ where
     ///   will be invoked.
     /// * `pipelines` - All `Pipeline` instances, accessible by the handles provided in
     ///   `pipeline_chain`.
-    ///
     pub fn new(new_handler: H, pipeline_chain: C, pipelines: PipelineSet<P>) -> Self {
         DispatcherImpl {
             new_handler,

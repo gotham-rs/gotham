@@ -4,7 +4,7 @@ use router::non_match::RouteNonMatch;
 use router::route::RouteMatcher;
 use state::State;
 
-/// Allows multiple Route Matchers to be combined when accessing a request
+/// Allows multiple `RouteMatcher` values to be combined when accessing a request.
 ///
 /// # Examples
 ///

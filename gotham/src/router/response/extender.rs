@@ -1,16 +1,16 @@
-//! Defines functionality for extending a Response
+//! Defines functionality for extending a Response.
 
 use std::panic::RefUnwindSafe;
 use hyper::Response;
 use state::{request_id, State};
 
-/// Extend the Response based on current State and Response data
+/// Extend the `Response` based on current `State` and `Response` data.
 pub trait StaticResponseExtender: RefUnwindSafe {
     /// Extend the response.
     fn extend(&mut State, &mut Response);
 }
 
-/// Allow complex types to extend the Response based on current State and Response data
+/// Allow complex types to extend the `Response` based on current `State` and `Response` data.
 pub trait ResponseExtender: RefUnwindSafe {
     /// Extend the Response
     fn extend(&self, &mut State, &mut Response);
@@ -29,7 +29,7 @@ where
     }
 }
 
-/// Extender that does not further alter the response.
+/// An extender that does not alter the response.
 ///
 /// This is likely to only be useful in documentation or example code.
 pub struct NoopResponseExtender;
