@@ -1,4 +1,4 @@
-//! Defines a default session middleware supporting multiple backends
+//! Defines a session middleware with a pluggable backend.
 
 use std::io;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -32,16 +32,16 @@ const HOST_COOKIE_PREFIX: &'static str = "__Host-";
 /// Represents the session identifier which is held in the user agent's session cookie.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SessionIdentifier {
-    /// The value which is passed as a cookie, identifying the session
+    /// The value which is passed as a cookie, identifying the session.
     pub value: String,
 }
 
 /// The kind of failure which occurred trying to perform a session operation.
 #[derive(Debug)]
 pub enum SessionError {
-    /// The backend failed, and the included message describes the problem
+    /// The backend failed, and the included message describes the problem.
     Backend(String),
-    /// The session was unable to be deserialized
+    /// The session was unable to be deserialized.
     Deserialize,
     /// Exhaustive match against this enum is unsupported.
     #[doc(hidden)]
@@ -465,7 +465,7 @@ where
     phantom: PhantomData<SessionTypePhantom<T>>,
 }
 
-/// The per-request value which deals with sessions
+/// The per-request value which provides session storage for other middleware and handlers.
 ///
 /// See `NewSessionMiddleware` for usage details.
 pub struct SessionMiddleware<B, T>
@@ -549,7 +549,8 @@ where
             ..self
         }
     }
-    /// Configures the session cookie to be set at a more restrictive path
+
+    /// Configures the session cookie to be set at a more restrictive path.
     ///
     /// ```rust
     /// # extern crate gotham;
@@ -609,7 +610,21 @@ where
         self.rebuild_new_session_middleware(cookie_config)
     }
 
-    /// Configures the `NewSessionMiddleware` to use an alternate cookie name.
+    /// Configures the `NewSessionMiddleware` to use an alternate cookie name. The default cookie
+    /// name is `_gotham_session`.
+    ///
+    /// When a cookie name with a [cookie prefix][cookie-prefix] is used, the other options are
+    /// forced to be correct (ignoring overridden settings from the application). i.e.:
+    ///
+    /// * For a cookie prefix of `__Secure-`, the cookie attributes will include `Secure`
+    /// * For a cookie prefix of `__Host-`, the cookie attributes will include `Secure; Path=/` and
+    ///   not include `Domain=`
+    ///
+    /// If the session cookie configuration set by the application does not match the prefix, a
+    /// warning will be logged upon startup and the cookie prefix options will override what was
+    /// provided by the application.
+    ///
+    /// [cookie-prefix]: https://tools.ietf.org/html/draft-west-cookie-prefixes-05
     ///
     /// ```rust
     /// # extern crate gotham;
@@ -675,7 +690,8 @@ where
     ///
     /// By default, the session cookie will be set with `SameSite=lax`, which ensures cross-site
     /// requests will include the cookie if and only if they are top-level navigations which use a
-    /// "safe" (in the RFC7231 sense) HTTP method.
+    /// "safe" (in the [RFC7231](https://tools.ietf.org/html/rfc7231#section-4.2.1) sense) HTTP
+    /// method.
     ///
     /// See: <https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00#section-4.1>
     ///
@@ -712,7 +728,8 @@ where
     ///
     /// By default, the session cookie will be set with "SameSite=lax", which ensures cross-site
     /// requests will include the cookie if and only if they are top-level navigations which use a
-    /// "safe" (in the [RFC7231] sense) HTTP method.
+    /// "safe" (in the [RFC7231](https://tools.ietf.org/html/rfc7231#section-4.2.1) sense) HTTP
+    /// method.
     ///
     /// ```rust
     /// # extern crate gotham;

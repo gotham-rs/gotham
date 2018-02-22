@@ -4,10 +4,12 @@
 use std::sync::Arc;
 use borrow_bag::BorrowBag;
 
-/// Represents the set of all `Pipeline` instances that are available for use with `Routes`.
+/// Represents the set of all `Pipeline` instances that are available for use when building a
+/// `Router`. A `PipelineSet` is "frozen".
 pub type PipelineSet<P> = Arc<BorrowBag<P>>;
 
-/// A set of `Pipeline` instances that may continue to grow
+/// A set of `Pipeline` instances that is currently being defined, and can have more `Pipeline`
+/// instances added.
 pub type EditablePipelineSet<P> = BorrowBag<P>;
 
 /// Create an empty set of `Pipeline` instances.
@@ -18,7 +20,7 @@ pub fn new_pipeline_set() -> EditablePipelineSet<()> {
 }
 
 /// Wraps the current set of `Pipeline` instances into a thread-safe reference counting pointer for
-/// use with `DispatcherImpl` instances.
+/// use with the `Router`.
 pub fn finalize_pipeline_set<P>(eps: EditablePipelineSet<P>) -> PipelineSet<P> {
     Arc::new(eps)
 }
