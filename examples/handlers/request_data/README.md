@@ -4,14 +4,14 @@ An example showing the request components available.
 
 ## Running
 
-From the `examples/basic_request_components` directory:
+From the `examples/handlers/request_data` directory:
 
 ```
 Terminal 1:
 $ cargo run
-   Compiling basic_request_components (file:///.../examples/basic_request_components)
+   Compiling handlers/request_data (file:///.../examples/handlers/request_data)
     Finished dev [unoptimized + debuginfo] target(s) in 4.26 secs
-     Running `../basic_request_components`
+     Running `../handlers/request_data`
 Listening for requests at http://127.0.0.1:7878
 Method: Get
 URI: "/"
