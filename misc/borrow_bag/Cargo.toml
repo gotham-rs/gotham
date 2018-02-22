@@ -12,7 +12,7 @@ repository = "https://github.com/gotham-rs/gotham"
 [dependencies]
 
 [build-dependencies]
-skeptic = "0.9"
+skeptic = "0.13"
 
 [dev-dependencies]
-skeptic = "0.9"
+skeptic = "0.13"
