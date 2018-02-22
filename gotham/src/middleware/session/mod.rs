@@ -232,7 +232,7 @@ impl SessionCookieConfig {
 /// #       items: vec!["a".into(), "b".into(), "c".into()],
 /// #   };
 /// #
-/// #   let bytes = bincode::serialize(&session, bincode::Infinite).unwrap();
+/// #   let bytes = bincode::serialize(&session).unwrap();
 /// #   backend.persist_session(identifier.clone(), &bytes[..]).unwrap();
 /// #
 /// #   let mut cookies = Cookie::new();
@@ -918,7 +918,7 @@ fn write_session<T>(
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    let bytes = match bincode::serialize(&session_data.value, bincode::Infinite) {
+    let bytes = match bincode::serialize(&session_data.value) {
         Ok(bytes) => bytes,
         Err(e) => {
             error!(
@@ -1143,7 +1143,7 @@ mod tests {
         let session = TestSession {
             val: rand::random(),
         };
-        let bytes = bincode::serialize(&session, bincode::Infinite).unwrap();
+        let bytes = bincode::serialize(&session).unwrap();
 
         m.backend
             .persist_session(identifier.clone(), &bytes)
