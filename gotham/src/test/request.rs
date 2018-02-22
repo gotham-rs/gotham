@@ -5,7 +5,8 @@ use hyper::header::Header;
 use handler::NewHandler;
 use test::{TestClient, TestRequestError, TestResponse};
 
-/// Builder API for constructing `TestServer` requests.
+/// Builder API for constructing `TestServer` requests. When the request is built,
+/// `RequestBuilder::perform` will issue the request and provide access to the response.
 #[must_use]
 pub struct RequestBuilder<NH>
 where
