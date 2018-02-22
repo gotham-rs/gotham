@@ -53,5 +53,5 @@ Licensed under your option of:
 
 The following policies guide participation in our project and our community:
 
-* [Conduct](../../../CONDUCT.md)
+* [Conduct](../../../CODE_OF_CONDUCT.md)
 * [Contributing](../../../CONTRIBUTING.md)
