@@ -21,15 +21,23 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
+/// # extern crate mime;
 /// #
 /// # use hyper::{Response, StatusCode};
+/// # use gotham::http::response::create_response;
 /// # use gotham::state::{State, client_addr};
 /// # use gotham::test::TestServer;
 /// #
 /// fn my_handler(state: State) -> (State, Response) {
 ///     let addr = client_addr(&state).expect("no client address");
+///
 ///     let body = format!("{}", addr);
-///     let response = Response::new().with_status(StatusCode::Ok).with_body(body);
+///     let response = create_response(
+///         &state,
+///         StatusCode::Ok,
+///         Some((body.into_bytes(), mime::TEXT_PLAIN)),
+///     );
+///
 ///     (state, response)
 /// }
 /// #
