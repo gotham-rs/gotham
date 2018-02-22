@@ -1,13 +1,14 @@
 use syn;
 use quote;
 
-use helpers::ty_params;
-
 pub(crate) fn new_middleware(ast: &syn::DeriveInput) -> quote::Tokens {
-    let (name, borrowed, where_clause) = ty_params(&ast, None);
+    let name = &ast.ident;
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     quote! {
-        impl #borrowed ::gotham::middleware::NewMiddleware for #name #borrowed #where_clause {
+        impl #impl_generics ::gotham::middleware::NewMiddleware for #name #ty_generics
+            #where_clause
+        {
             type Instance = Self;
 
             fn new_middleware(&self) -> ::std::io::Result<Self> {
