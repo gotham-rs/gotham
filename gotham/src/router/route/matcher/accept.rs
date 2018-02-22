@@ -1,4 +1,4 @@
-//! Defines the type `AcceptMatcher`
+//! Defines the `AcceptMatcher`.
 
 use hyper::StatusCode;
 use hyper::header::{Accept, Headers};
@@ -9,10 +9,10 @@ use router::route::RouteMatcher;
 use state::{request_id, FromState, State};
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with an `Accept` header that
-/// includes 1 or more supported media types. No `Accept` header value or the value of `*/*` will
-/// also positvely match.
+/// includes one or more supported media types. A missing `Accept` header, or the value of `*/*`
+/// will also positvely match.
 ///
-/// Quality values within `Accept` header values are not considered by the matcher.
+/// Quality values within `Accept` header values are not considered by this matcher.
 ///
 /// # Examples
 ///
@@ -83,11 +83,12 @@ impl AcceptHeaderRouteMatcher {
 }
 
 impl RouteMatcher for AcceptHeaderRouteMatcher {
-    /// Determines if the `Request` was made using an `Accept` header that
-    /// includes 1 or more supported media types. No `Accept` header value or the value of `*/*`
-    /// will also positvely match.
+    /// Determines if the `Request` was made using an `Accept` header that includes one or more
+    /// supported media types. A missing `Accept` header, or the value of `*/*` will also positvely
+    /// match.
     ///
-    /// Quality values within `Accept` header values are not considered by the matcher.
+    /// Quality values within `Accept` header values are not considered by the matcher, as the
+    /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         // Request method is valid, ensure valid Accept header
         let headers = Headers::borrow_from(state);

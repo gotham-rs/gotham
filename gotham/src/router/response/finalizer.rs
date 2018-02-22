@@ -1,5 +1,5 @@
-//! Defines functionality for finalizing a Response after all Pipelines, Middlewares, Handlers
-//! and interal Extenders have completed.
+//! Defines functionality for finalizing a `Response` after all pipelines, middlewares, handlers
+//! and internal extenders have completed.
 
 use std::sync::Arc;
 use std::collections::HashMap;
@@ -12,21 +12,29 @@ use state::{request_id, State};
 
 use router::response::extender::ResponseExtender;
 
-/// Invokes a response finalizer if a finalizer has been associated with the status code of the
-/// response and the body of the response has not yet been populated.
+/// Holds an immutable collection of `ResponseExtender` values, as configured using
+/// `ResponseFinalizerBuilder::add`. This type is constructed automatically when using the
+/// `gotham::router::builder` API. See `RouterBuilder::add_response_extender` for details on
+/// configuring `ResponseExtender` values for each `StatusCode`.
 #[derive(Clone)]
 pub struct ResponseFinalizer {
     data: Arc<HashMap<StatusCode, Box<ResponseExtender + Send + Sync>>>,
 }
 
-/// Builds an immutable ResponseFinalizer
+/// Builds an immutable `ResponseFinalizer`.
 pub struct ResponseFinalizerBuilder {
     data: HashMap<StatusCode, Box<ResponseExtender + Send + Sync>>,
 }
 
 impl ResponseFinalizerBuilder {
     /// Creates a new ResponseFinalizer instance.
+    #[deprecated(since = "0.2.0",
+                 note = "use the new `gotham::router::builder` API to configure ResponseExtenders")]
     pub fn new() -> Self {
+        ResponseFinalizerBuilder::internal_new()
+    }
+
+    pub(in router) fn internal_new() -> Self {
         let handlers = HashMap::new();
         ResponseFinalizerBuilder { data: handlers }
     }
@@ -37,7 +45,7 @@ impl ResponseFinalizerBuilder {
         self.data.insert(status_code, extender);
     }
 
-    /// Finalize population of error handlers for the application, ready for use by a Router
+    /// Finalize population of error handlers for the application, ready for use by a `Router`
     pub fn finalize(self) -> ResponseFinalizer {
         ResponseFinalizer {
             data: Arc::new(self.data),

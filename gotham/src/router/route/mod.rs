@@ -1,8 +1,8 @@
 //! Defines types that support individual application routes.
 //!
-//! The Gotham `Router` having identified `1..n` potential `Route` instances to service a
-//! request via route `Tree` traversal will attempt to identify a matching `Route` instance and
-//! dispatch to it when it does so.
+//! The `Router` will identify one or more `Route` instances that match the path of a request, and
+//! iterate to find the first matching `Route` (indicated by `Route::is_match`). The request will
+//! be dispatched to the first `Route` which matches.
 
 pub mod matcher;
 pub mod dispatch;
@@ -22,50 +22,57 @@ use router::tree::SegmentMapping;
 use state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]
-/// Indicates how this Route behaves in relation to external `Router` instances.
+/// Indicates whether this `Route` will dispatch the request to an inner `Router` instance. To
+/// support inner `Router` instances which handle a subtree, the `Dispatcher` stores additional
+/// context information.
 pub enum Delegation {
-    /// Invokes a `Handler` that is considered 'internal' to the current `Router`+`Route` instance,
-    /// this is generally true of all application implemented handlers.
+    /// This `Route` is dispatching a request to a normal `NewHandler` / `Handler` and does not
+    /// need to store any additional context information.
     Internal,
 
-    /// Invokes an external `Router` as the `Handler` for `Requests` matched by this `Route`. This is
-    /// useful when supporting "Modular Applications". The external `Router` will not have access to
-    /// any `Request` path segments processed in order to arrive at the current `Route`.
+    /// This `Route` is dispatching a request to another `Router` which handles a subtree. The path
+    /// segments already consumed by the current `Router` will not be processed again.
     External,
 }
 
-/// A type that determines if its associated logic can be exposed by the `Router`
-/// in response to an external request. If it determines that it can the `Route` runs extractors on
-/// the `Request`, potentially extending `State` before dispatching to the `Dispatcher` assigned
-/// to this `Route`.
+/// Values of the `Route` type are used by the `Router` to conditionally dispatch a request after
+/// matching the path segments successfully. The steps taken in dispatching to a `Route` are:
 ///
-/// Capable of delegating requests to secondary `Router` instances in order to support "Modular
-/// Applications".
+/// 1. Given a list of routes that match the request path, determine the first `Route` which
+///    indicates a match via `Route::is_match`;
+/// 2. Determine whether the route's `Delegation` is `Internal` or `External`. If `External`, halt
+///    processing and dispatch to the inner `Router`;
+/// 3. Run `PathExtractor` and `QueryStringExtractor` logic to popuate `State` with the necessary
+///    request data. If either of these extractors fail, the request is halted here;
+/// 4. Dispatch the request via `Route::dispatch`.
+///
+/// `Route` exists as a trait to allow abstraction over the generic types in `RouteImpl`. This
+/// trait should not be implemented outside of Gotham.
 pub trait Route: RefUnwindSafe {
-    /// Determines if this `Route` can be invoked, based on the `Request`.
+    /// Determines if this `Route` should be invoked, based on the request data in `State.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;
 
     /// Determines if this `Route` intends to delegate requests to a secondary `Router` instance.
     fn delegation(&self) -> Delegation;
 
-    /// Extracts the `Request` path and stores it in `State`
+    /// Extracts dynamic components of the `Request` path and stores the `PathExtractor` in `State`.
     fn extract_request_path(
         &self,
         state: &mut State,
         segment_mapping: SegmentMapping,
     ) -> Result<(), ExtractorFailed>;
 
-    /// Extends the `Response` object when path extraction fails
+    /// Extends the `Response` object when the `PathExtractor` fails.
     fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response);
 
-    /// Extracts the `Request` query string and stores it in `State`
+    /// Extracts the query string parameters and stores the `QueryStringExtractor` in `State`.
     fn extract_query_string(&self, state: &mut State) -> Result<(), ExtractorFailed>;
 
-    /// Extends the `Response` object when query string extraction fails
+    /// Extends the `Response` object when query string extraction fails.
     fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response);
 
-    /// Final call made by the `Router` to the matched `Route` allowing
-    /// application specific logic to respond to the request.
+    /// Dispatches the request to this `Route`, which will execute the pipelines and the handler
+    /// assigned to the `Route.
     fn dispatch(&self, state: State) -> Box<HandlerFuture>;
 }
 
@@ -73,95 +80,8 @@ pub trait Route: RefUnwindSafe {
 /// signals that the extractor has failed and the request should not proceed.
 pub struct ExtractorFailed;
 
-/// Default implementation for `Route`.
-///
-/// # Examples
-///
-/// ## Standard `Route` which calls application code
-///
-/// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// #
-/// # use hyper::{Response, Method, StatusCode};
-/// #
-/// # use gotham::http::response::create_response;
-/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-/// # use gotham::pipeline::set::*;
-/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::route::dispatch::DispatcherImpl;
-/// # use gotham::state::State;
-/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// #
-/// # fn main() {
-///   fn handler(state: State) -> (State, Response) {
-///     let res = create_response(&state, StatusCode::Ok, None);
-///     (state, res)
-///   }
-///
-///   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-///   let methods = vec![Method::Get];
-///   let matcher = MethodOnlyRouteMatcher::new(methods);
-///   let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-///   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///   RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-/// # }
-/// ```
-///
-/// ## A `Route` which delegates remaining `Request` details to a secondary `Router` instance
-///
-/// ```rust
-/// # #![allow(deprecated)] // TODO: Refactor this.
-/// #
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// #
-/// # use hyper::{Response, StatusCode, Method};
-/// #
-/// # use gotham::http::response::create_response;
-/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-/// # use gotham::pipeline::set::*;
-/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::route::dispatch::DispatcherImpl;
-/// # use gotham::state::State;
-/// # use gotham::router::Router;
-/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-/// #
-/// # fn main() {
-///   fn handler(state: State) -> (State, Response) {
-///     let res = create_response(&state, StatusCode::Ok, None);
-///     (state, res)
-///   }
-///
-///   let secondary_router = {
-///        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-///        let mut tree_builder = TreeBuilder::new();
-///
-///        let route = {
-///            let methods = vec![Method::Get];
-///            let matcher = MethodOnlyRouteMatcher::new(methods);
-///            let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-///            let extractors: Extractors<NoopPathExtractor,
-///                                       NoopQueryStringExtractor> = Extractors::new();
-///            let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-///            Box::new(route)
-///        };
-///        tree_builder.add_route(route);
-///
-///        let tree = tree_builder.finalize();
-///        Router::new(tree, ResponseFinalizerBuilder::new().finalize())
-///   };
-///
-///   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-///   let methods = vec![Method::Get];
-///   let matcher = MethodOnlyRouteMatcher::new(methods);
-///   let dispatcher = Box::new(DispatcherImpl::new(secondary_router, (), pipeline_set));
-///   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///   RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
-/// # }
-/// ```
+/// Concrete type for a route in a Gotham web application. Values of this type are created by the
+/// `gotham::router::builder` API and held internally in the `Router` for dispatching requests.
 pub struct RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
@@ -175,7 +95,7 @@ where
 }
 
 /// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
-/// for use by custom `Middleware` and `Handler` implementations.
+/// for use by `Middleware` and `Handler` implementations.
 pub struct Extractors<PE, QSE>
 where
     PE: PathExtractor,
@@ -191,7 +111,7 @@ where
     PE: PathExtractor,
     QSE: QueryStringExtractor,
 {
-    /// Creates a new `RouteImpl`
+    /// Creates a new `RouteImpl` from the provided components.
     pub fn new(
         matcher: RM,
         dispatcher: Box<Dispatcher + Send + Sync>,
@@ -279,5 +199,84 @@ where
 
     fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response) {
         QSE::extend(state, res)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use std::str::FromStr;
+    use futures::Async;
+    use hyper::{Headers, Method, StatusCode, Uri};
+
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use http::request::path::RequestPathSegments;
+    use http::response::create_response;
+    use pipeline::set::*;
+    use router::builder::*;
+    use router::route::dispatch::DispatcherImpl;
+    use router::route::matcher::MethodOnlyRouteMatcher;
+    use state::set_request_id;
+
+    #[test]
+    fn internal_route_tests() {
+        fn handler(state: State) -> (State, Response) {
+            let res = create_response(&state, StatusCode::Accepted, None);
+            (state, res)
+        }
+
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let methods = vec![Method::Get];
+        let matcher = MethodOnlyRouteMatcher::new(methods);
+        let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
+        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+        let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
+
+        let mut state = State::new();
+        state.put(Headers::new());
+        set_request_id(&mut state);
+
+        match route.dispatch(state).poll() {
+            Ok(Async::Ready((_state, response))) => {
+                assert_eq!(response.status(), StatusCode::Accepted)
+            }
+            Ok(Async::NotReady) => panic!("expected future to be completed already"),
+            Err((_state, e)) => panic!("error polling future: {}", e),
+        }
+    }
+
+    #[test]
+    fn external_route_tests() {
+        fn handler(state: State) -> (State, Response) {
+            let res = create_response(&state, StatusCode::Accepted, None);
+            (state, res)
+        }
+
+        let secondary_router = build_simple_router(|route| {
+            route.get("/").to(handler);
+        });
+
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let methods = vec![Method::Get];
+        let matcher = MethodOnlyRouteMatcher::new(methods);
+        let dispatcher = Box::new(DispatcherImpl::new(secondary_router, (), pipeline_set));
+        let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
+        let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
+
+        let mut state = State::new();
+        state.put(Method::Get);
+        state.put(Uri::from_str("https://example.com/").unwrap());
+        state.put(Headers::new());
+        state.put(RequestPathSegments::new("/"));
+        set_request_id(&mut state);
+
+        match route.dispatch(state).poll() {
+            Ok(Async::Ready((_state, response))) => {
+                assert_eq!(response.status(), StatusCode::Accepted)
+            }
+            Ok(Async::NotReady) => panic!("expected future to be completed already"),
+            Err((_state, e)) => panic!("error polling future: {}", e),
+        }
     }
 }

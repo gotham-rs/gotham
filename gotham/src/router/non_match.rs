@@ -5,9 +5,9 @@ use std::collections::HashSet;
 use hyper::{Method, StatusCode};
 
 /// The error type used for a non-matching route, as returned by `RouteMatcher::is_match`. Multiple
-/// values of this type can be aggregated with the `intersection` / `union` methods to be returned.
-/// The data within is used by the `Router` to create a `Response` when no routes were successfully
-/// matched.
+/// values of this type can be combined by matchers that are wrapping other matchers, using the
+/// `intersection` / `union` methods.  The data within is used by the `Router` to create a
+/// `Response` when no routes were successfully matched.
 ///
 /// ```rust
 /// # extern crate gotham;
@@ -24,17 +24,19 @@ use hyper::{Method, StatusCode};
 ///     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
 ///         match state.borrow::<Method>() {
 ///             &Method::Get => Ok(()),
-///             _ => Err(RouteNonMatch::new(StatusCode::MethodNotAllowed)
-///                 .with_allow_list(&[Method::Get])),
+///             _ => Err(
+///                 RouteNonMatch::new(StatusCode::MethodNotAllowed)
+///                     .with_allow_list(&[Method::Get]),
+///             ),
 ///         }
 ///     }
 /// }
 /// #
 /// # fn main() {
-/// #   State::with_new(|state| {
-/// #       state.put(Method::Post);
-/// #       assert!(MyRouteMatcher.is_match(&state).is_err());
-/// #   });
+/// #     State::with_new(|state| {
+/// #         state.put(Method::Post);
+/// #         assert!(MyRouteMatcher.is_match(&state).is_err());
+/// #     });
 /// # }
 /// ```
 pub struct RouteNonMatch {
@@ -65,9 +67,9 @@ impl RouteNonMatch {
     /// intended for use in cases where two `RouteMatcher` instances with a logical **AND**
     /// connection have both indicated a non-match, and their results need to be aggregated.
     ///
-    /// This is typically for Gotham internal use, but may be useful for implementors of advanced
-    /// `RouteMatcher` logic which wraps other `RouteMatcher` instances. See the
-    /// `gotham::router::route::matcher::AndRouteMatcher` implementation for an example.
+    /// This is typically for Gotham internal use, but may be useful for implementors of matchers
+    /// which wrap other `RouteMatcher` instances. See the `AndRouteMatcher` implementation (in
+    /// `gotham::router::route::matcher::and`) for an example.
     pub fn intersection(self, other: RouteNonMatch) -> RouteNonMatch {
         let status = higher_precedence_status(self.status, other.status);
         let allow = self.allow.intersection(other.allow);
@@ -78,9 +80,9 @@ impl RouteNonMatch {
     /// for use in cases where two `RouteMatcher` instances with a logical **OR** connection have
     /// both indicated a non-match, and their results need to be aggregated.
     ///
-    /// This is typically for Gotham internal use, but may be useful for implementors of advanced
-    /// `RouteMatcher` logic which wraps other `RouteMatcher` instances. See the
-    /// `gotham::router::tree::Node::select_route` implementation for an example.
+    /// This is typically for Gotham internal use, but may be useful for implementors of matchers
+    /// which wrap other `RouteMatcher` instances. See the `Node::select_route` implementation (in
+    /// `gotham::router::tree`) for an example.
     pub fn union(self, other: RouteNonMatch) -> RouteNonMatch {
         let status = higher_precedence_status(self.status, other.status);
         let allow = self.allow.union(other.allow);

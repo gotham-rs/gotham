@@ -35,40 +35,18 @@ impl RouterData {
     }
 }
 
-/// Responsible for dispatching `Requests` to a linked `Route` and
-/// dispatching error states when a valid `Route` is unable to be determined or internal error
-/// states occur.
+/// Responsible for dispatching HTTP requests to defined routes, and responding with appropriate
+/// error codes when a valid `Route` is unable to be determined or the dispatch cannot be
+/// performed.
 ///
-/// The `Router` is capable of delegating `Requests` to secondary `Router` instances which allows it
-/// to support "Modular Applications". A modular application contains multiple
-/// applications within a single binary but have clear boundaries between them, via Rust module
-/// seperation. Modular applications live within a single repository. Modular applications
-/// are roughly a halfway point between monolithic application design and
-/// microservice application design. Modular Applications may share modules that are not
-/// specifically asigned to any one application e.g. Authentication/Authorization/Identity.
+/// A `Router` is constructed through the [`gotham::router::builder`](builder/index.html#functions)
+/// API, and used with the `gotham::start` function when booting a Gotham web application.
 ///
-/// Please see the documentation for `Route` in order to create routes that delegate to secondary
-/// `Routers`.
-///
-/// # Examples
-///
-/// ```
-/// # #![allow(deprecated)] // TODO: Refactor this.
-/// #
-/// # extern crate gotham;
-/// #
-/// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::Router;
-/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-/// #
-/// # fn main() {
-///   let tree_builder = TreeBuilder::new();
-///   let tree = tree_builder.finalize();
-///   let response_finalizer = ResponseFinalizerBuilder::new().finalize();
-///
-///   Router::new(tree, response_finalizer);
-/// # }
-/// ```
+/// The `Router` is capable of delegating requests to secondary `Router` instances, which allows
+/// the support of "modular applications". A modular application contains multiple applications
+/// within a single binary that have clear boundaries established via Rust module separation.
+/// Please see the documentation for `DrawRoutes::delegate` within `gotham::router::builder` in
+/// order to delegate to other `Router` instances.
 #[derive(Clone)]
 pub struct Router {
     data: Arc<RouterData>,
@@ -138,7 +116,7 @@ impl Handler for Router {
 }
 
 impl Router {
-    /// Creates a `Router` instance.
+    /// Manually assembles a `Router` instance from a provided `Tree`.
     #[deprecated(since = "0.2.0",
                  note = "use the new `gotham::router::builder` API to construct a Router")]
     pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
