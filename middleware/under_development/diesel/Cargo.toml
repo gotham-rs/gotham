@@ -17,14 +17,14 @@ sqlite = ["diesel/sqlite"]
 mysql = ["diesel/mysql"]
 
 [dependencies]
-log = "0.3.0"
-futures = "0.1.0"
+log = "0.4"
+futures = "0.1"
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-diesel = "1.0.0"
-r2d2 = "0.8.2"
-r2d2-diesel = "1.0.0"
+diesel = "1"
+r2d2 = "0.8"
+r2d2-diesel = "1"
 
 [dev-dependencies]
-diesel = { version = "1.0.0", features = ["sqlite"] }
+diesel = { version = "1", features = ["sqlite"] }

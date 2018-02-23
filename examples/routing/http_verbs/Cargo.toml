@@ -9,5 +9,5 @@ gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
 hyper = "0.11"
-futures = "~0.1.11"
+futures = "0.1"
 mime = "0.3"
