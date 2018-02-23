@@ -1,5 +1,5 @@
 [package]
-name = "basic_request_components"
+name = "gotham_examples_handlers_request_data"
 version = "0.0.0"
 authors = ["Nicolas Pochet <npochet@gmail.com>"]
 description = "A basic application showing the request components available"
