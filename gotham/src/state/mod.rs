@@ -16,9 +16,8 @@ pub use state::client_addr::client_addr;
 pub(crate) use state::request_id::set_request_id;
 
 /// Provides storage for request state, and stores one item of each type. The types used for
-/// storage must implement the `gotham::state::StateData` trait to allow its storage.
-///
-/// Gotham provides `StateData` to ease this implementation via `derive`.
+/// storage must implement the `gotham::state::StateData` trait to allow its storage. The
+/// `gotham_derive` crate provides a custom derive for `StateData` to make this more convenient.
 ///
 /// # Examples
 ///
@@ -48,16 +47,18 @@ pub struct State {
 }
 
 impl State {
-    /// Creates a new, empty `State`
+    /// Creates a new, empty `State` container. This is for internal Gotham use, because the
+    /// ability to create a new `State` container would allow for libraries and applications to
+    /// incorrectly discard important internal data.
     pub(crate) fn new() -> State {
         State {
             data: HashMap::new(),
         }
     }
 
-    /// Creates a new, empty `State` and yields it into the provided closure. This is intended only
-    /// for use in the documentation tests for `State`, since the `State` container cannot be
-    /// constructed otherwise.
+    /// Creates a new, empty `State` and yields it mutably into the provided closure. This is
+    /// intended only for use in the documentation tests for `State`, since the `State` container
+    /// cannot be constructed otherwise.
     #[doc(hidden)]
     pub fn with_new<F>(f: F)
     where
@@ -197,7 +198,7 @@ impl State {
     ///
     /// # Panics
     ///
-    /// If `T` is not present in `State`.
+    /// If a value of type `T` is not present in `State`.
     ///
     /// # Examples
     ///
@@ -279,7 +280,7 @@ impl State {
     ///
     /// # Panics
     ///
-    /// If `T` is not present in `State`.
+    /// If a value of type `T` is not present in `State`.
     ///
     /// # Examples
     ///
@@ -377,7 +378,7 @@ impl State {
     ///
     /// # Panics
     ///
-    /// If `T` is not present in `State`.
+    /// If a value of type `T` is not present in `State`.
     ///
     /// # Examples
     ///

@@ -1,4 +1,4 @@
-//! Defines a unique id per `Request` that should be output with all logging
+//! Defines a unique id per `Request` that should be output with all logging.
 
 use hyper::header::Headers;
 use uuid::Uuid;
@@ -6,20 +6,20 @@ use uuid::Uuid;
 use http::header::XRequestId;
 use state::{FromState, State};
 
-/// Holds details about the current Request that are useful for enhancing logging.
+/// A container type for the value returned by `request_id`.
 pub(super) struct RequestId {
     val: String,
 }
 
 /// Sets a unique identifier for the request if it has not already been stored.
 ///
-/// The unique identifier chosen depends on the the request environment:
+/// The unique identifier chosen depends on the the request headers:
 ///
-/// 1. If the header X-Request-ID is provided this value is used as is;
+/// 1. If the header `X-Request-ID` is provided this value is used as-is;
 /// 2. Alternatively creates and stores a UUID v4 value.
 ///
-/// This method MUST be invoked by Gotham, before handing control to
-/// pipelines or Handlers to ensure that a value for `RequestId` is always available.
+/// This function is invoked by `GothamService` before handing control to its `Router`, to ensure
+/// that a value for `RequestId` is always available.
 pub(crate) fn set_request_id<'a>(state: &'a mut State) -> &'a str {
     if !state.has::<RequestId>() {
         let request_id = match Headers::borrow_from(state).get::<XRequestId>() {
@@ -44,14 +44,14 @@ pub(crate) fn set_request_id<'a>(state: &'a mut State) -> &'a str {
     request_id(state)
 }
 
-/// Returns the unique Id associated with the current request.
+/// Returns the request ID associated with the current request.
 ///
-/// This is very useful for logging/correlating events across distributed systems.
+/// This is typically used for logging and correlating events that occurred within a request.
 ///
 /// # Panics
 ///
-/// Will panic if the Gotham `Router` has not already populated `State` with a value for `RequestId`
-/// prior to handling control to middleware pipelines and application handlers.
+/// Will panic if `State` does not contain a request ID, which is an invalid state. The request ID
+/// should always be populated by Gotham before a `Router` is invoked.
 pub fn request_id(state: &State) -> &str {
     match RequestId::try_borrow_from(state) {
         Some(request_id) => &request_id.val,
