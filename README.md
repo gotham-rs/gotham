@@ -4,23 +4,24 @@
 
 A flexible web framework that promotes **stability, safety, security and speed**.
 
-[![Join the chat at https://gitter.im/gotham-rs/gotham](https://badges.gitter.im/gotham-rs/gotham.svg)](https://gitter.im/gotham-rs/gotham?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 
+[![Join the chat at https://gitter.im/gotham-rs/gotham](https://badges.gitter.im/gotham-rs/gotham.svg)](https://gitter.im/gotham-rs/gotham?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Linux build status](https://travis-ci.org/gotham-rs/gotham.svg?branch=master)](https://travis-ci.org/gotham-rs/gotham)
+[![Dependency status](https://deps.rs/repo/github/gotham-rs/gotham/status.svg)](https://deps.rs/repo/github/gotham-rs/gotham)
 
 ## Features
 
 1.  Stability focused. All releases target **stable**
-    [Rust](https://www.rust-lang.org/en-US/). This will never 
-    change. To ensure future compatibility, we also run automated builds against 
+    [Rust](https://www.rust-lang.org/en-US/). This will never
+    change. To ensure future compatibility, we also run automated builds against
     Rust beta and nightly releases.
 1.  Statically typed. The Gotham web framework is statically typed ensuring your
     application is **correctly expressed** at compile time.
-1.  Async everything. By leveraging the [Tokio project](https://tokio.rs), all 
-    Gotham web framework types are async out of the box.  Our async story is 
-    further enhanced by [Hyper](https://hyper.rs), a fast server that provides 
-    an elegant layer over 
+1.  Async everything. By leveraging the [Tokio project](https://tokio.rs), all
+    Gotham web framework types are async out of the box.  Our async story is
+    further enhanced by [Hyper](https://hyper.rs), a fast server that provides
+    an elegant layer over
     [stringly typed HTTP](http://wiki.c2.com/?StringlyTyped).
-1.  Blazingly fast. Measure completed requests, including the 99th percentile, 
+1.  Blazingly fast. Measure completed requests, including the 99th percentile,
     in **µs**.
 
 ## License
@@ -50,15 +51,15 @@ framework:
 
 ## Alternatives
 
-We hope you'll find the Gotham web framework is flexible enough to meet the 
-needs of any web application you might like to build. Please 
-[have a chat with us](https://gitter.im/gotham-rs/gotham) or 
-[create an issue](https://github.com/gotham-rs/gotham/issues) if you find this 
-isn't the case, perhaps there is something the Gotham web framework can offer 
+We hope you'll find the Gotham web framework is flexible enough to meet the
+needs of any web application you might like to build. Please
+[have a chat with us](https://gitter.im/gotham-rs/gotham) or
+[create an issue](https://github.com/gotham-rs/gotham/issues) if you find this
+isn't the case, perhaps there is something the Gotham web framework can offer
 that will help you achieve your goals.
 
 We do acknowledge that sometimes the choices we've made for the Gotham web
-framework may not suit the needs of all projects. If that is the case for your 
+framework may not suit the needs of all projects. If that is the case for your
 project there are alternative Rust web frameworks you might like to consider:
 
 1. [Conduit](https://github.com/conduit-rust/conduit)
