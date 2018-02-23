@@ -32,6 +32,9 @@ members = [
     # into_response
     "examples/into_response/introduction",
 
+    # handlers
+    "examples/handlers/request_data",
+
     # example_contribution_template
     "examples/example_contribution_template/name"
 ]
