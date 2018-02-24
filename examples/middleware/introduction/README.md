@@ -10,7 +10,7 @@ From the `examples/middleware/introduction` directory:
 ```
 Terminal 1:
   $ cargo run
-     Compiling gotham_examples_functionality_name v0.0.0 (file://.../gotham/examples/middleware/introduction)
+     Compiling gotham_examples_middleware_introduction v0.0.0 (file://.../gotham/examples/middleware/introduction)
       Finished dev [unoptimized + debuginfo] target(s) in 2.56 secs
        Running `.../gotham/target/debug/gotham_examples_middleware_introduction`
   Listening for requests at http://127.0.0.1:7878
@@ -31,7 +31,7 @@ Terminal 2:
 	< X-Frame-Options: DENY
 	< X-XSS-Protection: 1; mode=block
 	< X-Content-Type-Options: nosniff
-	< X-Stock-Remaining: 99
+  < X-User-Agent: Supplied: curl/7.54.1, Supported: true
 	< X-Runtime-Microseconds: 147
 	< Date: Mon, 19 Feb 2018 10:29:41 GMT
 	<
@@ -49,5 +49,5 @@ Licensed under your option of:
 
 The following policies guide participation in our project and our community:
 
-* [Conduct](../../CONDUCT.md)
+* [Conduct](../../CODE_OF_CONDUCT.md)
 * [Contributing](../../CONTRIBUTING.md)

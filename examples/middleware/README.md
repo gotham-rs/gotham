@@ -10,10 +10,11 @@ such as authentication and access control.
 
 ## Ordering
 
-We recommend reviewing our middleware and pipline examples in the order shown 
+We recommend reviewing our middleware and pipline examples in the order shown
 below:
 
 1. [Introduction](introduction) - Introduces the `Middleware` and `Pipeline` concepts.
+1. [Request Data](../handlers/request_data) - Accessing common request information.
 
 ## Help
 
