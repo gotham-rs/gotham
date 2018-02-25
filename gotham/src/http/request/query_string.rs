@@ -21,7 +21,7 @@ pub(crate) fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
             let mut query_string_mapping = QueryStringMapping::new();
 
             for p in pairs {
-                let mut sp = p.split("=");
+                let mut sp = p.splitn(2, '=');
                 let (k, v) = (sp.next().unwrap(), sp.next().unwrap());
                 match form_url_decode(k) {
                     Ok(k) => {
@@ -79,5 +79,8 @@ mod tests {
             to_pairs(&qsm),
             vec![("a", vec!["b"]), ("c", vec!["d"]), ("e", vec!["f"])],
         );
+
+        let qsm = split(Some("a=b=c&d=e"));
+        assert_eq!(to_pairs(&qsm), vec![("a", vec!["b=c"]), ("d", vec!["e"])],);
     }
 }
