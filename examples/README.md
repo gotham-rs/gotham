@@ -28,7 +28,7 @@ We recommend reading the examples in the order shown below to allow them to
 build upon one another. Each group provides it's own README with further
 information on functionality and ordering.
 
-| Functionality | Description | Count^
+| Functionality | Description | Count^ |
 | --- | --- | ---:|
 | [Hello World](hello_world) | The famous Hello World example application. | 1 |
 | [Routing](routing) | Dispatching `Requests` to functionality provided by your application. | 4 |
@@ -37,10 +37,10 @@ information on functionality and ordering.
 | [Cookies](cookies) | Working with Cookies. | 0 |
 | [Headers](headers) | Working with HTTP Headers. | 1 |
 | [Handlers](handlers) | Developing application logic that responds to web requests. | 0 |
-| [Middleware](middleware) | Developing custom middleware for your application. | 0 |
+| [Middleware](middleware) | Developing custom middleware for your application. | 1 |
 | [Into Response](into_response) | Implementing the Gotham web framework's `IntoResponse` trait. | 1 |
 
-^ Gotham web framework examples are under active development. 
+^ Gotham web framework examples are under active development.
 
 ## Contributing
 

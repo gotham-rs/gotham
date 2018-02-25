@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn well_named_test() {
-        let test_server = TestServer::new(|| Ok(well_named_function)).unwrap();
+        let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
             .get("http://localhost")

@@ -29,6 +29,9 @@ members = [
     # headers
     "examples/headers/setting",
 
+    # middleware
+    "examples/middleware/introduction",
+
     # into_response
     "examples/into_response/introduction",
 

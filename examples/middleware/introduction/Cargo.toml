@@ -1,0 +1,13 @@
+[package]
+name = "gotham_examples_middleware_introduction"
+description = "Introduces the Middleware and Pipeline concepts provided by the Gotham web framework"
+version = "0.0.0"
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
+
+hyper = "0.11"
+futures = "~0.1.11"
+mime = "0.3"
