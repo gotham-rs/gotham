@@ -16,12 +16,12 @@ pub(crate) type QueryStringMapping = HashMap<String, Vec<FormUrlDecoded>>;
 pub(crate) fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
     match query {
         Some(query) => {
-            let pairs = query.split("&").filter(|pair| pair.contains("="));
+            let pairs = query.split(is_separator).filter(|pair| pair.contains("="));
 
             let mut query_string_mapping = QueryStringMapping::new();
 
             for p in pairs {
-                let mut sp = p.split("=");
+                let mut sp = p.splitn(2, '=');
                 let (k, v) = (sp.next().unwrap(), sp.next().unwrap());
                 match form_url_decode(k) {
                     Ok(k) => {
@@ -39,6 +39,10 @@ pub(crate) fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
         }
         None => QueryStringMapping::new(),
     }
+}
+
+fn is_separator(c: char) -> bool {
+    c == '&' || c == ';'
 }
 
 #[cfg(test)]
@@ -69,5 +73,14 @@ mod tests {
 
         let qsm = split(Some("a&b"));
         assert_eq!(to_pairs(&qsm), vec![],);
+
+        let qsm = split(Some("a=b;c=d&e=f"));
+        assert_eq!(
+            to_pairs(&qsm),
+            vec![("a", vec!["b"]), ("c", vec!["d"]), ("e", vec!["f"])],
+        );
+
+        let qsm = split(Some("a=b=c&d=e"));
+        assert_eq!(to_pairs(&qsm), vec![("a", vec!["b=c"]), ("d", vec!["e"])],);
     }
 }
