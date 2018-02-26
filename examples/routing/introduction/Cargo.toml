@@ -9,3 +9,4 @@ gotham = { path = "../../../gotham" }
 
 hyper = "0.11"
 mime = "0.3"
+env_logger = "*"
