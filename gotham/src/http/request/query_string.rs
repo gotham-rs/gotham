@@ -71,6 +71,12 @@ mod tests {
             vec![("a", vec!["b"]), ("c", vec!["d"]), ("e", vec!["f"])],
         );
 
+        let qsm = split(Some("a=b&a=d&e=f"));
+        assert_eq!(
+            to_pairs(&qsm),
+            vec![("a", vec!["b", "d"]), ("e", vec!["f"])],
+        );
+
         let qsm = split(Some("a&b"));
         assert_eq!(to_pairs(&qsm), vec![],);
 
