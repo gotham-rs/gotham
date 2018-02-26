@@ -51,6 +51,8 @@ where
     E: Error + 'static,
 {
     fn into_handler_error(self) -> HandlerError {
+        trace!(" converting Error to HandlerError: {}", self);
+
         HandlerError {
             status_code: StatusCode::InternalServerError,
             cause: Box::new(self),
@@ -127,13 +129,14 @@ impl HandlerError {
 
 impl IntoResponse for HandlerError {
     fn into_response(self, state: &State) -> Response {
-        trace!(
-            "[{}] HandlerError generating HTTP response with status: {} {}",
+        debug!(
+            "[{}] HandlerError generating {} {} response: {}",
             request_id(state),
             self.status_code.as_u16(),
             self.status_code
                 .canonical_reason()
-                .unwrap_or("(unregistered)",)
+                .unwrap_or("(unregistered)",),
+            self.cause().map(|e| e.description()).unwrap_or("(none)"),
         );
 
         create_response(state, self.status_code, None)
