@@ -6,7 +6,6 @@ authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
 description = "Macros 1.1 implementations for Gotham traits"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/gotham-rs/gotham"
-readme = "README.md"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "gotham"]
 
