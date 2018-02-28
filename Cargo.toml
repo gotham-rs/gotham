@@ -41,3 +41,8 @@ members = [
     # example_contribution_template
     "examples/example_contribution_template/name"
 ]
+
+[patch.crates-io]
+gotham = { path = "gotham" }
+gotham_derive = { path = "gotham_derive" }
+borrow-bag = { path = "misc/borrow_bag" }
