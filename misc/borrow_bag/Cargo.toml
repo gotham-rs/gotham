@@ -1,6 +1,6 @@
 [package]
 name = "borrow-bag"
-version = "0.4.0"
+version = "1.0.0"
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
            "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 description = "A type-safe, heterogeneous collection with zero-cost add and borrow"
