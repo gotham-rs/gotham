@@ -21,12 +21,6 @@ pub use append::Append;
 pub use lookup::Lookup;
 pub use handle::Handle;
 
-/// Creates a new, empty `BorrowBag`.
-#[deprecated(since = "0.4.0", note = "use `BorrowBag::new()`")]
-pub fn new_borrow_bag() -> BorrowBag<()> {
-    BorrowBag::new()
-}
-
 /// `BorrowBag` allows the storage of any value using `add(T)`, and returns a `Handle` which can be
 /// used to borrow the value back later. As the `BorrowBag` is add-only, `Handle` values remain
 /// valid for the lifetime of the `BorrowBag`.
