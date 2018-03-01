@@ -1,5 +1,5 @@
 [package]
-name = "gotham_examples_cookies_introduction"
+name = "gotham_examples_session_introduction"
 description = "An introduction to storing and retrieving session data, in a type safe way, with the Gotham web framework."
 version = "0.0.0"
 authors = ["Daniel Wagner-Hall <dawagner@gmail.com>"]

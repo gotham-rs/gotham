@@ -1,5 +1,5 @@
 [package]
-name = "gotham_examples_cookies_custom_data_type"
+name = "gotham_examples_session_custom_data_type"
 description = "An introduction to storing and retrieving session data with a custom data type, in a type safe way, with the Gotham web framework."
 version = "0.0.0"
 authors = ["Daniel Wagner-Hall <dawagner@gmail.com>"]

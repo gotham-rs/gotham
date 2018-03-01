@@ -1,17 +1,17 @@
-# Cookies introduction
+# Sessions introduction
 
-An introduction to storing and retrieving session data with a custom data type, in a type safe way, with the Gotham web framework.
+An introduction to storing and retrieving session data, in a type safe way, with the Gotham web framework.
 
 ## Running
 
-From the `examples/cookies/custom_data_type` directory:
+From the `examples/session/introduction` directory:
 
 ```
 Terminal 1:
   $ cargo run                                                                                                                                                                                                                     130 ↵
-     Compiling gotham_examples_cookies_custom_data_type v0.0.0 (file://.../gotham/examples/cookies/custom_data_type)
+     Compiling gotham_examples_session_introduction v0.0.0 (file://.../gotham/examples/session/introduction)
       Finished dev [unoptimized + debuginfo] target(s) in 2.49 secs
-       Running `.../gotham/target/debug/gotham_examples_cookies_custom_data_type`
+       Running `.../gotham/target/debug/gotham_examples_cookies_introduction`
   Listening for requests at http://127.0.0.1:7878
 
 Terminal 2:
@@ -30,18 +30,18 @@ Terminal 2:
   > Accept: */*
   > 
   < HTTP/1.1 200 OK
-  < Content-Length: 41
+  < Content-Length: 44
   < Content-Type: text/plain
-  < X-Request-ID: 5fdd0a88-4b23-4c68-8f6b-91d3c6a69fd4
+  < X-Request-ID: e9992f1d-9120-4473-be3e-60085098fb27
   < X-Frame-Options: DENY
   < X-XSS-Protection: 1; mode=block
   < X-Content-Type-Options: nosniff
-  * Added cookie _gotham_session="op-CELe5R-mEJ3zxhcak4eElI5EUtslBLbZ6chyUvAWzEwkvAkPUBzsHj014xHW1tWq0RG4vyXSnXDZneqfxyA" for domain localhost, path /, expire 0
-  < Set-Cookie: _gotham_session=op-CELe5R-mEJ3zxhcak4eElI5EUtslBLbZ6chyUvAWzEwkvAkPUBzsHj014xHW1tWq0RG4vyXSnXDZneqfxyA; HttpOnly; SameSite=Lax; Path=/
-  < X-Runtime-Microseconds: 1143
-  < Date: Thu, 01 Mar 2018 00:29:10 GMT
+  * Added cookie _gotham_session="rU4d0wvS1FO16jJ_pEzqrAYot6jcqrtpy8wDKEqwjuYbbgzunagwGA0h0kd6qH-cLwYlaGr3gOOxJEKmFa2pSg" for domain localhost, path /, expire 0
+  < Set-Cookie: _gotham_session=rU4d0wvS1FO16jJ_pEzqrAYot6jcqrtpy8wDKEqwjuYbbgzunagwGA0h0kd6qH-cLwYlaGr3gOOxJEKmFa2pSg; HttpOnly; SameSite=Lax; Path=/
+  < X-Runtime-Microseconds: 479
+  < Date: Wed, 28 Feb 2018 23:16:05 GMT
   < 
-  You have never visited this page before.
+  You have visited this page 0 time(s) before
   * Connection #0 to host localhost left intact
 
   $ curl -v -b /tmp/cookiejar http://localhost:7878
@@ -57,19 +57,19 @@ Terminal 2:
   > Host: localhost:7878
   > User-Agent: curl/7.54.0
   > Accept: */*
-  > Cookie: _gotham_session=op-CELe5R-mEJ3zxhcak4eElI5EUtslBLbZ6chyUvAWzEwkvAkPUBzsHj014xHW1tWq0RG4vyXSnXDZneqfxyA
+  > Cookie: _gotham_session=rU4d0wvS1FO16jJ_pEzqrAYot6jcqrtpy8wDKEqwjuYbbgzunagwGA0h0kd6qH-cLwYlaGr3gOOxJEKmFa2pSg
   > 
   < HTTP/1.1 200 OK
-  < Content-Length: 87
+  < Content-Length: 44
   < Content-Type: text/plain
-  < X-Request-ID: 0a202d40-2c89-418e-82b0-5854c0041665
+  < X-Request-ID: 788c055a-293b-49da-986f-d0afed9015fb
   < X-Frame-Options: DENY
   < X-XSS-Protection: 1; mode=block
   < X-Content-Type-Options: nosniff
-  < X-Runtime-Microseconds: 400
-  < Date: Thu, 01 Mar 2018 00:29:13 GMT
+  < X-Runtime-Microseconds: 320
+  < Date: Wed, 28 Feb 2018 23:16:38 GMT
   < 
-  You have visited this page 1 time(s) before. Your last visit was 2018-03-01T00:29:10Z.
+  You have visited this page 1 time(s) before
   * Connection #0 to host localhost left intact
 
 ```

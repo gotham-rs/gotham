@@ -1,10 +1,10 @@
-# Cookies Examples
+# Sessions Examples
 
 A collection of crates showing how to store and retrieve session data with the Gotham web framework.
 
 ## Ordering
 
-We recommend reviewing our cookies examples in the order shown below:
+We recommend reviewing our sessions examples in the order shown below:
 
 1. [Introduction](introduction) - Shows how to store and retrieve session data.
 2. [Custom data type](custom_data_type) - Shows how to store and retrieve session data with a custom data type.
