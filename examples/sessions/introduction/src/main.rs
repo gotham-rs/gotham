@@ -33,10 +33,8 @@ fn get_handler(mut state: State) -> (State, Response) {
             &state,
             StatusCode::Ok,
             Some((
-                format!(
-                    "You have visited this page {} time(s) before\n",
-                    visits
-                ).as_bytes()
+                format!("You have visited this page {} time(s) before\n", visits)
+                    .as_bytes()
                     .to_vec(),
                 mime::TEXT_PLAIN,
             )),
@@ -65,11 +63,9 @@ fn router() -> Router {
         // connections. This should not be done in real applications.
         .insecure();
     let (chain, pipelines) = single_pipeline(new_pipeline().add(middleware).build());
-    build_router(
-        chain,
-        pipelines,
-        |route| { route.get("/").to(get_handler); },
-    )
+    build_router(chain, pipelines, |route| {
+        route.get("/").to(get_handler);
+    })
 }
 
 /// Start a server and use a `Router` to dispatch requests

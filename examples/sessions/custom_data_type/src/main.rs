@@ -38,13 +38,10 @@ fn get_handler(mut state: State) -> (State, Response) {
     };
 
     let body = match &maybe_visit_data {
-        &Some(ref visit_data) => {
-            format!(
+        &Some(ref visit_data) => format!(
             "You have visited this page {} time(s) before. Your last visit was {}.\n",
-            visit_data.count,
-            visit_data.last_visit,
-        )
-        }
+            visit_data.count, visit_data.last_visit,
+        ),
         &None => "You have never visited this page before.\n".to_owned(),
     };
     let res = {
@@ -75,11 +72,9 @@ fn router() -> Router {
         // connections. This should not be done in real applications.
         .insecure();
     let (chain, pipelines) = single_pipeline(new_pipeline().add(middleware).build());
-    build_router(
-        chain,
-        pipelines,
-        |route| { route.get("/").to(get_handler); },
-    )
+    build_router(chain, pipelines, |route| {
+        route.get("/").to(get_handler);
+    })
 }
 
 /// Start a server and use a `Router` to dispatch requests
@@ -144,9 +139,8 @@ mod tests {
         let body = response.read_body().unwrap();
         let body_string = String::from_utf8(body).unwrap();
         assert!(
-            body_string.starts_with(
-                "You have visited this page 1 time(s) before. Your last visit was ",
-            ),
+            body_string
+                .starts_with("You have visited this page 1 time(s) before. Your last visit was ",),
             "Wrong body: {}",
             body_string
         );
