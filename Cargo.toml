@@ -25,6 +25,8 @@ members = [
     "examples/query_string/introduction",
 
     # cookies
+    "examples/cookies/introduction",
+    "examples/cookies/custom_data_type",
 
     # headers
     "examples/headers/setting",
