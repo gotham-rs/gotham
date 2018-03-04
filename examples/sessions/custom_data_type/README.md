@@ -1,6 +1,6 @@
-# Cookies introduction
+# Custom session data types
 
-An introduction to storing and retrieving session data with a custom data type, in a type safe way, with the Gotham web framework.
+Storing and retrieving session data with a custom data type, in a type safe way, with the Gotham web framework.
 
 ## Running
 
