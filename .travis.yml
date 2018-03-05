@@ -1,8 +1,4 @@
 language: rust
-rust:
-  - stable
-  - beta
-  - nightly
 # dependencies of kcov, used by coverage
 addons:
   apt:
@@ -18,15 +14,28 @@ env:
   - PATH=$HOME/.cargo/bin:$PATH
 before_script:
   - cargo install cargo-travis -f
-  - rustup toolchain install nightly
-  - rustup component add --toolchain nightly rustfmt-preview
-  - cargo +nightly install --force rustfmt-nightly
 script:
-  - echo "Checking Gotham codebase with rustfmt release `cargo +nightly fmt --version`."
-  - cargo +nightly fmt --all -- --write-mode=diff
   - cargo test --all --features ci
 after_success:
   - cargo coveralls
 matrix:
+  include:
+    - rust: stable
+    - rust: beta
+    - rust: nightly
+    # Run rustfmt in its own shard.
+    - rust: stable
+      env:
+        # Give a useful display name in the job list.
+        - SHARD=rustfmt
+        - PATH=$HOME/.cargo/bin/$PATH
+      before_script:
+        - rustup toolchain install nightly
+        - rustup component add --toolchain nightly rustfmt-preview
+        - cargo +nightly install --force rustfmt-nightly
+      script:
+        - echo "Checking Gotham codebase with rustfmt release `cargo +nightly fmt --version`."
+        - cargo +nightly fmt --all -- --write-mode=diff
+
   allow_failures:
     - rust: nightly
