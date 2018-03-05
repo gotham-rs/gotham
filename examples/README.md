@@ -35,6 +35,7 @@ information on functionality and ordering.
 | [Path](path) | Extracting data from the `Request` path ensuring type safety. | 1 |
 | [Query String](query_string) | Extracting data from the `Request` query string whilst ensuring type safety. | 1 |
 | [Cookies](cookies) | Working with Cookies. | 0 |
+| [Sessions](sessions) | Working with Sessions. | 2 |
 | [Headers](headers) | Working with HTTP Headers. | 1 |
 | [Handlers](handlers) | Developing application logic that responds to web requests. | 0 |
 | [Middleware](middleware) | Developing custom middleware for your application. | 1 |

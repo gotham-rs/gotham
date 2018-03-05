@@ -26,6 +26,10 @@ members = [
 
     # cookies
 
+    # sessions
+    "examples/sessions/introduction",
+    "examples/sessions/custom_data_type",
+
     # headers
     "examples/headers/setting",
 
