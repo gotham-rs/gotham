@@ -11,6 +11,7 @@ use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilde
                       SingleRouteBuilder};
 use router::tree::node::{NodeBuilder, SegmentType};
 use router::tree::regex::ConstrainedSegmentRegex;
+use router::route::matcher::RouteMatcher;
 
 /// The default type returned when building a single route. See
 /// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
@@ -22,6 +23,11 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     NoopPathExtractor,
     NoopQueryStringExtractor,
 >;
+
+/// The type returned when building an explicit route. See
+/// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
+pub type ExplicitSingleRouteBuilder<'a, M, C, P> =
+    SingleRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
 /// The type passed to the function used when building associated routes. See
 /// `AssociatedRouteBuilder` for information about the API available for associated routes.
@@ -393,10 +399,87 @@ where
         methods: Vec<Method>,
         path: &str,
     ) -> DefaultSingleRouteBuilder<'b, C, P> {
+        let matcher = MethodOnlyRouteMatcher::new(methods);
+        self.explicit_request(matcher, path)
+    }
+
+    /// Creates a single route which matches requests to the given `path` against the supplied
+    /// `RouteMatcher`.  The `path` can consist of static or dynamic segments, for example:
+    ///
+    /// * `"/hello/world"` - a static path, matching only a request for exactly `"/hello/world"`
+    /// * `"/hello/:name"` - a dynamic path, matching requests for `"/hello/any_value_here"`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # extern crate mime;
+    /// #
+    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::header::{Accept, qitem};
+    /// # use gotham::state::State;
+    /// # use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// # fn my_handler(state: State) -> (State, Response) {
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     // All we match on is the Accept header, the method is not considered.
+    ///     let matcher = AcceptHeaderRouteMatcher::new(vec![mime::APPLICATION_JSON]);
+    ///     route.explicit_request(matcher, "/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #
+    /// #   let accept_header = Accept(vec![
+    /// #     qitem(mime::APPLICATION_JSON),
+    /// #   ]);
+    /// #
+    /// #   let text_accept_header = Accept(vec![
+    /// #     qitem(mime::TEXT_PLAIN),
+    /// #   ]);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .with_header(accept_header)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .with_header(text_accept_header)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::NotAcceptable);
+    /// #
+    /// #   // No Accept type being provided is valid for the AcceptHeaderRouterMatcher
+    /// #   // Proves the method is not considered
+    /// #   let response = test_server.client()
+    /// #       .delete("https://example.com/request/path")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
+    /// ```
+    fn explicit_request<'b, M>(
+        &'b mut self,
+        matcher: M,
+        path: &str,
+    ) -> ExplicitSingleRouteBuilder<'b, M, C, P>
+    where
+        M: RouteMatcher + Send + Sync + 'static,
+    {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
-
-        let matcher = MethodOnlyRouteMatcher::new(methods);
 
         SingleRouteBuilder {
             matcher,
