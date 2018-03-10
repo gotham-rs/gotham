@@ -16,6 +16,7 @@ appropriate `Handler` to process incoming requests.
 We recommend reviewing our handler examples in the order shown below:
 
 1. [Request Data](request_data) - Accessing common request information
+1. [Simple Async Handlers](simple_async_handlers) - Async Request Handlers 101
 1. [Async Handlers](async_handlers) - More complicated async request handlers
 
 ## Help
