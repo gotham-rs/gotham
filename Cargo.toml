@@ -25,6 +25,7 @@ members = [
     "examples/query_string/introduction",
 
     # cookies
+    "examples/cookies/introduction",
 
     # sessions
     "examples/sessions/introduction",
