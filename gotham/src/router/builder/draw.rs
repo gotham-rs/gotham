@@ -5,7 +5,7 @@ use hyper::Method;
 
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::route::matcher::MethodOnlyRouteMatcher;
+use router::route::matcher::{IntoRouteMatcher, MethodOnlyRouteMatcher};
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
                       SingleRouteBuilder};
@@ -13,8 +13,10 @@ use router::tree::node::{NodeBuilder, SegmentType};
 use router::tree::regex::ConstrainedSegmentRegex;
 use router::route::matcher::RouteMatcher;
 
-/// The default type returned when building a single route. See
-/// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
+/// The type returned when building a route that only considers path and http verb(s) when
+/// determining if it matches a request.
+///
+/// See `router::builder::DefineSingleRoute` for an overview of route specification.
 pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     'a,
     MethodOnlyRouteMatcher,
@@ -24,8 +26,9 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     NoopQueryStringExtractor,
 >;
 
-/// The type returned when building an explicit route. See
-/// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
+/// The type returned when building a route with explicit matching requirements.
+///
+/// See `router::builder::DefineSingleRoute` for an overview of route specification.
 pub type ExplicitSingleRouteBuilder<'a, M, C, P> =
     SingleRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
@@ -394,24 +397,8 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    fn request<'b>(
-        &'b mut self,
-        methods: Vec<Method>,
-        path: &str,
-    ) -> DefaultSingleRouteBuilder<'b, C, P> {
-        let matcher = MethodOnlyRouteMatcher::new(methods);
-        self.explicit_request(matcher, path)
-    }
-
-    /// Creates a single route which matches requests to the given `path` against the supplied
-    /// `RouteMatcher`.  The `path` can consist of static or dynamic segments, for example:
     ///
-    /// * `"/hello/world"` - a static path, matching only a request for exactly `"/hello/world"`
-    /// * `"/hello/:name"` - a dynamic path, matching requests for `"/hello/any_value_here"`
-    ///
-    /// # Examples
-    ///
-    /// ```rust
+    /// ```
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// # extern crate mime;
@@ -432,7 +419,7 @@ where
     /// build_simple_router(|route| {
     ///     // All we match on is the Accept header, the method is not considered.
     ///     let matcher = AcceptHeaderRouteMatcher::new(vec![mime::APPLICATION_JSON]);
-    ///     route.explicit_request(matcher, "/request/path").to(my_handler);
+    ///     route.request(matcher, "/request/path").to(my_handler);
     /// })
     /// # }
     /// #
@@ -470,16 +457,18 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    fn explicit_request<'b, M>(
+    fn request<'b, IRM, M>(
         &'b mut self,
-        matcher: M,
+        matcher: IRM,
         path: &str,
     ) -> ExplicitSingleRouteBuilder<'b, M, C, P>
     where
+        IRM: IntoRouteMatcher<Output = M>,
         M: RouteMatcher + Send + Sync + 'static,
     {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
+        let matcher = matcher.into_route_matcher();
 
         SingleRouteBuilder {
             matcher,
