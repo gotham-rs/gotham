@@ -2,8 +2,8 @@ use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
-use router::builder::SingleRouteBuilder;
-use router::builder::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
+use router::builder::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor,
+                      SingleRouteBuilder};
 use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::RouteMatcher;
 use router::route::dispatch::DispatcherImpl;
@@ -304,6 +304,65 @@ pub trait DefineSingleRoute {
         NQSE: QueryStringExtractor + Send + Sync + 'static,
         Self: ReplaceQueryStringExtractor<NQSE>,
         Self::Output: DefineSingleRoute;
+
+    /// ```
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # extern crate mime;
+    /// #
+    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::header::{Accept, qitem};
+    /// # use gotham::state::State;
+    /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// # fn my_handler(state: State) -> (State, Response) {
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     // All we match on is the Accept header, the method is not considered.
+    ///     let matcher = AcceptHeaderRouteMatcher::new(vec![mime::APPLICATION_JSON]);
+    ///     route.get("/request/path")
+    ///          .add_route_matcher(matcher)
+    ///          .to(my_handler);
+    /// })
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #
+    /// #   let accept_header = Accept(vec![
+    /// #     qitem(mime::APPLICATION_JSON),
+    /// #   ]);
+    /// #
+    /// #   let text_accept_header = Accept(vec![
+    /// #     qitem(mime::TEXT_PLAIN),
+    /// #   ]);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .with_header(accept_header)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .with_header(text_accept_header)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::NotAcceptable);
+    /// # }
+    /// ```
+    fn add_route_matcher<NRM>(self, matcher: NRM) -> <Self as ExtendRouteMatcher<NRM>>::Output
+    where
+        NRM: RouteMatcher + Send + Sync + 'static,
+        Self: ExtendRouteMatcher<NRM>,
+        Self::Output: DefineSingleRoute;
 }
 
 impl<'a, M, C, P, PE, QSE> DefineSingleRoute for SingleRouteBuilder<'a, M, C, P, PE, QSE>
@@ -349,5 +408,12 @@ where
         NQSE: QueryStringExtractor + Send + Sync + 'static,
     {
         self.replace_query_string_extractor()
+    }
+
+    fn add_route_matcher<NRM>(self, matcher: NRM) -> <Self as ExtendRouteMatcher<NRM>>::Output
+    where
+        NRM: RouteMatcher + Send + Sync + 'static,
+    {
+        self.extend_route_matcher(matcher)
     }
 }

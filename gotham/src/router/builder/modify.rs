@@ -1,7 +1,7 @@
 use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
-use router::route::matcher::RouteMatcher;
+use router::route::matcher::{AndRouteMatcher, RouteMatcher};
 use pipeline::chain::PipelineHandleChain;
 use router::builder::SingleRouteBuilder;
 use router::builder::single::DefineSingleRoute;
@@ -67,5 +67,43 @@ where
 
     fn replace_query_string_extractor(self) -> Self::Output {
         self.coerce()
+    }
+}
+
+/// Describes the operation of extending a `RouteMatcher` on a route. This trait exists to remove
+/// type clutter from the documentation of `SingleRouteBuilder::add_matcher`.
+pub trait ExtendRouteMatcher<NRM>
+where
+    NRM: RouteMatcher + Send + Sync + 'static,
+{
+    /// The type returned when extending the existing `RouteMatcher` with the target type.
+    type Output: DefineSingleRoute;
+
+    #[doc(hidden)]
+    /// Combines the existing `RouteMatcher` using an `AndRouteMatcher` with the `RouteMatcher`
+    /// defined as NM
+    fn extend_route_matcher(self, matcher: NRM) -> Self::Output;
+}
+
+impl<'a, M, NRM, C, P, PE, QSE> ExtendRouteMatcher<NRM> for SingleRouteBuilder<'a, M, C, P, PE, QSE>
+where
+    M: RouteMatcher + Send + Sync + 'static,
+    NRM: RouteMatcher + Send + Sync + 'static,
+    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
+    PE: PathExtractor + Send + Sync + 'static,
+    QSE: QueryStringExtractor + Send + Sync + 'static,
+{
+    /// The type returned when extending the existing `RouteMatcher` with the target type.
+    type Output = SingleRouteBuilder<'a, AndRouteMatcher<M, NRM>, C, P, PE, QSE>;
+
+    fn extend_route_matcher(self, matcher: NRM) -> Self::Output {
+        SingleRouteBuilder {
+            matcher: AndRouteMatcher::<M, NRM>::new(self.matcher, matcher),
+            phantom: self.phantom,
+            node_builder: self.node_builder,
+            pipeline_chain: self.pipeline_chain,
+            pipelines: self.pipelines,
+        }
     }
 }

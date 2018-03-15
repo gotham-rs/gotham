@@ -2,7 +2,7 @@
 
 mod draw;
 mod single;
-mod replace;
+mod modify;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
@@ -23,7 +23,7 @@ use router::tree::node::NodeBuilder;
 
 pub use self::single::DefineSingleRoute;
 pub use self::draw::DrawRoutes;
-pub use self::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
+pub use self::modify::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor};
 
 /// The default type returned when building a single associated route. See
 /// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
