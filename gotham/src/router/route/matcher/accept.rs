@@ -1,4 +1,4 @@
-//! Defines the `AcceptMatcher`.
+//! Defines the `AcceptHeaderRouterMatcher`.
 
 use hyper::StatusCode;
 use hyper::header::{Accept, Headers};

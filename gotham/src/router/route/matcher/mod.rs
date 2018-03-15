@@ -4,6 +4,10 @@ pub mod any;
 pub mod and;
 pub mod accept;
 
+pub use self::any::AnyRouteMatcher;
+pub use self::and::AndRouteMatcher;
+pub use self::accept::AcceptHeaderRouteMatcher;
+
 use std::panic::RefUnwindSafe;
 
 use hyper::{Method, StatusCode};
