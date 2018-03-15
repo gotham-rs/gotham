@@ -71,7 +71,7 @@ where
 }
 
 /// Describes the operation of extending a `RouteMatcher` on a route. This trait exists to remove
-/// type clutter from the documentation of `SingleRouteBuilder::add_matcher`.
+/// type clutter from the documentation of `SingleRouteBuilder::add_route_matcher`.
 pub trait ExtendRouteMatcher<NRM>
 where
     NRM: RouteMatcher + Send + Sync + 'static,
