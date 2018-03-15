@@ -16,9 +16,8 @@ use state::State;
 /// #   use hyper::Method;
 /// #   use hyper::header::{Headers, Accept};
 /// #   use gotham::state::State;
-/// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
-/// #   use gotham::router::route::matcher::and::AndRouteMatcher;
-/// #   use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
+/// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher,
+///                                          AndRouteMatcher, AcceptHeaderRouteMatcher};
 /// #
 /// #   State::with_new(|state| {
 /// #

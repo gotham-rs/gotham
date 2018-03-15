@@ -14,8 +14,7 @@ use state::State;
 /// # extern crate gotham;
 /// # fn main() {
 /// #   use gotham::state::State;
-/// #   use gotham::router::route::matcher::RouteMatcher;
-/// #   use gotham::router::route::matcher::any::AnyRouteMatcher;
+/// #   use gotham::router::route::matcher::{AnyRouteMatcher, RouteMatcher};
 /// #
 /// #   State::with_new(|state| {
 /// #
