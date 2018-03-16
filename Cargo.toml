@@ -42,6 +42,7 @@ members = [
 
     # handlers
     "examples/handlers/request_data",
+    "examples/handlers/simple_async_handlers",
     "examples/handlers/async_handlers",
 
     # example_contribution_template
