@@ -5,13 +5,12 @@ use hyper::Method;
 
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::route::matcher::{IntoRouteMatcher, MethodOnlyRouteMatcher};
+use router::route::matcher::{IntoRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher};
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
                       SingleRouteBuilder};
 use router::tree::node::{NodeBuilder, SegmentType};
 use router::tree::regex::ConstrainedSegmentRegex;
-use router::route::matcher::RouteMatcher;
 
 /// The type returned when building a route that only considers path and http verb(s) when
 /// determining if it matches a request.
@@ -406,7 +405,7 @@ where
     /// # use hyper::{Response, StatusCode};
     /// # use hyper::header::{Accept, qitem};
     /// # use gotham::state::State;
-    /// # use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
+    /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
