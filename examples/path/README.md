@@ -9,6 +9,7 @@ We recommend reviewing our request path examples in the order shown below:
 
 1. [Introduction](introduction) - Introduces having the Gotham web framework Router extract request
                                   path segments, in a type safe way, for use in your application.
+2. [Glob matching](globs) - Shows how to match arbitrarily many path segments.
 
 ## Help
 
