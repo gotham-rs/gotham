@@ -1,7 +1,8 @@
 //! Helpers for HTTP response generation
 
+use std::borrow::Cow;
 use hyper::{Method, Response, StatusCode};
-use hyper::header::{ContentLength, ContentType};
+use hyper::header::{ContentLength, ContentType, Location};
 use mime::Mime;
 
 use state::{request_id, FromState, State};
@@ -66,6 +67,82 @@ type Body = (Vec<u8>, Mime);
 pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) -> Response {
     let mut res = Response::new();
     extend_response(state, &mut res, status, body);
+    res
+}
+
+
+/// Produces a simple empty `Response` with a `Location` header.
+///
+/// This function is intended as a convenience. For more elaborate redirection
+/// needs, consider constructing a response from scratch.
+///
+/// # Examples
+///
+/// For the basic case where you simply want to forward a request to a
+/// different URI, `create_simple_rectirect()` may be all you need.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use hyper::{Response, StatusCode};
+/// # use gotham::state::State;
+/// # use gotham::http::response::create_simple_redirect;
+/// # use gotham::test::TestServer;
+/// # use hyper::header::Location;
+/// fn handler(state: State) -> (State, Response) {
+///     // permanent=true for a 301 (permanent) redirect
+///     // set to false for a 302 (temporary)
+///     let resp = create_simple_redirect(&state, true, "/over-there");
+///
+///     (state, resp)
+/// }
+/// # fn handler2(state: State) -> (State, Response) {
+/// #     let resp = create_simple_redirect(&state, false, "/detour");
+/// #
+/// #     (state, resp)
+/// # }
+/// # fn main() {
+/// #     {
+/// #         let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// #         let response = test_server
+/// #             .client()
+/// #             .get("http://example.com/")
+/// #             .perform()
+/// #             .unwrap();
+/// #
+/// #         assert_eq!(response.status(), StatusCode::PermanentRedirect);
+/// #         assert_eq!(
+/// #             response.headers().get::<Location>(),
+/// #             Some(&Location::new("/over-there"))
+/// #         );
+/// #     }
+/// #     {
+/// #         let test_server = TestServer::new(|| Ok(handler2)).unwrap();
+/// #         let response = test_server
+/// #             .client()
+/// #             .get("http://example.com/")
+/// #             .perform()
+/// #             .unwrap();
+/// #
+/// #         assert_eq!(response.status(), StatusCode::TemporaryRedirect);
+/// #         assert_eq!(
+/// #             response.headers().get::<Location>(),
+/// #             Some(&Location::new("/detour"))
+/// #         );
+/// #     }
+/// # }
+/// ```
+pub fn create_simple_redirect<L: Into<Cow<'static, str>>>(state: &State, permanent: bool, location: L) -> Response {
+    let status = if permanent { StatusCode::PermanentRedirect } else { StatusCode::TemporaryRedirect };
+    let mut res = Response::new().with_status(status);
+    set_headers(
+        &state,
+        &mut res,
+        None,
+        None,
+    );
+    res.headers_mut().set(Location::new(location));
     res
 }
 
