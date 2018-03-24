@@ -70,7 +70,6 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
     res
 }
 
-
 /// Produces a simple empty `Response` with a `Location` header.
 ///
 /// This function is intended as a convenience. For more elaborate redirection
@@ -133,15 +132,18 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// #     }
 /// # }
 /// ```
-pub fn create_simple_redirect<L: Into<Cow<'static, str>>>(state: &State, permanent: bool, location: L) -> Response {
-    let status = if permanent { StatusCode::PermanentRedirect } else { StatusCode::TemporaryRedirect };
+pub fn create_simple_redirect<L: Into<Cow<'static, str>>>(
+    state: &State,
+    permanent: bool,
+    location: L,
+) -> Response {
+    let status = if permanent {
+        StatusCode::PermanentRedirect
+    } else {
+        StatusCode::TemporaryRedirect
+    };
     let mut res = Response::new().with_status(status);
-    set_headers(
-        &state,
-        &mut res,
-        None,
-        None,
-    );
+    set_headers(&state, &mut res, None, None);
     res.headers_mut().set(Location::new(location));
     res
 }
