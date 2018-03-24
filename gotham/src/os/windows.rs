@@ -45,9 +45,8 @@ impl Stream for SocketQueue {
 ///
 /// An additional thread is used on Windows to accept connections.
 pub fn start_with_num_threads<NH, A>(addr: A, threads: usize, new_handler: NH)
-where
-    NH: NewHandler + 'static,
-    A: ToSocketAddrs,
+    where NH: NewHandler + 'static,
+          A: ToSocketAddrs
 {
     let (listener, addr) = ::tcp_listener(addr);
 
@@ -87,43 +86,47 @@ fn listen(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
 
     let mut n: usize = 0;
 
-    core.run(listener.incoming().for_each(|conn| {
-        queue.queue.push(conn);
-        let tasks = queue
-            .notify
-            .lock()
-            .expect("mutex poisoned, futures::task::Task::notify panicked?");
+    core.run(listener
+                 .incoming()
+                 .for_each(|conn| {
+            queue.queue.push(conn);
+            let tasks = queue
+                .notify
+                .lock()
+                .expect("mutex poisoned, futures::task::Task::notify panicked?");
 
-        n = (n + 1) % tasks.len();
-        tasks[n].notify();
-        Ok(())
-    })).expect("unable to run reactor over listener");
+            n = (n + 1) % tasks.len();
+            tasks[n].notify();
+            Ok(())
+        }))
+        .expect("unable to run reactor over listener");
 }
 
 fn serve<NH>(queue: SocketQueue, protocol: &Http, new_handler: Arc<NH>)
-where
-    NH: NewHandler + 'static,
+    where NH: NewHandler + 'static
 {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
     let gotham_service = GothamService::new(new_handler, handle.clone());
     let tasks_m = queue.notify.clone();
 
-    core.run(
-        future::lazy(move || {
-            let mut tasks = tasks_m
+    core.run(future::lazy(move || {
+                              let mut tasks = tasks_m
                 .lock()
                 .expect("mutex poisoned, futures::task::Task::notify panicked?");
-            tasks.push(task::current());
-            future::ok(())
-        }).and_then(|_| {
+                              tasks.push(task::current());
+                              future::ok(())
+                          })
+                     .and_then(|_| {
             queue.for_each(|(socket, addr)| {
                 let service = gotham_service.connect(addr);
-                let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
+                let f = protocol
+                    .serve_connection(socket, service)
+                    .then(|_| Ok(()));
 
                 handle.spawn(f);
                 Ok(())
             })
-        }),
-    ).expect("unable to run reactor for work stealing");
+        }))
+        .expect("unable to run reactor for work stealing");
 }

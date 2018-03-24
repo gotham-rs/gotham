@@ -59,17 +59,49 @@ use handler::NewHandler;
 ///
 /// An additional thread is used on Windows to accept connections.
 pub fn start<NH, A>(addr: A, new_handler: NH)
-where
-    NH: NewHandler + 'static,
-    A: ToSocketAddrs,
+    where NH: NewHandler + 'static,
+          A: ToSocketAddrs
 {
     let threads = num_cpus::get();
     start_with_num_threads(addr, threads, new_handler)
 }
 
+type GothamListener = Stream<Item = (TcpSocket, SocketAddr), Error = io::Error>;
+
+fn serve_blocking(listener: G, protocol: &'a Http, new_handler: Arc<NH>) {
+    let mut core = Core::new().expect("unable to spawn tokio reactor");
+    let handle = core.handle();
+
+    serve(listener, protocol, new_handler, handle);
+
+    core.run(empty())
+}
+
+fn serve<'a, G, NH>(listener: G,
+                    protocol: &'a Http,
+                    new_handler: Arc<NH>,
+                    handle: &'a Handle)
+                    -> Box<Future<Item = (), Error = io::Error> + 'a>
+    where G: GothamListener,
+          NH: NewHandler + 'static
+{
+    let gotham_service = GothamService::new(new_handler, handle.clone());
+
+    handle
+        .spawn(listener.for_each(|(socket, addr)| {
+            let service = gotham_service.connect(addr);
+            let f = protocol
+                .serve_connection(socket, service)
+                .then(|_| Ok(()));
+
+            handle.spawn(f);
+            Ok(())
+        }))
+        .expect("unable to run reactor over listener");
+}
+
 fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
-where
-    A: ToSocketAddrs,
+    where A: ToSocketAddrs
 {
     let addr = match addr.to_socket_addrs().map(|ref mut i| i.next()) {
         Ok(Some(a)) => a,
