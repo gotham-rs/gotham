@@ -32,7 +32,7 @@ information on functionality and ordering.
 | --- | --- | ---:|
 | [Hello World](hello_world) | The famous Hello World example application. | 1 |
 | [Routing](routing) | Dispatching `Requests` to functionality provided by your application. | 4 |
-| [Path](path) | Extracting data from the `Request` path ensuring type safety. | 1 |
+| [Path](path) | Extracting data from the `Request` path ensuring type safety. | 2 |
 | [Query String](query_string) | Extracting data from the `Request` query string whilst ensuring type safety. | 1 |
 | [Cookies](cookies) | Working with Cookies. | 1 |
 | [Sessions](sessions) | Working with Sessions. | 2 |

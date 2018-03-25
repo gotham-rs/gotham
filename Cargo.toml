@@ -20,6 +20,7 @@ members = [
 
     # path
     "examples/path/introduction",
+    "examples/path/globs",
 
     # query_string
     "examples/query_string/introduction",
