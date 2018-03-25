@@ -51,7 +51,12 @@ mod os;
 pub use os::current::start_with_num_threads;
 
 use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
+use std::sync::Arc;
+use hyper::server::Http;
+use std::io;
 use handler::NewHandler;
+use tokio_core::reactor::{Core,Handle};
+use tokio_core::net::TcpStream;
 
 /// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
 ///
@@ -66,22 +71,25 @@ pub fn start<NH, A>(addr: A, new_handler: NH)
     start_with_num_threads(addr, threads, new_handler)
 }
 
-type GothamListener = Stream<Item = (TcpSocket, SocketAddr), Error = io::Error>;
+trait GothamListener : futures::stream::Stream<Item = (TcpStream, SocketAddr), Error = io::Error> {}
 
-fn serve_blocking(listener: G, protocol: &'a Http, new_handler: Arc<NH>) {
+fn serve_blocking<'a, G, NH>(listener: G, protocol: &'a Http, new_handler: Arc<NH>)
+    where G: GothamListener,
+          NH: NewHandler + 'static
+{
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
 
     serve(listener, protocol, new_handler, handle);
 
-    core.run(empty())
+    core.run(futures::empty())
 }
 
 fn serve<'a, G, NH>(listener: G,
                     protocol: &'a Http,
                     new_handler: Arc<NH>,
                     handle: &'a Handle)
-                    -> Box<Future<Item = (), Error = io::Error> + 'a>
+                    -> Box<futures::Future<Item = (), Error = io::Error> + 'a>
     where G: GothamListener,
           NH: NewHandler + 'static
 {
@@ -97,7 +105,7 @@ fn serve<'a, G, NH>(listener: G,
             handle.spawn(f);
             Ok(())
         }))
-        .expect("unable to run reactor over listener");
+        .expect("unable to run reactor over listener")
 }
 
 fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
