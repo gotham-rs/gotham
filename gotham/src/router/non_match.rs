@@ -265,32 +265,22 @@ impl<'a> From<&'a [Method]> for MethodSet {
 
 impl From<MethodSet> for Vec<Method> {
     fn from(method_set: MethodSet) -> Vec<Method> {
-        use hyper::Method::*;
+        let methods_with_flags: [(Method, bool); 9] = [
+            (Method::Connect, method_set.connect),
+            (Method::Delete, method_set.delete),
+            (Method::Get, method_set.get),
+            (Method::Head, method_set.head),
+            (Method::Options, method_set.options),
+            (Method::Patch, method_set.patch),
+            (Method::Post, method_set.post),
+            (Method::Put, method_set.put),
+            (Method::Trace, method_set.trace),
+        ];
 
-        let MethodSet {
-            connect,
-            delete,
-            get,
-            head,
-            options,
-            patch,
-            post,
-            put,
-            trace,
-            other,
-        } = method_set;
-
-        let mut result = None.into_iter()
-            .chain(Some(Connect).into_iter().filter(|_| connect))
-            .chain(Some(Delete).into_iter().filter(|_| delete))
-            .chain(Some(Get).into_iter().filter(|_| get))
-            .chain(Some(Head).into_iter().filter(|_| head))
-            .chain(Some(Options).into_iter().filter(|_| options))
-            .chain(Some(Patch).into_iter().filter(|_| patch))
-            .chain(Some(Post).into_iter().filter(|_| post))
-            .chain(Some(Put).into_iter().filter(|_| put))
-            .chain(Some(Trace).into_iter().filter(|_| trace))
-            .chain(other.into_iter())
+        let mut result = methods_with_flags
+            .into_iter()
+            .filter_map(|&(ref method, flag)| if flag { Some(method.clone()) } else { None })
+            .chain(method_set.other.into_iter())
             .collect::<Vec<Method>>();
 
         result.sort_unstable_by(|a, b| a.as_ref().cmp(b.as_ref()));
