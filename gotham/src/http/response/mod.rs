@@ -109,12 +109,7 @@ pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
     location: L,
 ) -> Response {
     let mut res = Response::new().with_status(StatusCode::PermanentRedirect);
-    {
-        let headers = res.headers_mut();
-        headers.set(XRequestId(request_id(state).into()));
-        headers.set(ContentLength(0));
-        headers.set(Location::new(location));
-    }
+    set_redirect_headers(state, &mut res, location);
     res
 }
 
@@ -157,12 +152,7 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
     location: L,
 ) -> Response {
     let mut res = Response::new().with_status(StatusCode::TemporaryRedirect);
-    {
-        let headers = res.headers_mut();
-        headers.set(XRequestId(request_id(state).into()));
-        headers.set(ContentLength(0));
-        headers.set(Location::new(location));
-    }
+    set_redirect_headers(state, &mut res, location);
     res
 }
 
@@ -410,4 +400,59 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
     headers.set(XFrameOptions::Deny);
     headers.set(XXssProtection::EnableBlock);
     headers.set(XContentTypeOptions::NoSniff);
+}
+
+/// Sets redirect headers on a given `Response`.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// # extern crate mime;
+/// #
+/// # use hyper::{Response, StatusCode};
+/// # use hyper::header::Location;
+/// # use gotham::state::State;
+/// # use gotham::http::response::set_redirect_headers;
+/// # use gotham::http::header::*;
+/// # use gotham::test::TestServer;
+/// fn handler(state: State) -> (State, Response) {
+///     let mut response = Response::new().with_status(StatusCode::PermanentRedirect);
+///
+///     set_redirect_headers(
+///         &state,
+///         &mut response,
+///         "http://example.com/somewhere-else"
+///     );
+///
+///     (state, response)
+/// }
+///
+/// # fn main() {
+/// // Demonstrate the returned headers by making a request to the handler.
+/// let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// let response = test_server
+///     .client()
+///     .get("http://example.com/")
+///     .perform()
+///     .unwrap();
+///
+/// assert_eq!(response.status(), StatusCode::PermanentRedirect);
+///
+/// assert_eq!(
+///     *response.headers().get::<Location>().unwrap(),
+///     Location::new("http://example.com/somewhere-else")
+/// );
+/// # assert!(response.headers().get::<XRequestId>().is_some());
+/// # }
+/// ```
+pub fn set_redirect_headers<L: Into<Cow<'static, str>>>(
+    state: &State,
+    res: &mut Response,
+    location: L,
+) {
+    let headers = res.headers_mut();
+    headers.set(XRequestId(request_id(state).into()));
+    headers.set(Location::new(location));
 }
