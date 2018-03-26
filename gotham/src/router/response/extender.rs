@@ -1,8 +1,8 @@
 //! Defines functionality for extending a Response.
 
-use std::panic::RefUnwindSafe;
 use hyper::Response;
 use state::{request_id, State};
+use std::panic::RefUnwindSafe;
 
 /// Extend the `Response` based on current `State` and `Response` data.
 pub trait StaticResponseExtender: RefUnwindSafe {

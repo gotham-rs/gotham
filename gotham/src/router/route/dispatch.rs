@@ -1,7 +1,7 @@
 //! Defines the route `Dispatcher` and supporting types.
 
-use std::panic::RefUnwindSafe;
 use futures::future;
+use std::panic::RefUnwindSafe;
 
 use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
 use pipeline::chain::PipelineHandleChain;

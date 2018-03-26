@@ -1,14 +1,14 @@
 //! Defines `Node` and `SegmentType` for `Tree`
 
-use std::cmp::Ordering;
-use std::borrow::Borrow;
 use hyper::StatusCode;
+use std::borrow::Borrow;
+use std::cmp::Ordering;
 
 use http::PercentDecoded;
 use router::non_match::RouteNonMatch;
 use router::route::{Delegation, Route};
-use router::tree::{Path, SegmentMapping, SegmentsProcessed};
 use router::tree::regex::ConstrainedSegmentRegex;
+use router::tree::{Path, SegmentMapping, SegmentsProcessed};
 use state::{request_id, State};
 
 /// Indicates the type of segment which is being represented by this Node.
@@ -376,12 +376,12 @@ mod tests {
 
     use hyper::{Headers, Method, Response};
 
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use http::request::path::RequestPathSegments;
     use pipeline::set::*;
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Extractors, Route, RouteImpl};
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use http::request::path::RequestPathSegments;
     use state::{set_request_id, State};
 
     fn handler(state: State) -> (State, Response) {

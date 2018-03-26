@@ -20,8 +20,8 @@ use hyper::{Client, Uri};
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::http::response::create_response;
 use gotham::router::Router;
-use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::builder::DefineSingleRoute;
+use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::state::{FromState, State};
 
 use tokio_core::reactor::Handle;

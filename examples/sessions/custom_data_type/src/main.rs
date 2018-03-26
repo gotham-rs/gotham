@@ -14,12 +14,12 @@ extern crate time;
 use hyper::{Response, StatusCode};
 
 use gotham::http::response::create_response;
+use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
 use gotham::router::Router;
 use gotham::router::builder::*;
 use gotham::state::{FromState, State};
-use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 
 // A custom type for storing data associated with the user's session.
 #[derive(Clone, Deserialize, Serialize, StateData)]

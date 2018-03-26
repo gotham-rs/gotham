@@ -1,19 +1,19 @@
 //! Defines the type `RouteMatcher` and default implementations.
 
-pub mod any;
-pub mod and;
 pub mod accept;
+pub mod and;
+pub mod any;
 
-pub use self::any::AnyRouteMatcher;
-pub use self::and::AndRouteMatcher;
 pub use self::accept::AcceptHeaderRouteMatcher;
+pub use self::and::AndRouteMatcher;
+pub use self::any::AnyRouteMatcher;
 
 use std::panic::RefUnwindSafe;
 
 use hyper::{Method, StatusCode};
 
-use state::{request_id, FromState, State};
 use router::non_match::RouteNonMatch;
+use state::{request_id, FromState, State};
 
 /// Determines if conditions required for the associated `Route` to be invoked by the `Router` have
 /// been met.

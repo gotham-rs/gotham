@@ -8,16 +8,16 @@ extern crate hyper;
 extern crate mime;
 
 use futures::{future, Future};
-use hyper::{Response, StatusCode};
-use hyper::header::{Headers, UserAgent};
-use gotham::http::response::create_response;
 use gotham::handler::HandlerFuture;
+use gotham::http::response::create_response;
 use gotham::middleware::Middleware;
-use gotham::state::{FromState, State};
-use gotham::router::Router;
-use gotham::router::builder::*;
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
+use gotham::router::Router;
+use gotham::router::builder::*;
+use gotham::state::{FromState, State};
+use hyper::header::{Headers, UserAgent};
+use hyper::{Response, StatusCode};
 
 /// A simple struct which holds an identifier for the user agent which made the request.
 ///

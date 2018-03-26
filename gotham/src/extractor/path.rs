@@ -1,8 +1,8 @@
-use serde::{Deserialize, Deserializer};
 use hyper::Response;
+use serde::{Deserialize, Deserializer};
 
-use state::{State, StateData};
 use router::response::extender::StaticResponseExtender;
+use state::{State, StateData};
 
 /// Defines a binding for storing the dynamic segments of the `Request` path in `State`. On failure
 /// the `StaticResponseExtender` implementation extends the `Response` to indicate why the
@@ -74,9 +74,7 @@ use router::response::extender::StaticResponseExtender;
 /// #   let body = response.read_utf8_body().unwrap();
 /// #   assert_eq!(body, "id = 1551, slug = ten-reasons-serde-is-amazing");
 /// # }
-pub trait PathExtractor
-    : for<'de> Deserialize<'de> + StaticResponseExtender + StateData {
-}
+pub trait PathExtractor: for<'de> Deserialize<'de> + StaticResponseExtender + StateData {}
 
 impl<T> PathExtractor for T
 where

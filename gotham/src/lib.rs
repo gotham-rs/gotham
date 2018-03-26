@@ -41,19 +41,19 @@ extern crate serde_derive;
 
 pub mod extractor;
 pub mod handler;
-pub mod middleware;
-pub mod pipeline;
 pub mod http;
+pub mod middleware;
+mod os;
+pub mod pipeline;
 pub mod router;
 mod service;
 pub mod state;
 pub mod test;
-mod os;
 
 pub use os::current::start_with_num_threads;
 
-use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
 use handler::NewHandler;
+use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
 
 /// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
 ///

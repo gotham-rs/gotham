@@ -7,8 +7,8 @@ pub mod single;
 use std::io;
 
 use handler::HandlerFuture;
-use middleware::chain::{MiddlewareChain, NewMiddlewareChain};
 use middleware::NewMiddleware;
+use middleware::chain::{MiddlewareChain, NewMiddlewareChain};
 use state::{request_id, State};
 
 /// When using middleware, one or more `Middleware` are combined to form a `Pipeline`.
@@ -276,8 +276,8 @@ where
 mod tests {
     use super::*;
 
-    use hyper::{Response, StatusCode};
     use futures::future;
+    use hyper::{Response, StatusCode};
 
     use handler::{Handler, IntoHandlerError};
     use middleware::Middleware;

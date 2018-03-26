@@ -1,5 +1,5 @@
-use syn;
 use quote;
+use syn;
 
 pub(crate) fn base_path(_ast: &syn::DeriveInput) -> quote::Tokens {
     quote! {

@@ -4,17 +4,17 @@
 //! iterate to find the first matching `Route` (indicated by `Route::is_match`). The request will
 //! be dispatched to the first `Route` which matches.
 
-pub mod matcher;
 pub mod dispatch;
+pub mod matcher;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
 use hyper::{Response, Uri};
 
+use extractor::{self, PathExtractor, QueryStringExtractor};
 use handler::HandlerFuture;
 use http::request::query_string;
-use extractor::{self, PathExtractor, QueryStringExtractor};
 use router::non_match::RouteNonMatch;
 use router::route::dispatch::Dispatcher;
 use router::route::matcher::RouteMatcher;
@@ -206,9 +206,9 @@ where
 mod tests {
     use super::*;
 
-    use std::str::FromStr;
     use futures::Async;
     use hyper::{Headers, Method, StatusCode, Uri};
+    use std::str::FromStr;
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use http::request::path::RequestPathSegments;

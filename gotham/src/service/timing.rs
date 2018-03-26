@@ -5,8 +5,8 @@ use std::fmt::{self, Display, Formatter};
 use chrono::prelude::*;
 use hyper::Response;
 
-use state::{request_id, State};
 use http::header::XRuntimeMicroseconds;
+use state::{request_id, State};
 
 /// Used by `GothamService` to time requests. The `elapsed` function returns the elapsed time
 /// in a way that can be used for logging and adding the `X-Runtime-Microseconds` header to
