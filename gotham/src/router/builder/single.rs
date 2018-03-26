@@ -1,13 +1,13 @@
 use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
+use handler::{Handler, NewHandler};
 use pipeline::chain::PipelineHandleChain;
 use router::builder::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor,
                       SingleRouteBuilder};
-use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::matcher::RouteMatcher;
 use router::route::dispatch::DispatcherImpl;
-use handler::{Handler, NewHandler};
+use router::route::matcher::RouteMatcher;
+use router::route::{Delegation, Extractors, RouteImpl};
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the

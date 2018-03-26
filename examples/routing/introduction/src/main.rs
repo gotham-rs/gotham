@@ -8,9 +8,9 @@ extern crate mime;
 use hyper::{Response, StatusCode};
 
 use gotham::http::response::create_response;
-use gotham::state::State;
 use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::state::State;
 
 /// Create a `Handler` that is invoked for requests to the path "/"
 pub fn say_hello(state: State) -> (State, Response) {

@@ -4,8 +4,8 @@ use std::fmt::{self, Debug, Display, Formatter};
 use hyper::{Response, StatusCode};
 
 use handler::IntoResponse;
-use state::{request_id, State};
 use http::response::create_response;
+use state::{request_id, State};
 
 /// Describes an error which occurred during handler execution, and allows the creation of a HTTP
 /// `Response`.

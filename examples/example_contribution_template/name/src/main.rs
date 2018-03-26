@@ -25,11 +25,11 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
 use gotham::http::response::create_response;
-use gotham::state::State;
 use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::state::State;
+use hyper::{Response, StatusCode};
 
 /// Create a `Handler` that ...
 pub fn well_named_function(state: State) -> (State, Response) {

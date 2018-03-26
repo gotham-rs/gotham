@@ -1,29 +1,29 @@
 //! Defines a builder API for constructing a `Router`.
 
 mod draw;
-mod single;
 mod modify;
+mod single;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
 use hyper::{Method, StatusCode};
 
+use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
 use router::Router;
-use router::tree::TreeBuilder;
 use router::response::extender::ResponseExtender;
 use router::response::finalizer::ResponseFinalizerBuilder;
-use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::matcher::{AnyRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher};
 use router::route::dispatch::DispatcherImpl;
-use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
+use router::route::matcher::{AnyRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher};
+use router::route::{Delegation, Extractors, RouteImpl};
+use router::tree::TreeBuilder;
 use router::tree::node::NodeBuilder;
 
-pub use self::single::DefineSingleRoute;
 pub use self::draw::DrawRoutes;
 pub use self::modify::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor};
+pub use self::single::DefineSingleRoute;
 
 /// The default type returned when building a single associated route. See
 /// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
@@ -886,16 +886,16 @@ mod tests {
 
     use std::sync::Arc;
 
-    use hyper::{Method, Request, Response, StatusCode};
-    use hyper::server::Service;
     use futures::{Future, Stream};
+    use hyper::server::Service;
+    use hyper::{Method, Request, Response, StatusCode};
     use tokio_core::reactor::Core;
 
-    use pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
-    use state::{State, StateData};
-    use service::GothamService;
+    use pipeline::new_pipeline;
     use router::response::extender::StaticResponseExtender;
+    use service::GothamService;
+    use state::{State, StateData};
 
     #[derive(Deserialize)]
     struct SalutationParams {

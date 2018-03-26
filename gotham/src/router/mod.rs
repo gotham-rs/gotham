@@ -1,17 +1,17 @@
 //! Defines the Gotham `Router` and supporting types.
 
 pub mod builder;
-pub mod tree;
-pub mod route;
-pub mod response;
 pub mod non_match;
+pub mod response;
+pub mod route;
+pub mod tree;
 
 use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
-use hyper::{Response, StatusCode};
 use hyper::header::Allow;
+use hyper::{Response, StatusCode};
 
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use http::request::path::RequestPathSegments;
@@ -193,9 +193,9 @@ impl Router {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
-    use hyper::{Method, Uri};
     use hyper::header::{ContentLength, Headers};
+    use hyper::{Method, Uri};
+    use std::str::FromStr;
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use handler::HandlerError;

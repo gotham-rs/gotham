@@ -6,8 +6,8 @@
 use std::io;
 use std::panic::RefUnwindSafe;
 
-use hyper::Response;
 use futures::{future, Future};
+use hyper::Response;
 
 use state::State;
 

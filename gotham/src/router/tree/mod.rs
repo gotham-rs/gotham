@@ -92,11 +92,11 @@ mod tests {
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use http::request::path::RequestPathSegments;
     use http::response::create_response;
-    use router::route::matcher::MethodOnlyRouteMatcher;
+    use pipeline::set::*;
     use router::route::dispatch::DispatcherImpl;
+    use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Delegation, Extractors, RouteImpl};
     use state::State;
-    use pipeline::set::*;
 
     use super::*;
 

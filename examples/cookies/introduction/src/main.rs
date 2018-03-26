@@ -5,8 +5,8 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
 use hyper::header::{Cookie, Headers, SetCookie};
+use hyper::{Response, StatusCode};
 
 use gotham::http::response::create_response;
 use gotham::state::{FromState, State};

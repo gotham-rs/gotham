@@ -1,21 +1,21 @@
 //! Defines the `GothamService` type which is used to wrap a Gotham application and interface with
 //! Hyper.
 
-use std::thread;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::panic::AssertUnwindSafe;
+use std::sync::Arc;
+use std::thread;
 
+use futures::Future;
 use hyper;
 use hyper::server::Service;
 use hyper::{Request, Response};
-use futures::Future;
 use tokio_core::reactor::Handle;
 
 use handler::NewHandler;
-use state::{request_id, set_request_id, State};
-use state::client_addr::put_client_addr;
 use http::request::path::RequestPathSegments;
+use state::client_addr::put_client_addr;
+use state::{request_id, set_request_id, State};
 
 mod timing;
 mod trap;

@@ -2,26 +2,26 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use std::{cell, io, net, time};
 use std::cell::RefCell;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::Arc;
+use std::{cell, io, net, time};
 
 use futures::{future, Future, Stream};
-use hyper::{self, Body, Method, Request, Response, Uri};
 use hyper::client::{self, Client};
 use hyper::error::UriError;
 use hyper::header::ContentType;
 use hyper::server::{self, Http};
+use hyper::{self, Body, Method, Request, Response, Uri};
 use mime;
 use mio;
 use tokio_core::reactor::{Core, PollEvented, Timeout};
 
 use handler::NewHandler;
-use service::GothamService;
 use router::Router;
+use service::GothamService;
 
 mod request;
 
@@ -463,8 +463,8 @@ mod tests {
 
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use hyper::{Body, StatusCode, Uri};
     use hyper::header::{ContentLength, ContentType};
+    use hyper::{Body, StatusCode, Uri};
     use mime;
 
     use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
