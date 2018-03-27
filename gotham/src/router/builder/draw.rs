@@ -549,42 +549,72 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::single_pipeline;
+    /// # use gotham::pipeline::set::{finalize_pipeline_set, new_pipeline_set};
     /// # use gotham::test::TestServer;
     /// #
     /// # #[derive(Default, Serialize, Deserialize)]
     /// # struct Session;
     /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct AdminSession;
+    /// #
     /// # mod resource {
     /// #   use super::*;
     /// #   pub fn list(state: State) -> (State, Response) {
     /// #       assert!(state.has::<SessionData<Session>>());
+    /// #       assert!(!state.has::<SessionData<AdminSession>>());
+    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   }
+    /// # }
+    /// #
+    /// # mod admin {
+    /// #   use super::*;
+    /// #   pub fn handler(state: State) -> (State, Response) {
+    /// #       assert!(state.has::<SessionData<Session>>());
+    /// #       assert!(state.has::<SessionData<AdminSession>>());
     /// #       (state, Response::new().with_status(StatusCode::Accepted))
     /// #   }
     /// # }
     /// #
     /// # fn handler(state: State) -> (State, Response) {
     /// #   assert!(!state.has::<SessionData<Session>>());
+    /// #   assert!(!state.has::<SessionData<AdminSession>>());
     /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// let (chain, pipelines) = single_pipeline(
+    /// let pipelines = new_pipeline_set();
+    /// let (pipelines, default) = pipelines.add(
     ///     new_pipeline()
     ///         .add(NewSessionMiddleware::default().with_session_type::<Session>())
     ///         .build()
     /// );
+    /// let (pipelines, extended) = pipelines.add(
+    ///     new_pipeline()
+    ///         .add(NewSessionMiddleware::default().with_session_type::<AdminSession>())
+    ///         .build()
+    /// );
+    /// let pipeline_set = finalize_pipeline_set(pipelines);
     ///
-    /// build_router(chain, pipelines, |route| {
+    /// let default_chain = (default, ());
+    /// let extended_chain = (extended, default_chain);
+    ///
+    /// build_router(default_chain, pipeline_set, |route| {
     ///     // Requests for the root handler use an empty set of pipelines, skipping the session
-    ///     // middleware.
+    ///     // middlewares.
     ///     route.with_pipeline_chain((), |route| {
     ///         route.get("/").to(handler);
     ///     });
     ///
-    ///     // Requests dispatched to the rest of the application will invoke the session
-    ///     // middleware as usual.
+    ///     // Requests dispatched to the resource module will only invoke one session
+    ///     // middleware which is the default behavior.
     ///     route.get("/resource/list").to(resource::list);
+    ///
+    ///     // Requests for the admin handler will additionally invoke the admin session
+    ///     // middleware.
+    ///     route.with_pipeline_chain(extended_chain, |route| {
+    ///         route.get("/admin").to(admin::handler);
+    ///     });
     /// })
     /// # }
     /// #
