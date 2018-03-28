@@ -8,13 +8,7 @@ use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::RouteMatcher;
 use router::route::dispatch::DispatcherImpl;
 use handler::{Handler, NewHandler};
-
-// Temporary
-use state::State;
-use hyper::{Response, StatusCode};
-use http::response::create_response;
-use mime;
-use handler::static_file::StaticFileHandler;
+use handler::static_file::{FilePathExtractor, StaticFileHandler};
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
@@ -172,6 +166,17 @@ pub trait DefineSingleRoute {
     fn to_new_handler<NH>(self, new_handler: NH)
     where
         NH: NewHandler + 'static;
+
+
+    fn to_filesystem(self, static_file_handler: StaticFileHandler)
+    where
+        Self: Sized,
+        Self: ReplacePathExtractor<FilePathExtractor>,
+        Self::Output: DefineSingleRoute,
+    {
+        self.with_path_extractor::<FilePathExtractor>()
+            .to_new_handler(static_file_handler);
+    }
 
     /// Applies a `PathExtractor` type to the current route, to extract path parameters into
     /// `State` with the given type.

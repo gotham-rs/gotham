@@ -478,42 +478,6 @@ where
         }
     }
 
-    /// Add docs here
-    /// 
-    fn to_filesystem<'b>(
-        &'b mut self,
-        path: &'static str,
-        filesystem_path: &'static str
-    ) {
-        let (node_builder, pipeline_chain, pipelines) = self.component_refs();
-
-        let path = if path.starts_with("/") {
-            &path[1..]
-        } else {
-            path
-        };
-
-        debug!("Drawing assets for {:?}", path);
-        let mut node = build_subtree(node_builder, path.split("/"));
-        let child = NodeBuilder::new("*", SegmentType::Glob);
-        node.add_child(child);
-        
-        let node_builder = node.borrow_mut_child("*", SegmentType::Glob).unwrap();
-        let matcher = AnyRouteMatcher::new();
-
-        let route_builder : SingleRouteBuilder<'b, AnyRouteMatcher, C, P, NoopPathExtractor, NoopQueryStringExtractor> = SingleRouteBuilder {
-            matcher,
-            node_builder,
-            pipeline_chain: *pipeline_chain,
-            pipelines: pipelines.clone(),
-            phantom: PhantomData,
-        };
-
-        let handler = StaticFileHandler::new(path, filesystem_path);
-        route_builder.to_new_handler(handler)
-    }
-
-
     /// Begins defining a new scope, based on a given `path` prefix.
     ///
     /// # Examples
