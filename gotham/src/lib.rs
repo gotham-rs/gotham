@@ -36,7 +36,6 @@ extern crate tokio_core;
 extern crate url;
 extern crate uuid;
 
-#[cfg(test)]
 #[macro_use]
 extern crate serde_derive;
 
