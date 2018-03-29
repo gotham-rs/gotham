@@ -7,6 +7,7 @@ use mime_guess::guess_mime_type_opt;
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
+use std::iter::FromIterator;
 
 use futures::future;
 use handler::{Handler, HandlerFuture, NewHandler};
@@ -32,15 +33,12 @@ impl NewHandler for StaticFileHandler {
 
 impl Handler for StaticFileHandler {
     fn handle(self, state: State) -> Box<HandlerFuture> {
-        debug!("Handling static request");
         let path = {
-            debug!("Root path {:?}", self.root);
-            let mut path_buf = PathBuf::from(self.root);
-            path_buf.extend(&FilePathExtractor::borrow_from(&state).parts);
-            debug!("Has path {:?}", path_buf);
-            normalize_path(&path_buf)
+            let mut base_path = PathBuf::from(self.root);
+            let file_path = PathBuf::from_iter(&FilePathExtractor::borrow_from(&state).parts);
+            base_path.extend(&normalize_path(&file_path));
+            base_path
         };
-        debug!("Normalised path {:?}", path);
         let response = path.metadata()
             .and_then(|meta| {
                 let mut contents = Vec::with_capacity(meta.len() as usize);
@@ -63,7 +61,7 @@ fn mime_for_path(path: &Path) -> Mime {
 
 fn normalize_path(path: &Path) -> PathBuf {
     path.components()
-        .fold(PathBuf::new(), |mut result, p| match p {
+        .fold(PathBuf::new(),  |mut result, p| match p {
             Component::Normal(x) => {
                 result.push(x);
                 result
@@ -113,10 +111,11 @@ mod tests {
     use hyper::StatusCode;
     use hyper::header::{ContentType};
     use mime::{self, Mime};
+    use std::str;
 
 
     #[test]
-    fn get_static_html() {
+    fn static_get_html() {
         let response = test_server()
             .client()
             .get("http://localhost/doc.html")
@@ -131,7 +130,7 @@ mod tests {
     }
 
     #[test]
-    fn get_static_css() {
+    fn static_get_css() {
         let response = test_server()
             .client()
             .get("http://localhost/styles/style.css")
@@ -146,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    fn get_static_js() {
+    fn static_get_js() {
         let response = test_server()
             .client()
             .get("http://localhost/scripts/script.js")
@@ -159,6 +158,17 @@ mod tests {
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"console.log('I am javascript!');");
+    }
+
+    #[test]
+    fn static_traverse_parent() {
+        let response = test_server()
+            .client()
+            .get("http://localhost/../private_files/secret.txt")
+            .perform()
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NotFound);
     }
 
     fn test_server() -> TestServer {
