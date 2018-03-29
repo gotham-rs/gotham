@@ -1,6 +1,5 @@
 //! An introduction to fundamental `Router` and `Router Builder` concepts to create a routing tree.
 
-extern crate env_logger;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
@@ -35,13 +34,11 @@ fn router() -> Router {
     build_simple_router(|route| {
         // For the path "/" invoke the handler "say_hello"
         route.get("/").to(say_hello);
-        route.to_filesystem("/static", "assets");
     })
 }
 
 /// Start a server and use a `Router` to dispatch requests
 pub fn main() {
-    env_logger::init();
     let addr = "127.0.0.1:7878";
     println!("Listening for requests at http://{}", addr);
 
