@@ -3,6 +3,7 @@
 pub mod any;
 pub mod and;
 pub mod accept;
+pub mod content_type;
 
 pub use self::any::AnyRouteMatcher;
 pub use self::and::AndRouteMatcher;
