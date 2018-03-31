@@ -31,10 +31,10 @@ matrix:
         - PATH=$HOME/.cargo/bin/$PATH
       before_script:
         - rustup toolchain install nightly
-        - rustup component add --toolchain nightly rustfmt-preview
+        - rustup component add --toolchain stable rustfmt-preview
       script:
-        - echo "Checking Gotham codebase with rustfmt release `cargo +nightly fmt --version`."
-        - cargo +nightly fmt --all -- --write-mode=diff
+        - echo "Checking Gotham codebase with rustfmt release `cargo fmt --version`."
+        - cargo fmt --all -- --write-mode=diff
 
   allow_failures:
     - rust: nightly
