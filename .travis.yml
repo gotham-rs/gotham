@@ -30,7 +30,6 @@ matrix:
         - SHARD=rustfmt
         - PATH=$HOME/.cargo/bin/$PATH
       before_script:
-        - rustup toolchain install nightly
         - rustup component add --toolchain stable rustfmt-preview
       script:
         - echo "Checking Gotham codebase with rustfmt release `cargo fmt --version`."
