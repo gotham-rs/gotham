@@ -13,17 +13,28 @@ use futures::future;
 use handler::{Handler, HandlerFuture, NewHandler};
 
 #[derive(Clone)]
-pub struct StaticFileHandler {
+pub struct FileSystemHandler {
     root: PathBuf,
 }
 
-impl StaticFileHandler {
-    pub fn new(root: PathBuf) -> StaticFileHandler {
-        StaticFileHandler { root }
+#[derive(Clone)]
+pub struct FileHandler {
+    path: PathBuf,
+}
+
+impl FileHandler {
+    pub fn new(path: PathBuf) -> FileHandler {
+        FileHandler { path }
     }
 }
 
-impl NewHandler for StaticFileHandler {
+impl FileSystemHandler {
+    pub fn new(root: PathBuf) -> FileSystemHandler {
+        FileSystemHandler { root }
+    }
+}
+
+impl NewHandler for FileHandler {
     type Instance = Self;
 
     fn new_handler(&self) -> io::Result<Self::Instance> {
@@ -31,7 +42,15 @@ impl NewHandler for StaticFileHandler {
     }
 }
 
-impl Handler for StaticFileHandler {
+impl NewHandler for FileSystemHandler {
+    type Instance = Self;
+
+    fn new_handler(&self) -> io::Result<Self::Instance> {
+        Ok(self.clone())
+    }
+}
+
+impl Handler for FileSystemHandler {
     fn handle(self, state: State) -> Box<HandlerFuture> {
         let path = {
             let mut base_path = PathBuf::from(self.root);
@@ -39,7 +58,20 @@ impl Handler for StaticFileHandler {
             base_path.extend(&normalize_path(&file_path));
             base_path
         };
-        let response = path.metadata()
+        let response = create_file_response(path, &state);
+        Box::new(future::ok((state, response)))
+    }
+}
+
+impl Handler for FileHandler {
+    fn handle(self, state: State) -> Box<HandlerFuture> {
+        let response = create_file_response(self.path, &state);
+        Box::new(future::ok((state, response)))
+    }
+}
+
+fn create_file_response(path: PathBuf, state: &State) -> hyper::Response {
+    path.metadata()
             .and_then(|meta| {
                 let mut contents = Vec::with_capacity(meta.len() as usize);
                 fs::File::open(&path).and_then(|mut f| f.read_to_end(&mut contents))?;
@@ -47,12 +79,9 @@ impl Handler for StaticFileHandler {
             })
             .map(|contents| {
                 let mime_type = mime_for_path(&path);
-                create_response(&state, hyper::StatusCode::Ok, Some((contents, mime_type)))
+                create_response(state, hyper::StatusCode::Ok, Some((contents, mime_type)))
             })
-            .unwrap_or_else(|err| error_response(&state, err));
-
-        Box::new(future::ok((state, response)))
-    }
+            .unwrap_or_else(|err| error_response(state, err))
 }
 
 fn mime_for_path(path: &Path) -> Mime {
@@ -103,11 +132,11 @@ impl StaticResponseExtender for FilePathExtractor {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use test::TestServer;
     use router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use router::Router;
     use std::path::PathBuf;
-    use handler::static_file::StaticFileHandler;
     use hyper::StatusCode;
     use hyper::header::{ContentType};
     use mime::{self, Mime};
@@ -171,6 +200,30 @@ mod tests {
         assert_eq!(response.status(), StatusCode::NotFound);
     }
 
+    #[test]
+    fn static_single_file() {
+        let test_server = TestServer::new(
+            build_simple_router(|route| {
+                route
+                    .get("/")
+                    .to_file(FileHandler::new(PathBuf::from("resources/test/static_files/doc.html")))
+            })
+        ).unwrap();
+
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .perform()
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.headers().get::<ContentType>().unwrap(), &ContentType::html());
+
+        let body = response.read_body().unwrap();
+        assert_eq!(&body[..], b"<html>I am a doc.</html>");
+
+    }
+
     fn test_server() -> TestServer {
         TestServer::new(static_router("/*", "resources/test/static_files")).unwrap()
     }
@@ -180,7 +233,7 @@ mod tests {
         build_simple_router(|route| {
             route
                 .get(mount)
-                .to_filesystem(StaticFileHandler::new(path_buf))
+                .to_filesystem(FileSystemHandler::new(path_buf))
         })
     }
 }
