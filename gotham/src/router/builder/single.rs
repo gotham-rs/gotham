@@ -168,21 +168,21 @@ pub trait DefineSingleRoute {
         NH: NewHandler + 'static;
 
 
-    fn to_filesystem(self, static_file_handler: FileSystemHandler)
+    fn to_filesystem(self, root: &str)
     where
         Self: Sized,
         Self: ReplacePathExtractor<FilePathExtractor>,
         Self::Output: DefineSingleRoute,
     {
         self.with_path_extractor::<FilePathExtractor>()
-            .to_new_handler(static_file_handler);
+            .to_new_handler(FileSystemHandler::new(root));
     }
 
-    fn to_file(self, static_file_handler: FileHandler)
+    fn to_file(self, path: &str)
     where
         Self: Sized,
     {
-        self.to_new_handler(static_file_handler);
+        self.to_new_handler(FileHandler::new(path));
     }
 
     /// Applies a `PathExtractor` type to the current route, to extract path parameters into

@@ -23,14 +23,14 @@ pub struct FileHandler {
 }
 
 impl FileHandler {
-    pub fn new(path: PathBuf) -> FileHandler {
-        FileHandler { path }
+    pub fn new(path: &str) -> FileHandler {
+        FileHandler { path: PathBuf::from(path) }
     }
 }
 
 impl FileSystemHandler {
-    pub fn new(root: PathBuf) -> FileSystemHandler {
-        FileSystemHandler { root }
+    pub fn new(root: &str) -> FileSystemHandler {
+        FileSystemHandler { root: PathBuf::from(root) }
     }
 }
 
@@ -136,68 +136,60 @@ mod tests {
     use test::TestServer;
     use router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use router::Router;
-    use std::path::PathBuf;
     use hyper::StatusCode;
     use hyper::header::{ContentType};
     use mime::{self, Mime};
     use std::str;
 
-
     #[test]
-    fn static_get_html() {
-        let response = test_server()
-            .client()
-            .get("http://localhost/doc.html")
-            .perform()
-            .unwrap();
+    fn static_files_guesses_content_type() {
+        let expected_docs = vec![
+            ("doc.html", mime::TEXT_HTML, "<html>I am a doc.</html>"),
+            ("styles/style.css", mime::TEXT_CSS, ".styled { border: none; }"),
+            ("scripts/script.js", "application/javascript".parse().unwrap(), "console.log('I am javascript!');")
+        ];
 
-        assert_eq!(response.status(), StatusCode::Ok);
-        assert_eq!(response.headers().get::<ContentType>().unwrap(), &ContentType::html());
+        for doc in expected_docs {
+            let response = test_server()
+                .client()
+                .get(&format!("http://localhost/{}", doc.0))
+                .perform()
+                .unwrap();
 
-        let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b"<html>I am a doc.</html>");
+            assert_eq!(response.status(), StatusCode::Ok);
+            assert_eq!(response.headers().get::<ContentType>().unwrap(), &ContentType(doc.1));
+
+            let body = response.read_body().unwrap();
+            assert_eq!(&body[..], doc.2.as_bytes());
+        }
     }
 
+    // Examples derived from https://www.owasp.org/index.php/Path_Traversal
     #[test]
-    fn static_get_css() {
-        let response = test_server()
-            .client()
-            .get("http://localhost/styles/style.css")
-            .perform()
-            .unwrap();
+    fn static_path_traversal() {
+        let traversal_attempts = vec![
+           r"../private_files/secret.txt",
+           r"%2e%2e%2fprivate_files/secret.txt",
+           r"%2e%2e/private_files/secret.txt",
+           r"..%2fprivate_files/secret.txt",
+           r"%2e%2e%5cprivate_files/secret.txt",
+           r"%2e%2e\private_files/secret.txt",
+           r"..%5cprivate_files/secret.txt",
+           r"%252e%252e%255cprivate_files/secret.txt",
+           r"..%255cprivate_files/secret.txt",
+           r"..%c0%afprivate_files/secret.txt",
+           r"..%c1%9cprivate_files/secret.txt",
+           "/etc/passwd"
+        ];
+        for attempt in traversal_attempts {
+            let response = test_server()
+                .client()
+                .get(&format!("http://localhost/{}", attempt))
+                .perform()
+                .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
-        assert_eq!(response.headers().get::<ContentType>().unwrap(), &ContentType(mime::TEXT_CSS));
-
-        let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b".styled { border: none; }");
-    }
-
-    #[test]
-    fn static_get_js() {
-        let response = test_server()
-            .client()
-            .get("http://localhost/scripts/script.js")
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::Ok);
-        let application_javascript: mime::Mime = "application/javascript".parse().unwrap();
-        assert_eq!(response.headers().get::<ContentType>().unwrap(), &ContentType(application_javascript));
-
-        let body = response.read_body().unwrap();
-        assert_eq!(&body[..], b"console.log('I am javascript!');");
-    }
-
-    #[test]
-    fn static_traverse_parent() {
-        let response = test_server()
-            .client()
-            .get("http://localhost/../private_files/secret.txt")
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::NotFound);
+            assert_eq!(response.status(), StatusCode::NotFound);
+        }
     }
 
     #[test]
@@ -206,7 +198,7 @@ mod tests {
             build_simple_router(|route| {
                 route
                     .get("/")
-                    .to_file(FileHandler::new(PathBuf::from("resources/test/static_files/doc.html")))
+                    .to_file("resources/test/static_files/doc.html")
             })
         ).unwrap();
 
@@ -221,7 +213,6 @@ mod tests {
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"<html>I am a doc.</html>");
-
     }
 
     fn test_server() -> TestServer {
@@ -229,11 +220,10 @@ mod tests {
     }
 
     fn static_router(mount: &str, path: &str) -> Router {
-        let path_buf = PathBuf::from(path);
         build_simple_router(|route| {
             route
                 .get(mount)
-                .to_filesystem(FileSystemHandler::new(path_buf))
+                .to_filesystem(path)
         })
     }
 }
