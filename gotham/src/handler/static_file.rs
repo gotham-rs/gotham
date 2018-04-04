@@ -12,25 +12,33 @@ use std::iter::FromIterator;
 use futures::future;
 use handler::{Handler, HandlerFuture, NewHandler};
 
+/// Represents a handler for any files under the path `root`.
 #[derive(Clone)]
 pub struct FileSystemHandler {
     root: PathBuf,
 }
 
+/// Represents a handler for a single file at `path`.
 #[derive(Clone)]
 pub struct FileHandler {
     path: PathBuf,
 }
 
 impl FileHandler {
+    /// Create a new `FileHandler` for the given path.
     pub fn new(path: &str) -> FileHandler {
-        FileHandler { path: PathBuf::from(path) }
+        FileHandler {
+            path: PathBuf::from(path),
+        }
     }
 }
 
 impl FileSystemHandler {
+    /// Create a new `FileSystemHandler` with the given root path.
     pub fn new(root: &str) -> FileSystemHandler {
-        FileSystemHandler { root: PathBuf::from(root) }
+        FileSystemHandler {
+            root: PathBuf::from(root),
+        }
     }
 }
 
@@ -72,16 +80,16 @@ impl Handler for FileHandler {
 
 fn create_file_response(path: PathBuf, state: &State) -> hyper::Response {
     path.metadata()
-            .and_then(|meta| {
-                let mut contents = Vec::with_capacity(meta.len() as usize);
-                fs::File::open(&path).and_then(|mut f| f.read_to_end(&mut contents))?;
-                Ok(contents)
-            })
-            .map(|contents| {
-                let mime_type = mime_for_path(&path);
-                create_response(state, hyper::StatusCode::Ok, Some((contents, mime_type)))
-            })
-            .unwrap_or_else(|err| error_response(state, err))
+        .and_then(|meta| {
+            let mut contents = Vec::with_capacity(meta.len() as usize);
+            fs::File::open(&path).and_then(|mut f| f.read_to_end(&mut contents))?;
+            Ok(contents)
+        })
+        .map(|contents| {
+            let mime_type = mime_for_path(&path);
+            create_response(state, hyper::StatusCode::Ok, Some((contents, mime_type)))
+        })
+        .unwrap_or_else(|err| error_response(state, err))
 }
 
 fn mime_for_path(path: &Path) -> Mime {
@@ -90,7 +98,7 @@ fn mime_for_path(path: &Path) -> Mime {
 
 fn normalize_path(path: &Path) -> PathBuf {
     path.components()
-        .fold(PathBuf::new(),  |mut result, p| match p {
+        .fold(PathBuf::new(), |mut result, p| match p {
             Component::Normal(x) => {
                 result.push(x);
                 result
@@ -116,6 +124,7 @@ fn error_response(state: &State, e: io::Error) -> hyper::Response {
     )
 }
 
+/// Responsible for extracting the file path matched by the glob segment from the URL.
 #[derive(Debug, Deserialize)]
 pub struct FilePathExtractor {
     #[serde(rename = "*")]
@@ -132,21 +141,29 @@ impl StaticResponseExtender for FilePathExtractor {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use test::TestServer;
     use router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use router::Router;
     use hyper::StatusCode;
-    use hyper::header::{ContentType};
-    use mime::{self, Mime};
+    use hyper::header::ContentType;
+    use mime;
     use std::str;
 
     #[test]
     fn static_files_guesses_content_type() {
         let expected_docs = vec![
             ("doc.html", mime::TEXT_HTML, "<html>I am a doc.</html>"),
-            ("styles/style.css", mime::TEXT_CSS, ".styled { border: none; }"),
-            ("scripts/script.js", "application/javascript".parse().unwrap(), "console.log('I am javascript!');")
+            ("file.txt", mime::TEXT_PLAIN, "I am a file"),
+            (
+                "styles/style.css",
+                mime::TEXT_CSS,
+                ".styled { border: none; }",
+            ),
+            (
+                "scripts/script.js",
+                "application/javascript".parse().unwrap(),
+                "console.log('I am javascript!');",
+            ),
         ];
 
         for doc in expected_docs {
@@ -157,7 +174,10 @@ mod tests {
                 .unwrap();
 
             assert_eq!(response.status(), StatusCode::Ok);
-            assert_eq!(response.headers().get::<ContentType>().unwrap(), &ContentType(doc.1));
+            assert_eq!(
+                response.headers().get::<ContentType>().unwrap(),
+                &ContentType(doc.1)
+            );
 
             let body = response.read_body().unwrap();
             assert_eq!(&body[..], doc.2.as_bytes());
@@ -168,18 +188,18 @@ mod tests {
     #[test]
     fn static_path_traversal() {
         let traversal_attempts = vec![
-           r"../private_files/secret.txt",
-           r"%2e%2e%2fprivate_files/secret.txt",
-           r"%2e%2e/private_files/secret.txt",
-           r"..%2fprivate_files/secret.txt",
-           r"%2e%2e%5cprivate_files/secret.txt",
-           r"%2e%2e\private_files/secret.txt",
-           r"..%5cprivate_files/secret.txt",
-           r"%252e%252e%255cprivate_files/secret.txt",
-           r"..%255cprivate_files/secret.txt",
-           r"..%c0%afprivate_files/secret.txt",
-           r"..%c1%9cprivate_files/secret.txt",
-           "/etc/passwd"
+            r"../private_files/secret.txt",
+            r"%2e%2e%2fprivate_files/secret.txt",
+            r"%2e%2e/private_files/secret.txt",
+            r"..%2fprivate_files/secret.txt",
+            r"%2e%2e%5cprivate_files/secret.txt",
+            r"%2e%2e\private_files/secret.txt",
+            r"..%5cprivate_files/secret.txt",
+            r"%252e%252e%255cprivate_files/secret.txt",
+            r"..%255cprivate_files/secret.txt",
+            r"..%c0%afprivate_files/secret.txt",
+            r"..%c1%9cprivate_files/secret.txt",
+            "/etc/passwd",
         ];
         for attempt in traversal_attempts {
             let response = test_server()
@@ -194,13 +214,11 @@ mod tests {
 
     #[test]
     fn static_single_file() {
-        let test_server = TestServer::new(
-            build_simple_router(|route| {
-                route
-                    .get("/")
-                    .to_file("resources/test/static_files/doc.html")
-            })
-        ).unwrap();
+        let test_server = TestServer::new(build_simple_router(|route| {
+            route
+                .get("/")
+                .to_file("resources/test/static_files/doc.html")
+        })).unwrap();
 
         let response = test_server
             .client()
@@ -209,7 +227,10 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::Ok);
-        assert_eq!(response.headers().get::<ContentType>().unwrap(), &ContentType::html());
+        assert_eq!(
+            response.headers().get::<ContentType>().unwrap(),
+            &ContentType::html()
+        );
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"<html>I am a doc.</html>");
@@ -220,10 +241,6 @@ mod tests {
     }
 
     fn static_router(mount: &str, path: &str) -> Router {
-        build_simple_router(|route| {
-            route
-                .get(mount)
-                .to_filesystem(path)
-        })
+        build_simple_router(|route| route.get(mount).to_filesystem(path))
     }
 }
