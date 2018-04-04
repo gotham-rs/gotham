@@ -8,7 +8,7 @@ use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::RouteMatcher;
 use router::route::dispatch::DispatcherImpl;
 use handler::{Handler, NewHandler};
-use handler::static_file::{FilePathExtractor, FileHandler, FileSystemHandler};
+use handler::static_file::{FileHandler, FilePathExtractor, FileSystemHandler};
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
@@ -167,7 +167,44 @@ pub trait DefineSingleRoute {
     where
         NH: NewHandler + 'static;
 
-
+    /// Directs the route to serve static files from the given root path.
+    /// The route must contain a trailing glob segment, which will be used
+    /// to serve any matching names under the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::StatusCode;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::single::*;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// #
+    /// # fn router() -> Router {
+    /// #   let (chain, pipelines) = single_pipeline(
+    /// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+    /// #   );
+    ///
+    /// build_router(chain, pipelines, |route| {
+    ///     route.get("/*").to_filesystem("resources/test/static_files");
+    /// })
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/doc.html")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Ok);
+    /// # }
+    /// ```
     fn to_filesystem(self, root: &str)
     where
         Self: Sized,
@@ -178,6 +215,42 @@ pub trait DefineSingleRoute {
             .to_new_handler(FileSystemHandler::new(root));
     }
 
+    /// Directs the route to serve a single static file from the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::StatusCode;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::single::*;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// #
+    /// # fn router() -> Router {
+    /// #   let (chain, pipelines) = single_pipeline(
+    /// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+    /// #   );
+    ///
+    /// build_router(chain, pipelines, |route| {
+    ///     route.get("/").to_file("resources/test/static_files/doc.html");
+    /// })
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Ok);
+    /// # }
+    /// ```
     fn to_file(self, path: &str)
     where
         Self: Sized,
