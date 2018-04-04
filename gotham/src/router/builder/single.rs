@@ -8,7 +8,7 @@ use router::route::{Delegation, Extractors, RouteImpl};
 use router::route::matcher::RouteMatcher;
 use router::route::dispatch::DispatcherImpl;
 use handler::{Handler, NewHandler};
-use handler::static_file::{FilePathExtractor, StaticFileHandler};
+use handler::static_file::{FilePathExtractor, FileHandler, FileSystemHandler};
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
@@ -168,7 +168,7 @@ pub trait DefineSingleRoute {
         NH: NewHandler + 'static;
 
 
-    fn to_filesystem(self, static_file_handler: StaticFileHandler)
+    fn to_filesystem(self, static_file_handler: FileSystemHandler)
     where
         Self: Sized,
         Self: ReplacePathExtractor<FilePathExtractor>,
@@ -176,6 +176,13 @@ pub trait DefineSingleRoute {
     {
         self.with_path_extractor::<FilePathExtractor>()
             .to_new_handler(static_file_handler);
+    }
+
+    fn to_file(self, static_file_handler: FileHandler)
+    where
+        Self: Sized,
+    {
+        self.to_new_handler(static_file_handler);
     }
 
     /// Applies a `PathExtractor` type to the current route, to extract path parameters into

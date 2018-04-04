@@ -4,7 +4,7 @@ extern crate gotham;
 extern crate env_logger;
 
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
-use gotham::handler::static_file::StaticFileHandler;
+use gotham::handler::static_file::{FileHandler, FileSystemHandler};
 use std::path::PathBuf;
 
 pub fn main() {
@@ -18,8 +18,11 @@ pub fn main() {
     println!("Listening for requests at http://{} from path {:?}", addr, path);
 
     let router =
-        build_simple_router(|route| route.get("/*")
-            .to_filesystem(StaticFileHandler::new(path)));
+        build_simple_router(|route| {
+            route.get("/*")
+                .to_filesystem(FileSystemHandler::new(path));
+            route.get("/").to_file(FileHandler::new(PathBuf::from("assets/doc.html")))
+        });
 
     gotham::start(addr, router)
 }
