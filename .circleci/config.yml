@@ -1,0 +1,49 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: gothamrs/circleci:latest
+
+    environment:
+      CODECOV_TOKEN: "19803d42-4344-4bb0-b0bb-9c3e64ce7fd6"
+      TZ: "/usr/share/zoneinfo/Etc/UTC"
+
+    steps:
+      - checkout
+      - restore_cache:
+          key: gotham-cache
+      - run:
+          name: Formatting
+          command: |
+            rustup run stable cargo fmt --version
+            rustup run stable cargo fmt -- --write-mode=diff
+      - run:
+          name: Stable
+          command: |
+            rustup run stable rustc --version --verbose
+            rustup run stable cargo --version --verbose
+            rustup run stable cargo build
+      - run:
+          name: Beta
+          command: |
+            rustup run beta rustc --version --verbose
+            rustup run beta cargo --version --verbose
+            rustup run beta cargo build
+      - run:
+          name: Nightly
+          command: |
+            rustup run nightly rustc --version --verbose
+            rustup run nightly cargo --version --verbose
+            rustup run nightly cargo build
+      - run:
+          name: Test
+          command: rustup run stable cargo test
+      - run:
+          name: Upload Coverage
+          command: ./circleci/codecov.sh
+      - save_cache:
+          key: gotham-cache
+          paths:
+            - "~/.cargo"
+            - "./target"
