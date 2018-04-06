@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" alt="The Gotham web framework" width="400" height="276">
+  <img src="https://gotham.rs/assets/brand/logo.svg" alt="The Gotham web framework" width="400" height="276">
 </p>
 
 A flexible web framework that promotes **stability, safety, security and speed**.
