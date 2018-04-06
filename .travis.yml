@@ -1,24 +1,13 @@
 language: rust
-# dependencies of kcov, used by coverage
-addons:
-  apt:
-    packages:
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
-      - binutils-dev
-      - cmake
-    sources:
-      - kalakris-cmake
+sudo: required
+dist: trusty
+cache: cargo
 env:
   - PATH=$HOME/.cargo/bin:$PATH
-before_script:
-  - cargo install cargo-travis -f
 script:
-  - cargo test --all --features ci
-after_success:
-  - cargo coveralls
+  - cargo test -j2 --all
 matrix:
+  fast_finish: true
   include:
     - rust: stable
     - rust: beta
