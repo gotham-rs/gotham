@@ -93,7 +93,7 @@ fn create_file_response(path: PathBuf, state: &State) -> hyper::Response {
 }
 
 fn mime_for_path(path: &Path) -> Mime {
-    guess_mime_type_opt(path).unwrap_or_else(|| mime::TEXT_PLAIN)
+    guess_mime_type_opt(path).unwrap_or_else(|| mime::APPLICATION_OCTET_STREAM)
 }
 
 fn normalize_path(path: &Path) -> PathBuf {
@@ -127,8 +127,7 @@ fn error_response(state: &State, e: io::Error) -> hyper::Response {
 /// Responsible for extracting the file path matched by the glob segment from the URL.
 #[derive(Debug, Deserialize)]
 pub struct FilePathExtractor {
-    #[serde(rename = "*")]
-    parts: Vec<String>,
+    #[serde(rename = "*")] parts: Vec<String>,
 }
 
 impl StateData for FilePathExtractor {}
