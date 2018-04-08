@@ -127,7 +127,7 @@ fn error_response(state: &State, e: io::Error) -> hyper::Response {
 /// Responsible for extracting the file path matched by the glob segment from the URL.
 #[derive(Debug, Deserialize)]
 pub struct FilePathExtractor {
-    #[serde(rename = "*")] 
+    #[serde(rename = "*")]
     parts: Vec<String>,
 }
 
