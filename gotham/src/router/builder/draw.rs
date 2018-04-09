@@ -856,12 +856,8 @@ where
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
 
-        let mut builder = AssociatedRouteBuilder {
-            node_builder,
-            pipeline_chain: *pipeline_chain,
-            pipelines: pipelines.clone(),
-            phantom: PhantomData,
-        };
+        let mut builder =
+            AssociatedRouteBuilder::new(node_builder, *pipeline_chain, pipelines.clone());
 
         f(&mut builder)
     }
