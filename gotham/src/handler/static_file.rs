@@ -8,6 +8,7 @@ use std::fs;
 use std::io::{self, Read};
 use std::path::{Component, Path, PathBuf};
 use std::iter::FromIterator;
+use std::convert::From;
 
 use futures::future;
 use handler::{Handler, HandlerFuture, NewHandler};
@@ -26,7 +27,8 @@ pub struct FileHandler {
 
 impl FileHandler {
     /// Create a new `FileHandler` for the given path.
-    pub fn new(path: &str) -> FileHandler {
+    pub fn new<P: AsRef<Path>>(path: P) -> FileHandler
+    where PathBuf: From<P> {
         FileHandler {
             path: PathBuf::from(path),
         }
@@ -35,7 +37,8 @@ impl FileHandler {
 
 impl FileSystemHandler {
     /// Create a new `FileSystemHandler` with the given root path.
-    pub fn new(root: &str) -> FileSystemHandler {
+    pub fn new<P: AsRef<Path>>(root: P) -> FileSystemHandler 
+    where PathBuf: From<P> {
         FileSystemHandler {
             root: PathBuf::from(root),
         }
