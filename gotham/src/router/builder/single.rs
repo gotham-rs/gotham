@@ -1,4 +1,5 @@
 use std::panic::RefUnwindSafe;
+use std::path::{Path, PathBuf};
 
 use extractor::{PathExtractor, QueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
@@ -205,11 +206,12 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::Ok);
     /// # }
     /// ```
-    fn to_filesystem(self, root: &str)
+    fn to_filesystem<P: AsRef<Path>>(self, root: P)
     where
         Self: Sized,
         Self: ReplacePathExtractor<FilePathExtractor>,
         Self::Output: DefineSingleRoute,
+        PathBuf: From<P>, 
     {
         self.with_path_extractor::<FilePathExtractor>()
             .to_new_handler(FileSystemHandler::new(root));
@@ -251,9 +253,10 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::Ok);
     /// # }
     /// ```
-    fn to_file(self, path: &str)
+    fn to_file<P: AsRef<Path>>(self, path: P)
     where
         Self: Sized,
+        PathBuf: From<P>, 
     {
         self.to_new_handler(FileHandler::new(path));
     }
