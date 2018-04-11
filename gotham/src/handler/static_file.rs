@@ -28,7 +28,9 @@ pub struct FileHandler {
 impl FileHandler {
     /// Create a new `FileHandler` for the given path.
     pub fn new<P: AsRef<Path>>(path: P) -> FileHandler
-    where PathBuf: From<P> {
+    where
+        PathBuf: From<P>,
+    {
         FileHandler {
             path: PathBuf::from(path),
         }
@@ -37,8 +39,10 @@ impl FileHandler {
 
 impl FileSystemHandler {
     /// Create a new `FileSystemHandler` with the given root path.
-    pub fn new<P: AsRef<Path>>(root: P) -> FileSystemHandler 
-    where PathBuf: From<P> {
+    pub fn new<P: AsRef<Path>>(root: P) -> FileSystemHandler
+    where
+        PathBuf: From<P>,
+    {
         FileSystemHandler {
             root: PathBuf::from(root),
         }
