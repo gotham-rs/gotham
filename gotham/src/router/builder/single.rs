@@ -211,7 +211,7 @@ pub trait DefineSingleRoute {
         Self: Sized,
         Self: ReplacePathExtractor<FilePathExtractor>,
         Self::Output: DefineSingleRoute,
-        PathBuf: From<P>, 
+        PathBuf: From<P>,
     {
         self.with_path_extractor::<FilePathExtractor>()
             .to_new_handler(FileSystemHandler::new(root));
@@ -256,7 +256,7 @@ pub trait DefineSingleRoute {
     fn to_file<P: AsRef<Path>>(self, path: P)
     where
         Self: Sized,
-        PathBuf: From<P>, 
+        PathBuf: From<P>,
     {
         self.to_new_handler(FileHandler::new(path));
     }
