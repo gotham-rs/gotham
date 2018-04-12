@@ -1,4 +1,4 @@
-//! Defines the `AcceptMatcher`.
+//! Defines the `AcceptHeaderRouterMatcher`.
 
 use hyper::StatusCode;
 use hyper::header::{Accept, Headers};
@@ -23,8 +23,7 @@ use state::{request_id, FromState, State};
 /// # fn main() {
 /// #   use hyper::header::{Headers, Accept};
 /// #   use gotham::state::State;
-/// #   use gotham::router::route::matcher::RouteMatcher;
-/// #   use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
+/// #   use gotham::router::route::matcher::{AcceptHeaderRouteMatcher, RouteMatcher};
 /// #
 /// #   State::with_new(|state| {
 /// #

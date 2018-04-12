@@ -1,15 +1,13 @@
-# Path Examples
+# Sessions Examples
 
-A collection of crates that provide examples of working with the request path and the Gotham web
-framework.
+A collection of crates showing how to store and retrieve session data with the Gotham web framework.
 
 ## Ordering
 
-We recommend reviewing our request path examples in the order shown below:
+We recommend reviewing our sessions examples in the order shown below:
 
-1. [Introduction](introduction) - Introduces having the Gotham web framework Router extract request
-                                  path segments, in a type safe way, for use in your application.
-2. [Glob matching](globs) - Shows how to match arbitrarily many path segments.
+1. [Introduction](introduction) - Shows how to store and retrieve session data.
+2. [Custom data type](custom_data_type) - Shows how to store and retrieve session data with a custom data type.
 
 ## Help
 

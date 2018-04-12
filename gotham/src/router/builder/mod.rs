@@ -2,7 +2,7 @@
 
 mod draw;
 mod single;
-mod replace;
+mod modify;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
@@ -16,15 +16,14 @@ use router::tree::TreeBuilder;
 use router::response::extender::ResponseExtender;
 use router::response::finalizer::ResponseFinalizerBuilder;
 use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::matcher::{MethodOnlyRouteMatcher, RouteMatcher};
-use router::route::matcher::any::AnyRouteMatcher;
+use router::route::matcher::{AnyRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher};
 use router::route::dispatch::DispatcherImpl;
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
 
 pub use self::single::DefineSingleRoute;
 pub use self::draw::DrawRoutes;
-pub use self::replace::{ReplacePathExtractor, ReplaceQueryStringExtractor};
+pub use self::modify::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor};
 
 /// The default type returned when building a single associated route. See
 /// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.

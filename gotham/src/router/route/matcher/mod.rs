@@ -3,6 +3,11 @@
 pub mod any;
 pub mod and;
 pub mod accept;
+pub mod content_type;
+
+pub use self::any::AnyRouteMatcher;
+pub use self::and::AndRouteMatcher;
+pub use self::accept::AcceptHeaderRouteMatcher;
 
 use std::panic::RefUnwindSafe;
 
@@ -16,6 +21,34 @@ use router::non_match::RouteNonMatch;
 pub trait RouteMatcher: RefUnwindSafe {
     /// Determines if the `Request` meets pre-defined conditions.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;
+}
+
+/// Allow various types to represent themselves as a `RouteMatcher`
+pub trait IntoRouteMatcher {
+    /// The concrete RouteMatcher each implementation will provide.
+    type Output: RouteMatcher;
+
+    /// Transform into a `RouteMatcher` of the the associated type identified by `Output`.
+    fn into_route_matcher(self) -> Self::Output;
+}
+
+impl IntoRouteMatcher for Vec<Method> {
+    type Output = MethodOnlyRouteMatcher;
+
+    fn into_route_matcher(self) -> Self::Output {
+        MethodOnlyRouteMatcher::new(self)
+    }
+}
+
+impl<M> IntoRouteMatcher for M
+where
+    M: RouteMatcher + Send + Sync + 'static,
+{
+    type Output = M;
+
+    fn into_route_matcher(self) -> Self::Output {
+        self
+    }
 }
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with an accepted HTTP request

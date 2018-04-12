@@ -5,15 +5,17 @@ use hyper::Method;
 
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::route::matcher::MethodOnlyRouteMatcher;
+use router::route::matcher::{IntoRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher};
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
                       SingleRouteBuilder};
 use router::tree::node::{NodeBuilder, SegmentType};
 use router::tree::regex::ConstrainedSegmentRegex;
 
-/// The default type returned when building a single route. See
-/// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
+/// The type returned when building a route that only considers path and http verb(s) when
+/// determining if it matches a request.
+///
+/// See `router::builder::DefineSingleRoute` for an overview of route specification.
 pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     'a,
     MethodOnlyRouteMatcher,
@@ -22,6 +24,12 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     NoopPathExtractor,
     NoopQueryStringExtractor,
 >;
+
+/// The type returned when building a route with explicit matching requirements.
+///
+/// See `router::builder::DefineSingleRoute` for an overview of route specification.
+pub type ExplicitSingleRouteBuilder<'a, M, C, P> =
+    SingleRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
 /// The type passed to the function used when building associated routes. See
 /// `AssociatedRouteBuilder` for information about the API available for associated routes.
@@ -388,15 +396,78 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    fn request<'b>(
+    ///
+    /// ```
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # extern crate mime;
+    /// #
+    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::header::{Accept, qitem};
+    /// # use gotham::state::State;
+    /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// # fn my_handler(state: State) -> (State, Response) {
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     // All we match on is the Accept header, the method is not considered.
+    ///     let matcher = AcceptHeaderRouteMatcher::new(vec![mime::APPLICATION_JSON]);
+    ///     route.request(matcher, "/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #
+    /// #   let accept_header = Accept(vec![
+    /// #     qitem(mime::APPLICATION_JSON),
+    /// #   ]);
+    /// #
+    /// #   let text_accept_header = Accept(vec![
+    /// #     qitem(mime::TEXT_PLAIN),
+    /// #   ]);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .with_header(accept_header)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .with_header(text_accept_header)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::NotAcceptable);
+    /// #
+    /// #   // No Accept type being provided is valid for the AcceptHeaderRouterMatcher
+    /// #   // Proves the method is not considered
+    /// #   let response = test_server.client()
+    /// #       .delete("https://example.com/request/path")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// # }
+    /// ```
+    fn request<'b, IRM, M>(
         &'b mut self,
-        methods: Vec<Method>,
+        matcher: IRM,
         path: &str,
-    ) -> DefaultSingleRouteBuilder<'b, C, P> {
+    ) -> ExplicitSingleRouteBuilder<'b, M, C, P>
+    where
+        IRM: IntoRouteMatcher<Output = M>,
+        M: RouteMatcher + Send + Sync + 'static,
+    {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
-
-        let matcher = MethodOnlyRouteMatcher::new(methods);
+        let matcher = matcher.into_route_matcher();
 
         SingleRouteBuilder {
             matcher,
@@ -478,42 +549,72 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::single_pipeline;
+    /// # use gotham::pipeline::set::{finalize_pipeline_set, new_pipeline_set};
     /// # use gotham::test::TestServer;
     /// #
     /// # #[derive(Default, Serialize, Deserialize)]
     /// # struct Session;
     /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct AdminSession;
+    /// #
     /// # mod resource {
     /// #   use super::*;
     /// #   pub fn list(state: State) -> (State, Response) {
     /// #       assert!(state.has::<SessionData<Session>>());
+    /// #       assert!(!state.has::<SessionData<AdminSession>>());
+    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   }
+    /// # }
+    /// #
+    /// # mod admin {
+    /// #   use super::*;
+    /// #   pub fn handler(state: State) -> (State, Response) {
+    /// #       assert!(state.has::<SessionData<Session>>());
+    /// #       assert!(state.has::<SessionData<AdminSession>>());
     /// #       (state, Response::new().with_status(StatusCode::Accepted))
     /// #   }
     /// # }
     /// #
     /// # fn handler(state: State) -> (State, Response) {
     /// #   assert!(!state.has::<SessionData<Session>>());
+    /// #   assert!(!state.has::<SessionData<AdminSession>>());
     /// #   (state, Response::new().with_status(StatusCode::Accepted))
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// let (chain, pipelines) = single_pipeline(
+    /// let pipelines = new_pipeline_set();
+    /// let (pipelines, default) = pipelines.add(
     ///     new_pipeline()
     ///         .add(NewSessionMiddleware::default().with_session_type::<Session>())
     ///         .build()
     /// );
+    /// let (pipelines, extended) = pipelines.add(
+    ///     new_pipeline()
+    ///         .add(NewSessionMiddleware::default().with_session_type::<AdminSession>())
+    ///         .build()
+    /// );
+    /// let pipeline_set = finalize_pipeline_set(pipelines);
     ///
-    /// build_router(chain, pipelines, |route| {
+    /// let default_chain = (default, ());
+    /// let extended_chain = (extended, default_chain);
+    ///
+    /// build_router(default_chain, pipeline_set, |route| {
     ///     // Requests for the root handler use an empty set of pipelines, skipping the session
-    ///     // middleware.
+    ///     // middlewares.
     ///     route.with_pipeline_chain((), |route| {
     ///         route.get("/").to(handler);
     ///     });
     ///
-    ///     // Requests dispatched to the rest of the application will invoke the session
-    ///     // middleware as usual.
+    ///     // Requests dispatched to the resource module will only invoke one session
+    ///     // middleware which is the default behavior.
     ///     route.get("/resource/list").to(resource::list);
+    ///
+    ///     // Requests for the admin handler will additionally invoke the admin session
+    ///     // middleware.
+    ///     route.with_pipeline_chain(extended_chain, |route| {
+    ///         route.get("/admin").to(admin::handler);
+    ///     });
     /// })
     /// # }
     /// #

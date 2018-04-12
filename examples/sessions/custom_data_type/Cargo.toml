@@ -1,0 +1,16 @@
+[package]
+name = "gotham_examples_session_custom_data_type"
+description = "Storing and retrieving session data with a custom data type, in a type safe way, with the Gotham web framework."
+version = "0.0.0"
+authors = ["Daniel Wagner-Hall <dawagner@gmail.com>"]
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
+
+hyper = "0.11"
+mime = "0.3"
+serde = "1"
+serde_derive = "1"
+time = "0.1.39"
