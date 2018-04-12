@@ -1,6 +1,6 @@
 [package]
 name = "gotham_derive"
-version = "0.2.1"
+version = "0.2.2-dev"
 authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
            "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
 description = "Macros 1.1 implementations for Gotham traits"
