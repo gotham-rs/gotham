@@ -92,8 +92,7 @@ where
 
     serve(listener, protocol, new_handler, &handle);
 
-    core.run(future::ok(None));
-    //.expect("unable to run reactor over listener");
+    core.run(future::ok(())).expect("unable to run reactor over listener");
 }
 
 fn serve<'a, G, NH>(listener: G, protocol: &'a Http, new_handler: Arc<NH>, handle: &'a Handle)
@@ -111,7 +110,7 @@ where
 
         handle.spawn(f);
         Ok(())
-    }))
+    }).or_else(|_| future::ok(())))
 }
 
 fn pick_addr<A: ToSocketAddrs>(addr: A) -> SocketAddr {
