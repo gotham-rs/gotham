@@ -16,8 +16,11 @@ struct Listener {
 
 impl ::GothamListener for Listener {
     type Stream = Incoming;
-    fn incoming(self, handle: &Handle) -> Self::Stream {
-        let listener = net::TcpListener::from_listener(*self.wrapped, &self.addr, handle)
+    fn incoming(self, handle: Handle) -> Self::Stream {
+        let tcp = (*self.wrapped)
+            .try_clone()
+            .expect("Couldn't clone TCP listener.");
+        let listener = net::TcpListener::from_listener(tcp, &self.addr, &handle)
             .expect("unable to convert TCP listener to tokio listener");
         listener.incoming()
     }
@@ -50,10 +53,10 @@ where
         let listener = listener.clone();
         let protocol = protocol.clone();
         let new_handler = new_handler.clone();
-        thread::spawn(move || ::run_and_serve(listener, &protocol, new_handler));
+        thread::spawn(move || ::run_and_serve(listener, protocol, new_handler));
     }
 
-    ::run_and_serve(listener, &protocol, new_handler);
+    ::run_and_serve(listener, protocol, new_handler);
 }
 
 fn new_gotham_listener(tcp: TcpListener, addr: SocketAddr) -> Listener {

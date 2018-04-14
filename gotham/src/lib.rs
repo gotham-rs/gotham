@@ -64,7 +64,7 @@ use futures::{future, Future, Stream};
 trait GothamListener {
   type Stream;
 
-  fn incoming(self, &Handle) -> Self::Stream;
+  fn incoming(self, Handle) -> Self::Stream;
 }
 
 /// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
@@ -81,34 +81,35 @@ where
     start_with_num_threads(addr, threads, new_handler)
 }
 
-fn run_and_serve<'a, G, NH>(listener: G, protocol: &'a Http, new_handler: Arc<NH>)
+fn run_and_serve<'a, G, NH>(listener: G, protocol: Arc<Http>, new_handler: Arc<NH>)
 where
     G: GothamListener,
-    <G as GothamListener>::Stream: futures::Stream<Item = (TcpStream, SocketAddr), Error=io::Error>,
+    <G as GothamListener>::Stream: futures::Stream<Item = (TcpStream, SocketAddr), Error=io::Error> + 'static,
     NH: NewHandler + 'static,
 {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
 
-    serve(listener, protocol, new_handler, &handle);
+    serve(listener, protocol, new_handler, handle);
 
-    core.run(future::ok(())).expect("unable to run reactor over listener");
+    core.run::<future::FutureResult<(),()>>(future::ok(())).expect("unable to run reactor over listener");
 }
 
-fn serve<'a, G, NH>(listener: G, protocol: &'a Http, new_handler: Arc<NH>, handle: &'a Handle)
+fn serve<G, NH>(listener: G, protocol: Arc<Http>, new_handler: Arc<NH>, handle: Handle)
 where
     G: GothamListener,
-    <G as GothamListener>::Stream: futures::Stream<Item = (TcpStream, SocketAddr), Error=io::Error>,
+    <G as GothamListener>::Stream: futures::Stream<Item = (TcpStream, SocketAddr), Error=io::Error> + 'static,
     NH: NewHandler + 'static,
 {
     let gotham_service = GothamService::new(new_handler, handle.clone());
-    let stream = listener.incoming(handle);
+    let stream = listener.incoming(handle.clone());
+    let inner = handle.clone();
 
-    handle.spawn(stream.for_each(|(socket, addr)| {
+    handle.spawn(stream.for_each(move |(socket, addr)| {
         let service = gotham_service.connect(addr);
         let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
-        handle.spawn(f);
+        inner.spawn(f);
         Ok(())
     }).or_else(|_| future::ok(())))
 }
