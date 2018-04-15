@@ -97,7 +97,8 @@ impl Stream for SocketStream {
 ///
 /// Note: On Windows this function spawns an extra thread to handle
 /// accepting connections.
-pub fn new_gotham_listener(tcp: TcpListener, addr: SocketAddr) -> SocketQueue {
+pub fn new_gotham_listener(addr: SocketAddr) -> SocketQueue {
+    let tcp = TcpListener::bind(addr).expect("unable to open TCP listener");
     let queue = SocketQueue::new(tcp, addr);
     {
         let queue = queue.clone();

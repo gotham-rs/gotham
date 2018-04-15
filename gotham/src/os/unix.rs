@@ -25,7 +25,8 @@ impl ::GothamListener for Listener {
 ///
 /// The Unix implementation of GothamListener clones the std::net::TcpListener,
 /// wraps it in a tokio::net::TcpListener and returns its Incoming.
-pub fn new_gotham_listener(tcp: TcpListener, addr: SocketAddr) -> Listener {
+pub fn new_gotham_listener(addr: SocketAddr) -> Listener {
+    let tcp = TcpListener::bind(addr).expect("unable to open TCP listener");
     Listener {
         wrapped: Arc::new(tcp),
         addr: addr,

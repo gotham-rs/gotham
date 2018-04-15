@@ -54,7 +54,7 @@ pub use os::current::new_gotham_listener;
 
 use handler::NewHandler;
 use hyper::server::Http;
-use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::io;
 use std::thread;
@@ -93,9 +93,7 @@ where
     A: ToSocketAddrs,
 {
     let addr = pick_addr(addr);
-    let tcp = tcp_listener(addr);
-
-    let listener = new_gotham_listener(tcp, addr);
+    let listener = new_gotham_listener(addr);
 
     let protocol = Arc::new(Http::new());
     let new_handler = Arc::new(new_handler);
@@ -157,12 +155,4 @@ fn pick_addr<A: ToSocketAddrs>(addr: A) -> SocketAddr {
         Ok(_) => panic!("unable to resolve listener address"),
         Err(_) => panic!("unable to parse listener address"),
     }
-}
-
-fn tcp_listener(addr: SocketAddr) -> TcpListener {
-    let addr = pick_addr(addr);
-
-    let listener = TcpListener::bind(addr).expect("unable to open TCP listener");
-
-    listener
 }
