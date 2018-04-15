@@ -1,15 +1,10 @@
-use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
-use std::thread;
+use std::net::{SocketAddr, TcpListener};
 use std::sync::Arc;
 use tokio_core::net::{self, Incoming};
 use tokio_core::reactor::Handle;
 
-use hyper::server::Http;
-
-use handler::NewHandler;
-
 #[derive(Clone)]
-struct Listener {
+pub struct Listener {
     wrapped: Arc<TcpListener>,
     addr: SocketAddr,
 }
@@ -26,40 +21,11 @@ impl ::GothamListener for Listener {
     }
 }
 
-/// Starts a Gotham application, with the given number of threads.
-pub fn start_with_num_threads<NH, A>(addr: A, threads: usize, new_handler: NH)
-where
-    NH: NewHandler + 'static,
-    A: ToSocketAddrs,
-{
-    let addr = ::pick_addr(addr);
-    let tcp = ::tcp_listener(addr);
-
-    let listener = new_gotham_listener(tcp, addr);
-
-    let protocol = Arc::new(Http::new());
-    let new_handler = Arc::new(new_handler);
-
-    /*
-    info!(
-        target: "gotham::start",
-        " Gotham listening on http://{:?} with {} threads",
-        addr, // ToSocketAddrs can't be formatted...
-        threads,
-    );
-    */
-
-    for _ in 0..threads - 1 {
-        let listener = listener.clone();
-        let protocol = protocol.clone();
-        let new_handler = new_handler.clone();
-        thread::spawn(move || ::run_and_serve(listener, protocol, new_handler));
-    }
-
-    ::run_and_serve(listener, protocol, new_handler);
-}
-
-fn new_gotham_listener(tcp: TcpListener, addr: SocketAddr) -> Listener {
+/// Constructs a GothamListener to handle incoming TCP connections.
+///
+/// The Unix implementation of GothamListener clones the std::net::TcpListener,
+/// wraps it in a tokio::net::TcpListener and returns its Incoming.
+pub fn new_gotham_listener(tcp: TcpListener, addr: SocketAddr) -> Listener {
     Listener {
         wrapped: Arc::new(tcp),
         addr: addr,
