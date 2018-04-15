@@ -1,12 +1,11 @@
 use syn;
 use quote;
 
-use helpers::ty_params;
-
-pub fn state_data(ast: &syn::DeriveInput) -> quote::Tokens {
-    let (name, borrowed, where_clause) = ty_params(&ast, None);
+pub(crate) fn state_data(ast: &syn::DeriveInput) -> quote::Tokens {
+    let name = &ast.ident;
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     quote! {
-        impl #borrowed ::gotham::state::StateData for #name #borrowed #where_clause {}
+        impl #impl_generics ::gotham::state::StateData for #name #ty_generics #where_clause {}
     }
 }

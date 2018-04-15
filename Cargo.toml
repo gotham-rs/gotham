@@ -1,13 +1,56 @@
 [workspace]
 members = [
+    ## Gotham Core
     "gotham",
     "gotham_derive",
-
-    "middleware/template",
-    "middleware/diesel",
-
     "misc/borrow_bag",
 
+    ## Middleware
+    "middleware/template",
+    "middleware/under_development/diesel",
+
+    ## Examples (these crates are not published)
     "examples/hello_world",
-    "examples/hello_router",
+
+    # routing
+    "examples/routing/introduction",
+    "examples/routing/http_verbs",
+    "examples/routing/scopes",
+    "examples/routing/associations",
+
+    # path
+    "examples/path/introduction",
+    "examples/path/globs",
+
+    # query_string
+    "examples/query_string/introduction",
+
+    # cookies
+    "examples/cookies/introduction",
+
+    # sessions
+    "examples/sessions/introduction",
+    "examples/sessions/custom_data_type",
+
+    # headers
+    "examples/headers/setting",
+
+    # middleware
+    "examples/middleware/introduction",
+
+    # into_response
+    "examples/into_response/introduction",
+
+    # handlers
+    "examples/handlers/request_data",
+    "examples/handlers/simple_async_handlers",
+    "examples/handlers/async_handlers",
+
+    # example_contribution_template
+    "examples/example_contribution_template/name"
 ]
+
+[patch.crates-io]
+gotham = { path = "gotham" }
+gotham_derive = { path = "gotham_derive" }
+borrow-bag = { path = "misc/borrow_bag" }

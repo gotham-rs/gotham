@@ -9,8 +9,8 @@ readme = "README.md"
 publish = false
 
 [dependencies]
-log = "0.3.0"
-futures = "0.1.0"
+log = "0.4"
+futures = "0.1"
 
 # Middlewares should reference the semantic versions of Gotham that are they compatible with
 # and not use relative references such as shown here.

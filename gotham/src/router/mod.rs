@@ -3,14 +3,15 @@
 pub mod builder;
 pub mod tree;
 pub mod route;
-pub mod request;
 pub mod response;
+pub mod non_match;
 
 use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
 use hyper::{Response, StatusCode};
+use hyper::header::Allow;
 
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use http::request::path::RequestPathSegments;
@@ -26,7 +27,7 @@ struct RouterData {
 }
 
 impl RouterData {
-    pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> RouterData {
+    fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> RouterData {
         RouterData {
             tree,
             response_finalizer,
@@ -34,38 +35,18 @@ impl RouterData {
     }
 }
 
-/// Responsible for dispatching `Requests` to a linked `Route` and
-/// dispatching error states when a valid `Route` is unable to be determined or internal error
-/// states occur.
+/// Responsible for dispatching HTTP requests to defined routes, and responding with appropriate
+/// error codes when a valid `Route` is unable to be determined or the dispatch cannot be
+/// performed.
 ///
-/// The `Router` is capable of delegating `Requests` to secondary `Router` instances which allows it
-/// to support "Modular Applications". A modular application contains multiple
-/// applications within a single binary but have clear boundaries between them, via Rust module
-/// seperation. Modular applications live within a single repository. Modular applications
-/// are roughly a halfway point between monolithic application design and
-/// microservice application design. Modular Applications may share modules that are not
-/// specifically asigned to any one application e.g. Authentication/Authorization/Identity.
+/// A `Router` is constructed through the [`gotham::router::builder`](builder/index.html#functions)
+/// API, and used with the `gotham::start` function when booting a Gotham web application.
 ///
-/// Please see the documentation for `Route` in order to create routes that delegate to secondary
-/// `Routers`.
-///
-/// # Examples
-///
-/// ```
-/// # extern crate gotham;
-/// #
-/// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::Router;
-/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-/// #
-/// # fn main() {
-///   let tree_builder = TreeBuilder::new();
-///   let tree = tree_builder.finalize();
-///   let response_finalizer = ResponseFinalizerBuilder::new().finalize();
-///
-///   Router::new(tree, response_finalizer);
-/// # }
-/// ```
+/// The `Router` is capable of delegating requests to secondary `Router` instances, which allows
+/// the support of "modular applications". A modular application contains multiple applications
+/// within a single binary that have clear boundaries established via Rust module separation.
+/// Please see the documentation for `DrawRoutes::delegate` within `gotham::router::builder` in
+/// order to delegate to other `Router` instances.
 #[derive(Clone)]
 pub struct Router {
     data: Arc<RouterData>,
@@ -106,9 +87,14 @@ impl Handler for Router {
                                 self.dispatch(state, sm, route)
                             }
                         },
-                        Err(status) => {
+                        Err(non_match) => {
+                            let (status, allow) = non_match.deconstruct();
+
                             trace!("[{}] responding with error status", request_id(&state));
-                            let res = create_response(&state, status, None);
+                            let mut res = create_response(&state, status, None);
+                            if let StatusCode::MethodNotAllowed = status {
+                                res.headers_mut().set(Allow(allow));
+                            }
                             Box::new(future::ok((state, res)))
                         }
                     }
@@ -130,8 +116,15 @@ impl Handler for Router {
 }
 
 impl Router {
-    /// Creates a `Router` instance.
+    /// Manually assembles a `Router` instance from a provided `Tree`.
+    #[deprecated(since = "0.2.0",
+                 note = "use the new `gotham::router::builder` API to construct a Router")]
     pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
+        Router::internal_new(tree, response_finalizer)
+    }
+
+    /// Same as `new`, but private and not deprecated.
+    fn internal_new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
         let router_data = RouterData::new(tree, response_finalizer);
         Router {
             data: Arc::new(router_data),
@@ -153,8 +146,7 @@ impl Router {
                         trace!("[{}] dispatching", request_id(&state));
                         route.dispatch(state)
                     }
-                    Err(e) => {
-                        trace!("[{}] {}", request_id(&state), e);
+                    Err(_) => {
                         error!("[{}] the server cannot or will not process the request due to a client error within the query string",
                                request_id(&state));
 
@@ -164,8 +156,7 @@ impl Router {
                     }
                 }
             }
-            Err(e) => {
-                trace!("[{}] {}", request_id(&state), e);
+            Err(_) => {
                 error!(
                     "[{}] the server cannot or will not process the request due to a client error on the request path",
                     request_id(&state)
@@ -206,16 +197,16 @@ mod tests {
     use hyper::{Method, Uri};
     use hyper::header::{ContentLength, Headers};
 
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use handler::HandlerError;
+    use pipeline::set::*;
+    use router::response::finalizer::ResponseFinalizerBuilder;
+    use router::route::dispatch::DispatcherImpl;
+    use router::route::matcher::MethodOnlyRouteMatcher;
+    use router::route::{Extractors, RouteImpl};
     use router::tree::TreeBuilder;
     use router::tree::node::{NodeBuilder, SegmentType};
-    use router::route::{Extractors, RouteImpl};
-    use router::request::path::NoopPathExtractor;
-    use router::request::query_string::NoopQueryStringExtractor;
-    use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl};
-    use router::route::matcher::MethodOnlyRouteMatcher;
-    use router::response::finalizer::ResponseFinalizerBuilder;
     use state::set_request_id;
-    use handler::HandlerError;
 
     fn handler(state: State) -> (State, Response) {
         (state, Response::new())
@@ -239,6 +230,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn internal_server_error_if_no_request_path_segments() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
@@ -262,6 +254,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn not_found_error_if_request_path_is_not_found() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();
@@ -276,6 +269,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn custom_error_if_leaf_found_but_matching_route_not_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut tree_builder = TreeBuilder::new();
@@ -302,6 +296,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn success_if_leaf_and_route_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut tree_builder = TreeBuilder::new();
@@ -328,6 +323,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn delegates_to_secondary_router() {
         let delegated_router = {
             let pipeline_set = finalize_pipeline_set(new_pipeline_set());
@@ -387,6 +383,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn executes_response_finalizer_when_present() {
         let tree_builder = TreeBuilder::new();
         let tree = tree_builder.finalize();

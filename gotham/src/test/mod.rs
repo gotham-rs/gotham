@@ -1,6 +1,6 @@
 //! Contains helpers for Gotham applications to use during testing.
 //!
-//! `TestServer::new(_)` is the most useful entry point.
+//! See the `TestServer` type for example usage.
 
 use std::{cell, io, net, time};
 use std::cell::RefCell;
@@ -28,8 +28,8 @@ mod request;
 pub use self::request::RequestBuilder;
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
-/// (which Gotham's `Router` is). An instance of `TestServer` is run single-threaded and
-/// asynchronous, and only accessible by a client returned from the `TestServer`.
+/// (which Gotham's `Router` is). An instance of `TestServer` is run asynchronously within the
+/// current thread, and is only accessible by a client returned from the `TestServer`.
 ///
 /// # Examples
 ///
@@ -74,13 +74,13 @@ where
 /// response future. See `TestServer::run_request` for usage.
 #[derive(Debug)]
 pub enum TestRequestError {
-    /// The response was not received before the timeout duration elapsed
+    /// The response was not received before the timeout duration elapsed.
     TimedOut,
-    /// A `std::io::Error` occurred before a response was received
+    /// A `std::io::Error` occurred before a response was received.
     IoError(io::Error),
-    /// A `hyper::Error` occurred before a response was received
+    /// A `hyper::Error` occurred before a response was received.
     HyperError(hyper::Error),
-    /// The URL could not be parsed when building the request
+    /// The URL could not be parsed when building the request.
     UriError(UriError),
 }
 
@@ -105,7 +105,7 @@ impl<NH> TestServer<NH>
 where
     NH: NewHandler + 'static,
 {
-    /// Creates a `TestServer` instance for the service spawned by `new_service`. This server has
+    /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
     /// for each connection.
     ///
@@ -133,14 +133,15 @@ where
     }
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
-    /// the server will see a default value as the source address for the connection.
+    /// the server will see a default socket address of `127.0.0.1:10000` as the source address for
+    /// the connection.
     pub fn client(&self) -> TestClient<NH> {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
-    /// `client_addr` can be any value, and need not be contactable.
+    /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
     pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<NH> {
         self.try_client_with_address(client_addr)
             .expect("TestServer: unable to spawn client")
@@ -244,6 +245,16 @@ impl<NH> TestClient<NH>
 where
     NH: NewHandler + 'static,
 {
+    /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
+    pub fn head(self, uri: &str) -> RequestBuilder<NH> {
+        self.build_request(Method::Head, uri)
+    }
+
+    /// Begin constructing a HEAD request using this `TestClient`.
+    pub fn head_uri(self, uri: Uri) -> RequestBuilder<NH> {
+        self.build_request_uri(Method::Head, uri)
+    }
+
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
     pub fn get(self, uri: &str) -> RequestBuilder<NH> {
         self.build_request(Method::Get, uri)
@@ -272,6 +283,56 @@ where
         self.build_request_uri(Method::Post, uri)
             .with_body(body)
             .with_header(ContentType(content_type))
+    }
+
+    /// Parse the URI and begin constructing a PUT request using this `TestClient`.
+    pub fn put<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request(Method::Put, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Begin constructing a PUT request using this `TestClient`.
+    pub fn put_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request_uri(Method::Put, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Parse the URI and begin constructing a PATCH request using this `TestClient`.
+    pub fn patch<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request(Method::Patch, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Begin constructing a PATCH request using this `TestClient`.
+    pub fn patch_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    where
+        T: Into<Body>,
+    {
+        self.build_request_uri(Method::Patch, uri)
+            .with_body(body)
+            .with_header(ContentType(content_type))
+    }
+
+    /// Parse the URI and begin constructing a DELETE request using this `TestClient`.
+    pub fn delete(self, uri: &str) -> RequestBuilder<NH> {
+        self.build_request(Method::Delete, uri)
+    }
+
+    /// Begin constructing a DELETE request using this `TestClient`.
+    pub fn delete_uri(self, uri: Uri) -> RequestBuilder<NH> {
+        self.build_request_uri(Method::Delete, uri)
     }
 
     /// Parse the URI and begin constructing a request with the given HTTP method.
@@ -374,7 +435,7 @@ impl TestResponse {
 
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
-pub struct TestConnect {
+struct TestConnect {
     stream: cell::RefCell<Option<PollEvented<mio::net::TcpStream>>>,
 }
 

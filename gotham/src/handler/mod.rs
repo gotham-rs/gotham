@@ -1,9 +1,8 @@
-//! Defines types for Gotham handlers
+//! Defines types for handlers, the primary building block of a Gotham application.
 //!
-//! A function can be used directly as a handler using one of the [default implementations of
-//! `Handler`][handler-impl], but the trait can also be implemented directly for greater control.
-//!
-//! [handler-impl]: trait.Handler.html#implementors
+//! A function can be used directly as a handler using one of the default implementations of
+//! `Handler`, but the traits can also be implemented directly for greater control. See the
+//! `Handler` trait for some examples of valid handlers.
 use std::io;
 use std::panic::RefUnwindSafe;
 
@@ -22,25 +21,210 @@ pub use self::error::{HandlerError, IntoHandlerError};
 /// an appropriate HTTP error response.
 pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)>;
 
-/// A `Handler` receives some subset of requests to the application, and returns a future which
-/// resolves to a response. This represents the common entry point for the parts of a Gotham
-/// application, implemented by `Router` and `Pipeline`.
+/// A `Handler` is an asynchronous function, taking a `State` value which represents the request
+/// and related runtime state, and returns a future which resolves to a response.
 ///
-/// The `Handler` is created by its `NewHandler` implementation, and is used for a single request.
+/// This represents the common entry point for the parts of a Gotham application, and is used with
+/// the `Router` API to describe how a request should be dispatched and handled.
 ///
-/// A `Handler` is basically an asynchronous function. To anybody familiar with tokio's
-/// documentation, this explanation will sound familiar as it's exactly [the description of a tokio
-/// `Service`][tokio-simple-server]
+/// The `Handler` is created and consumed by each request. In the most common case (a bare function
+/// acting as a `Handler`) the `Handler + Copy` traits allow the `Handler` to be copied for each
+/// request, and the copy consumed. For a closure or a custom handler, the `NewHandler`
+/// implementation creates a `Handler` value for each request.
 ///
-/// [tokio-simple-server]: https://tokio.rs/docs/getting-started/simple-server/
+/// # Examples
+///
+/// The simplest kind of handler is a bare function which returns a synchronous response. This is
+/// useful when we don't need to do any I/O before generating a response.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use hyper::Response;
+/// # use gotham::handler::Handler;
+/// # use gotham::state::State;
+/// #
+/// # fn main() {
+/// fn my_handler(_state: State) -> (State, Response) {
+///     // Implementation elided.
+/// #   unimplemented!()
+/// }
+/// #
+/// # fn assert_type<H>(_h: H) where H: Handler + Copy {}
+/// # assert_type(my_handler);
+/// # }
+/// ```
+///
+/// An asynchronous handler returns a `HandlerFuture` that will resolve to the response. For
+/// example, this allows I/O work to begin, and for the Gotham app to continue generating a
+/// response once the work completes.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use gotham::handler::{Handler, HandlerFuture};
+/// # use gotham::state::State;
+/// #
+/// # fn main() {
+/// fn async_handler(_state: State) -> Box<HandlerFuture> {
+///     // Implementation elided.
+/// #   unimplemented!()
+/// }
+/// #
+/// # fn assert_type<H>(_h: H) where H: Handler + Copy {}
+/// # assert_type(async_handler);
+/// # }
+/// ```
+///
+/// A closure can implement `Handler` automatically, in the same way as a bare function. When
+/// constructing a `Handler` in this way, a wrapping closure must also be used to implement the
+/// `NewHandler` trait.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// # extern crate futures;
+/// #
+/// # use gotham::handler::{HandlerFuture, NewHandler};
+/// # use gotham::state::State;
+/// # use futures::future;
+/// #
+/// # fn main() {
+/// let new_handler = || {
+///     let handler = |_state: State| {
+///         // Implementation elided.
+/// #       Box::new(future::empty()) as Box<HandlerFuture>
+///     };
+///     Ok(handler)
+/// };
+///
+/// // Pass `new_handler` to the router, using the `to_new_handler` API.
+/// #
+/// # fn assert_type<H>(_h: H) where H: NewHandler {}
+/// # assert_type(new_handler);
+/// # }
+/// ```
+///
+/// A custom handler, which implements the `NewHandler` and `Handler` traits directly for greater
+/// control. See the `NewHandler` trait for more examples of custom handlers.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use std::io;
+/// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
+/// # use gotham::state::State;
+/// #
+/// # fn main() {
+/// #[derive(Copy, Clone)]
+/// struct MyCustomHandler;
+///
+/// impl NewHandler for MyCustomHandler {
+///     type Instance = Self;
+///
+///     fn new_handler(&self) -> io::Result<Self::Instance> {
+///         Ok(*self)
+///     }
+/// }
+///
+/// impl Handler for MyCustomHandler {
+///     fn handle(self, _state: State) -> Box<HandlerFuture> {
+///         // Implementation elided.
+/// #       unimplemented!()
+///     }
+/// }
+/// #
+/// # fn assert_type<H>(_h: H) where H: NewHandler {}
+/// # assert_type(MyCustomHandler);
+/// # }
+/// ```
 pub trait Handler {
     /// Handles the request, returning a boxed future which resolves to a response.
     fn handle(self, state: State) -> Box<HandlerFuture>;
 }
 
-/// Creates new `Handler` values.
+/// A type which is used to spawn new `Handler` values. When implementing a custom `Handler` type,
+/// this is used to define how instances of the `Handler` are created.
+///
+/// The `Instance` associated type is usually `Self` in the simple case, but can be a different
+/// type where greater control is needed over lifetimes.
+///
+/// # Examples
+///
+/// A custom handler which implements `NewHandler` by copying itself.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use std::io;
+/// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
+/// # use gotham::state::State;
+/// #
+/// # fn main() {
+/// #[derive(Copy, Clone)]
+/// struct MyCustomHandler;
+///
+/// impl NewHandler for MyCustomHandler {
+///     type Instance = Self;
+///
+///     fn new_handler(&self) -> io::Result<Self::Instance> {
+///         Ok(*self)
+///     }
+/// }
+///
+/// impl Handler for MyCustomHandler {
+///     fn handle(self, _state: State) -> Box<HandlerFuture> {
+///         // Implementation elided.
+/// #       unimplemented!()
+///     }
+/// }
+/// #
+/// # fn assert_type<H>(_h: H) where H: NewHandler {}
+/// # assert_type(MyCustomHandler);
+/// # }
+/// ```
+///
+/// A custom handler which implements `NewHandler` using a specific `Instance` type.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use std::io;
+/// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
+/// # use gotham::state::State;
+/// #
+/// # fn main() {
+/// #[derive(Copy, Clone)]
+/// struct MyValueInstantiatingHandler;
+///
+/// impl NewHandler for MyValueInstantiatingHandler {
+///     type Instance = MyHandler;
+///
+///     fn new_handler(&self) -> io::Result<Self::Instance> {
+///         Ok(MyHandler)
+///     }
+/// }
+///
+/// struct MyHandler;
+///
+/// impl Handler for MyHandler {
+///     fn handle(self, _state: State) -> Box<HandlerFuture> {
+///         // Implementation elided.
+/// #       unimplemented!()
+///     }
+/// }
+/// #
+/// # fn assert_type<H>(_h: H) where H: NewHandler {}
+/// # assert_type(MyValueInstantiatingHandler);
+/// # }
+/// ```
 pub trait NewHandler: Send + Sync + RefUnwindSafe {
-    /// The type of `Handler` created by the implementor.
+    /// The type of `Handler` created by the `NewHandler`.
     type Instance: Handler;
 
     /// Create and return a new `Handler` value.
@@ -48,8 +232,9 @@ pub trait NewHandler: Send + Sync + RefUnwindSafe {
 }
 
 impl<F, H> NewHandler for F
-    where F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
-          H: Handler
+where
+    F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
+    H: Handler,
 {
     type Instance = H;
 
@@ -68,7 +253,8 @@ pub trait IntoHandlerFuture {
 }
 
 impl<T> IntoHandlerFuture for (State, T)
-    where T: IntoResponse
+where
+    T: IntoResponse,
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;
@@ -86,24 +272,23 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// Represents a type which can be converted to a response. This trait is used in converting the
 /// return type of a function into a response.
 ///
-/// The only default implementation is the noop which converts a `hyper::Response` by
-/// returning the value unmodified.
-///
 /// # Examples
 ///
 /// ```rust
+/// # #![allow(deprecated)] // TODO: Refactor this.
+/// #
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
 /// # use gotham::state::State;
+/// # use gotham::pipeline::set::*;
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::TreeBuilder;
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
+/// # use gotham::router::route::dispatch::DispatcherImpl;
 /// # use gotham::handler::IntoResponse;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
+/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
@@ -158,8 +343,9 @@ impl IntoResponse for Response {
 }
 
 impl<T, E> IntoResponse for ::std::result::Result<T, E>
-    where T: IntoResponse,
-          E: IntoResponse
+where
+    T: IntoResponse,
+    E: IntoResponse,
 {
     fn into_response(self, state: &State) -> Response {
         match self {
@@ -170,8 +356,9 @@ impl<T, E> IntoResponse for ::std::result::Result<T, E>
 }
 
 impl<F, R> Handler for F
-    where F: FnOnce(State) -> R,
-          R: IntoHandlerFuture
+where
+    F: FnOnce(State) -> R,
+    R: IntoHandlerFuture,
 {
     fn handle(self, state: State) -> Box<HandlerFuture> {
         self(state).into_handler_future()

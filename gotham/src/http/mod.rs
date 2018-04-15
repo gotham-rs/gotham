@@ -1,4 +1,4 @@
-//! Helpers for HTTP Request handling and Response generation
+//! Helpers for HTTP request handling and response generation
 
 pub mod request;
 pub mod response;
@@ -7,7 +7,7 @@ pub mod header;
 use std;
 use url::percent_encoding::percent_decode;
 
-/// Represents data that has been successfully percent decoded and is valid utf8
+/// Represents data that has been successfully percent decoded and is valid UTF-8
 #[derive(Clone, PartialEq, Debug)]
 pub struct PercentDecoded {
     val: String,
@@ -15,11 +15,12 @@ pub struct PercentDecoded {
 
 impl PercentDecoded {
     /// Attempt to decode data that has been provided in a perecent encoded format and ensure that
-    /// the result is valid utf8.
+    /// the result is valid UTF-8.
     ///
-    /// On success encapulate resultant data for use by components that expect this transformation
-    /// has already occured.
-    pub fn new(raw: &str) -> Option<Self> {
+    /// On success, the decoded data is returned as a `PercentDecoded` value, which allows a
+    /// compile-time check that the decode has occurred in places where it's assumed to have
+    /// occurred.
+    pub(crate) fn new(raw: &str) -> Option<Self> {
         match percent_decode(raw.as_bytes()).decode_utf8() {
             Ok(pd) => {
                 trace!(" percent_decode: {}, src: {}", pd, raw);
@@ -33,15 +34,17 @@ impl PercentDecoded {
             }
         }
     }
+}
 
-    /// Provide the decoded data this type encapsulates
-    pub fn val(&self) -> &str {
+impl AsRef<str> for PercentDecoded {
+    fn as_ref(&self) -> &str {
         &self.val
     }
 }
 
-/// Decode form-urlencoded strings
-pub fn form_url_decode(raw: &str) -> Result<String, std::str::Utf8Error> {
+/// Decode form-urlencoded strings (e.g. query string, or request body with Content-Type:
+/// application/x-www-form-urlencoded
+fn form_url_decode(raw: &str) -> Result<String, std::str::Utf8Error> {
     match percent_decode(raw.replace("+", " ").as_bytes()).decode_utf8() {
         Ok(pd) => {
             trace!(" form_url_decode: {}, src: {}", pd, raw);
@@ -55,7 +58,7 @@ pub fn form_url_decode(raw: &str) -> Result<String, std::str::Utf8Error> {
 }
 
 /// Represents data that has been successfully decoded from a form-urlencoded source and is
-/// valid utf8
+/// valid UTF-8
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct FormUrlDecoded {
     val: String,
@@ -63,19 +66,21 @@ pub struct FormUrlDecoded {
 
 impl FormUrlDecoded {
     /// Attempt to decode data that has been provided in www-form-urlencoded format and ensure that
-    /// the result is valid utf8.
+    /// the result is valid UTF-8.
     ///
-    /// On success encapulate resultant data for use by components that expect this transformation
-    /// has already occured.
-    pub fn new(raw: &str) -> Option<Self> {
+    /// On success, the decoded data is returned as a `FormUrlDecoded` value, which allows a
+    /// compile-time check that the decode has occurred in places where it's assumed to have
+    /// occurred.
+    pub(crate) fn new(raw: &str) -> Option<Self> {
         match form_url_decode(raw) {
             Ok(val) => Some(FormUrlDecoded { val }),
             Err(_) => None,
         }
     }
+}
 
-    /// Provide the decoded data this type encapsulates
-    pub fn val(&self) -> &str {
+impl AsRef<str> for FormUrlDecoded {
+    fn as_ref(&self) -> &str {
         &self.val
     }
 }
@@ -87,12 +92,12 @@ mod tests {
     #[test]
     fn ensure_valid_percent_decode() {
         let pd = PercentDecoded::new("%41+%42%2B%63%20%64").unwrap();
-        assert_eq!("A+B+c d", pd.val());
+        assert_eq!("A+B+c d", pd.as_ref());
     }
 
     #[test]
     fn ensure_valid_www_form_url_encoded_value() {
         let f = FormUrlDecoded::new("%41+%42%2B%63%20%64").unwrap();
-        assert_eq!("A B+c d", f.val());
+        assert_eq!("A B+c d", f.as_ref());
     }
 }

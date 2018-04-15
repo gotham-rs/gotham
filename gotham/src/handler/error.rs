@@ -51,6 +51,8 @@ where
     E: Error + 'static,
 {
     fn into_handler_error(self) -> HandlerError {
+        trace!(" converting Error to HandlerError: {}", self);
+
         HandlerError {
             status_code: StatusCode::InternalServerError,
             cause: Box::new(self),
@@ -90,22 +92,31 @@ impl HandlerError {
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate futures;
+    /// #
+    /// # use futures::future;
     /// # use hyper::StatusCode;
-    /// # use hyper::header::Headers;
     /// # use gotham::state::State;
-    /// # use gotham::handler::{IntoResponse, IntoHandlerError};
-    /// # use gotham::state::request_id::set_request_id;
-    /// # fn main() {
-    /// # let mut state = State::new();
-    /// # state.put(Headers::new());
-    /// # set_request_id(&mut state);
-    /// let io_error = std::io::Error::last_os_error();
-    /// let handler_error = io_error
-    ///     .into_handler_error()
-    ///     .with_status(StatusCode::ImATeapot);
+    /// # use gotham::handler::{IntoHandlerError, HandlerFuture};
+    /// # use gotham::test::TestServer;
+    /// #
+    /// fn handler(state: State) -> Box<HandlerFuture> {
+    ///     // It's OK if this is bogus, we just need something to convert into a `HandlerError`.
+    ///     let io_error = std::io::Error::last_os_error();
     ///
-    /// assert_eq!(handler_error.into_response(&state).status(),
-    ///            StatusCode::ImATeapot);
+    ///     let handler_error = io_error
+    ///         .into_handler_error()
+    ///         .with_status(StatusCode::ImATeapot);
+    ///
+    ///     Box::new(future::err((state, handler_error)))
+    /// }
+    ///
+    /// # fn main() {
+    /// #
+    /// let test_server = TestServer::new(|| Ok(handler)).unwrap();
+    /// let response = test_server.client().get("http://example.com/").perform().unwrap();
+    /// assert_eq!(response.status(), StatusCode::ImATeapot);
+    /// #
     /// # }
     /// ```
     pub fn with_status(self, status_code: StatusCode) -> HandlerError {
@@ -118,13 +129,14 @@ impl HandlerError {
 
 impl IntoResponse for HandlerError {
     fn into_response(self, state: &State) -> Response {
-        trace!(
-            "[{}] HandlerError generating HTTP response with status: {} {}",
+        debug!(
+            "[{}] HandlerError generating {} {} response: {}",
             request_id(state),
             self.status_code.as_u16(),
             self.status_code
                 .canonical_reason()
-                .unwrap_or("(unregistered)",)
+                .unwrap_or("(unregistered)",),
+            self.cause().map(|e| e.description()).unwrap_or("(none)"),
         );
 
         create_response(state, self.status_code, None)

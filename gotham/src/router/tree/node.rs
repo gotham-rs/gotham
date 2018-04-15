@@ -1,11 +1,11 @@
 //! Defines `Node` and `SegmentType` for `Tree`
 
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::borrow::Borrow;
 use hyper::StatusCode;
 
 use http::PercentDecoded;
+use router::non_match::RouteNonMatch;
 use router::route::{Delegation, Route};
 use router::tree::{Path, SegmentMapping, SegmentsProcessed};
 use router::tree::regex::ConstrainedSegmentRegex;
@@ -38,65 +38,6 @@ pub enum SegmentType {
 ///
 /// Ultimately provides `0..n` `Route` instances which are further evaluated by the `Router` if
 /// the `Node` is determined to be the routable end point for a single path through the tree.
-///
-/// # Examples
-///
-/// Representing the path `/activate/workflow`.
-///
-/// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// #
-/// # use hyper::{Response, Method, StatusCode};
-/// #
-/// # use gotham::http::PercentDecoded;
-/// # use gotham::http::response::create_response;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
-/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set, DispatcherImpl};
-/// # use gotham::state::State;
-/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::tree::node::{NodeBuilder, SegmentType};
-/// #
-/// # fn handler(state: State) -> (State, Response) {
-/// #   let res = create_response(&state, StatusCode::Ok, None);
-/// #   (state, res)
-/// # }
-/// #
-/// # fn main() {
-/// #  let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-///   let mut root_node_builder = NodeBuilder::new("/", SegmentType::Static);
-///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
-///
-///   let mut workflow_node = NodeBuilder::new("workflow", SegmentType::Static);
-///   let route = {
-///       // elided ..
-/// #     let methods = vec![Method::Get];
-/// #     let matcher = MethodOnlyRouteMatcher::new(methods);
-/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-///       let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-///       let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-///       Box::new(route)
-///   };
-///   workflow_node.add_route(route);
-///
-///   activate_node_builder.add_child(workflow_node);
-///   root_node_builder.add_child(activate_node_builder);
-///
-///   let root_node = root_node_builder.finalize();
-///   match root_node.traverse(&[&PercentDecoded::new("/").unwrap(),
-///                              &PercentDecoded::new("activate").unwrap(),
-///                              &PercentDecoded::new("workflow").unwrap()])
-///   {
-///       Some((path, _leaf, segments_processed, _segment_mapping)) =>  {
-///         assert!(path.last().unwrap().is_routable());
-///         assert_eq!(segments_processed, 2);
-///       }
-///       None => panic!(),
-///   }
-/// # }
-/// ```
 pub struct Node {
     segment: String,
     segment_type: SegmentType,
@@ -109,13 +50,8 @@ pub struct Node {
 
 impl Node {
     /// Provides the segment this `Node` represents.
-    pub fn segment(&self) -> &str {
+    pub(crate) fn segment(&self) -> &str {
         &self.segment
-    }
-
-    /// Provides the type of segment this `Node` represents.
-    pub fn segment_type(&self) -> &SegmentType {
-        &self.segment_type
     }
 
     /// Determines if a `Route` instance associated with this `Node` is willing to `Handle` the
@@ -125,40 +61,51 @@ impl Node {
     /// per creation, is invoked.
     ///
     /// Where no `Route` instances will accept the `Request` the resulting Error will be the
-    /// erroneous status code provided by the first `Route` instance, ordered per creation.
+    /// union of the `RouteNonMatch` values returned from each `Route`.
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub fn select_route(&self, state: &State) -> Result<&Box<Route + Send + Sync>, StatusCode> {
-        match self.routes.iter().find(|r| r.is_match(state).is_ok()) {
-            Some(route) => {
-                trace!("[{}] found matching route", request_id(state));
-                Ok(route)
-            }
-            None => {
-                trace!("[{}] no matching route", request_id(state));
-                match self.routes.first() {
-                    Some(route) => {
-                        trace!("[{}] using error status code from route", request_id(state));
-                        Err(route.is_match(state).unwrap_err())
-                    }
-                    None => {
-                        trace!("[{}] using generic error status code", request_id(state));
-                        Err(StatusCode::InternalServerError)
-                    }
+    pub(crate) fn select_route<'a>(
+        &'a self,
+        state: &State,
+    ) -> Result<&'a Box<Route + Send + Sync>, RouteNonMatch> {
+        let mut err: Result<(), RouteNonMatch> = Ok(());
+
+        for r in self.routes.iter() {
+            match r.is_match(state) {
+                Ok(()) => {
+                    trace!("[{}] found matching route", request_id(state));
+                    return Ok(r);
                 }
+                Err(e) => match err {
+                    Err(e0) => err = Err(e.union(e0)),
+                    Ok(()) => err = Err(e),
+                },
+            }
+        }
+
+        match err {
+            Err(e) => {
+                trace!(
+                    "[{}] no matching route, using error status code from route",
+                    request_id(state)
+                );
+                Err(e)
+            }
+
+            Ok(()) => {
+                trace!(
+                    "[{}] invalid state, no routes. sending internal server error",
+                    request_id(state)
+                );
+                Err(RouteNonMatch::new(StatusCode::InternalServerError))
             }
         }
     }
 
-    /// True if there is at least one child `Node` present
-    pub fn is_parent(&self) -> bool {
-        !self.children.is_empty()
-    }
-
     /// True is there is a least one `Route` represented by this `Node`, that is it can act as a
     /// leaf in a single path through the tree.
-    pub fn is_routable(&self) -> bool {
+    pub(crate) fn is_routable(&self) -> bool {
         !self.routes.is_empty()
     }
 
@@ -175,14 +122,13 @@ impl Node {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub fn traverse<'r, 'n>(
-        &'n self,
+    pub(crate) fn traverse<'r>(
+        &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
+    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, leaf, c, sm)) => {
                 path.reverse();
-                let sm = SegmentMapping { data: sm };
                 Some((path, leaf, c, sm))
             }
             None => None,
@@ -191,23 +137,16 @@ impl Node {
 
     #[allow(unknown_lints, type_complexity)]
     fn inner_traverse<'r>(
-        &self,
+        &'r self,
         req_path_segments: &'r [&PercentDecoded],
         mut consumed_segments: Vec<&'r PercentDecoded>,
-    ) -> Option<
-        (
-            Vec<&Node>,
-            &Node,
-            SegmentsProcessed,
-            HashMap<&str, Vec<&'r PercentDecoded>>,
-        ),
-    > {
+    ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match req_path_segments.split_first() {
             Some((x, _)) if self.is_delegating(x) => {
                 // A delegated node terminates processing, start building result
                 trace!(" found delegator node `{}`", self.segment);
 
-                let mut sm = HashMap::new();
+                let mut sm = SegmentMapping::new();
                 if self.segment_type != SegmentType::Static {
                     consumed_segments.push(x);
                     sm.insert(self.segment(), consumed_segments);
@@ -218,7 +157,7 @@ impl Node {
             Some((x, xs)) if self.is_leaf(x, xs) => {
                 trace!(" found leaf node `{}`", self.segment);
 
-                let mut sm = HashMap::new();
+                let mut sm = SegmentMapping::new();
                 if self.segment_type != SegmentType::Static {
                     consumed_segments.push(x);
                     sm.insert(self.segment(), consumed_segments);
@@ -270,10 +209,8 @@ impl Node {
 
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
         match self.segment_type {
-            SegmentType::Static => self.segment == req_path_segment.val(),
-            SegmentType::Constrained { ref regex } => {
-                regex.is_match(req_path_segment.val().as_ref())
-            }
+            SegmentType::Static => self.segment == req_path_segment.as_ref(),
+            SegmentType::Constrained { ref regex } => regex.is_match(req_path_segment.as_ref()),
             SegmentType::Dynamic | SegmentType::Glob => true,
         }
     }
@@ -437,17 +374,15 @@ mod tests {
 
     use std::panic::RefUnwindSafe;
 
-    use hyper::Method;
-    use hyper::Response;
+    use hyper::{Headers, Method, Response};
 
-    use router::route::dispatch::{finalize_pipeline_set, new_pipeline_set, DispatcherImpl,
-                                  PipelineSet};
+    use pipeline::set::*;
+    use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Extractors, Route, RouteImpl};
-    use router::request::path::NoopPathExtractor;
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use http::request::path::RequestPathSegments;
-    use router::request::query_string::NoopQueryStringExtractor;
-    use state::State;
+    use state::{set_request_id, State};
 
     fn handler(state: State) -> (State, Response) {
         (state, Response::new())
@@ -678,6 +613,44 @@ mod tests {
     }
 
     #[test]
+    fn non_matching_routes_allow_list_tests() {
+        let root = test_structure().finalize();
+
+        let mut state = State::new();
+        state.put(Method::Options);
+        state.put(Headers::new());
+        set_request_id(&mut state);
+
+        let rs = RequestPathSegments::new("/seg2");
+        match root.traverse(&rs.segments()) {
+            Some((_, node, _, _)) => match node.select_route(&state) {
+                Err(e) => {
+                    let (status, mut allow_list) = e.deconstruct();
+                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
+                    assert_eq!(allow_list, vec![Method::Patch, Method::Post]);
+                }
+                Ok(_) => panic!("expected mismatched route to test allow header"),
+            },
+            None => panic!("traversal should have succeeded here"),
+        }
+
+        let rs = RequestPathSegments::new("/resource/100");
+        match root.traverse(&rs.segments()) {
+            Some((_, node, _, _)) => match node.select_route(&state) {
+                Err(e) => {
+                    let (status, mut allow_list) = e.deconstruct();
+                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
+                    assert_eq!(allow_list, vec![Method::Get]);
+                }
+                Ok(_) => panic!("expected mismatched route to test allow header"),
+            },
+            None => panic!("traversal should have succeeded here"),
+        }
+    }
+
+    #[test]
     #[should_panic(expected = "Node which is externally delegating must not have existing children")]
     fn panics_when_delegated_node_adds_children() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
@@ -707,5 +680,40 @@ mod tests {
 
         seg1.add_route(get_delegated_route(pipeline_set.clone()));
         seg1.add_route(get_delegated_route(pipeline_set));
+    }
+
+    #[test]
+    fn node_traversal_tests() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut root_node_builder = NodeBuilder::new("/", SegmentType::Static);
+        let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
+
+        let mut workflow_node = NodeBuilder::new("workflow", SegmentType::Static);
+        let route = {
+            let methods = vec![Method::Get];
+            let matcher = MethodOnlyRouteMatcher::new(methods);
+            let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
+            let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
+                Extractors::new();
+            let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
+            Box::new(route)
+        };
+        workflow_node.add_route(route);
+
+        activate_node_builder.add_child(workflow_node);
+        root_node_builder.add_child(activate_node_builder);
+
+        let root_node = root_node_builder.finalize();
+        match root_node.traverse(&[
+            &PercentDecoded::new("/").unwrap(),
+            &PercentDecoded::new("activate").unwrap(),
+            &PercentDecoded::new("workflow").unwrap(),
+        ]) {
+            Some((path, _leaf, segments_processed, _segment_mapping)) => {
+                assert!(path.last().unwrap().is_routable());
+                assert_eq!(segments_processed, 2);
+            }
+            None => panic!(),
+        }
     }
 }

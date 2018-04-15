@@ -7,9 +7,9 @@ use futures::Future;
 
 use middleware::session::{SessionError, SessionIdentifier};
 
-/// Creates new `Backend` values.
+/// A type which is used to spawn new `Backend` values.
 pub trait NewBackend: Sync + Clone + RefUnwindSafe {
-    /// The type of `Backend` created by the implementor.
+    /// The type of `Backend` created by the `NewBackend`.
     type Instance: Backend + 'static;
 
     /// Create and return a new `Backend` value.

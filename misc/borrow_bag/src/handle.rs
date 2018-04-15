@@ -16,7 +16,7 @@ pub struct Handle<T, N> {
 }
 
 /// Creates a new `Handle` of any given type.
-pub fn new_handle<T, N>() -> Handle<T, N> {
+pub(crate) fn new_handle<T, N>() -> Handle<T, N> {
     Handle {
         phantom: PhantomData,
     }

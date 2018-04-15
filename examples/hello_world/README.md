@@ -12,7 +12,7 @@ $ cargo run
    Compiling hello_world (file:///.../examples/hello_world)
     Finished dev [unoptimized + debuginfo] target(s) in 4.26 secs
      Running `../hello_world`
-  Accepting requests at http://127.0.0.1:7878
+  Listening for requests at http://127.0.0.1:7878
 
 Terminal 2:
 $ curl -v http://127.0.0.1:7878/
@@ -49,5 +49,5 @@ Licensed under your option of:
 
 The following policies guide participation in our project and our community:
 
-* [Conduct](../../CONDUCT.md)
+* [Code of conduct](../../CODE_OF_CONDUCT.md)
 * [Contributing](../../CONTRIBUTING.md)

@@ -1,4 +1,4 @@
-//! Defines a default session middleware supporting multiple backends
+//! Defines a session middleware with a pluggable backend.
 
 use std::io;
 use std::sync::{Arc, Mutex, PoisonError};
@@ -26,20 +26,26 @@ mod rng;
 pub use self::backend::{Backend, NewBackend};
 pub use self::backend::memory::MemoryBackend;
 
+const SECURE_COOKIE_PREFIX: &'static str = "__Secure-";
+const HOST_COOKIE_PREFIX: &'static str = "__Host-";
+
 /// Represents the session identifier which is held in the user agent's session cookie.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SessionIdentifier {
-    /// The value which is passed as a cookie, identifying the session
+    /// The value which is passed as a cookie, identifying the session.
     pub value: String,
 }
 
 /// The kind of failure which occurred trying to perform a session operation.
 #[derive(Debug)]
 pub enum SessionError {
-    /// The backend failed, and the included message describes the problem
+    /// The backend failed, and the included message describes the problem.
     Backend(String),
-    /// The session was unable to be deserialized
+    /// The session was unable to be deserialized.
     Deserialize,
+    /// Exhaustive match against this enum is unsupported.
+    #[doc(hidden)]
+    __NonExhaustive,
 }
 
 enum SessionCookieState {
@@ -64,8 +70,8 @@ enum SameSiteEnforcement {
 /// By default, the cookie has the name "_gotham_session", and the cookie header includes the
 /// `secure` flag.  `NewSessionMiddleware` provides functions for adjusting the
 /// `SessionCookieConfig`.
-#[derive(Clone)]
-pub struct SessionCookieConfig {
+#[derive(Clone, Debug)]
+struct SessionCookieConfig {
     // If `Expires` / `Max-Age` are ever added update `reset_session` to allow for them.
     name: String,
     secure: bool,
@@ -120,6 +126,53 @@ impl SessionCookieConfig {
         cookie_value.push_str(&self.path);
 
         cookie_value
+    }
+
+    /// Validates cookie attributes if the name includes a Cookie Prefix.
+    /// see: https://tools.ietf.org/html/draft-west-cookie-prefixes-05
+    /// Returns an updated `SessionCookieConfig` with any invalid attributes overridden and emits a warning.
+    fn validate_prefix(self) -> SessionCookieConfig {
+        if self.invalid_secure_config() {
+            self.warn_overriding_attrs(SECURE_COOKIE_PREFIX, "Secure");
+            SessionCookieConfig {
+                secure: true,
+                ..self
+            }
+        } else if self.invalid_host_config() {
+            if !self.secure {
+                self.warn_overriding_attrs(HOST_COOKIE_PREFIX, "Secure")
+            };
+            if self.domain.is_some() {
+                self.warn_overriding_attrs(HOST_COOKIE_PREFIX, "Domain")
+            };
+            if self.path != "/".to_string() {
+                self.warn_overriding_attrs(HOST_COOKIE_PREFIX, "Path")
+            };
+            SessionCookieConfig {
+                secure: true,
+                path: "/".to_string(),
+                domain: None,
+                ..self
+            }
+        } else {
+            self
+        }
+    }
+
+    fn invalid_secure_config(&self) -> bool {
+        self.name.starts_with(SECURE_COOKIE_PREFIX) && !self.secure
+    }
+
+    fn invalid_host_config(&self) -> bool {
+        self.name.starts_with(HOST_COOKIE_PREFIX)
+            && (!self.secure || self.domain.is_some() || self.path != "/".to_string())
+    }
+
+    fn warn_overriding_attrs(&self, prefix: &str, attribute: &str) {
+        warn!(
+            "{} prefix is used for cookie but {} attribute is not set correctly! This will be overridden. Cookie is: {:?}",
+            prefix, attribute, self
+        )
     }
 }
 
@@ -179,7 +232,7 @@ impl SessionCookieConfig {
 /// #       items: vec!["a".into(), "b".into(), "c".into()],
 /// #   };
 /// #
-/// #   let bytes = bincode::serialize(&session, bincode::Infinite).unwrap();
+/// #   let bytes = bincode::serialize(&session).unwrap();
 /// #   backend.persist_session(identifier.clone(), &bytes[..]).unwrap();
 /// #
 /// #   let mut cookies = Cookie::new();
@@ -232,6 +285,7 @@ where
 {
     /// Discards the session, invalidating it for future use and removing the data from the
     /// `Backend`.
+    // TODO: Add test case that covers this.
     pub fn discard(self, state: &mut State) -> Result<(), SessionError> {
         state.put(SessionDropData {
             cookie_config: self.cookie_config,
@@ -411,7 +465,7 @@ where
     phantom: PhantomData<SessionTypePhantom<T>>,
 }
 
-/// The per-request value which deals with sessions
+/// The per-request value which provides session storage for other middleware and handlers.
 ///
 /// See `NewSessionMiddleware` for usage details.
 pub struct SessionMiddleware<B, T>
@@ -491,11 +545,12 @@ where
         cookie_config: SessionCookieConfig,
     ) -> NewSessionMiddleware<B, T> {
         NewSessionMiddleware {
-            cookie_config: Arc::new(cookie_config),
+            cookie_config: Arc::new(cookie_config.validate_prefix()),
             ..self
         }
     }
-    /// Configures the session cookie to be set at a more restrictive path
+
+    /// Configures the session cookie to be set at a more restrictive path.
     ///
     /// ```rust
     /// # extern crate gotham;
@@ -555,7 +610,21 @@ where
         self.rebuild_new_session_middleware(cookie_config)
     }
 
-    /// Configures the `NewSessionMiddleware` to use an alternate cookie name.
+    /// Configures the `NewSessionMiddleware` to use an alternate cookie name. The default cookie
+    /// name is `_gotham_session`.
+    ///
+    /// When a cookie name with a [cookie prefix][cookie-prefix] is used, the other options are
+    /// forced to be correct (ignoring overridden settings from the application). i.e.:
+    ///
+    /// * For a cookie prefix of `__Secure-`, the cookie attributes will include `Secure`
+    /// * For a cookie prefix of `__Host-`, the cookie attributes will include `Secure; Path=/` and
+    ///   not include `Domain=`
+    ///
+    /// If the session cookie configuration set by the application does not match the prefix, a
+    /// warning will be logged upon startup and the cookie prefix options will override what was
+    /// provided by the application.
+    ///
+    /// [cookie-prefix]: https://tools.ietf.org/html/draft-west-cookie-prefixes-05
     ///
     /// ```rust
     /// # extern crate gotham;
@@ -621,7 +690,8 @@ where
     ///
     /// By default, the session cookie will be set with `SameSite=lax`, which ensures cross-site
     /// requests will include the cookie if and only if they are top-level navigations which use a
-    /// "safe" (in the RFC7231 sense) HTTP method.
+    /// "safe" (in the [RFC7231](https://tools.ietf.org/html/rfc7231#section-4.2.1) sense) HTTP
+    /// method.
     ///
     /// See: <https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00#section-4.1>
     ///
@@ -658,7 +728,8 @@ where
     ///
     /// By default, the session cookie will be set with "SameSite=lax", which ensures cross-site
     /// requests will include the cookie if and only if they are top-level navigations which use a
-    /// "safe" (in the [RFC7231] sense) HTTP method.
+    /// "safe" (in the [RFC7231](https://tools.ietf.org/html/rfc7231#section-4.2.1) sense) HTTP
+    /// method.
     ///
     /// ```rust
     /// # extern crate gotham;
@@ -864,7 +935,7 @@ fn write_session<T>(
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
 {
-    let bytes = match bincode::serialize(&session_data.value, bincode::Infinite) {
+    let bytes = match bincode::serialize(&session_data.value) {
         Ok(bytes) => bytes,
         Err(e) => {
             error!(
@@ -1007,6 +1078,34 @@ mod tests {
     }
 
     #[test]
+    fn enforce_secure_cookie_prefix_attributes() {
+        let backend = MemoryBackend::new(Duration::from_secs(1));
+        let nm = NewSessionMiddleware::new(backend.clone())
+            .with_cookie_name("__Secure-my_session")
+            .insecure()
+            .with_session_type::<TestSession>();
+
+        let m = nm.new_middleware().unwrap();
+        assert!(m.cookie_config.secure);
+    }
+
+    #[test]
+    fn enforce_host_cookie_prefix_attributes() {
+        let backend = MemoryBackend::new(Duration::from_secs(1));
+        let nm = NewSessionMiddleware::new(backend.clone())
+            .with_cookie_name("__Host-my_session")
+            .insecure()
+            .with_cookie_domain("example.com")
+            .with_cookie_path("/myapp")
+            .with_session_type::<TestSession>();
+
+        let m = nm.new_middleware().unwrap();
+        assert!(m.cookie_config.secure);
+        assert!(m.cookie_config.domain.is_none());
+        assert!(m.cookie_config.path == "/".to_string());
+    }
+
+    #[test]
     fn new_session_custom_settings() {
         let backend = MemoryBackend::new(Duration::from_secs(1));
         let nm = NewSessionMiddleware::new(backend.clone())
@@ -1061,7 +1160,7 @@ mod tests {
         let session = TestSession {
             val: rand::random(),
         };
-        let bytes = bincode::serialize(&session, bincode::Infinite).unwrap();
+        let bytes = bincode::serialize(&session).unwrap();
 
         m.backend
             .persist_session(identifier.clone(), &bytes)

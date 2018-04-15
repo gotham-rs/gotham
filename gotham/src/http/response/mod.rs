@@ -1,7 +1,8 @@
-//! Helpers for HTTP Response generation
+//! Helpers for HTTP response generation
 
+use std::borrow::Cow;
 use hyper::{Method, Response, StatusCode};
-use hyper::header::{ContentLength, ContentType};
+use hyper::header::{ContentLength, ContentType, Location};
 use mime::Mime;
 
 use state::{request_id, FromState, State};
@@ -9,56 +10,207 @@ use http::header::{XContentTypeOptions, XFrameOptions, XRequestId, XXssProtectio
 
 type Body = (Vec<u8>, Mime);
 
-/// Creates a `Response` object and populates it with a set of default headers that ensure
+/// Creates a `Response` object and populates it with a set of default headers that help to improve
 /// security and conformance to best practice.
 ///
-/// Internally utilises `extend_response`. Output matches the documented examples for that
-/// function.
+/// `create_response` utilises `extend_response`, which delegates to `set_headers` for setting
+/// security headers. See `set_headers` for information about the headers which are populated.
 ///
-/// The created `Response` should be extended by `Middleware` and `Handler` developers as
-/// neceesary.
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// # extern crate mime;
+/// #
+/// # use hyper::{Response, StatusCode};
+/// # use hyper::header::{ContentLength, ContentType};
+/// # use gotham::state::State;
+/// # use gotham::http::response::create_response;
+/// # use gotham::http::header::XRequestId;
+/// # use gotham::test::TestServer;
+/// #
+/// static BODY: &'static [u8] = b"Hello, world!";
+///
+/// fn handler(state: State) -> (State, Response) {
+///     let response = create_response(
+///         &state,
+///         StatusCode::Ok,
+///         Some((BODY.to_vec(), mime::TEXT_PLAIN)),
+///     );
+///
+///     (state, response)
+/// }
+/// #
+/// # fn main() {
+/// #     let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// #     let response = test_server
+/// #         .client()
+/// #         .get("http://example.com/")
+/// #         .perform()
+/// #         .unwrap();
+/// #
+/// #     assert_eq!(response.status(), StatusCode::Ok);
+/// #     assert!(response.headers().get::<XRequestId>().is_some());
+/// #
+/// #     assert_eq!(
+/// #         *response.headers().get::<ContentType>().unwrap(),
+/// #         ContentType(mime::TEXT_PLAIN)
+/// #     );
+/// #
+/// #     assert_eq!(
+/// #         *response.headers().get::<ContentLength>().unwrap(),
+/// #         ContentLength(BODY.len() as u64)
+/// #     );
+/// # }
+/// ```
 pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) -> Response {
     let mut res = Response::new();
     extend_response(state, &mut res, status, body);
     res
 }
 
-/// Extends a `Response` object with an optional body and set of default headers that ensure
-/// security and conformance to best practice.
+/// Produces a simple empty `Response` with a `Location` header and a 301
+/// status.
 ///
 /// # Examples
 ///
-/// ## With body content
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use hyper::{Response, StatusCode};
+/// # use gotham::state::State;
+/// # use gotham::http::response::create_permanent_redirect;
+/// # use gotham::test::TestServer;
+/// # use hyper::header::Location;
+/// fn handler(state: State) -> (State, Response) {
+///     let resp = create_permanent_redirect(&state, "/over-there");
 ///
-/// ``` rust
+///     (state, resp)
+/// }
+/// # fn main() {
+/// #     let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// #     let response = test_server
+/// #         .client()
+/// #         .get("http://example.com/")
+/// #         .perform()
+/// #         .unwrap();
+/// #
+/// #     assert_eq!(response.status(), StatusCode::PermanentRedirect);
+/// #     assert_eq!(
+/// #         response.headers().get::<Location>(),
+/// #         Some(&Location::new("/over-there"))
+/// #     );
+/// # }
+/// ```
+pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
+    state: &State,
+    location: L,
+) -> Response {
+    let mut res = Response::new().with_status(StatusCode::PermanentRedirect);
+    set_redirect_headers(state, &mut res, location);
+    res
+}
+
+/// Produces a simple empty `Response` with a `Location` header and a 302
+/// status.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use hyper::{Response, StatusCode};
+/// # use gotham::state::State;
+/// # use gotham::http::response::create_temporary_redirect;
+/// # use gotham::test::TestServer;
+/// # use hyper::header::Location;
+/// fn handler(state: State) -> (State, Response) {
+///     let resp = create_temporary_redirect(&state, "/quick-detour");
+///
+///     (state, resp)
+/// }
+/// # fn main() {
+/// #     let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// #     let response = test_server
+/// #         .client()
+/// #         .get("http://example.com/")
+/// #         .perform()
+/// #         .unwrap();
+/// #
+/// #     assert_eq!(response.status(), StatusCode::TemporaryRedirect);
+/// #     assert_eq!(
+/// #         response.headers().get::<Location>(),
+/// #         Some(&Location::new("/quick-detour"))
+/// #     );
+/// # }
+/// ```
+pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
+    state: &State,
+    location: L,
+) -> Response {
+    let mut res = Response::new().with_status(StatusCode::TemporaryRedirect);
+    set_redirect_headers(state, &mut res, location);
+    res
+}
+
+/// Extends a `Response` object with an optional body and set of default headers that help to
+/// improve security and conformance to best practice.
+///
+/// `extend_response` delegates to `set_headers` for setting security headers. See `set_headers`
+/// for information about the headers which are populated.
+///
+/// # Examples
+///
+/// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Response, Method, StatusCode};
-/// # use hyper::header::{Headers, ContentType, ContentLength};
+/// # use hyper::{Response, StatusCode};
+/// # use hyper::header::{ContentLength, ContentType};
 /// # use gotham::state::State;
-/// # use gotham::state::set_request_id;
 /// # use gotham::http::response::extend_response;
 /// # use gotham::http::header::XRequestId;
+/// # use gotham::test::TestServer;
+/// #
+/// static BODY: &'static [u8] = b"Hello, world!";
+///
+/// fn handler(state: State) -> (State, Response) {
+///     let mut response = Response::new();
+///
+///     extend_response(
+///         &state,
+///         &mut response,
+///         StatusCode::Ok,
+///         Some((BODY.to_vec(), mime::TEXT_PLAIN)),
+///     );
+///
+///     (state, response)
+/// }
 /// #
 /// # fn main() {
-/// #   let mut state = State::new();
-/// #   let m = Method::Get;
-/// #   state.put(m);
-/// #   state.put(Headers::new());
-/// #   let req_id = String::from(set_request_id(&mut state));
-///     let status = StatusCode::Ok;
-///     let mime = mime::TEXT_PLAIN;
-///     let expected_mime = mime.clone();
-///     let body = String::from("Hello world!");
-///     let expected_body = body.clone();
-///     let mut res = Response::new();
-///     extend_response(&state, &mut res, status, Some((body.into_bytes(), mime)));
-///     assert!(res.body_ref().is_some());
-///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(), req_id);
-///     assert_eq!(*res.headers().get::<ContentType>().unwrap(), ContentType(expected_mime));
-///     assert_eq!(*res.headers().get::<ContentLength>().unwrap(), ContentLength(expected_body.into_bytes().len() as u64));
+/// #     let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// #     let response = test_server
+/// #         .client()
+/// #         .get("http://example.com/")
+/// #         .perform()
+/// #         .unwrap();
+/// #
+/// #     assert_eq!(response.status(), StatusCode::Ok);
+/// #     assert!(response.headers().get::<XRequestId>().is_some());
+/// #
+/// #     assert_eq!(
+/// #         *response.headers().get::<ContentType>().unwrap(),
+/// #         ContentType(mime::TEXT_PLAIN)
+/// #     );
+/// #
+/// #     assert_eq!(
+/// #         *response.headers().get::<ContentLength>().unwrap(),
+/// #         ContentLength(BODY.len() as u64)
+/// #     );
 /// # }
 /// ```
 pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, body: Option<Body>) {
@@ -95,56 +247,140 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 ///
 /// # Examples
 ///
-/// ## With ContentLength
+/// When `Content-Type` and `Content-Length` are not provided, only the security headers are set on
+/// the response.
 ///
-/// ``` rust
+/// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::Response;
-/// # use hyper::header::{Headers, ContentType, ContentLength};
+/// # use hyper::{Response, StatusCode};
 /// # use gotham::state::State;
-/// # use gotham::state::set_request_id;
 /// # use gotham::http::response::set_headers;
-/// # use gotham::http::header::XRequestId;
+/// # use gotham::http::header::*;
+/// # use gotham::test::TestServer;
 /// #
+/// fn handler(state: State) -> (State, Response) {
+///     let mut response = Response::new().with_status(StatusCode::Accepted);
+///
+///     set_headers(
+///         &state,
+///         &mut response,
+///         None,
+///         None,
+///     );
+///
+///     (state, response)
+/// }
+///
 /// # fn main() {
-/// #   let mut state = State::new();
-/// #   state.put(Headers::new());
-/// #   let req_id = String::from(set_request_id(&mut state));
-/// #   let mut res = Response::new();
-///     let mime = mime::TEXT_HTML;
-///     let expected_mime = mime.clone();
-///     set_headers(&state, &mut res, Some(mime), Some(100));
-///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(), req_id);
-///     assert_eq!(*res.headers().get::<ContentType>().unwrap(), ContentType(expected_mime));
-///     assert_eq!(*res.headers().get::<ContentLength>().unwrap(), ContentLength(100));
+/// // Demonstrate the returned headers by making a request to the handler.
+/// let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// let response = test_server
+///     .client()
+///     .get("http://example.com/")
+///     .perform()
+///     .unwrap();
+///
+/// assert_eq!(response.status(), StatusCode::Accepted);
+///
+/// // e.g.:
+/// // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
+/// assert!(response.headers().get::<XRequestId>().is_some());
+///
+/// // X-Frame-Options: DENY
+/// assert_eq!(
+///     *response.headers().get::<XFrameOptions>().unwrap(),
+///     XFrameOptions::Deny,
+/// );
+///
+/// // X-XSS-Protection: 1; mode=block
+/// assert_eq!(
+///     *response.headers().get::<XXssProtection>().unwrap(),
+///     XXssProtection::EnableBlock,
+/// );
+///
+/// // X-Content-Type-Options: nosniff
+/// assert_eq!(
+///     *response.headers().get::<XContentTypeOptions>().unwrap(),
+///     XContentTypeOptions::NoSniff,
+/// );
 /// # }
 /// ```
 ///
-/// ## Without Mime / ContentLength
+/// When the `Content-Type` and `Content-Length` are included, the headers are set in addition to
+/// the security headers.
 ///
-/// ``` rust
+/// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
+/// # extern crate mime;
 /// #
-/// # use hyper::Response;
-/// # use hyper::header::{Headers, ContentType, ContentLength};
+/// # use hyper::{Response, StatusCode};
+/// # use hyper::header::{ContentLength, ContentType};
 /// # use gotham::state::State;
-/// # use gotham::state::set_request_id;
 /// # use gotham::http::response::set_headers;
-/// # use gotham::http::header::XRequestId;
+/// # use gotham::http::header::*;
+/// # use gotham::test::TestServer;
 /// #
+/// static BODY: &'static [u8] = b"Hello, world!";
+///
+/// fn handler(state: State) -> (State, Response) {
+///     let mut response = Response::new().with_status(StatusCode::Ok).with_body(BODY.to_vec());
+///
+///     set_headers(
+///         &state,
+///         &mut response,
+///         Some(mime::TEXT_PLAIN),
+///         Some(BODY.len() as u64),
+///     );
+///
+///     (state, response)
+/// }
+///
 /// # fn main() {
-/// #   let mut state = State::new();
-/// #   state.put(Headers::new());
-/// #   let req_id = String::from(set_request_id(&mut state));
-/// #   let mut res = Response::new();
-///     set_headers(&state, &mut res, None, None);
-///     assert_eq!(res.headers().get::<XRequestId>().unwrap().as_str(), req_id);
-///     assert!(res.headers().get::<ContentType>().is_none());
-///     assert_eq!(*res.headers().get::<ContentLength>().unwrap(), ContentLength(0));
+/// // Demonstrate the returned headers by making a request to the handler.
+/// let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// let response = test_server
+///     .client()
+///     .get("http://example.com/")
+///     .perform()
+///     .unwrap();
+///
+/// assert_eq!(response.status(), StatusCode::Ok);
+///
+/// assert_eq!(
+///     *response.headers().get::<ContentType>().unwrap(),
+///     ContentType(mime::TEXT_PLAIN)
+/// );
+///
+/// assert_eq!(
+///     *response.headers().get::<ContentLength>().unwrap(),
+///     ContentLength(BODY.len() as u64)
+/// );
+/// #
+/// # // e.g.:
+/// # // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
+/// # assert!(response.headers().get::<XRequestId>().is_some());
+/// #
+/// # // X-Frame-Options: DENY
+/// # assert_eq!(
+/// #     *response.headers().get::<XFrameOptions>().unwrap(),
+/// #     XFrameOptions::Deny,
+/// # );
+/// #
+/// # // X-XSS-Protection: 1; mode=block
+/// # assert_eq!(
+/// #     *response.headers().get::<XXssProtection>().unwrap(),
+/// #     XXssProtection::EnableBlock,
+/// # );
+/// #
+/// # // X-Content-Type-Options: nosniff
+/// # assert_eq!(
+/// #     *response.headers().get::<XContentTypeOptions>().unwrap(),
+/// #     XContentTypeOptions::NoSniff,
+/// # );
 /// # }
 /// ```
 pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length: Option<u64>) {
@@ -164,4 +400,59 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
     headers.set(XFrameOptions::Deny);
     headers.set(XXssProtection::EnableBlock);
     headers.set(XContentTypeOptions::NoSniff);
+}
+
+/// Sets redirect headers on a given `Response`.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// # extern crate mime;
+/// #
+/// # use hyper::{Response, StatusCode};
+/// # use hyper::header::Location;
+/// # use gotham::state::State;
+/// # use gotham::http::response::set_redirect_headers;
+/// # use gotham::http::header::*;
+/// # use gotham::test::TestServer;
+/// fn handler(state: State) -> (State, Response) {
+///     let mut response = Response::new().with_status(StatusCode::PermanentRedirect);
+///
+///     set_redirect_headers(
+///         &state,
+///         &mut response,
+///         "http://example.com/somewhere-else"
+///     );
+///
+///     (state, response)
+/// }
+///
+/// # fn main() {
+/// // Demonstrate the returned headers by making a request to the handler.
+/// let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// let response = test_server
+///     .client()
+///     .get("http://example.com/")
+///     .perform()
+///     .unwrap();
+///
+/// assert_eq!(response.status(), StatusCode::PermanentRedirect);
+///
+/// assert_eq!(
+///     *response.headers().get::<Location>().unwrap(),
+///     Location::new("http://example.com/somewhere-else")
+/// );
+/// # assert!(response.headers().get::<XRequestId>().is_some());
+/// # }
+/// ```
+pub fn set_redirect_headers<L: Into<Cow<'static, str>>>(
+    state: &State,
+    res: &mut Response,
+    location: L,
+) {
+    let headers = res.headers_mut();
+    headers.set(XRequestId(request_id(state).into()));
+    headers.set(Location::new(location));
 }

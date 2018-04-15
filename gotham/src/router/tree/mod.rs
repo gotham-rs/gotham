@@ -11,146 +11,30 @@ pub mod regex;
 
 /// A depth ordered `Vec` of `Node` instances that create a routable path through the `Tree` for the
 /// matched `Request` path.
-pub type Path<'a> = Vec<&'a Node>;
-
-/// Data which is returned from Tree traversal, mapping internal segment value to segment(s)
-/// which have been matched against the `Request` path.
-///
-/// Data is Percent and UTF8 decoded.
-#[derive(Debug)]
-pub struct SegmentMapping<'a, 'b> {
-    data: HashMap<&'a str, Vec<&'b PercentDecoded>>,
-}
+type Path<'a> = Vec<&'a Node>;
 
 /// Number of segments from a `Request` path that are considered to have been processed
 /// by an `Router` traversing its `Tree`.
 type SegmentsProcessed = usize;
 
-impl<'a, 'b> SegmentMapping<'a, 'b> {
-    /// Returns a reference for `Request` path segments mapped to the segment key.
-    pub fn get(&self, key: &'a str) -> Option<&Vec<&'b PercentDecoded>> {
-        self.data.get(key)
-    }
-
-    /// Determines if `Request` path segments are mapped to the segment key.
-    pub fn contains_key(&self, key: &'a str) -> bool {
-        self.data.contains_key(key)
-    }
-
-    /// Adds an empty value for a segment key, useful for segments that are considered
-    /// optional and haven't been explicitly provided as part of a `Request` path
-    pub fn add_unmapped_segment(&mut self, key: &'a str) {
-        if !self.data.contains_key(key) {
-            self.data.insert(key, Vec::new());
-        }
-    }
-
-    /// Number of segments from the Request path that have been mapped
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
-}
+/// Mapping of segment names into the collection of values for that segment.
+pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
 
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.
 ///
-/// Allows the `Router` to supply a `Request` path and obtain `[0..n]` valid
-/// `Route` instances for that path for further evaluation.
-///
-/// # Examples
-///
-/// Desired tree:
-///
-/// ```text
-///    /                       (Static Match)
-///    | -- activate           (Static Match)
-///         | -- workflow      (Dynamic Match, Routable)
-/// ```
-///
-/// Code:
-///
-/// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// #
-/// # use hyper::{Response, Method, StatusCode};
-/// #
-/// # use gotham::http::response::create_response;
-/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::route::dispatch::{new_pipeline_set, finalize_pipeline_set,
-/// #                                       DispatcherImpl};
-/// # use gotham::state::State;
-/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::tree::TreeBuilder;
-/// # use gotham::router::tree::node::NodeBuilder;
-/// # use gotham::router::tree::node::SegmentType;
-/// # use gotham::http::request::path::RequestPathSegments;
-/// # use gotham::router::request::path::NoopPathExtractor;
-/// # use gotham::router::request::query_string::NoopQueryStringExtractor;
-/// # use gotham::http::PercentDecoded;
-/// #
-/// # fn handler(state: State) -> (State, Response) {
-/// #   let res = create_response(&state, StatusCode::Ok, None);
-/// #   (state, res)
-/// # }
-/// #
-/// # fn main() {
-/// # let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-///   let mut tree_builder: TreeBuilder = TreeBuilder::new();
-///
-///   let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
-///
-///   let mut thing_node_builder = NodeBuilder::new(":thing", SegmentType::Dynamic);
-///   let thing_route = {
-///       // elided ...
-/// #     let methods = vec![Method::Get];
-/// #     let matcher = MethodOnlyRouteMatcher::new(methods);
-/// #     let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-/// #     let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
-/// #           Extractors::new();
-/// #     let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
-/// #     Box::new(route)
-///   };
-///   thing_node_builder.add_route(thing_route);
-///
-///   activate_node_builder.add_child(thing_node_builder);
-///   tree_builder.add_child(activate_node_builder);
-///
-///   let tree = tree_builder.finalize();
-///
-///   let request_path_segments = RequestPathSegments::new("/%61ctiv%61te/workflow5");
-///   match tree.traverse(request_path_segments.segments().as_slice()) {
-///       Some((path, leaf, segments_processed, segment_mapping)) => {
-///         assert!(path.last().unwrap().is_routable());
-///         assert_eq!(path.last().unwrap().segment(), leaf.segment());
-///         assert_eq!(segments_processed, 2);
-///         assert_eq!(segment_mapping.get(":thing").unwrap().last().unwrap().val(), "workflow5");
-///       }
-///       None => panic!(),
-///   }
-///
-///   // These paths are not routable but could be if 1 or more `Route` were added.
-///   assert!(tree.traverse(&[&PercentDecoded::new("/").unwrap()]).is_none());
-///   assert!(tree.traverse(&[&PercentDecoded::new("/activate").unwrap()]).is_none());
-/// # }
-/// ```
+/// The `Tree` is created by the `gotham::router::builder` API and used internally by the `Router`
+/// to determine the valid `Route` instances for a request path before dispatch.
 pub struct Tree {
     root: Node,
 }
 
 impl Tree {
-    /// Borrow the root `Node` of the `Tree`.
-    ///
-    /// To be used in building a `Tree` structure only.
-    pub fn borrow_root(&self) -> &Node {
-        &self.root
-    }
-
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
-    pub fn traverse<'r, 'n>(
-        &'n self,
+    pub(crate) fn traverse<'r>(
+        &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'n>, &Node, SegmentsProcessed, SegmentMapping<'n, 'r>)> {
+    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
@@ -175,8 +59,8 @@ impl TreeBuilder {
         self.root.add_child(child);
     }
 
-    /// Determines if a child `Node` representing the exact segment provided
-    /// exists at the root of the `Tree`.
+    /// Determines if a child `Node` representing the exact segment provided exists at the root of
+    /// the `Tree`.
     ///
     /// To be used in building a `Tree` structure only.
     pub fn has_child(&self, segment: &str, segment_type: SegmentType) -> bool {
@@ -188,8 +72,7 @@ impl TreeBuilder {
         &mut self.root
     }
 
-    /// Adds a `Route` be evaluated by the `Router` when the root of the
-    /// `Tree` is requested.
+    /// Adds a `Route` be evaluated by the `Router` when the root of the `Tree` is requested.
     pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
         self.root.add_route(route);
     }
@@ -199,5 +82,79 @@ impl TreeBuilder {
         Tree {
             root: self.root.finalize(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use hyper::{Method, Response, StatusCode};
+
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use http::request::path::RequestPathSegments;
+    use http::response::create_response;
+    use router::route::matcher::MethodOnlyRouteMatcher;
+    use router::route::dispatch::DispatcherImpl;
+    use router::route::{Delegation, Extractors, RouteImpl};
+    use state::State;
+    use pipeline::set::*;
+
+    use super::*;
+
+    fn handler(state: State) -> (State, Response) {
+        let res = create_response(&state, StatusCode::Ok, None);
+        (state, res)
+    }
+
+    #[test]
+    fn tree_traversal_tests() {
+        let pipeline_set = finalize_pipeline_set(new_pipeline_set());
+        let mut tree_builder: TreeBuilder = TreeBuilder::new();
+
+        let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
+
+        let mut thing_node_builder = NodeBuilder::new("thing", SegmentType::Dynamic);
+        let thing_route = {
+            let methods = vec![Method::Get];
+            let matcher = MethodOnlyRouteMatcher::new(methods);
+            let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
+            let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
+                Extractors::new();
+            let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
+            Box::new(route)
+        };
+        thing_node_builder.add_route(thing_route);
+
+        activate_node_builder.add_child(thing_node_builder);
+        tree_builder.add_child(activate_node_builder);
+
+        let tree = tree_builder.finalize();
+
+        let request_path_segments = RequestPathSegments::new("/%61ctiv%61te/workflow5");
+        match tree.traverse(request_path_segments.segments().as_slice()) {
+            Some((path, leaf, segments_processed, segment_mapping)) => {
+                assert!(path.last().unwrap().is_routable());
+                assert_eq!(path.last().unwrap().segment(), leaf.segment());
+                assert_eq!(segments_processed, 2);
+                assert_eq!(
+                    segment_mapping
+                        .get("thing")
+                        .unwrap()
+                        .last()
+                        .unwrap()
+                        .as_ref(),
+                    "workflow5"
+                );
+            }
+            None => panic!(),
+        }
+
+        assert!(
+            tree.traverse(&[&PercentDecoded::new("/").unwrap()])
+                .is_none()
+        );
+        assert!(
+            tree.traverse(&[&PercentDecoded::new("/activate").unwrap()])
+                .is_none()
+        );
     }
 }

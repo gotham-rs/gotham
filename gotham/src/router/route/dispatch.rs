@@ -1,35 +1,14 @@
-//! Defines Gotham's `Dispatcher` and supporting types.
+//! Defines the route `Dispatcher` and supporting types.
 
-use std::sync::Arc;
 use std::panic::RefUnwindSafe;
-use borrow_bag::{BorrowBag, Handle, Lookup};
 use futures::future;
 
 use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-use pipeline::{NewMiddlewareChain, Pipeline};
+use pipeline::chain::PipelineHandleChain;
+use pipeline::set::PipelineSet;
 use state::{request_id, State};
 
-/// Represents the set of all `Pipeline` instances that are available for use with `Routes`.
-pub type PipelineSet<P> = Arc<BorrowBag<P>>;
-
-/// A set of `Pipeline` instances that may continue to grow
-pub type EditablePipelineSet<P> = BorrowBag<P>;
-
-/// Create an empty set of `Pipeline` instances.
-///
-/// See BorrowBag#add to insert new `Pipeline` instances.
-pub fn new_pipeline_set() -> EditablePipelineSet<()> {
-    BorrowBag::new()
-}
-
-/// Wraps the current set of `Pipeline` instances into a thread-safe reference counting pointer for
-/// use with `DispatcherImpl` instances.
-pub fn finalize_pipeline_set<P>(eps: EditablePipelineSet<P>) -> PipelineSet<P> {
-    Arc::new(eps)
-}
-
-/// Used by `Router` to dispatch requests via `Pipeline`(s), through `Middleware`(s)
-/// and finally into the configured `Handler`.
+/// Used by `Router` to dispatch requests via pipelines and finally into the configured `Handler`.
 pub trait Dispatcher: RefUnwindSafe {
     /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
     fn dispatch(&self, state: State) -> Box<HandlerFuture>;
@@ -61,7 +40,6 @@ where
     ///   will be invoked.
     /// * `pipelines` - All `Pipeline` instances, accessible by the handles provided in
     ///   `pipeline_chain`.
-    ///
     pub fn new(new_handler: H, pipeline_chain: C, pipelines: PipelineSet<P>) -> Self {
         DispatcherImpl {
             new_handler,
@@ -93,72 +71,20 @@ where
     }
 }
 
-/// A heterogeneous list of `Handle<P, _>` values, where `P` is a pipeline type. The pipelines are
-/// borrowed and invoked in order to serve a request.
-///
-/// Implemented using nested tuples, with `()` marking the end of the list. The list is in the
-/// reverse order of what is described via the routing API.
-///
-/// That is:
-///
-/// `(p3, (p2, (p1, ())))`
-///
-/// will be invoked as:
-///
-/// `(state, request)` &rarr; `p1` &rarr; `p2` &rarr; `p3` &rarr; `handler`
-pub trait PipelineHandleChain<P>: RefUnwindSafe {
-    /// Invokes this part of the `PipelineHandleChain`, with requests being passed through to `f`
-    /// once all `Middleware` in the `Pipeline` have passed the request through.
-    fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
-    where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static;
-}
-
-/// Part of a `PipelineHandleChain` which references a `Pipeline` and continues with a tail element.
-impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
-where
-    T: NewMiddlewareChain,
-    T::Instance: 'static,
-    U: PipelineHandleChain<P>,
-    P: Lookup<Pipeline<T>, N>,
-    N: RefUnwindSafe,
-{
-    fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
-    where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
-    {
-        let (handle, ref chain) = *self;
-        match pipelines.borrow(handle).construct() {
-            Ok(p) => chain.call(pipelines, state, move |state| p.call(state, f)),
-            Err(e) => {
-                trace!("[{}] error borrowing pipeline", request_id(&state));
-                Box::new(future::err((state, e.into_handler_error())))
-            }
-        }
-    }
-}
-
-/// The marker for the end of a `PipelineHandleChain`.
-impl<P> PipelineHandleChain<P> for () {
-    fn call<F>(&self, _: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
-    where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
-    {
-        trace!("[{}] start pipeline", request_id(&state));
-        f(state)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io;
-    use test::TestServer;
-    use middleware::{Middleware, NewMiddleware};
-    use pipeline::new_pipeline;
-    use state::StateData;
+    use std::sync::Arc;
+
     use hyper::Response;
     use hyper::StatusCode;
+
+    use middleware::{Middleware, NewMiddleware};
+    use pipeline::new_pipeline;
+    use pipeline::set::*;
+    use state::StateData;
+    use test::TestServer;
 
     fn handler(state: State) -> (State, Response) {
         let number = state.borrow::<Number>().value;

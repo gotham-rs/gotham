@@ -1,11 +1,10 @@
 //! Defines the type `AndRouteMatcher`
 
-use hyper::StatusCode;
-
+use router::non_match::RouteNonMatch;
 use router::route::RouteMatcher;
 use state::State;
 
-/// Allows multiple Route Matchers to be combined when accessing a request
+/// Allows multiple `RouteMatcher` values to be combined when accessing a request.
 ///
 /// # Examples
 ///
@@ -14,12 +13,13 @@ use state::State;
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # fn main() {
-/// # use hyper::Method;
-/// # use hyper::header::{Headers, Accept};
-/// # use gotham::state::State;
-/// # use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
-/// # use gotham::router::route::matcher::and::AndRouteMatcher;
-/// # use gotham::router::route::matcher::accept::AcceptHeaderRouteMatcher;
+/// #   use hyper::Method;
+/// #   use hyper::header::{Headers, Accept};
+/// #   use gotham::state::State;
+/// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher,
+///                                          AndRouteMatcher, AcceptHeaderRouteMatcher};
+/// #
+/// #   State::with_new(|state| {
 /// #
 ///   let methods = vec![Method::Get, Method::Head];
 ///   let supported_media_types = vec![mime::APPLICATION_JSON];
@@ -27,7 +27,6 @@ use state::State;
 ///	  let accept_matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///   let matcher = AndRouteMatcher::new(method_matcher, accept_matcher);
 ///
-///   let mut state = State::new();
 ///   state.put(Method::Get);
 ///
 ///   // Request that matches both requirements
@@ -46,6 +45,8 @@ use state::State;
 ///   headers.set(Accept::text());
 ///   state.put(headers);
 ///   assert!(matcher.is_match(&state).is_err());
+/// #
+/// #   });
 /// # }
 /// ```
 pub struct AndRouteMatcher<T, U>
@@ -73,10 +74,12 @@ where
     T: RouteMatcher,
     U: RouteMatcher,
 {
-    fn is_match(&self, state: &State) -> Result<(), StatusCode> {
-        self.t.is_match(state)?;
-        self.u.is_match(state)?;
-
-        Ok(())
+    fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
+        match (self.t.is_match(state), self.u.is_match(state)) {
+            (Ok(_), Ok(_)) => Ok(()),
+            (Err(e), Ok(_)) => Err(e),
+            (Ok(_), Err(e)) => Err(e),
+            (Err(e), Err(e1)) => Err(e.intersection(e1)),
+        }
     }
 }

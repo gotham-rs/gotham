@@ -1,27 +1,37 @@
 language: rust
-rust:
-  - stable
-  - beta
-  - nightly
-# dependencies of kcov, used by coverage
+sudo: required
+dist: trusty
+cache: cargo
+env:
+  - PATH=$HOME/.cargo/bin:$PATH
+script:
+  - cargo test -j2 --all
+matrix:
+  fast_finish: true
+  include:
+    - rust: stable
+    - rust: beta
+    - rust: nightly
+    # Run rustfmt in its own shard.
+    - rust: stable
+      env:
+        # Give a useful display name in the job list.
+        - SHARD=rustfmt
+        - PATH=$HOME/.cargo/bin/$PATH
+      before_script:
+        - rustup component add --toolchain stable rustfmt-preview
+      script:
+        - echo "Checking Gotham codebase with rustfmt release `cargo fmt --version`."
+        - cargo fmt --all -- --write-mode=diff
+  allow_failures:
+    - rust: nightly
 addons:
   apt:
     packages:
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
-      - binutils-dev
-      - cmake
-    sources:
-      - kalakris-cmake
-env:
-  - PATH=$HOME/.cargo/bin:$PATH
-before_script:
-  - cargo install cargo-travis -f
-script:
-  - cargo test --all --features ci
-after_success:
-  - cargo coveralls
-matrix:
-  allow_failures:
-    - rust: nightly
+        - libssl-dev
+after_success: |
+  if [[ "$TRAVIS_RUST_VERSION" == stable && "$SHARD" != rustfmt ]]; then
+    bash <(curl https://raw.githubusercontent.com/xd009642/tarpaulin/master/travis-install.sh)
+    cargo tarpaulin --all --out Xml
+    bash <(curl -s https://codecov.io/bash)
+  fi

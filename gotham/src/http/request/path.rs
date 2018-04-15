@@ -1,4 +1,4 @@
-//! Defines helper functions for the Request path
+//! Defines helper functions for processing the request path
 
 use std::sync::Arc;
 
@@ -6,9 +6,9 @@ use http::PercentDecoded;
 
 const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 
-/// Holder for `Request` uri path segments that have been split into individual segments.
+/// Holder for `Request` URI path segments that have been split into individual segments.
 ///
-/// Used with `Tree` traversal.
+/// Used internally by the `Router` when traversing its internal `Tree`.
 #[derive(Clone, PartialEq)]
 pub struct RequestPathSegments {
     offset: usize,
@@ -16,26 +16,16 @@ pub struct RequestPathSegments {
 }
 
 impl RequestPathSegments {
-    /// Creates a new RequestPathSegments instance.
+    /// Creates a new RequestPathSegments instance by splitting a `Request` URI path.
     ///
-    /// * path: A `Request` uri path that will be split into indivdual segments with
-    ///         a leading "/" to represent the root. Empty segments are removed.
+    /// Empty segments are skipped when generating the `RequestPathSegments` value, and a leading
+    /// `/` segment is added to represent the root (and the beginning of traversal). So, a request
+    /// path of `/some/path/to//my/handler` will be split into segments:
     ///
-    /// # Example
-    ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// #
-    /// # use gotham::http::request::path::RequestPathSegments;
-    /// #
-    /// # pub fn main() {
-    ///     let srp = RequestPathSegments::new("/%61ctiv%61te//workflow");
-    ///     assert_eq!("/", srp.segments()[0].val());
-    ///     assert_eq!("activate", srp.segments()[1].val());
-    ///     assert_eq!("workflow", srp.segments()[2].val());
-    /// # }
+    /// ```plain
+    /// ["/", "some", "path", "to", "my", "handler"]
     /// ```
-    pub fn new<'r>(path: &'r str) -> Self {
+    pub(crate) fn new<'r>(path: &'r str) -> Self {
         let mut segments = vec!["/"];
         segments.extend(
             path.split('/')
@@ -63,22 +53,7 @@ impl RequestPathSegments {
     ///
     /// The offset starts at 0 meaning all segments of the initial Request path will be provided
     /// until the offset is updated.
-    ///
-    /// ```rust
-    /// # extern crate gotham;
-    /// #
-    /// # use gotham::http::request::path::RequestPathSegments;
-    /// #
-    /// # pub fn main() {
-    ///     let mut srp = RequestPathSegments::new("/activate/workflow");
-    ///     assert_eq!("/", srp.segments()[0].val());
-    ///     assert_eq!("activate", srp.segments()[1].val());
-    ///     assert_eq!("workflow", srp.segments()[2].val());
-    ///     srp.increase_offset(1);
-    ///     assert_eq!("/", srp.segments()[0].val());
-    ///     assert_eq!("workflow", srp.segments()[1].val());
-    /// # }
-    pub fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
+    pub(crate) fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
         self.segments
             .iter()
             .enumerate()
@@ -95,14 +70,23 @@ impl RequestPathSegments {
     /// Increases the current offset value.
     ///
     /// * add: Indicates how much the offset should be increased by
-    pub fn increase_offset(&mut self, add: usize) {
+    pub(crate) fn increase_offset(&mut self, add: usize) {
         self.offset += add;
     }
+}
 
-    /// Sets the offset.
-    ///
-    /// * offset: Sets the offset to the supplied value
-    pub fn set_offset(&mut self, offset: usize) {
-        self.offset = offset;
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn request_path_segments_tests() {
+        // Validate the claim made in the doc comment above.
+        let rps = RequestPathSegments::new("/some/path/to//my/handler");
+
+        assert_eq!(
+            rps.segments.iter().map(|s| s.as_ref()).collect::<Vec<_>>(),
+            vec!["/", "some", "path", "to", "my", "handler"]
+        );
     }
 }

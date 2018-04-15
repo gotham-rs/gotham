@@ -1,6 +1,6 @@
-//! Gotham - A flexible web framework that does not sacrifice safety, security or speed.
+//! Gotham &ndash; A flexible web framework that promotes stability, safety, security and speed.
 //!
-//! You can find out more about Gotham, including where to get help,  at https://gotham.rs.
+//! You can find out more about Gotham, including where to get help, at <https://gotham.rs>.
 //!
 //! We look forward to welcoming you into the Gotham community!
 #![doc(html_root_url = "https://docs.rs/gotham/0.2.0")] // Update when changed in Cargo.toml
@@ -29,6 +29,7 @@ extern crate mio;
 extern crate num_cpus;
 extern crate rand;
 extern crate regex;
+#[macro_use]
 extern crate serde;
 extern crate tokio_core;
 extern crate url;
@@ -38,6 +39,7 @@ extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
 
+pub mod extractor;
 pub mod handler;
 pub mod middleware;
 pub mod pipeline;
