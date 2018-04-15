@@ -16,7 +16,7 @@ extern crate base64;
 extern crate bincode;
 extern crate borrow_bag;
 extern crate chrono;
-//#[cfg(windows)] //xxx put this back
+#[cfg(windows)]
 extern crate crossbeam;
 extern crate futures;
 #[macro_use]
