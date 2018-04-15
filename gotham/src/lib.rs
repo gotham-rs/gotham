@@ -50,19 +50,20 @@ pub mod state;
 pub mod test;
 mod os;
 
-pub use os::current::new_gotham_listener;
-
-use handler::NewHandler;
-use hyper::server::Http;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::io;
 use std::thread;
+
+use hyper::server::Http;
+use futures::{future, Future, Stream};
 use tokio_core::reactor::{Core, Handle};
 use tokio_core::net::TcpStream;
 
 use service::GothamService;
-use futures::{future, Future, Stream};
+use handler::NewHandler;
+
+pub use os::current::new_gotham_listener;
 
 /// Abstracts over TCPListener to provide OS independence for handling incoming TCP connections.
 pub trait GothamListener {
