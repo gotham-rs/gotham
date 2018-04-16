@@ -1,7 +1,6 @@
 //! An example of the Gotham web framework `Router` that shows how to associate multiple handlers
 //! to a single path.
 
-extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;

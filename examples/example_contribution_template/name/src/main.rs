@@ -20,7 +20,6 @@
 //! of your specific example i.e. That a 404 is correctly returned for a missing endpoint when
 //! you're writing an example for setting Cookies.
 
-extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;

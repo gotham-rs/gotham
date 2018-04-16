@@ -1,6 +1,5 @@
 //! A Hello World example application for working with Gotham.
 
-extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
