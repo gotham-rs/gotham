@@ -33,8 +33,14 @@ pub type ExplicitSingleRouteBuilder<'a, M, C, P> =
 
 /// The type passed to the function used when building associated routes. See
 /// `AssociatedRouteBuilder` for information about the API available for associated routes.
-pub type DefaultAssociatedRouteBuilder<'a, C, P> =
-    AssociatedRouteBuilder<'a, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
+pub type DefaultAssociatedRouteBuilder<'a, C, P> = AssociatedRouteBuilder<
+    'a,
+    MethodOnlyRouteMatcher,
+    C,
+    P,
+    NoopPathExtractor,
+    NoopQueryStringExtractor,
+>;
 
 /// Defines functions used by a builder to determine which request paths will be dispatched to a
 /// route. This trait is implemented by the top-level `RouterBuilder`, and also the `ScopedBuilder`

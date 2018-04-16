@@ -18,7 +18,7 @@ use router::non_match::RouteNonMatch;
 
 /// Determines if conditions required for the associated `Route` to be invoked by the `Router` have
 /// been met.
-pub trait RouteMatcher: RefUnwindSafe {
+pub trait RouteMatcher: RefUnwindSafe + Clone {
     /// Determines if the `Request` meets pre-defined conditions.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;
 }
@@ -77,6 +77,7 @@ where
 /// #   });
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct MethodOnlyRouteMatcher {
     methods: Vec<Method>,
 }

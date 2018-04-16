@@ -68,6 +68,7 @@ use state::{request_id, FromState, State};
 /// #   });
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct AcceptHeaderRouteMatcher {
     supported_media_types: Vec<mime::Mime>,
 }

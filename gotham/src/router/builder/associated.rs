@@ -4,7 +4,7 @@ use hyper::Method;
 
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::route::matcher::MethodOnlyRouteMatcher;
+use router::route::matcher::{MethodOnlyRouteMatcher, RouteMatcher};
 use extractor::{PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
 use router::builder::SingleRouteBuilder;
@@ -16,21 +16,24 @@ pub type AssociatedSingleRouteBuilder<'a, C, P, PE, QSE> =
 
 /// Implements the methods required for associating a number of routes with a single path. This is
 /// used by `DrawRoutes::associated`.
-pub struct AssociatedRouteBuilder<'a, C, P, PE, QSE>
+pub struct AssociatedRouteBuilder<'a, M, C, P, PE, QSE>
 where
+    M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     node_builder: &'a mut NodeBuilder,
+    matcher: Option<M>,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
     phantom: PhantomData<(PE, QSE)>,
 }
 
-impl<'a, C, P, PE, QSE> AssociatedRouteBuilder<'a, C, P, PE, QSE>
+impl<'a, M, C, P, PE, QSE> AssociatedRouteBuilder<'a, M, C, P, PE, QSE>
 where
+    M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
@@ -44,6 +47,7 @@ where
     ) -> Self {
         AssociatedRouteBuilder {
             node_builder,
+            matcher: None,
             pipeline_chain,
             pipelines,
             phantom: PhantomData,
@@ -99,12 +103,15 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    pub fn with_path_extractor<'b, NPE>(&'b mut self) -> AssociatedRouteBuilder<'b, C, P, NPE, QSE>
+    pub fn with_path_extractor<'b, NPE>(
+        &'b mut self,
+    ) -> AssociatedRouteBuilder<'b, M, C, P, NPE, QSE>
     where
         NPE: PathExtractor + Send + Sync + 'static,
     {
         AssociatedRouteBuilder {
             node_builder: self.node_builder,
+            matcher: self.matcher.clone(),
             pipeline_chain: self.pipeline_chain,
             pipelines: self.pipelines.clone(),
             phantom: PhantomData,
@@ -163,12 +170,13 @@ where
     /// ```
     pub fn with_query_string_extractor<'b, NQSE>(
         &'b mut self,
-    ) -> AssociatedRouteBuilder<'b, C, P, PE, NQSE>
+    ) -> AssociatedRouteBuilder<'b, M, C, P, PE, NQSE>
     where
         NQSE: QueryStringExtractor + Send + Sync + 'static,
     {
         AssociatedRouteBuilder {
             node_builder: self.node_builder,
+            matcher: self.matcher.clone(),
             pipeline_chain: self.pipeline_chain,
             pipelines: self.pipelines.clone(),
             phantom: PhantomData,
@@ -233,19 +241,20 @@ where
     ) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
         let AssociatedRouteBuilder {
             ref mut node_builder,
+            ref matcher,
             ref pipeline_chain,
             ref pipelines,
             phantom,
         } = *self;
 
-        let matcher = MethodOnlyRouteMatcher::new(methods);
+        let morm = MethodOnlyRouteMatcher::new(methods);
 
         SingleRouteBuilder {
-            matcher,
-            phantom,
             node_builder: *node_builder,
+            matcher: morm,
             pipeline_chain: *pipeline_chain,
             pipelines: pipelines.clone(),
+            phantom,
         }
     }
 

@@ -49,6 +49,7 @@ use state::State;
 /// #   });
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct AndRouteMatcher<T, U>
 where
     T: RouteMatcher,
