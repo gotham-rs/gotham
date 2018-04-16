@@ -1,7 +1,6 @@
 //! An example of the Gotham web framework Router that shows how to route requests to handlers
 //! based on HTTP verbs.
 
-extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;

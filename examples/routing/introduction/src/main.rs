@@ -1,6 +1,5 @@
 //! An introduction to fundamental `Router` and `Router Builder` concepts to create a routing tree.
 
-extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;

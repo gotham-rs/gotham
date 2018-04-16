@@ -1,6 +1,5 @@
 //! Setting a header value for a Gotham web framework response
 
-extern crate futures;
 extern crate gotham;
 #[macro_use]
 extern crate hyper;

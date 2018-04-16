@@ -1,7 +1,6 @@
 //! An introduction to extracting request path segments, in a type safe way, with the
 //! Gotham web framework
 
-extern crate futures;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;

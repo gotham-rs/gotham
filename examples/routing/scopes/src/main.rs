@@ -1,7 +1,6 @@
 //!  An example of the Gotham web framework `Router` that shows how to combine `Routes`
 //!  under a common root using scopes.
 
-extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;

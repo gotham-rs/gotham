@@ -1,6 +1,5 @@
 //! Shows how to match arbitrarily many path segments.
 
-extern crate futures;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;

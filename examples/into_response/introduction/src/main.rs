@@ -1,6 +1,5 @@
 //! An introduction to the Gotham web framework's `IntoResponse` trait.
 
-extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
