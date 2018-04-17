@@ -305,6 +305,8 @@ pub trait DefineSingleRoute {
         Self: ReplaceQueryStringExtractor<NQSE>,
         Self::Output: DefineSingleRoute;
 
+    /// Adds additional `RouteMatcher` requirements to the current route.
+    ///
     /// ```
     /// # extern crate gotham;
     /// # extern crate hyper;
@@ -324,7 +326,6 @@ pub trait DefineSingleRoute {
     /// #
     /// # fn router() -> Router {
     /// build_simple_router(|route| {
-    ///     // All we match on is the Accept header, the method is not considered.
     ///     let matcher = AcceptHeaderRouteMatcher::new(vec![mime::APPLICATION_JSON]);
     ///     route.get("/request/path")
     ///          .add_route_matcher(matcher)

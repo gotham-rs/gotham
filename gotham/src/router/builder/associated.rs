@@ -1,18 +1,23 @@
 use std::marker::PhantomData;
+use std::panic::RefUnwindSafe;
 
 use hyper::Method;
 
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::route::matcher::{MethodOnlyRouteMatcher, RouteMatcher};
+use router::route::matcher::{AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher,
+                             RouteMatcher};
 use extractor::{PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
 use router::builder::SingleRouteBuilder;
 
+pub type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;
+pub type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;
+
 /// The default type returned when building a single associated route. See
 /// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
-pub type AssociatedSingleRouteBuilder<'a, C, P, PE, QSE> =
-    SingleRouteBuilder<'a, MethodOnlyRouteMatcher, C, P, PE, QSE>;
+pub type AssociatedSingleRouteBuilder<'a, M, C, P, PE, QSE> =
+    SingleRouteBuilder<'a, M, C, P, PE, QSE>;
 
 /// Implements the methods required for associating a number of routes with a single path. This is
 /// used by `DrawRoutes::associated`.
@@ -20,22 +25,21 @@ pub struct AssociatedRouteBuilder<'a, M, C, P, PE, QSE>
 where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
-    P: Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     node_builder: &'a mut NodeBuilder,
-    matcher: Option<M>,
+    matcher: M,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
     phantom: PhantomData<(PE, QSE)>,
 }
 
-impl<'a, M, C, P, PE, QSE> AssociatedRouteBuilder<'a, M, C, P, PE, QSE>
+impl<'a, C, P, PE, QSE> AssociatedRouteBuilder<'a, AnyRouteMatcher, C, P, PE, QSE>
 where
-    M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
-    P: Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
 {
@@ -47,9 +51,94 @@ where
     ) -> Self {
         AssociatedRouteBuilder {
             node_builder,
-            matcher: None,
+            matcher: AnyRouteMatcher::new(),
             pipeline_chain,
             pipelines,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, M, C, P, PE, QSE> AssociatedRouteBuilder<'a, M, C, P, PE, QSE>
+where
+    M: RouteMatcher + Send + Sync + 'static,
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: RefUnwindSafe + Send + Sync + 'static,
+    PE: PathExtractor + Send + Sync + 'static,
+    QSE: QueryStringExtractor + Send + Sync + 'static,
+{
+    /// Adds aadditional `RouteMatcher` requirements to all subsequently associated routes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # extern crate mime;
+    /// #
+    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::header::{Accept, qitem};
+    /// # use gotham::state::State;
+    /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// # fn my_handler(state: State) -> (State, Response) {
+    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     let matcher = AcceptHeaderRouteMatcher::new(vec![mime::APPLICATION_JSON]);
+    ///
+    ///     route.associate("/resource/path", |assoc| {
+    ///         let mut assoc = assoc.add_route_matcher(matcher);
+    ///
+    ///         assoc.get().to(my_handler);
+    ///     });
+    /// })
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #
+    /// #   let accept_header = Accept(vec![
+    /// #     qitem(mime::APPLICATION_JSON),
+    /// #   ]);
+    /// #
+    /// #   let text_accept_header = Accept(vec![
+    /// #     qitem(mime::TEXT_PLAIN),
+    /// #   ]);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/resource/path")
+    /// #       .with_header(accept_header)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/resource/path")
+    /// #       .with_header(text_accept_header)
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::NotAcceptable);
+    /// # }
+    /// ```
+    pub fn add_route_matcher<'b, NM>(
+        &'b mut self,
+        matcher: NM,
+    ) -> AssociatedRouteBuilder<'b, AssociatedRouteBuilderMatcher<M, NM>, C, P, PE, QSE>
+    where
+        NM: RouteMatcher + Send + Sync + 'static,
+    {
+        let matcher = AndRouteMatcher::new(self.matcher.clone(), matcher);
+        AssociatedRouteBuilder {
+            node_builder: self.node_builder,
+            matcher,
+            pipeline_chain: self.pipeline_chain,
+            pipelines: self.pipelines.clone(),
             phantom: PhantomData,
         }
     }
@@ -238,7 +327,7 @@ where
     pub fn request<'b>(
         &'b mut self,
         methods: Vec<Method>,
-    ) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
         let AssociatedRouteBuilder {
             ref mut node_builder,
             ref matcher,
@@ -247,11 +336,9 @@ where
             phantom,
         } = *self;
 
-        let morm = MethodOnlyRouteMatcher::new(methods);
-
         SingleRouteBuilder {
             node_builder: *node_builder,
-            matcher: morm,
+            matcher: AndRouteMatcher::new(MethodOnlyRouteMatcher::new(methods), matcher.clone()),
             pipeline_chain: *pipeline_chain,
             pipelines: pipelines.clone(),
             phantom,
@@ -295,7 +382,9 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    pub fn head<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
+    pub fn head<'b>(
+        &'b mut self,
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
         self.request(vec![Method::Head])
     }
 
@@ -343,7 +432,9 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    pub fn get_or_head<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
+    pub fn get_or_head<'b>(
+        &'b mut self,
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
         self.request(vec![Method::Get, Method::Head])
     }
 
@@ -384,7 +475,9 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    pub fn get<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
+    pub fn get<'b>(
+        &'b mut self,
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
         self.request(vec![Method::Get])
     }
 
@@ -426,7 +519,9 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    pub fn post<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
+    pub fn post<'b>(
+        &'b mut self,
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
         self.request(vec![Method::Post])
     }
 
@@ -468,7 +563,9 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    pub fn put<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
+    pub fn put<'b>(
+        &'b mut self,
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
         self.request(vec![Method::Put])
     }
 
@@ -510,7 +607,9 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    pub fn patch<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
+    pub fn patch<'b>(
+        &'b mut self,
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
         self.request(vec![Method::Patch])
     }
 
@@ -551,7 +650,9 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    pub fn delete<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
+    pub fn delete<'b>(
+        &'b mut self,
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
         self.request(vec![Method::Delete])
     }
 
@@ -593,7 +694,9 @@ where
     /// #   assert_eq!(response.status(), StatusCode::Accepted);
     /// # }
     /// ```
-    pub fn options<'b>(&'b mut self) -> AssociatedSingleRouteBuilder<'b, C, P, PE, QSE> {
+    pub fn options<'b>(
+        &'b mut self,
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
         self.request(vec![Method::Options])
     }
 }
