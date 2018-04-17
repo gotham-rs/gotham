@@ -69,6 +69,9 @@ pub use os::current::new_gotham_listener;
 pub trait GothamListener {
     /// The type for incoming stream of TCP connections.
     type Stream;
+
+    /// Incoming is called in each processing thread to get a stream of TCP connections.
+    fn incoming(self, Handle) -> Self::Stream;
 }
 
 /// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
