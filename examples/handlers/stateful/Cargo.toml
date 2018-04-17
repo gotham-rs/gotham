@@ -1,0 +1,13 @@
+[package]
+name = "gotham_examples_handlers_stateful"
+description = "An example of using stateful handlers with the Gotahm web framework"
+version = "0.0.0"
+authors = ["Daniel Wagner-Hall <dawagner@gmail.com>"]
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+
+futures = "0.1"
+hyper = "0.11"
+mime = "0.3"
