@@ -4,15 +4,6 @@ version = "1.0.0"
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
            "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 description = "A type-safe, heterogeneous collection with zero-cost add and borrow"
-build = "build.rs"
 license = "MIT/Apache-2.0"
 homepage = "https://gotham.rs"
 repository = "https://github.com/gotham-rs/gotham"
-
-[dependencies]
-
-[build-dependencies]
-skeptic = "0.13"
-
-[dev-dependencies]
-skeptic = "0.13"

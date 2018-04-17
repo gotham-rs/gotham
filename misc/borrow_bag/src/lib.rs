@@ -28,6 +28,8 @@ pub use handle::Handle;
 /// After being added, the `Handle` can be passed to `borrow(Handle)`, which will return a
 /// reference to the value.
 ///
+/// ## Example
+///
 /// ```rust
 /// use borrow_bag::BorrowBag;
 ///
@@ -56,6 +58,7 @@ pub use handle::Handle;
 /// let x: &X = bag.borrow(x_handle);
 /// assert_eq!(x, &X);
 /// ```
+
 pub struct BorrowBag<V> {
     v: V,
 }
