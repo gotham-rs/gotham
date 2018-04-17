@@ -8,5 +8,6 @@ publish = false
 [dependencies]
 gotham = { path = "../../../gotham" }
 
+futures = "0.1"
 hyper = "0.11"
 mime = "0.3"

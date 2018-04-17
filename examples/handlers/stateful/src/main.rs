@@ -1,19 +1,23 @@
 //! An example of using stateful handlers with the Gotahm web framework.
 
+extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
+use futures::future;
+use hyper::StatusCode;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
+use gotham::handler::{Handler, HandlerFuture, NewHandler};
 use gotham::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::*;
 use gotham::state::State;
 
 // A struct which can store the state which it needs.
+#[derive(Clone)]
 struct CountingHandler {
     // Record what time the server started.
     // started_at will never change, so we can just store its value.
@@ -31,8 +35,10 @@ impl CountingHandler {
             visits: Arc::new(Mutex::new(0)),
         }
     }
+}
 
-    fn get_handler(&self, state: State) -> (State, Response) {
+impl Handler for CountingHandler {
+    fn handle(self, state: State) -> Box<HandlerFuture> {
         let uptime = SystemTime::now().duration_since(self.started_at).unwrap();
 
         // Create a short scope so that self.visits will only be locked for long enough to
@@ -56,18 +62,23 @@ impl CountingHandler {
                 Some((response_text.into_bytes(), mime::TEXT_PLAIN)),
             )
         };
-        (state, res)
+        Box::new(future::ok((state, res)))
+    }
+}
+
+impl NewHandler for CountingHandler {
+    type Instance = Self;
+
+    fn new_handler(&self) -> std::io::Result<Self::Instance> {
+        Ok(self.clone())
     }
 }
 
 /// Create a `Router`
 fn router() -> Router {
-    let handler = CountingHandler::new();
     build_simple_router(|route| {
         // Each time a request is made to /, call handler.get_handler
-        route
-            .get("/")
-            .to_new_handler(move || Ok(|state| handler.get_handler(state)));
+        route.get("/").to_new_handler(CountingHandler::new())
     })
 }
 
