@@ -112,7 +112,7 @@ where
 fn run_and_serve<'a, G, NH>(listener: G, protocol: Arc<Http>, new_handler: Arc<NH>)
 where
     G: GothamListener,
-    <G as GothamListener>::Stream: futures::Stream<Item = (TcpStream, SocketAddr), Error = io::Error>
+    <G as GothamListener>::Stream: Stream<Item = (TcpStream, SocketAddr), Error = io::Error>
         + 'static,
     NH: NewHandler + 'static,
 {
@@ -130,7 +130,7 @@ where
 pub fn serve<G, NH>(listener: G, protocol: Arc<Http>, new_handler: Arc<NH>, handle: Handle)
 where
     G: GothamListener,
-    <G as GothamListener>::Stream: futures::Stream<Item = (TcpStream, SocketAddr), Error = io::Error>
+    <G as GothamListener>::Stream: Stream<Item = (TcpStream, SocketAddr), Error = io::Error>
         + 'static,
     NH: NewHandler + 'static,
 {
