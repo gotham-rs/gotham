@@ -125,7 +125,8 @@ where
         .expect("unable to run reactor over listener");
 }
 
-/// Serves a Gotham handler on a GothamListener.  Useful when you're folding Gotham into an existing Tokio application.
+/// Serves a Gotham handler on a GothamListener.  Useful when you're folding Gotham into an
+/// existing Tokio application.
 pub fn serve<G, NH>(listener: G, protocol: Arc<Http>, new_handler: Arc<NH>, handle: Handle)
 where
     G: GothamListener,
