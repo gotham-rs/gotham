@@ -76,10 +76,7 @@ impl NewHandler for CountingHandler {
 
 /// Create a `Router`
 fn router() -> Router {
-    build_simple_router(|route| {
-        // Each time a request is made to /, call handler.get_handler
-        route.get("/").to_new_handler(CountingHandler::new())
-    })
+    build_simple_router(|route| route.get("/").to_new_handler(CountingHandler::new()))
 }
 
 /// Start a server and use a `Router` to dispatch requests
@@ -95,7 +92,7 @@ mod tests {
     use gotham::test::TestServer;
 
     #[test]
-    fn cookie_is_set_and_counter_increments() {
+    fn counter_increments_per_request() {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
