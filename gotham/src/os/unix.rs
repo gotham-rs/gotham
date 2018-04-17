@@ -4,8 +4,8 @@ use std::thread;
 use std::sync::Arc;
 
 use hyper::server::Http;
-use tokio_core;
-use tokio_core::reactor::{Core, Handle};
+use tokio;
+use tokio::reactor::Handle;
 use futures::{Future, Stream};
 
 use handler::NewHandler;
@@ -43,9 +43,8 @@ fn start_core<NH>(listener: TcpListener, addr: &SocketAddr, protocol: &Http, new
 where
     NH: NewHandler + 'static,
 {
-    let mut core = Core::new().expect("unable to spawn tokio reactor");
-    let handle = core.handle();
-    core.run(serve(listener, addr, protocol, new_handler, &handle))
+    let handle = Handle::current();
+    tokio::run(serve(listener, addr, protocol, new_handler, &handle))
         .expect("unable to run reactor over listener");
 }
 
@@ -61,7 +60,7 @@ where
 {
     let gotham_service = GothamService::new(new_handler, handle.clone());
 
-    let listener = tokio_core::net::TcpListener::from_listener(listener, addr, handle)
+    let listener = tokio::net::TcpListener::from_listener(listener, addr, handle)
         .expect("unable to convert TCP listener to tokio listener");
 
     Box::new(listener.incoming().for_each(move |(socket, addr)| {

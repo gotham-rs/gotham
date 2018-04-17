@@ -19,6 +19,8 @@ extern crate chrono;
 #[cfg(windows)]
 extern crate crossbeam;
 extern crate futures;
+extern crate futures_timer;
+extern crate http as http_types;
 #[macro_use]
 extern crate hyper;
 extern crate linked_hash_map;
@@ -31,7 +33,7 @@ extern crate rand;
 extern crate regex;
 #[macro_use]
 extern crate serde;
-extern crate tokio_core;
+extern crate tokio;
 extern crate url;
 extern crate uuid;
 

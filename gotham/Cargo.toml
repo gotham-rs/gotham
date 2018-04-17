@@ -13,13 +13,15 @@ keywords = ["http", "async", "web", "framework", "blockchain"]
 
 [dependencies]
 log = "0.4.1"
-hyper = { version = "0.11.7", features = [] }
+http = "0.1.5"
+hyper = { git = "https://github.com/hyperium/hyper.git", branch = "0.12.x", features = [] }
 serde = "1"
 serde_derive = "1"
 bincode = "1"
 mime = "0.3"
 futures = "0.1"
-tokio-core = "0.1.13"
+futures-timer = "0.1.0"
+tokio = "0.1.5"
 mio = "0.6"
 borrow-bag = "1"
 url = "1"

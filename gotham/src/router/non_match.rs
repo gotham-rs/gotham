@@ -187,8 +187,6 @@ impl Default for MethodSet {
 
 impl<'a> From<&'a [Method]> for MethodSet {
     fn from(methods: &[Method]) -> MethodSet {
-        use hyper::Method::*;
-
         let (
             mut connect,
             mut delete,
@@ -215,31 +213,31 @@ impl<'a> From<&'a [Method]> for MethodSet {
 
         for method in methods {
             match *method {
-                Connect => {
+                Method::Connect => {
                     connect = true;
                 }
-                Delete => {
+                Method::Delete => {
                     delete = true;
                 }
-                Get => {
+                Method::Get => {
                     get = true;
                 }
-                Head => {
+                Method::Head => {
                     head = true;
                 }
-                Options => {
+                Method::Options => {
                     options = true;
                 }
-                Patch => {
+                Method::Patch => {
                     patch = true;
                 }
-                Post => {
+                Method::Post => {
                     post = true;
                 }
-                Put => {
+                Method::Put => {
                     put = true;
                 }
-                Trace => {
+                Method::Trace => {
                     trace = true;
                 }
                 _ => {

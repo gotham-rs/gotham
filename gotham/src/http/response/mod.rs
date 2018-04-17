@@ -2,10 +2,10 @@
 
 use std::borrow::Cow;
 use hyper::{Method, Response, StatusCode};
-use hyper::header::{ContentLength, ContentType, Location};
 use mime::Mime;
 
 use state::{request_id, FromState, State};
+use http_types::header::LOCATION;
 use http::header::{XContentTypeOptions, XFrameOptions, XRequestId, XXssProtection};
 
 type Body = (Vec<u8>, Mime);
@@ -454,5 +454,5 @@ pub fn set_redirect_headers<L: Into<Cow<'static, str>>>(
 ) {
     let headers = res.headers_mut();
     headers.set(XRequestId(request_id(state).into()));
-    headers.set(Location::new(location));
+    headers.set(LOCATION::new(location));
 }

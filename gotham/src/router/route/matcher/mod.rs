@@ -58,9 +58,10 @@ where
 ///
 /// ```rust
 /// # extern crate gotham;
+/// # extern crate http;
 /// # extern crate hyper;
 /// # fn main() {
-/// #   use hyper::Method;
+/// #   use http::Method;
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
 /// #

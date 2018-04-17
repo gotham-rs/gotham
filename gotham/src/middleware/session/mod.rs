@@ -6,14 +6,13 @@ use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use base64;
-use rand::Rng;
-use hyper::StatusCode;
-use hyper::server::Response;
-use hyper::header::{Cookie, Headers, SetCookie};
-use futures::{future, Future};
-use serde::{Deserialize, Serialize};
 use bincode;
+use base64;
+use futures::{future, Future};
+use http_types::Response;
+use hyper::StatusCode;
+use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 use super::{Middleware, NewMiddleware};
 use handler::{HandlerError, HandlerFuture, IntoHandlerError};
@@ -190,7 +189,6 @@ impl SessionCookieConfig {
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// # extern crate bincode;
-/// # extern crate tokio_core;
 /// #
 /// # use std::time::Duration;
 /// # use futures::future;

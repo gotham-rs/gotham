@@ -10,7 +10,7 @@ use hyper;
 use hyper::server::Service;
 use hyper::{Request, Response};
 use futures::Future;
-use tokio_core::reactor::Handle;
+use tokio::reactor::Handle;
 
 use handler::NewHandler;
 use state::{request_id, set_request_id, State};
@@ -98,7 +98,7 @@ mod tests {
     use super::*;
 
     use hyper::{Method, StatusCode};
-    use tokio_core::reactor::Core;
+    use tokio::runtime::Runtime;
 
     use http::response::create_response;
     use router::builder::*;

@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use hyper::{Body, Headers, HttpVersion, Method, Uri};
-use tokio_core::reactor::Handle;
+use tokio::reactor::Handle;
 
 use http::request::path::RequestPathSegments;
 use state::request_id::RequestId;

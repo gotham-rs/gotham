@@ -278,6 +278,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # #![allow(deprecated)] // TODO: Refactor this.
 /// #
 /// # extern crate gotham;
+/// # extern crate http;
 /// # extern crate hyper;
 /// #
 /// # use gotham::state::State;
@@ -290,7 +291,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::handler::IntoResponse;
 /// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-/// # use hyper::Method;
+/// # use http::Method;
 /// # use hyper::StatusCode;
 /// # use hyper::Response;
 /// #

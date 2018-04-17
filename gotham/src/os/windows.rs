@@ -4,9 +4,9 @@ use std::thread;
 use std::sync::{Arc, Mutex};
 
 use hyper::server::Http;
-use tokio_core;
-use tokio_core::net::TcpStream;
-use tokio_core::reactor::{Core, Handle};
+use tokio;
+use tokio::net::TcpStream;
+use tokio::runtime::Runtime;
 use futures::{future, task, Async, Future, Poll, Stream};
 
 use handler::NewHandler;
@@ -92,7 +92,7 @@ fn listen(
     queue: SocketQueue,
     handle: &Handle,
 ) -> Box<Future<Item = (), Error = io::Error>> {
-    let listener = tokio_core::net::TcpListener::from_listener(listener, &addr, handle)
+    let listener = tokio::net::TcpListener::from_listener(listener, &addr, handle)
         .expect("unable to convert TCP listener to tokio listener");
 
     let mut n: usize = 0;

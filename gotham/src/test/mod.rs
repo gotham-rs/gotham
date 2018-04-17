@@ -10,14 +10,17 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use futures::{future, Future, Stream};
-use hyper::{self, Body, Method, Request, Response, Uri};
+use futures_timer::ext::Timeout;
+use http_types::Method;
+use hyper::{self, Body, Request, Response, Uri};
 use hyper::client::{self, Client};
-use hyper::error::UriError;
-use hyper::header::ContentType;
 use hyper::server::{self, Http};
 use mime;
 use mio;
-use tokio_core::reactor::{Core, PollEvented, Timeout};
+use tokio::executor::Executor;
+use tokio::executor::thread_pool::{Builder as ThreadPoolBuilder};
+use tokio::reactor::PollEvented;
+use tokio::runtime::Runtime;
 
 use handler::NewHandler;
 use service::GothamService;
@@ -64,7 +67,7 @@ struct TestServerData<NH = Router>
 where
     NH: NewHandler + 'static,
 {
-    core: RefCell<Core>,
+    executor: RefCell<Executor>,
     http: Http,
     timeout: u64,
     gotham_service: GothamService<NH>,
@@ -80,14 +83,6 @@ pub enum TestRequestError {
     IoError(io::Error),
     /// A `hyper::Error` occurred before a response was received.
     HyperError(hyper::Error),
-    /// The URL could not be parsed when building the request.
-    UriError(UriError),
-}
-
-impl From<UriError> for TestRequestError {
-    fn from(error: UriError) -> TestRequestError {
-        TestRequestError::UriError(error)
-    }
 }
 
 impl<NH> Clone for TestServer<NH>
@@ -116,19 +111,19 @@ where
 
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
     pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
-        Core::new().map(|core| {
-            let handle = core.handle();
+        let pool = ThreadPoolBuilder::new().pool_size(1).build();
 
-            let data = TestServerData {
-                core: RefCell::new(core),
-                http: server::Http::new(),
-                timeout,
-                gotham_service: GothamService::new(Arc::new(new_handler), handle),
-            };
+        let handle = pool.handle();
 
-            TestServer {
-                data: Rc::new(data),
-            }
+        let data = TestServerData {
+            executor: RefCell::new(pool),
+            http: server::Http::new(),
+            timeout,
+            gotham_service: GothamService::new(Arc::new(new_handler), handle),
+        };
+
+        Ok(TestServer {
+            data: Rc::new(data),
         })
     }
 
