@@ -27,7 +27,6 @@ extern crate linked_hash_map;
 extern crate log;
 extern crate mime;
 extern crate mio;
-extern crate num_cpus;
 extern crate rand;
 extern crate regex;
 #[macro_use]
@@ -47,40 +46,8 @@ pub mod pipeline;
 pub mod http;
 pub mod router;
 mod service;
+mod start;
 pub mod state;
 pub mod test;
-mod os;
 
-pub use os::current::start_with_num_threads;
-
-use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
-use handler::NewHandler;
-
-/// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
-///
-/// ## Windows
-///
-/// An additional thread is used on Windows to accept connections.
-pub fn start<NH, A>(addr: A, new_handler: NH)
-where
-    NH: NewHandler + 'static,
-    A: ToSocketAddrs,
-{
-    let threads = num_cpus::get();
-    start_with_num_threads(addr, threads, new_handler)
-}
-
-fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
-where
-    A: ToSocketAddrs,
-{
-    let addr = match addr.to_socket_addrs().map(|ref mut i| i.next()) {
-        Ok(Some(a)) => a,
-        Ok(_) => panic!("unable to resolve listener address"),
-        Err(_) => panic!("unable to parse listener address"),
-    };
-
-    let listener = TcpListener::bind(addr).expect("unable to open TCP listener");
-
-    (listener, addr)
-}
+pub use start::start;

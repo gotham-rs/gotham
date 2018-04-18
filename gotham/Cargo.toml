@@ -29,7 +29,6 @@ chrono = "0.4"
 base64 = "0.9"
 rand = "0.4"
 linked-hash-map = "0.5"
-num_cpus = "1.2"
 crossbeam = "0.3"
 regex = "0.2"
 
