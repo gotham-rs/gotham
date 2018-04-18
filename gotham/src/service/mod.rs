@@ -61,7 +61,7 @@ where
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error> + Send>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
         let mut state = State::new();

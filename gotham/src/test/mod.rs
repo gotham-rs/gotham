@@ -176,7 +176,7 @@ where
             .connector(TestConnect {
                 stream: cell::RefCell::new(Some(cs)),
             })
-            .build(&self.data.core.borrow().handle());
+            .build();
 
         Ok(TestClient {
             client,
@@ -215,9 +215,10 @@ where
 
         let r = {
             let f: hyper::Body = response.body();
-            let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
-
-            tokio::run(f)
+            f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter()))).map_err(|hyper_err| {
+                println!("Error: {}", hyper_err);
+                Ok(())
+            })
         };
 
         r.map(|_| buf)
