@@ -20,7 +20,6 @@ extern crate chrono;
 extern crate crossbeam;
 extern crate futures;
 extern crate futures_timer;
-extern crate http as http_types;
 #[macro_use]
 extern crate hyper;
 extern crate linked_hash_map;

@@ -11,9 +11,10 @@ use std::sync::Arc;
 
 use futures::{future, Future, Stream};
 use futures_timer::ext::Timeout;
-use http_types::Method;
-use hyper::{self, Body, Request, Response, Uri};
+use hyper::{self, Body, Method, Request, Response, Uri};
 use hyper::client::{self, Client};
+use hyper::error::UriError;
+use hyper::header::ContentType;
 use hyper::server::{self, Http};
 use mime;
 use mio;
@@ -83,6 +84,15 @@ pub enum TestRequestError {
     IoError(io::Error),
     /// A `hyper::Error` occurred before a response was received.
     HyperError(hyper::Error),
+    /// The URL could not be parsed when building the request.
+    UriError(UriError),
+}
+
+impl From<UriError> for TestRequestError {
+    fn from(error: UriError) -> TestRequestError {
+        TestRequestError::UriError(error)
+    }
+
 }
 
 impl<NH> Clone for TestServer<NH>

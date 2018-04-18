@@ -291,7 +291,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::handler::IntoResponse;
 /// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
-/// # use http::Method;
+/// # use hyper::Method;
 /// # use hyper::StatusCode;
 /// # use hyper::Response;
 /// #

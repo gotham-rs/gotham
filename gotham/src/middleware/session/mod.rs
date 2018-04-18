@@ -6,13 +6,14 @@ use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use bincode;
 use base64;
-use futures::{future, Future};
-use http_types::Response;
-use hyper::StatusCode;
 use rand::Rng;
+use hyper::StatusCode;
+use hyper::server::Response;
+use hyper::header::{Cookie, Headers, SetCookie};
+use futures::{future, Future};
 use serde::{Deserialize, Serialize};
+use bincode;
 
 use super::{Middleware, NewMiddleware};
 use handler::{HandlerError, HandlerFuture, IntoHandlerError};

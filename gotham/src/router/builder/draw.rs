@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use http::Method;
+use hyper::Method;
 
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
@@ -361,11 +361,10 @@ where
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # extern crate http;
     /// # extern crate hyper;
     /// #
-    /// # use http::Method::*;
     /// # use hyper::{Response, StatusCode};
+    /// # use hyper::Method::*;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;

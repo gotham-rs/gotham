@@ -10,11 +10,10 @@ use state::State;
 ///
 /// ```rust
 /// # extern crate gotham;
-/// # extern crate http;
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # fn main() {
-/// #   use http::Method;
+/// #   use hyper::Method;
 /// #   use hyper::header::{Headers, Accept};
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher,
