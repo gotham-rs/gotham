@@ -8,7 +8,7 @@ use std::{io, mem};
 
 use hyper::{self, Response, StatusCode};
 use futures::Async;
-use futures::future::{self, Future, FutureResult};
+use futures::future::{self, Future, FutureResult, IntoFuture};
 
 use handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use service::timing::Timer;
@@ -30,24 +30,20 @@ where
     let timer = Timer::new();
 
     let res = catch_unwind(move || {
-        type ResponseFuture = Future<Item = Response, Error = hyper::Error> + Send;
-
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
         // immediately consuming it.
-        match t.new_handler() {
-            Ok(handler) => {
-                let AssertUnwindSafe(state) = state;
 
-                let f = handler.handle(state).then(move |result| match result {
-                    Ok((state, res)) => finalize_success_response(timer, state, res),
-                    Err((state, err)) => finalize_error_response(timer, state, err),
-                });
+        let hf = t.new_handler().into_future();
 
-                Box::new(f) as Box<ResponseFuture>
-            }
-            Err(e) => Box::new(future::err(e.into())) as Box<ResponseFuture>,
-        }
+        hf.map_err(|e| e.into()).and_then(|handler| {
+            let AssertUnwindSafe(state) = state;
+
+            handler.handle(state).then(move |result| match result {
+                Ok((state, res)) => finalize_success_response(timer, state, res),
+                Err((state, err)) => finalize_error_response(timer, state, err),
+            })
+        })
     });
 
     match res {

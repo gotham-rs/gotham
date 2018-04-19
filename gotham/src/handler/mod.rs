@@ -225,7 +225,7 @@ pub trait Handler {
 /// ```
 pub trait NewHandler: Send + Sync + RefUnwindSafe {
     /// The type of `Handler` created by the `NewHandler`.
-    type Instance: Handler;
+    type Instance: Handler + Send;
 
     /// Create and return a new `Handler` value.
     fn new_handler(&self) -> io::Result<Self::Instance>;
@@ -234,7 +234,7 @@ pub trait NewHandler: Send + Sync + RefUnwindSafe {
 impl<F, H> NewHandler for F
 where
     F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
-    H: Handler,
+    H: Handler + Send,
 {
     type Instance = H;
 
