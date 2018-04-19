@@ -28,7 +28,7 @@ static NAME: &'static str = "X-Content-Type-Options";
 /// #
 /// # fn main () {
 /// use hyper::header::Headers;
-/// use gotham::http::header::XContentTypeOptions;
+/// use gotham::protocol::header::XContentTypeOptions;
 ///
 /// let mut headers = Headers::new();
 /// headers.set(XContentTypeOptions::NoSniff);

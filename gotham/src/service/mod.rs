@@ -13,9 +13,9 @@ use futures::Future;
 use tokio_core::reactor::Handle;
 
 use handler::NewHandler;
+use protocol::request::path::RequestPathSegments;
 use state::{request_id, set_request_id, State};
 use state::client_addr::put_client_addr;
-use http::request::path::RequestPathSegments;
 
 mod timing;
 mod trap;
@@ -100,7 +100,7 @@ mod tests {
     use hyper::{Method, StatusCode};
     use tokio_core::reactor::Core;
 
-    use http::response::create_response;
+    use protocol::response::create_response;
     use router::builder::*;
     use state::State;
 

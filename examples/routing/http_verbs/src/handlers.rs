@@ -3,7 +3,7 @@
 //! We've used a macro here for brevity but this is NOT how you would implement a handler in
 //! a real world application.
 
-use gotham::http::response::create_response;
+use gotham::protocol::response::create_response;
 use gotham::state::State;
 use hyper::{Response, StatusCode};
 use mime;

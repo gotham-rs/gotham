@@ -12,9 +12,9 @@ use std::panic::RefUnwindSafe;
 
 use hyper::{Response, Uri};
 
-use handler::HandlerFuture;
-use http::request::query_string;
 use extractor::{self, PathExtractor, QueryStringExtractor};
+use handler::HandlerFuture;
+use protocol::request::query_string;
 use router::non_match::RouteNonMatch;
 use router::route::dispatch::Dispatcher;
 use router::route::matcher::RouteMatcher;
@@ -211,9 +211,9 @@ mod tests {
     use hyper::{Headers, Method, StatusCode, Uri};
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use http::request::path::RequestPathSegments;
-    use http::response::create_response;
     use pipeline::set::*;
+    use protocol::request::path::RequestPathSegments;
+    use protocol::response::create_response;
     use router::builder::*;
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;

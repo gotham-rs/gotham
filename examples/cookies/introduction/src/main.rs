@@ -8,7 +8,7 @@ extern crate mime;
 use hyper::{Response, StatusCode};
 use hyper::header::{Cookie, Headers, SetCookie};
 
-use gotham::http::response::create_response;
+use gotham::protocol::response::create_response;
 use gotham::state::{FromState, State};
 
 /// The first request will set a cookie, and subsequent requests will echo it back.

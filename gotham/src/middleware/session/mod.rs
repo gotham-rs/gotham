@@ -18,7 +18,7 @@ use bincode;
 use super::{Middleware, NewMiddleware};
 use handler::{HandlerError, HandlerFuture, IntoHandlerError};
 use state::{self, FromState, State, StateData};
-use http::response::create_response;
+use protocol::response::create_response;
 
 mod backend;
 mod rng;
@@ -199,7 +199,7 @@ impl SessionCookieConfig {
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
 /// #                                   SessionIdentifier};
-/// # use gotham::http::response::create_response;
+/// # use gotham::protocol::response::create_response;
 /// # use gotham::test::TestServer;
 /// # use hyper::header::Cookie;
 /// # use hyper::server::Response;

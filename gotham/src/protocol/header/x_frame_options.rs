@@ -10,7 +10,7 @@ use hyper;
 use hyper::Uri;
 use hyper::header::{Formatter, Header, Raw};
 
-use http::header::from_one_rws_delimited_raw_str;
+use protocol::header::from_one_rws_delimited_raw_str;
 
 static NAME: &'static str = "X-Frame-Options";
 
@@ -43,7 +43,7 @@ static NAME: &'static str = "X-Frame-Options";
 /// # extern crate gotham;
 ///
 /// use hyper::header::Headers;
-/// use gotham::http::header::XFrameOptions;
+/// use gotham::protocol::header::XFrameOptions;
 ///
 /// # fn main () {
 /// let mut headers = Headers::new();

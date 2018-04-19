@@ -3,7 +3,7 @@
 use hyper::header::Headers;
 use uuid::Uuid;
 
-use http::header::XRequestId;
+use protocol::header::XRequestId;
 use state::{FromState, State};
 
 /// A container type for the value returned by `request_id`.

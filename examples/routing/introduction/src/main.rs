@@ -6,7 +6,7 @@ extern crate mime;
 
 use hyper::{Response, StatusCode};
 
-use gotham::http::response::create_response;
+use gotham::protocol::response::create_response;
 use gotham::state::State;
 use gotham::router::Router;
 use gotham::router::builder::*;

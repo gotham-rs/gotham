@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 use gotham::handler::{Handler, HandlerFuture, NewHandler};
-use gotham::http::response::create_response;
+use gotham::protocol::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::*;
 use gotham::state::State;

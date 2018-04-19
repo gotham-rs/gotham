@@ -43,7 +43,7 @@ pub mod extractor;
 pub mod handler;
 pub mod middleware;
 pub mod pipeline;
-pub mod http;
+pub mod protocol;
 pub mod router;
 mod service;
 pub mod state;

@@ -8,11 +8,11 @@ extern crate mime;
 use hyper::{Body, Headers, HttpVersion, Method, Response, StatusCode, Uri};
 use futures::{future, Future, Stream};
 
-use gotham::http::response::create_response;
-use gotham::state::{FromState, State};
+use gotham::handler::{HandlerFuture, IntoHandlerError};
+use gotham::protocol::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
-use gotham::handler::{HandlerFuture, IntoHandlerError};
+use gotham::state::{FromState, State};
 
 /// Extract the main elements of the request except for the `Body`
 fn print_request_elements(state: &State) {
