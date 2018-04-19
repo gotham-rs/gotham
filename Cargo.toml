@@ -21,6 +21,7 @@ members = [
     # path
     "examples/path/introduction",
     "examples/path/globs",
+    "examples/path/regex",
 
     # query_string
     "examples/query_string/introduction",
