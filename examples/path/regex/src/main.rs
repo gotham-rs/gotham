@@ -25,11 +25,7 @@ struct PathExtractor {
 pub fn greet_user(state: State) -> (State, Response) {
     let res = {
         let path = PathExtractor::borrow_from(&state);
-
-        let response_string = format!(
-            "Hello, User {}!",
-            &path.id,
-        );
+        let response_string = format!("Hello, User {}!", &path.id);
 
         create_response(
             &state,
