@@ -29,21 +29,21 @@ pub trait PipelineHandleChain<P>: RefUnwindSafe {
     /// once all `Middleware` in the `Pipeline` have passed the request through.
     fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static;
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static;
 }
 
 /// Part of a `PipelineHandleChain` which references a `Pipeline` and continues with a tail element.
 impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
 where
     T: NewMiddlewareChain,
-    T::Instance: 'static,
+    T::Instance: Send + 'static,
     U: PipelineHandleChain<P>,
     P: Lookup<Pipeline<T>, N>,
     N: RefUnwindSafe,
 {
     fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         let (handle, ref chain) = *self;
         match pipelines.borrow(handle).construct() {
@@ -60,7 +60,7 @@ where
 impl<P> PipelineHandleChain<P> for () {
     fn call<F>(&self, _: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         trace!("[{}] start pipeline", request_id(&state));
         f(state)

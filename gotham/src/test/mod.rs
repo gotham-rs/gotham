@@ -9,6 +9,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use futures::{future, Future, Stream};
+use futures::executor;
 use futures_timer::Delay;
 use hyper::{self, Body, Method, Request, Response, Uri};
 use hyper::client::{self, Client};
@@ -19,7 +20,7 @@ use mime;
 use mio;
 use tokio;
 use tokio::executor::thread_pool::{Builder as ThreadPoolBuilder};
-use tokio::reactor::PollEvented2;
+use tokio::reactor::{Handle, PollEvented2};
 
 use handler::NewHandler;
 use service::GothamService;
@@ -57,14 +58,14 @@ pub use self::request::RequestBuilder;
 /// ```
 pub struct TestServer<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     data: Rc<TestServerData<NH>>,
 }
 
 struct TestServerData<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     http: Http,
     timeout: u64,
@@ -94,7 +95,7 @@ impl From<UriError> for TestRequestError {
 
 impl<NH> Clone for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn clone(&self) -> TestServer<NH> {
         TestServer {
@@ -105,7 +106,7 @@ where
 
 impl<NH> TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
@@ -176,7 +177,7 @@ where
             .connector(TestConnect {
                 stream: cell::RefCell::new(Some(cs)),
             })
-            .build();
+            .build(&Handle::current());
 
         Ok(TestClient {
             client,
@@ -195,7 +196,8 @@ where
         let timeout_duration = time::Duration::from_secs(self.data.timeout);
         let timeout = Delay::new(timeout_duration);
 
-        let run_result = tokio::run(f.select2(timeout));
+        let spaw = executor::spawn(f.select2(timeout));
+        let run_result = spaw.wait_future();
 
         match run_result {
             Ok(future::Either::A((item, _))) => Ok(item),
@@ -208,17 +210,16 @@ where
 
 impl<NH> BodyReader for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
 
         let r = {
             let f: hyper::Body = response.body();
-            f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter()))).map_err(|hyper_err| {
-                println!("Error: {}", hyper_err);
-                Ok(())
-            })
+            let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
+
+            executor::spawn(f).wait_future()
         };
 
         r.map(|_| buf)
@@ -228,7 +229,7 @@ where
 /// Client interface for issuing requests to a `TestServer`.
 pub struct TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     client: Client<TestConnect>,
     test_server: TestServer<NH>,
@@ -236,7 +237,7 @@ where
 
 impl<NH> TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
     pub fn head(self, uri: &str) -> RequestBuilder<NH> {

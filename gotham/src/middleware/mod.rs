@@ -43,7 +43,7 @@ pub mod session;
 ///
 /// impl Middleware for NoopMiddleware {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         chain(state)
 ///     }
@@ -97,7 +97,7 @@ pub mod session;
 ///
 /// impl Middleware for MiddlewareWithStateData {
 ///     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         state.put(MiddlewareStateData { i: 10 });
 ///         chain(state)
@@ -156,7 +156,7 @@ pub mod session;
 ///
 /// impl Middleware for MiddlewareAddingResponseHeader {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         let f = chain(state)
 ///             .map(|(state, mut response)| {
@@ -230,7 +230,7 @@ pub mod session;
 ///
 /// impl Middleware for ConditionalMiddleware {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         if *Method::borrow_from(&state) == Method::Get {
 ///             chain(state)
@@ -290,7 +290,7 @@ pub mod session;
 ///
 /// impl Middleware for AsyncMiddleware {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         // This could be any asynchronous action. `future::lazy(_)` defers a function
 ///         // until the next cycle of tokio's event loop.
@@ -330,7 +330,7 @@ pub trait Middleware {
     ///   its function.
     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
         Self: Sized;
 }
 

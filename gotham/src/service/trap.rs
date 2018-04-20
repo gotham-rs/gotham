@@ -23,9 +23,9 @@ use state::{request_id, State};
 pub(super) fn call_handler<T>(
     t: &T,
     state: AssertUnwindSafe<State>,
-) -> Box<Future<Item = Response, Error = hyper::Error> + Send>
+) -> Box<Future<Item = Response, Error = hyper::Error> + Send + 'static>
 where
-    T: NewHandler,
+    T: NewHandler + 'static,
 {
     let timer = Timer::new();
 

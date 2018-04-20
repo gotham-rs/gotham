@@ -2,6 +2,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use handler::NewHandler;
+use hyper::Chunk;
 use hyper::server::Http;
 use service::GothamService;
 
@@ -18,7 +19,7 @@ where
     let (listener, addr) = tcp_listener(addr);
     let new_handler = Arc::new(new_handler);
     let gotham_service = GothamService::new(new_handler);
-    let protocol = Arc::new(Http::new());
+    let protocol = Arc::new(Http::<Chunk>::new());
 
     let server = listener.incoming()
         .map_err(|e| println!("error = {:?}", e))

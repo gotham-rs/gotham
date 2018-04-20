@@ -19,7 +19,7 @@ pub use self::error::{HandlerError, IntoHandlerError};
 ///
 /// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate
 /// an appropriate HTTP error response.
-pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)>;
+pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)> + Send;
 
 /// A `Handler` is an asynchronous function, taking a `State` value which represents the request
 /// and related runtime state, and returns a future which resolves to a response.
@@ -141,7 +141,7 @@ pub type HandlerFuture = Future<Item = (State, Response), Error = (State, Handle
 /// # assert_type(MyCustomHandler);
 /// # }
 /// ```
-pub trait Handler {
+pub trait Handler: Send {
     /// Handles the request, returning a boxed future which resolves to a response.
     fn handle(self, state: State) -> Box<HandlerFuture>;
 }
@@ -358,7 +358,7 @@ where
 
 impl<F, R> Handler for F
 where
-    F: FnOnce(State) -> R,
+    F: FnOnce(State) -> R + Send,
     R: IntoHandlerFuture,
 {
     fn handle(self, state: State) -> Box<HandlerFuture> {
