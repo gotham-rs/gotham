@@ -41,9 +41,9 @@ extern crate serde_derive;
 
 pub mod extractor;
 pub mod handler;
+pub mod helpers;
 pub mod middleware;
 pub mod pipeline;
-pub mod http;
 pub mod router;
 mod service;
 pub mod state;

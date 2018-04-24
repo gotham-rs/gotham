@@ -11,7 +11,7 @@ use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, Ma
                 SeqAccess, VariantAccess, Visitor};
 
 use router::tree::SegmentMapping;
-use http::request::query_string::QueryStringMapping;
+use helpers::http::request::query_string::QueryStringMapping;
 
 /// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
 /// `PathExtractor` provided by the application.
@@ -700,7 +700,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use http::{FormUrlDecoded, PercentDecoded};
+    use helpers::http::{FormUrlDecoded, PercentDecoded};
 
     #[derive(Deserialize)]
     struct SimpleValues {

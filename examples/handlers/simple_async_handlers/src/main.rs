@@ -18,7 +18,7 @@ use futures::{stream, Future, Stream};
 use hyper::StatusCode;
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
-use gotham::http::response::create_response;
+use gotham::helpers::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::builder::DefineSingleRoute;

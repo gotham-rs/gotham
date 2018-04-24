@@ -5,8 +5,8 @@ use hyper::{Method, Response, StatusCode};
 use hyper::header::{ContentLength, ContentType, Location};
 use mime::Mime;
 
+use helpers::http::header::{XContentTypeOptions, XFrameOptions, XRequestId, XXssProtection};
 use state::{request_id, FromState, State};
-use http::header::{XContentTypeOptions, XFrameOptions, XRequestId, XXssProtection};
 
 type Body = (Vec<u8>, Mime);
 
@@ -26,8 +26,8 @@ type Body = (Vec<u8>, Mime);
 /// # use hyper::{Response, StatusCode};
 /// # use hyper::header::{ContentLength, ContentType};
 /// # use gotham::state::State;
-/// # use gotham::http::response::create_response;
-/// # use gotham::http::header::XRequestId;
+/// # use gotham::helpers::http::response::create_response;
+/// # use gotham::helpers::http::header::XRequestId;
 /// # use gotham::test::TestServer;
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
@@ -81,7 +81,7 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// #
 /// # use hyper::{Response, StatusCode};
 /// # use gotham::state::State;
-/// # use gotham::http::response::create_permanent_redirect;
+/// # use gotham::helpers::http::response::create_permanent_redirect;
 /// # use gotham::test::TestServer;
 /// # use hyper::header::Location;
 /// fn handler(state: State) -> (State, Response) {
@@ -124,7 +124,7 @@ pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
 /// #
 /// # use hyper::{Response, StatusCode};
 /// # use gotham::state::State;
-/// # use gotham::http::response::create_temporary_redirect;
+/// # use gotham::helpers::http::response::create_temporary_redirect;
 /// # use gotham::test::TestServer;
 /// # use hyper::header::Location;
 /// fn handler(state: State) -> (State, Response) {
@@ -172,8 +172,8 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
 /// # use hyper::{Response, StatusCode};
 /// # use hyper::header::{ContentLength, ContentType};
 /// # use gotham::state::State;
-/// # use gotham::http::response::extend_response;
-/// # use gotham::http::header::XRequestId;
+/// # use gotham::helpers::http::response::extend_response;
+/// # use gotham::helpers::http::header::XRequestId;
 /// # use gotham::test::TestServer;
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
@@ -257,8 +257,8 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// #
 /// # use hyper::{Response, StatusCode};
 /// # use gotham::state::State;
-/// # use gotham::http::response::set_headers;
-/// # use gotham::http::header::*;
+/// # use gotham::helpers::http::response::set_headers;
+/// # use gotham::helpers::http::header::*;
 /// # use gotham::test::TestServer;
 /// #
 /// fn handler(state: State) -> (State, Response) {
@@ -320,8 +320,8 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # use hyper::{Response, StatusCode};
 /// # use hyper::header::{ContentLength, ContentType};
 /// # use gotham::state::State;
-/// # use gotham::http::response::set_headers;
-/// # use gotham::http::header::*;
+/// # use gotham::helpers::http::response::set_headers;
+/// # use gotham::helpers::http::header::*;
 /// # use gotham::test::TestServer;
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
@@ -414,8 +414,8 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
 /// # use hyper::{Response, StatusCode};
 /// # use hyper::header::Location;
 /// # use gotham::state::State;
-/// # use gotham::http::response::set_redirect_headers;
-/// # use gotham::http::header::*;
+/// # use gotham::helpers::http::response::set_redirect_headers;
+/// # use gotham::helpers::http::header::*;
 /// # use gotham::test::TestServer;
 /// fn handler(state: State) -> (State, Response) {
 ///     let mut response = Response::new().with_status(StatusCode::PermanentRedirect);

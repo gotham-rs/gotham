@@ -7,13 +7,13 @@ extern crate mime;
 
 use hyper::{Response, StatusCode};
 
-use gotham::http::response::create_response;
+use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
+use gotham::helpers::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::*;
 use gotham::state::{FromState, State};
-use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 
 /// Handler function for `GET` requests directed to `/`
 ///

@@ -14,7 +14,7 @@ header! {
     /// # extern crate gotham;
     ///
     /// use hyper::header::Headers;
-    /// use gotham::http::header::XRequestId;
+    /// use gotham::helpers::http::header::XRequestId;
     ///
     /// # fn main () {
     /// let mut headers = Headers::new();

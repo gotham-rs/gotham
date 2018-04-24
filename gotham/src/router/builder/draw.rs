@@ -964,11 +964,11 @@ mod tests {
 
     use handler::HandlerFuture;
     use middleware::{Middleware, NewMiddleware};
-    use state::State;
-    use router::builder::*;
     use pipeline::*;
     use pipeline::single::*;
-    use http::response::create_response;
+    use helpers::http::response::create_response;
+    use router::builder::*;
+    use state::State;
     use test::TestServer;
 
     #[derive(Clone, Copy)]

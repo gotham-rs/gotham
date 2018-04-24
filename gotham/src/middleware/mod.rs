@@ -216,7 +216,7 @@ pub mod session;
 /// #
 /// # use hyper::{Response, Method, StatusCode};
 /// # use futures::future;
-/// # use gotham::http::response::create_response;
+/// # use gotham::helpers::http::response::create_response;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
