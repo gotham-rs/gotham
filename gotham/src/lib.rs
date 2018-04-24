@@ -68,7 +68,7 @@ pub use os::current::new_gotham_listener;
 /// Abstracts over TCPListener to provide OS independence for handling incoming TCP connections.
 pub trait GothamListener {
     /// The type for incoming stream of TCP connections.
-    type Stream;
+    type Stream: Stream<Item = (TcpStream, SocketAddr), Error = io::Error> + 'static;
 
     /// Incoming is called in each processing thread to get a stream of TCP connections.
     fn incoming(self, Handle) -> Self::Stream;
@@ -112,8 +112,6 @@ where
 fn run_and_serve<'a, G, NH>(listener: G, protocol: Arc<Http>, new_handler: Arc<NH>)
 where
     G: GothamListener,
-    <G as GothamListener>::Stream: Stream<Item = (TcpStream, SocketAddr), Error = io::Error>
-        + 'static,
     NH: NewHandler + 'static,
 {
     let mut core = Core::new().expect("unable to spawn tokio reactor");
@@ -130,8 +128,6 @@ where
 pub fn serve<G, NH>(listener: G, protocol: Arc<Http>, new_handler: Arc<NH>, handle: Handle)
 where
     G: GothamListener,
-    <G as GothamListener>::Stream: Stream<Item = (TcpStream, SocketAddr), Error = io::Error>
-        + 'static,
     NH: NewHandler + 'static,
 {
     let gotham_service = GothamService::new(new_handler, handle.clone());
