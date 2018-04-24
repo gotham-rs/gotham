@@ -55,6 +55,7 @@ use state::{request_id, FromState, State};
 /// #   });
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct ContentTypeHeaderRouteMatcher {
     supported_media_types: Vec<mime::Mime>,
 }

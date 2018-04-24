@@ -5,7 +5,8 @@ use hyper::Method;
 
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::route::matcher::{IntoRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher};
+use router::route::matcher::{AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher,
+                             RouteMatcher};
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
                       SingleRouteBuilder};
@@ -33,8 +34,8 @@ pub type ExplicitSingleRouteBuilder<'a, M, C, P> =
 
 /// The type passed to the function used when building associated routes. See
 /// `AssociatedRouteBuilder` for information about the API available for associated routes.
-pub type DefaultAssociatedRouteBuilder<'a, C, P> =
-    AssociatedRouteBuilder<'a, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
+pub type DefaultAssociatedRouteBuilder<'a, M, C, P> =
+    AssociatedRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
 /// Defines functions used by a builder to determine which request paths will be dispatched to a
 /// route. This trait is implemented by the top-level `RouterBuilder`, and also the `ScopedBuilder`
@@ -851,17 +852,13 @@ where
     /// ```
     fn associate<'b, F>(&'b mut self, path: &str, f: F)
     where
-        F: FnOnce(&mut DefaultAssociatedRouteBuilder<'b, C, P>),
+        F: FnOnce(&mut DefaultAssociatedRouteBuilder<'b, AnyRouteMatcher, C, P>),
     {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
 
-        let mut builder = AssociatedRouteBuilder {
-            node_builder,
-            pipeline_chain: *pipeline_chain,
-            pipelines: pipelines.clone(),
-            phantom: PhantomData,
-        };
+        let mut builder =
+            AssociatedRouteBuilder::new(node_builder, *pipeline_chain, pipelines.clone());
 
         f(&mut builder)
     }

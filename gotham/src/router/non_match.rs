@@ -18,6 +18,7 @@ use hyper::{Method, StatusCode};
 /// # use gotham::router::route::matcher::RouteMatcher;
 /// # use gotham::state::State;
 /// #
+/// #[derive(Clone)]
 /// struct MyRouteMatcher;
 ///
 /// impl RouteMatcher for MyRouteMatcher {
@@ -39,6 +40,7 @@ use hyper::{Method, StatusCode};
 /// #     });
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct RouteNonMatch {
     status: StatusCode,
     allow: MethodSet,
@@ -123,6 +125,7 @@ fn higher_precedence_status(lhs: StatusCode, rhs: StatusCode) -> StatusCode {
 
 // This customised set prevents memory allocations while computing `Allow` lists, except in the
 // case where extension methods are provided using the `hyper::Method::Extension` variant.
+#[derive(Clone)]
 struct MethodSet {
     connect: bool,
     delete: bool,

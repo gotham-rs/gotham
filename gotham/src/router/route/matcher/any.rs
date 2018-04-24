@@ -25,6 +25,7 @@ use state::State;
 /// #   });
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct AnyRouteMatcher {}
 
 impl AnyRouteMatcher {
