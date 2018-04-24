@@ -9,7 +9,7 @@ use hyper::{Body, Headers, HttpVersion, Method, Response, StatusCode, Uri};
 use futures::{future, Future, Stream};
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
-use gotham::protocol::response::create_response;
+use gotham::helpers::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::state::{FromState, State};

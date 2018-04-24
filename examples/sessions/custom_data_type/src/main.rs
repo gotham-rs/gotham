@@ -13,7 +13,7 @@ extern crate time;
 
 use hyper::{Response, StatusCode};
 
-use gotham::protocol::response::create_response;
+use gotham::helpers::http::response::create_response;
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
 use gotham::router::Router;

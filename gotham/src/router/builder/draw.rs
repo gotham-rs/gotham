@@ -966,7 +966,7 @@ mod tests {
     use middleware::{Middleware, NewMiddleware};
     use pipeline::*;
     use pipeline::single::*;
-    use protocol::response::create_response;
+    use helpers::http::response::create_response;
     use router::builder::*;
     use state::State;
     use test::TestServer;

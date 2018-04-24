@@ -192,7 +192,7 @@ mod tests {
 
     use hyper::{Headers, StatusCode};
 
-    use protocol::response::create_response;
+    use helpers::http::response::create_response;
     use state::set_request_id;
     use handler::{HandlerFuture, IntoHandlerError};
 

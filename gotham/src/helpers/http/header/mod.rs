@@ -6,11 +6,11 @@ mod x_xss_protection;
 mod x_content_type_options;
 mod x_runtime_microseconds;
 
-pub use protocol::header::x_request_id::XRequestId;
-pub use protocol::header::x_frame_options::XFrameOptions;
-pub use protocol::header::x_xss_protection::XXssProtection;
-pub use protocol::header::x_content_type_options::XContentTypeOptions;
-pub use protocol::header::x_runtime_microseconds::XRuntimeMicroseconds;
+pub use helpers::http::header::x_request_id::XRequestId;
+pub use helpers::http::header::x_frame_options::XFrameOptions;
+pub use helpers::http::header::x_xss_protection::XXssProtection;
+pub use helpers::http::header::x_content_type_options::XContentTypeOptions;
+pub use helpers::http::header::x_runtime_microseconds::XRuntimeMicroseconds;
 
 use std::str;
 use hyper;

@@ -11,7 +11,7 @@ extern crate serde_derive;
 
 use hyper::{Response, StatusCode};
 
-use gotham::protocol::response::create_response;
+use gotham::helpers::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::*;
 use gotham::state::{FromState, State};

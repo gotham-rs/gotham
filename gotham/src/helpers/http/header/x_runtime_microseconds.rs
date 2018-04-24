@@ -12,7 +12,7 @@ header! {
     /// # extern crate gotham;
     ///
     /// use hyper::header::Headers;
-    /// use gotham::protocol::header::XRuntimeMicroseconds;
+    /// use gotham::helpers::http::header::XRuntimeMicroseconds;
     ///
     /// # fn main () {
     /// let mut headers = Headers::new();

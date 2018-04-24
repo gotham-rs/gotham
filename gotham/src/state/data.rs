@@ -3,7 +3,7 @@ use std::any::Any;
 use hyper::{Body, Headers, HttpVersion, Method, Uri};
 use tokio_core::reactor::Handle;
 
-use protocol::request::path::RequestPathSegments;
+use helpers::http::request::path::RequestPathSegments;
 use state::request_id::RequestId;
 
 /// A marker trait for types that can be stored in `State`.

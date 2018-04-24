@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use protocol::PercentDecoded;
+use helpers::http::PercentDecoded;
 use router::route::Route;
 use router::tree::node::{Node, NodeBuilder, SegmentType};
 
@@ -91,8 +91,8 @@ mod tests {
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use pipeline::set::*;
-    use protocol::request::path::RequestPathSegments;
-    use protocol::response::create_response;
+    use helpers::http::request::path::RequestPathSegments;
+    use helpers::http::response::create_response;
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::dispatch::DispatcherImpl;
     use router::route::{Delegation, Extractors, RouteImpl};

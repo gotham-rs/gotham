@@ -27,7 +27,7 @@ use state::{request_id, State};
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use gotham::protocol::response::create_response;
+/// # use gotham::helpers::http::response::create_response;
 /// # use gotham::state::State;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;

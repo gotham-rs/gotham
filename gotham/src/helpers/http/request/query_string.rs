@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use protocol::{form_url_decode, FormUrlDecoded};
+use helpers::http::{form_url_decode, FormUrlDecoded};
 
 /// Provides a mapping of keys from `Request` query string to their supplied values
 pub(crate) type QueryStringMapping = HashMap<String, Vec<FormUrlDecoded>>;

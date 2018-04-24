@@ -14,7 +14,7 @@ use hyper::{Response, Uri};
 
 use extractor::{self, PathExtractor, QueryStringExtractor};
 use handler::HandlerFuture;
-use protocol::request::query_string;
+use helpers::http::request::query_string;
 use router::non_match::RouteNonMatch;
 use router::route::dispatch::Dispatcher;
 use router::route::matcher::RouteMatcher;
@@ -212,8 +212,8 @@ mod tests {
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use pipeline::set::*;
-    use protocol::request::path::RequestPathSegments;
-    use protocol::response::create_response;
+    use helpers::http::request::path::RequestPathSegments;
+    use helpers::http::response::create_response;
     use router::builder::*;
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;

@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use protocol::PercentDecoded;
+use helpers::http::PercentDecoded;
 
 const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 

@@ -12,7 +12,7 @@ use hyper::{Response, StatusCode};
 use hyper::header::{Headers, UserAgent};
 use gotham::handler::HandlerFuture;
 use gotham::middleware::Middleware;
-use gotham::protocol::response::create_response;
+use gotham::helpers::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::*;
 use gotham::state::{FromState, State};

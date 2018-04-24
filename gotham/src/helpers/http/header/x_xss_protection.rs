@@ -23,7 +23,7 @@ static NAME: &'static str = "X-XSS-Protection";
 /// # extern crate gotham;
 ///
 /// use hyper::header::Headers;
-/// use gotham::protocol::header::XXssProtection;
+/// use gotham::helpers::http::header::XXssProtection;
 ///
 /// # fn main () {
 /// let mut headers = Headers::new();
