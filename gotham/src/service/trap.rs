@@ -36,7 +36,7 @@ where
 
         let hf = t.new_handler().into_future();
 
-        hf.map_err(|e| e.into()).and_then(|handler| {
+        hf.map_err(|e| e.into()).and_then(move |handler| {
             let AssertUnwindSafe(state) = state;
 
             handler.handle(state).then(move |result| match result {
