@@ -1,7 +1,7 @@
 use std::net::{SocketAddr, TcpListener};
 use std::thread;
 use std::io;
-use std::sync::{Arc, Mutex};
+use std::sync::{Mutex, Rc};
 
 use tokio_core::net::{self, TcpStream};
 use tokio_core::reactor::{Core, Handle};
@@ -11,17 +11,17 @@ use crossbeam::sync::SegQueue;
 
 #[derive(Clone)]
 pub struct SocketQueue {
-    tcp: Arc<TcpListener>,
+    tcp: Rc<TcpListener>,
     addr: SocketAddr,
-    queue: Arc<SegQueue<(TcpStream, SocketAddr)>>,
-    notify: Arc<Mutex<Vec<task::Task>>>,
+    queue: Rc<SegQueue<(TcpStream, SocketAddr)>>,
+    notify: Rc<Mutex<Vec<task::Task>>>,
 }
 
 impl SocketQueue {
     fn new(tcp: TcpListener, addr: SocketAddr) -> SocketQueue {
-        let queue = Arc::new(SegQueue::new());
-        let notify = Arc::new(Mutex::new(Vec::new()));
-        let tcp = Arc::new(tcp);
+        let queue = Rc::new(SegQueue::new());
+        let notify = Rc::new(Mutex::new(Vec::new()));
+        let tcp = Rc::new(tcp);
         SocketQueue {
             tcp,
             addr,
@@ -78,7 +78,7 @@ impl ::GothamListener for SocketQueue {
 }
 
 pub struct SocketStream {
-    queue: Arc<SegQueue<(TcpStream, SocketAddr)>>,
+    queue: Rc<SegQueue<(TcpStream, SocketAddr)>>,
 }
 
 impl Stream for SocketStream {
