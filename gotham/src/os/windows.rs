@@ -1,7 +1,7 @@
 use std::net::{SocketAddr, TcpListener};
 use std::thread;
 use std::io;
-use std::sync::{Mutex, Rc};
+use std::sync::{Arc, Mutex};
 
 use tokio_core::net::{self, TcpStream};
 use tokio_core::reactor::{Core, Handle};
@@ -11,19 +11,16 @@ use crossbeam::sync::SegQueue;
 
 #[derive(Clone)]
 pub struct SocketQueue {
-    tcp: Rc<TcpListener>,
     addr: SocketAddr,
-    queue: Rc<SegQueue<(TcpStream, SocketAddr)>>,
-    notify: Rc<Mutex<Vec<task::Task>>>,
+    queue: Arc<SegQueue<(TcpStream, SocketAddr)>>,
+    notify: Arc<Mutex<Vec<task::Task>>>,
 }
 
 impl SocketQueue {
-    fn new(tcp: TcpListener, addr: SocketAddr) -> SocketQueue {
-        let queue = Rc::new(SegQueue::new());
-        let notify = Rc::new(Mutex::new(Vec::new()));
-        let tcp = Rc::new(tcp);
+    fn new(addr: SocketAddr) -> SocketQueue {
+        let queue = Arc::new(SegQueue::new());
+        let notify = Arc::new(Mutex::new(Vec::new()));
         SocketQueue {
-            tcp,
             addr,
             queue,
             notify,
@@ -37,10 +34,8 @@ impl SocketQueue {
 
         let mut core = Core::new().expect("unable to spawn tokio reactor");
         let handle = core.handle();
-        let tcp = (*self.tcp)
-            .try_clone()
-            .expect("Couldn't clone TCP listener.");
 
+        let tcp = TcpListener::bind(self.addr).expect("unable to open TCP listener");
         let listener = net::TcpListener::from_listener(tcp, &self.addr, &handle)
             .expect("unable to convert TCP listener to tokio listener");
 
@@ -78,7 +73,7 @@ impl ::GothamListener for SocketQueue {
 }
 
 pub struct SocketStream {
-    queue: Rc<SegQueue<(TcpStream, SocketAddr)>>,
+    queue: Arc<SegQueue<(TcpStream, SocketAddr)>>,
 }
 
 impl Stream for SocketStream {
@@ -98,8 +93,7 @@ impl Stream for SocketStream {
 /// Note: On Windows this function spawns an extra thread to handle
 /// accepting connections.
 pub fn new_gotham_listener(addr: SocketAddr) -> SocketQueue {
-    let tcp = TcpListener::bind(addr).expect("unable to open TCP listener");
-    let queue = SocketQueue::new(tcp, addr);
+    let queue = SocketQueue::new(addr);
     {
         let queue = queue.clone();
         thread::spawn(move || queue.listen());
