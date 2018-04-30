@@ -1,0 +1,19 @@
+[package]
+name = "gotham_middleware_workers"
+version = "0.0.0"
+authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
+           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
+description = "A Gotham Middleware that provides access to a pool of workers to allow other Middleware and Handlers to schedule tasks to run without blocking the event loop."
+license = "MIT/Apache-2.0"
+homepage = "https://gotham.rs"
+repository = "https://github.com/gotham-rs/gotham"
+readme = "README.md"
+categories = ["web-programming::http-server"]
+keywords = ["http", "async", "web", "gotham", "diesel"]
+
+[dependencies]
+futures = "0.1"
+futures-cpupool = "*"
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
+log = "0.4"

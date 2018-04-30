@@ -8,6 +8,7 @@ members = [
     ## Middleware
     "middleware/template",
     "middleware/under_development/diesel",
+    "middleware/workers",
 
     ## Examples (these crates are not published)
     "examples/hello_world",
