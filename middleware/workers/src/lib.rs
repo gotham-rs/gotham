@@ -11,4 +11,5 @@ extern crate log;
 extern crate mime;
 
 mod job;
+mod middleware;
 mod pool;
