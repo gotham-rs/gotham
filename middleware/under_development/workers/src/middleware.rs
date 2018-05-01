@@ -14,7 +14,7 @@ pub struct WorkersMiddleware {
 
 impl WorkersMiddleware {
     /// Creates a new WorkersMiddleware with `n` threads.
-    fn new(n: usize) -> WorkersMiddleware {
+    pub fn new(n: usize) -> WorkersMiddleware {
         let mut builder = Builder::new();
         builder.pool_size(n);
         WorkersMiddleware::from_builder(&mut builder)
@@ -22,7 +22,7 @@ impl WorkersMiddleware {
 
     /// Creates a new WorkersMiddleware with thread pool parameters defined by the provided
     /// `Builder`.
-    fn from_builder(builder: &mut Builder) -> WorkersMiddleware {
+    pub fn from_builder(builder: &mut Builder) -> WorkersMiddleware {
         let pool = builder.create();
         WorkersMiddleware { pool }
     }

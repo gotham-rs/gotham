@@ -13,3 +13,6 @@ extern crate mime;
 mod job;
 mod middleware;
 mod pool;
+
+pub use job::run_with_worker;
+pub use middleware::WorkersMiddleware;

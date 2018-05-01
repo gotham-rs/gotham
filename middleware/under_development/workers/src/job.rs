@@ -1,4 +1,4 @@
-use futures::{future, Future, IntoFuture};
+use futures::{Future, IntoFuture};
 
 use gotham::state::State;
 
