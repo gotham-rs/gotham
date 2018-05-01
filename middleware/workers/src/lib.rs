@@ -7,6 +7,10 @@ extern crate hyper;
 #[macro_use]
 extern crate log;
 
+#[cfg(test)]
+extern crate mime;
+
+mod job;
 mod pool;
 
 #[cfg(test)]

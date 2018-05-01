@@ -13,8 +13,9 @@ keywords = ["http", "async", "web", "gotham", "diesel"]
 
 [dependencies]
 futures = "0.1"
-futures-cpupool = "*"
+futures-cpupool = "0.1"
 hyper = "0.11"
 gotham = { path = "../../gotham" }
 gotham_derive = { path = "../../gotham_derive" }
 log = "0.4"
+mime = "0.3"
