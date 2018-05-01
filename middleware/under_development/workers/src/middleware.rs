@@ -17,6 +17,7 @@ impl WorkersMiddleware {
     pub fn new(n: usize) -> WorkersMiddleware {
         let mut builder = Builder::new();
         builder.pool_size(n);
+        builder.name_prefix("gotham-worker-");
         WorkersMiddleware::from_builder(&mut builder)
     }
 
