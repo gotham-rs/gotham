@@ -52,6 +52,40 @@ where
     Box::new(f)
 }
 
+impl<F, E, P, T> Job for F
+where
+    F: FnOnce(&mut State) -> P + Send + 'static,
+    P: PreparedJob<Item = T, Error = E> + Send + 'static,
+    E: Send + 'static,
+    T: Send + 'static,
+{
+    type Item = T;
+    type Error = E;
+    type Prepared = P;
+
+    fn prepare(self, state: &mut State) -> Self::Prepared {
+        self(state)
+    }
+}
+
+impl<F, R, E, T> PreparedJob for F
+where
+    F: FnOnce() -> R + Send + 'static,
+    R: IntoFuture<Item = T, Error = E> + 'static,
+    R::Future: Send + 'static,
+    E: Send + 'static,
+    T: Send + 'static,
+{
+    type Item = T;
+    type Error = E;
+    type Future = R::Future;
+    type Output = R;
+
+    fn run(self) -> Self::Output {
+        self()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,6 +158,38 @@ mod tests {
                             .into_bytes(),
                         mime::TEXT_PLAIN,
                     )),
+                );
+                Ok((state, response))
+            });
+
+            Box::new(f)
+        }
+
+        let test_server = TestServer::new(|| Ok(handler)).unwrap();
+        let client = test_server.client();
+        let response = client.get("https://example.com/").perform().unwrap();
+        assert_eq!(response.status(), StatusCode::Ok);
+        let body = response.read_utf8_body().unwrap();
+        assert_eq!(&body, "42");
+    }
+
+    #[test]
+    fn run_with_worker_closure_tests() {
+        fn handler(mut state: State) -> Box<HandlerFuture> {
+            // Simulate the job of the middleware.
+            state.put(WorkersPool {
+                pool: CpuPool::new(1),
+            });
+
+            let f = run_with_worker(state, |_state: &mut State| {
+                let x = 41;
+                move || Ok(x + 1)
+            }).then(|r: Result<(State, usize), (State, ())>| {
+                let (state, t) = r.unwrap_or_else(|_| panic!("not ok"));
+                let response = create_response(
+                    &state,
+                    StatusCode::Ok,
+                    Some((format!("{}", t).into_bytes(), mime::TEXT_PLAIN)),
                 );
                 Ok((state, response))
             });
