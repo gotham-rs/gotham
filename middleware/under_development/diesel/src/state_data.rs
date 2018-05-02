@@ -6,28 +6,6 @@ use gotham::state::{FromState, State};
 use r2d2::{Error, Pool, PooledConnection};
 use r2d2_diesel::ConnectionManager;
 
-/// Convenience function for usage within 3rd party Middleware and Handlers to obtain a
-/// Diesel connection.
-///
-/// # Panics
-/// If a connection can not be provided.
-pub fn connection<T>(s: &State) -> PooledConnection<ConnectionManager<T>>
-where
-    T: Connection + 'static,
-{
-    Diesel::borrow_from(s)
-        .conn()
-        .expect("Did not obtain valid Diesel connection from R2D2 pool")
-}
-
-/// Convenience function for Middleware and Handlers to obtain a Diesel connection.
-pub fn try_connection<T>(s: &State) -> Result<PooledConnection<ConnectionManager<T>>, Error>
-where
-    T: Connection + 'static,
-{
-    Diesel::borrow_from(s).conn()
-}
-
 /// Provides access to a Diesel connection within an r2d2 pool via Gotham State
 #[derive(StateData)]
 pub struct Diesel<T>
