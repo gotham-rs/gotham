@@ -14,12 +14,16 @@ extern crate futures;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
+extern crate gotham_middleware_workers;
 #[macro_use]
 extern crate log;
 extern crate r2d2;
 extern crate r2d2_diesel;
 
 pub mod state_data;
+mod job;
+
+pub use job::run_with_diesel;
 
 use std::io;
 use std::panic::{catch_unwind, AssertUnwindSafe};

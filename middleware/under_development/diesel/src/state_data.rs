@@ -50,3 +50,12 @@ where
         self.pool.get()
     }
 }
+
+impl<T> Clone for Diesel<T>
+where
+    T: Connection + 'static,
+{
+    fn clone(&self) -> Diesel<T> {
+        Diesel::new(self.pool.clone())
+    }
+}
