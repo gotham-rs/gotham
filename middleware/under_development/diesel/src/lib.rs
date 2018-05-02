@@ -20,10 +20,11 @@ extern crate log;
 extern crate r2d2;
 extern crate r2d2_diesel;
 
-pub mod state_data;
+mod state_data;
 mod job;
 
 pub use job::run_with_diesel;
+pub use state_data::Diesel;
 
 use std::io;
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -38,8 +39,6 @@ use gotham::handler::HandlerFuture;
 use diesel::Connection;
 use r2d2::Pool;
 use r2d2_diesel::ConnectionManager;
-
-use state_data::Diesel;
 
 /// A Gotham compatible Middleware that manages a pool of Diesel connections via r2d2 and hands
 /// out connections to other Middleware and Handlers that require them via the Gotham `State`
