@@ -51,7 +51,7 @@
 //! #   pub fn run_with_worker(
 //! #       state: State,
 //! #   ) -> Box<Future<Item = (State, u64), Error = (State, Impossible)>> {
-//! #       gotham_middleware_workers::run_with_worker(state, |state: &mut State| || Ok(1))
+//! #       gotham_middleware_workers::run_with_worker(state, |_state: &mut State| || Ok(1))
 //! #   }
 //! # }
 //! #
@@ -106,6 +106,12 @@
 //! #   assert_eq!(&body, "1");
 //! # }
 //! ```
+
+#![warn(missing_docs, deprecated)]
+#![doc(test(no_crate_inject, attr(deny(warnings))))]
+// TODO: Remove this when it's a hard error by default (error E0446).
+// See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+#![deny(private_in_public)]
 
 extern crate futures;
 extern crate futures_cpupool;
