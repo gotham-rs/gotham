@@ -20,6 +20,12 @@ extern crate log;
 extern crate r2d2;
 extern crate r2d2_diesel;
 
+#[cfg(test)]
+extern crate hyper;
+
+#[cfg(test)]
+extern crate mime;
+
 mod state_data;
 mod job;
 

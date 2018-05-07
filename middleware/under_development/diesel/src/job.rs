@@ -104,3 +104,70 @@ where
 
     run_with_worker(state, job)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use DieselMiddleware;
+    use gotham::handler::HandlerFuture;
+    use gotham::http::response::create_response;
+    use gotham::router::builder::*;
+    use gotham::router::Router;
+    use gotham::pipeline::single::*;
+    use gotham::pipeline::new_pipeline;
+    use gotham::test::TestServer;
+    use gotham_middleware_workers::WorkersMiddleware;
+    use hyper::StatusCode;
+    use diesel::{self, RunQueryDsl};
+    use diesel::sqlite::SqliteConnection;
+    use mime;
+
+    static DATABASE_URL: &'static str = ":memory:";
+
+    fn handler(state: State) -> Box<HandlerFuture> {
+        let f = run_with_diesel(state, |conn: &SqliteConnection| {
+            diesel::select(diesel::dsl::sql("1"))
+                .load::<i64>(conn)
+                .map(|v| v.into_iter().next().expect("no results"))
+        }).then(|r| {
+            let (state, n) = r.unwrap_or_else(|_| panic!("query failed"));
+            let body = format!("result: {}", n);
+            let response = create_response(
+                &state,
+                StatusCode::Ok,
+                Some((body.into_bytes(), mime::TEXT_PLAIN)),
+            );
+            Ok((state, response))
+        });
+
+        Box::new(f)
+    }
+
+    // Since we can't construct `State` ourselves, we need to test this via an actual app.
+    fn router() -> Router {
+        let (chain, pipelines) = single_pipeline(
+            new_pipeline()
+                .add(DieselMiddleware::<SqliteConnection>::new(DATABASE_URL))
+                .add(WorkersMiddleware::new(1))
+                .build(),
+        );
+
+        build_router(chain, pipelines, |route| {
+            route.get("/").to(handler);
+        })
+    }
+
+    #[test]
+    fn run_with_diesel_tests() {
+        let test_server = TestServer::new(router()).unwrap();
+        let response = test_server
+            .client()
+            .get("https://example.com/")
+            .perform()
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::Ok);
+        let body = response.read_utf8_body().unwrap();
+        assert_eq!(&body, "result: 1");
+    }
+}
