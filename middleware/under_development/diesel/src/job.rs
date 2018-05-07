@@ -8,6 +8,29 @@ use diesel::Connection;
 
 use state_data::Diesel;
 
+/// Runs the given closure in a worker, after borrowing a connection from the pool. This requires
+/// that the `State` has data populated by both the `DieselMiddleware` and `WorkersMiddleware`. If
+/// one of these have not added their state data, this function will panic.
+pub fn run_with_diesel<F, C, T, E, R>(
+    state: State,
+    f: F,
+) -> Box<Future<Item = (State, T), Error = (State, E)>>
+where
+    C: Connection + 'static,
+    F: FnOnce(&C) -> R + Send + 'static,
+    R: IntoFuture<Item = T, Error = E> + 'static,
+    R::Future: Send + 'static,
+    T: Send + 'static,
+    E: Send + 'static,
+{
+    let job = DieselJob {
+        f,
+        phantom: PhantomData,
+    };
+
+    run_with_worker(state, job)
+}
+
 struct DieselJob<F, C, T, E, R>
 where
     C: Connection + 'static,
@@ -80,29 +103,6 @@ where
 
         (self.f)(&*conn)
     }
-}
-
-/// Runs the given closure in a worker, after borrowing a connection from the pool. This requires
-/// that the `State` has data populated by both the `DieselMiddleware` and `WorkersMiddleware`. If
-/// one of these have not added their state data, this function will panic.
-pub fn run_with_diesel<F, C, T, E, R>(
-    state: State,
-    f: F,
-) -> Box<Future<Item = (State, T), Error = (State, E)>>
-where
-    C: Connection + 'static,
-    F: FnOnce(&C) -> R + Send + 'static,
-    R: IntoFuture<Item = T, Error = E> + 'static,
-    R::Future: Send + 'static,
-    T: Send + 'static,
-    E: Send + 'static,
-{
-    let job = DieselJob {
-        f,
-        phantom: PhantomData,
-    };
-
-    run_with_worker(state, job)
 }
 
 #[cfg(test)]
