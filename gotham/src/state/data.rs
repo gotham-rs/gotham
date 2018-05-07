@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use hyper::{Body, Headers, HttpVersion, Method, Uri};
-use tokio_core::reactor::Handle;
+use tokio::reactor::Handle;
 
 use helpers::http::request::path::RequestPathSegments;
 use state::request_id::RequestId;
@@ -29,7 +29,7 @@ use state::request_id::RequestId;
 /// #   });
 /// # }
 /// ```
-pub trait StateData: Any {}
+pub trait StateData: Any + Send {}
 
 impl StateData for Body {}
 impl StateData for Method {}

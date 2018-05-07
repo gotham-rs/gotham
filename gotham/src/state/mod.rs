@@ -5,8 +5,8 @@ mod from_state;
 pub mod request_id;
 pub(crate) mod client_addr;
 
-use std::collections::HashMap;
 use std::any::{Any, TypeId};
+use std::collections::HashMap;
 
 pub use state::data::StateData;
 pub use state::from_state::FromState;
@@ -43,7 +43,7 @@ pub(crate) use state::request_id::set_request_id;
 /// # }
 /// ```
 pub struct State {
-    data: HashMap<TypeId, Box<Any>>,
+    data: HashMap<TypeId, Box<Any + Send>>,
 }
 
 impl State {

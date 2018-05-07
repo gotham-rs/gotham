@@ -325,7 +325,7 @@ mod tests {
     use hyper::{Method, Request, Response, StatusCode};
     use hyper::server::Service;
     use futures::{Future, Stream};
-    use tokio_core::reactor::Core;
+    use tokio::runtime::Runtime;
 
     use pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;

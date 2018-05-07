@@ -8,7 +8,7 @@ use std::{io, mem};
 
 use hyper::{self, Response, StatusCode};
 use futures::Async;
-use futures::future::{self, Future, FutureResult};
+use futures::future::{self, Future, FutureResult, IntoFuture};
 
 use handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use service::timing::Timer;
@@ -23,31 +23,27 @@ use state::{request_id, State};
 pub(super) fn call_handler<T>(
     t: &T,
     state: AssertUnwindSafe<State>,
-) -> Box<Future<Item = Response, Error = hyper::Error>>
+) -> Box<Future<Item = Response, Error = hyper::Error> + Send + 'static>
 where
-    T: NewHandler,
+    T: NewHandler + 'static,
 {
     let timer = Timer::new();
 
     let res = catch_unwind(move || {
-        type ResponseFuture = Future<Item = Response, Error = hyper::Error>;
-
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
         // immediately consuming it.
-        match t.new_handler() {
-            Ok(handler) => {
-                let AssertUnwindSafe(state) = state;
 
-                let f = handler.handle(state).then(move |result| match result {
-                    Ok((state, res)) => finalize_success_response(timer, state, res),
-                    Err((state, err)) => finalize_error_response(timer, state, err),
-                });
+        let hf = t.new_handler().into_future();
 
-                Box::new(f) as Box<ResponseFuture>
-            }
-            Err(e) => Box::new(future::err(e.into())) as Box<ResponseFuture>,
-        }
+        hf.map_err(|e| e.into()).and_then(move |handler| {
+            let AssertUnwindSafe(state) = state;
+
+            handler.handle(state).then(move |result| match result {
+                Ok((state, res)) => finalize_success_response(timer, state, res),
+                Err((state, err)) => finalize_error_response(timer, state, err),
+            })
+        })
     });
 
     match res {
@@ -137,7 +133,7 @@ fn finalize_catch_unwind_response(
 /// Wraps a future to ensure that a panic does not escape and terminate the event loop.
 enum UnwindSafeFuture<F>
 where
-    F: Future<Error = hyper::Error>,
+    F: Future<Error = hyper::Error> + Send,
 {
     /// The future is available for polling.
     Available(AssertUnwindSafe<F>),
@@ -148,7 +144,7 @@ where
 
 impl<F> Future for UnwindSafeFuture<F>
 where
-    F: Future<Error = hyper::Error>,
+    F: Future<Error = hyper::Error> + Send,
 {
     type Item = F::Item;
     type Error = hyper::Error;
@@ -177,7 +173,7 @@ where
 
 impl<F> UnwindSafeFuture<F>
 where
-    F: Future<Error = hyper::Error>,
+    F: Future<Error = hyper::Error> + Send,
 {
     fn new(f: F) -> UnwindSafeFuture<F> {
         UnwindSafeFuture::Available(AssertUnwindSafe(f))

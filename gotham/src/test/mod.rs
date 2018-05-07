@@ -3,13 +3,14 @@
 //! See the `TestServer` type for example usage.
 
 use std::{cell, io, net, time};
-use std::cell::RefCell;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::Arc;
 
 use futures::{future, Future, Stream};
+use futures::executor;
+use futures_timer::Delay;
 use hyper::{self, Body, Method, Request, Response, Uri};
 use hyper::client::{self, Client};
 use hyper::error::UriError;
@@ -17,7 +18,9 @@ use hyper::header::ContentType;
 use hyper::server::{self, Http};
 use mime;
 use mio;
-use tokio_core::reactor::{Core, PollEvented, Timeout};
+use tokio;
+use tokio::executor::thread_pool::{Builder as ThreadPoolBuilder};
+use tokio::reactor::{Handle, PollEvented2};
 
 use handler::NewHandler;
 use service::GothamService;
@@ -55,16 +58,15 @@ pub use self::request::RequestBuilder;
 /// ```
 pub struct TestServer<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     data: Rc<TestServerData<NH>>,
 }
 
 struct TestServerData<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
-    core: RefCell<Core>,
     http: Http,
     timeout: u64,
     gotham_service: GothamService<NH>,
@@ -88,11 +90,12 @@ impl From<UriError> for TestRequestError {
     fn from(error: UriError) -> TestRequestError {
         TestRequestError::UriError(error)
     }
+
 }
 
 impl<NH> Clone for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn clone(&self) -> TestServer<NH> {
         TestServer {
@@ -103,7 +106,7 @@ where
 
 impl<NH> TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
@@ -116,19 +119,16 @@ where
 
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
     pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
-        Core::new().map(|core| {
-            let handle = core.handle();
+        let pool = ThreadPoolBuilder::new().pool_size(1).build();
 
-            let data = TestServerData {
-                core: RefCell::new(core),
-                http: server::Http::new(),
-                timeout,
-                gotham_service: GothamService::new(Arc::new(new_handler), handle),
-            };
+        let data = TestServerData {
+            http: server::Http::new(),
+            timeout,
+            gotham_service: GothamService::new(Arc::new(new_handler)),
+        };
 
-            TestServer {
-                data: Rc::new(data),
-            }
+        Ok(TestServer {
+            data: Rc::new(data),
         })
     }
 
@@ -148,8 +148,6 @@ where
     }
 
     fn try_client_with_address(&self, client_addr: net::SocketAddr) -> io::Result<TestClient<NH>> {
-        let handle = self.data.core.borrow().handle();
-
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
@@ -161,10 +159,10 @@ where
         };
 
         let cs = mio::net::TcpStream::from_stream(cs)?;
-        let cs = PollEvented::new(cs, &handle)?;
+        let cs = PollEvented2::new(cs);
 
         let ss = mio::net::TcpStream::from_stream(ss)?;
-        let ss = PollEvented::new(ss, &handle)?;
+        let ss = PollEvented2::new(ss);
 
         let service = self.data.gotham_service.connect(client_addr);
         let f = self.data
@@ -173,13 +171,13 @@ where
             .map(|_| ())
             .map_err(|_| ());
 
-        handle.spawn(f);
+        tokio::spawn(f);
 
         let client = Client::configure()
             .connector(TestConnect {
                 stream: cell::RefCell::new(Some(cs)),
             })
-            .build(&self.data.core.borrow().handle());
+            .build(&Handle::current());
 
         Ok(TestClient {
             client,
@@ -196,13 +194,10 @@ where
         F: Future<Error = hyper::Error>,
     {
         let timeout_duration = time::Duration::from_secs(self.data.timeout);
-        let timeout = Timeout::new(timeout_duration, &self.data.core.borrow().handle())
-            .map_err(|e| TestRequestError::IoError(e))?;
+        let timeout = Delay::new(timeout_duration);
 
-        let run_result = {
-            let mut core = self.data.core.borrow_mut();
-            core.run(f.select2(timeout))
-        };
+        let spaw = executor::spawn(f.select2(timeout));
+        let run_result = spaw.wait_future();
 
         match run_result {
             Ok(future::Either::A((item, _))) => Ok(item),
@@ -215,7 +210,7 @@ where
 
 impl<NH> BodyReader for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
@@ -224,8 +219,7 @@ where
             let f: hyper::Body = response.body();
             let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
 
-            let mut core = self.data.core.borrow_mut();
-            core.run(f)
+            executor::spawn(f).wait_future()
         };
 
         r.map(|_| buf)
@@ -235,7 +229,7 @@ where
 /// Client interface for issuing requests to a `TestServer`.
 pub struct TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     client: Client<TestConnect>,
     test_server: TestServer<NH>,
@@ -243,7 +237,7 @@ where
 
 impl<NH> TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
     pub fn head(self, uri: &str) -> RequestBuilder<NH> {
@@ -436,13 +430,13 @@ impl TestResponse {
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
 struct TestConnect {
-    stream: cell::RefCell<Option<PollEvented<mio::net::TcpStream>>>,
+    stream: cell::RefCell<Option<PollEvented2<mio::net::TcpStream>>>,
 }
 
 impl client::Service for TestConnect {
     type Request = hyper::Uri;
     type Error = io::Error;
-    type Response = PollEvented<mio::net::TcpStream>;
+    type Response = PollEvented2<mio::net::TcpStream>;
     type Future = future::FutureResult<Self::Response, Self::Error>;
 
     fn call(&self, _req: Self::Request) -> Self::Future {
