@@ -109,7 +109,6 @@ where
 mod tests {
     use super::*;
 
-    use DieselMiddleware;
     use gotham::handler::HandlerFuture;
     use gotham::http::response::create_response;
     use gotham::router::builder::*;
@@ -122,6 +121,8 @@ mod tests {
     use diesel::{self, RunQueryDsl};
     use diesel::sqlite::SqliteConnection;
     use mime;
+
+    use middleware::DieselMiddleware;
 
     static DATABASE_URL: &'static str = ":memory:";
 
