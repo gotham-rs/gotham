@@ -29,11 +29,14 @@ where
         threads,
     );
 
-    for _ in 0..threads - 1 {
+    for thread_n in 0..threads - 1 {
         let listener = listener.try_clone().expect("unable to clone TCP listener");
         let protocol = protocol.clone();
         let new_handler = new_handler.clone();
-        thread::spawn(move || start_core(listener, &addr, &protocol, new_handler));
+        thread::Builder::new()
+            .name(format!("gotham-{}", thread_n))
+            .spawn(move || start_core(listener, &addr, &protocol, new_handler))
+            .expect("unable to spawn thread");
     }
 
     start_core(listener, &addr, &protocol, new_handler);
