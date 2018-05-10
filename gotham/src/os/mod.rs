@@ -205,3 +205,92 @@ pub(crate) fn join_threads<T>(threads_handles: Vec<JoinHandle<T>>) {
             .unwrap_or_else(|error| warn!("Unable to join child thread: {:?}", error))
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use std::io;
+    use std::thread;
+    use std::time::Duration;
+
+    use futures::Future;
+    use futures::sync::oneshot;
+    use hyper::{Client, StatusCode};
+    use tokio_core::reactor::Core;
+
+    use handler::{Handler, HandlerFuture, NewHandler};
+    use state::State;
+    use os::current;
+
+    #[derive(Copy, Clone)]
+    struct DummyHandler;
+
+    impl NewHandler for DummyHandler {
+        type Instance = DummyHandler;
+
+        fn new_handler(&self) -> io::Result<Self::Instance> {
+            Ok(DummyHandler)
+        }
+    }
+
+    impl Handler for DummyHandler {
+        fn handle(self, _state: State) -> Box<HandlerFuture> {
+            unimplemented!()
+        }
+    }
+
+    fn try_request(addr: &str) -> bool {
+        let mut core = Core::new().unwrap();
+        let client = Client::new(&core.handle());
+
+        let uri = format!("http://{}/", addr);
+        let uri_parsed = uri.parse().unwrap();
+        let work = client.get(uri_parsed).map(|res| {
+            assert_eq!(res.status(), StatusCode::InternalServerError);
+        });
+
+        match core.run(work) {
+            Ok(_) => true,
+
+            Err(error) => {
+                eprintln!("Unable to get \"{}\": {}", uri, error);
+                false
+            }
+        }
+    }
+
+    fn run_with_num_threads_until(addr: &'static str, shutdown_timeout: Duration) {
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+
+        let handle = thread::spawn(move || {
+            current::run_with_num_threads_until(
+                addr,
+                2, // Use two threads to test join().
+                DummyHandler,
+                shutdown_rx
+                    .map_err(|error| panic!("Sender of shutdown signal was dropped ({})", error)),
+                shutdown_timeout,
+            )
+        });
+
+        // Wait until server will be able to answer.
+        let mut max_retries = 25;
+        while (max_retries != 0) && !try_request(addr) {
+            max_retries -= 1;
+            thread::sleep(Duration::from_millis(200));
+        }
+        assert_ne!(max_retries, 0);
+
+        shutdown_tx.send(()).unwrap();
+        handle.join().unwrap();
+    }
+
+    #[test]
+    fn run_with_num_threads_until_without_timeout() {
+        run_with_num_threads_until("127.0.0.1:12345", Duration::default());
+    }
+
+    #[test]
+    fn run_with_num_threads_until_with_timeout() {
+        run_with_num_threads_until("127.0.0.1:54321", Duration::from_secs(5));
+    }
+}
