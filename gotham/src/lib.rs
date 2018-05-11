@@ -56,7 +56,7 @@ use std::io;
 use std::thread;
 
 use hyper::server::Http;
-use futures::{future, Future, Stream};
+use futures::{Future, Stream};
 use tokio_core::reactor::{Core, Handle};
 use tokio_core::net::TcpStream;
 
@@ -117,34 +117,32 @@ where
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
 
-    serve(listener, protocol, new_handler, handle);
-
-    core.run::<future::FutureResult<(), ()>>(future::ok(()))
+    core.run(serve(listener, protocol, new_handler, handle))
         .expect("unable to run reactor over listener");
 }
 
 /// Serves a Gotham handler on a GothamListener.  Useful when you're folding Gotham into an
 /// existing Tokio application.
-pub fn serve<G, NH>(listener: G, protocol: Arc<Http>, new_handler: Arc<NH>, handle: Handle)
+pub fn serve<'a, G, NH>(
+    listener: G,
+    protocol: Arc<Http>,
+    new_handler: Arc<NH>,
+    handle: Handle,
+) -> Box<Future<Item = (), Error = io::Error> + 'a>
 where
     G: GothamListener,
     NH: NewHandler + 'static,
 {
     let gotham_service = GothamService::new(new_handler, handle.clone());
     let stream = listener.incoming(handle.clone());
-    let inner = handle.clone();
 
-    handle.spawn(
-        stream
-            .for_each(move |(socket, addr)| {
-                let service = gotham_service.connect(addr);
-                let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
+    Box::new(stream.for_each(move |(socket, addr)| {
+        let service = gotham_service.connect(addr);
+        let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
-                inner.spawn(f);
-                Ok(())
-            })
-            .or_else(|_| future::ok(())),
-    )
+        handle.spawn(f);
+        Ok(())
+    }))
 }
 
 fn pick_addr<A: ToSocketAddrs>(addr: A) -> SocketAddr {
