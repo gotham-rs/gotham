@@ -1,36 +1,84 @@
-use std::io;
-use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
+use std::net::{SocketAddr, TcpListener};
 use std::thread;
+use std::io;
 use std::sync::{Arc, Mutex};
 
-use hyper::server::Http;
-use tokio_core;
-use tokio_core::net::TcpStream;
+use tokio_core::net::{self, TcpStream};
 use tokio_core::reactor::{Core, Handle};
-use futures::{future, task, Async, Future, Poll, Stream};
-
-use handler::NewHandler;
-use service::GothamService;
+use futures::{future, task, Async, Poll, Stream};
 
 use crossbeam::sync::SegQueue;
 
 #[derive(Clone)]
-struct SocketQueue {
+pub struct SocketQueue {
+    addr: SocketAddr,
     queue: Arc<SegQueue<(TcpStream, SocketAddr)>>,
     notify: Arc<Mutex<Vec<task::Task>>>,
 }
 
 impl SocketQueue {
-    fn new() -> SocketQueue {
+    fn new(addr: SocketAddr) -> SocketQueue {
         let queue = Arc::new(SegQueue::new());
         let notify = Arc::new(Mutex::new(Vec::new()));
-        SocketQueue { queue, notify }
+        SocketQueue {
+            addr,
+            queue,
+            notify,
+        }
     }
 }
 
-impl Stream for SocketQueue {
+impl SocketQueue {
+    fn listen(self) {
+        let mut n: usize = 0;
+
+        let mut core = Core::new().expect("unable to spawn tokio reactor");
+        let handle = core.handle();
+
+        let tcp = TcpListener::bind(self.addr).expect("unable to open TCP listener");
+        let listener = net::TcpListener::from_listener(tcp, &self.addr, &handle)
+            .expect("unable to convert TCP listener to tokio listener");
+
+        core.run(listener.incoming().for_each(|conn| {
+            self.queue.push(conn);
+            let tasks = self.notify
+                .lock()
+                .expect("mutex poisoned, futures::task::Task::notify panicked?");
+
+            n = (n + 1) % tasks.len();
+            tasks[n].notify();
+            Ok(())
+        })).expect("unable to run reactor over listener");
+    }
+}
+
+impl ::GothamListener for SocketQueue {
+    type Stream = SocketStream;
+
+    fn incoming(self, handle: Handle) -> Self::Stream {
+        let tasks_m = self.notify.clone();
+
+        handle.spawn(future::lazy(move || {
+            let mut tasks = tasks_m
+                .lock()
+                .expect("mutex poisoned, futures::task::Task::notify panicked?");
+            tasks.push(task::current());
+            future::ok(())
+        }));
+
+        SocketStream {
+            queue: self.queue.clone(),
+        }
+    }
+}
+
+pub struct SocketStream {
+    queue: Arc<SegQueue<(TcpStream, SocketAddr)>>,
+}
+
+impl Stream for SocketStream {
     type Item = (TcpStream, SocketAddr);
-    type Error = ();
+    type Error = io::Error;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
         match self.queue.try_pop() {
@@ -40,113 +88,15 @@ impl Stream for SocketQueue {
     }
 }
 
-/// Starts a Gotham application, with the given number of threads.
+/// Constructs a GothamListener to handle incoming TCP connections.
 ///
-/// ## Windows
-///
-/// An additional thread is used on Windows to accept connections.
-pub fn start_with_num_threads<NH, A>(addr: A, threads: usize, new_handler: NH)
-where
-    NH: NewHandler + 'static,
-    A: ToSocketAddrs,
-{
-    let (listener, addr) = ::tcp_listener(addr);
-
-    let protocol = Arc::new(Http::new());
-    let new_handler = Arc::new(new_handler);
-
-    let queue = SocketQueue::new();
-
+/// Note: On Windows this function spawns an extra thread to handle
+/// accepting connections.
+pub fn new_gotham_listener(addr: SocketAddr) -> SocketQueue {
+    let queue = SocketQueue::new(addr);
     {
         let queue = queue.clone();
-        thread::spawn(move || start_listen_core(listener, addr, queue));
+        thread::spawn(move || queue.listen());
     }
-
-    info!(
-        target: "gotham::start",
-        " Gotham listening on http://{} with {} threads",
-        addr,
-        threads,
-    );
-
-    for _ in 0..threads - 1 {
-        let protocol = protocol.clone();
-        let queue = queue.clone();
-        let new_handler = new_handler.clone();
-        thread::spawn(move || start_serve_core(queue, &protocol, new_handler));
-    }
-
-    start_serve_core(queue, &protocol, new_handler);
-}
-
-fn start_listen_core(listener: TcpListener, addr: SocketAddr, queue: SocketQueue) {
-    let mut core = Core::new().expect("unable to spawn tokio reactor");
-    let handle = core.handle();
-    core.run(listen(listener, addr, queue, &handle))
-        .expect("unable to run reactor over listener");
-}
-
-fn listen(
-    listener: TcpListener,
-    addr: SocketAddr,
-    queue: SocketQueue,
-    handle: &Handle,
-) -> Box<Future<Item = (), Error = io::Error>> {
-    let listener = tokio_core::net::TcpListener::from_listener(listener, &addr, handle)
-        .expect("unable to convert TCP listener to tokio listener");
-
-    let mut n: usize = 0;
-
-    Box::new(listener.incoming().for_each(move |conn| {
-        queue.queue.push(conn);
-        let tasks = queue
-            .notify
-            .lock()
-            .expect("mutex poisoned, futures::task::Task::notify panicked?");
-
-        n = (n + 1) % tasks.len();
-        tasks[n].notify();
-        Ok(())
-    }))
-}
-
-fn start_serve_core<NH>(queue: SocketQueue, protocol: &Http, new_handler: Arc<NH>)
-where
-    NH: NewHandler + 'static,
-{
-    let mut core = Core::new().expect("unable to spawn tokio reactor");
-    let handle = core.handle();
-    core.run(serve(queue, protocol, new_handler, &handle))
-        .expect("unable to run reactor for work stealing");
-}
-
-fn serve<'a, NH>(
-    queue: SocketQueue,
-    protocol: &'a Http,
-    new_handler: Arc<NH>,
-    handle: &'a Handle,
-) -> Box<Future<Item = (), Error = ()> + 'a>
-where
-    NH: NewHandler + 'static,
-{
-    let gotham_service = GothamService::new(new_handler, handle.clone());
-    let tasks_m = queue.notify.clone();
-
-    Box::new(
-        future::lazy(move || {
-            let mut tasks = tasks_m
-                .lock()
-                .expect("mutex poisoned, futures::task::Task::notify panicked?");
-            tasks.push(task::current());
-            future::ok(())
-        }).and_then(move |_| {
-            queue.for_each(move |(socket, addr)| {
-                let service = gotham_service.connect(addr);
-                let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
-
-                handle.spawn(f);
-                Ok(())
-            })
-        }),
-    )
+    queue
 }
