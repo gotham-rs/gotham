@@ -1,11 +1,17 @@
 [package]
-name = "gotham_examples_hello_world"
-description = "A Hello World example application for working with Gotham."
+name = "gotham_examples_hello_world_until"
+description = "A Hello World example application for working with Gotham. With graceful shutdown."
 version = "0.0.0"
 publish = false
 
 [dependencies]
 gotham = { path = "../../gotham" }
 
+futures = "0.1"
 hyper = "0.11"
 mime = "0.3"
+tokio-core = "0.1"
+tokio-signal = "0.1"
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = "0.10"

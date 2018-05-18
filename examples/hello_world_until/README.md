@@ -1,10 +1,11 @@
 # Hello World
 
-A simple introduction to working with Gotham.
+Example of how to use `run_until()` to implement graceful shutdown for the web
+service.
 
 ## Running
 
-From the `examples/hello_world` directory:
+From the `examples/hello_world_until` directory:
 
 ```
 Terminal 1:
@@ -13,6 +14,7 @@ $ cargo run
     Finished dev [unoptimized + debuginfo] target(s) in 4.26 secs
      Running `../hello_world`
   Listening for requests at http://127.0.0.1:7878
+  Press Ctrl+C to exit
 
 Terminal 2:
 $ curl -v http://127.0.0.1:7878/
@@ -36,6 +38,11 @@ $ curl -v http://127.0.0.1:7878/
 <
 * Connection #0 to host 127.0.0.1 left intact
 Hello World!%
+
+Terminal 1 again:
+<press Ctrl+C>
+  Ctrl+C pressed
+  Shutting down gracefully
 ```
 
 ## License
