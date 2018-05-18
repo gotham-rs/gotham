@@ -50,12 +50,43 @@ pub mod state;
 pub mod test;
 mod os;
 
-pub use os::current::start_with_num_threads;
+pub use os::current::{run_with_num_threads_until, start_with_num_threads};
 
 use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
+use std::time::Duration;
+use futures::Future;
 use handler::NewHandler;
 
+/// Starts a Gotham application, with the default number of threads (equal to the number of CPUs) and ability to
+/// gracefully shut down.
+///
+/// This function blocks current thread until `shutdown_signal` resolved or panic occur.
+///
+/// When `shutdown_timeout` is not equal to `Duration::default()`, function waits for remaining open connections to
+/// finish for specified time.
+///
+/// ## Windows
+///
+/// An additional thread is used on Windows to accept connections.
+pub fn run_until<NH, A, F>(addr: A, new_handler: NH, shutdown_signal: F, shutdown_timeout: Duration)
+where
+    NH: NewHandler + 'static,
+    A: ToSocketAddrs,
+    F: Future<Item = (), Error = ()>,
+{
+    let threads = num_cpus::get();
+    run_with_num_threads_until(
+        addr,
+        threads,
+        new_handler,
+        shutdown_signal,
+        shutdown_timeout,
+    )
+}
+
 /// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
+///
+/// This function never return but may panic because of errors.
 ///
 /// ## Windows
 ///

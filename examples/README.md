@@ -31,6 +31,7 @@ information on functionality and ordering.
 | Functionality | Description | Count^ |
 | --- | --- | ---:|
 | [Hello World](hello_world) | The famous Hello World example application. | 1 |
+| [Hello World with shutdown](hello_world_until) | Hello World application with graceful shutdown using `run_until()`. | 1 |
 | [Routing](routing) | Dispatching `Requests` to functionality provided by your application. | 4 |
 | [Path](path) | Extracting data from the `Request` path ensuring type safety. | 2 |
 | [Query String](query_string) | Extracting data from the `Request` query string whilst ensuring type safety. | 1 |
