@@ -10,7 +10,7 @@ categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "gotham"]
 
 [dependencies]
-syn = "0.12"
+syn = "0.14"
 quote = "0.4"
 
 [lib]
