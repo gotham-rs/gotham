@@ -11,7 +11,7 @@ keywords = ["http", "async", "web", "framework", "gotham"]
 
 [dependencies]
 syn = "0.12"
-quote = "0.4"
+quote = "0.6"
 
 [lib]
 proc-macro = true
