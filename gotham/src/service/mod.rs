@@ -10,7 +10,6 @@ use futures::Future;
 use hyper;
 use hyper::server::Service;
 use hyper::{Request, Response};
-use tokio_core::reactor::Handle;
 
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
@@ -33,7 +32,7 @@ impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    pub(crate) fn new(t: Arc<T>, _handle: Handle) -> GothamService<T> {
+    pub(crate) fn new(t: Arc<T>) -> GothamService<T> {
         GothamService { t }
     }
 
@@ -108,7 +107,7 @@ mod tests {
     #[test]
     fn new_handler_closure() {
         let mut core = Core::new().unwrap();
-        let service = GothamService::new(Arc::new(|| Ok(handler)), core.handle());
+        let service = GothamService::new(Arc::new(|| Ok(handler)));
 
         let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
         let f = service
@@ -125,7 +124,7 @@ mod tests {
         });
 
         let mut core = Core::new().unwrap();
-        let service = GothamService::new(Arc::new(router), core.handle());
+        let service = GothamService::new(Arc::new(router));
 
         let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
         let f = service

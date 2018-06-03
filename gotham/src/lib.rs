@@ -99,7 +99,7 @@ where
     let mut core = Core::new().expect("unable to spawn tokio reactor");
     let handle = core.handle();
 
-    let gotham_service = GothamService::new(new_handler, handle.clone());
+    let gotham_service = GothamService::new(new_handler);
 
     let listener = tokio_core::net::TcpListener::from_listener(listener, addr, &handle)
         .expect("unable to convert TCP listener to tokio listener");
