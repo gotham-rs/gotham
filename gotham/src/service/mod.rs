@@ -1,21 +1,20 @@
 //! Defines the `GothamService` type which is used to wrap a Gotham application and interface with
 //! Hyper.
 
-use std::thread;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::panic::AssertUnwindSafe;
+use std::sync::Arc;
+use std::thread;
 
+use futures::Future;
 use hyper;
 use hyper::server::Service;
 use hyper::{Request, Response};
-use futures::Future;
-use tokio_core::reactor::Handle;
 
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
-use state::{request_id, set_request_id, State};
 use state::client_addr::put_client_addr;
+use state::{request_id, set_request_id, State};
 
 mod timing;
 mod trap;
@@ -27,21 +26,19 @@ where
     T: NewHandler + 'static,
 {
     t: Arc<T>,
-    handle: Handle,
 }
 
 impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    pub(crate) fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
-        GothamService { t, handle }
+    pub(crate) fn new(t: Arc<T>) -> GothamService<T> {
+        GothamService { t }
     }
 
     pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
         ConnectedGothamService {
             t: self.t.clone(),
-            handle: self.handle.clone(),
             client_addr,
         }
     }
@@ -54,7 +51,6 @@ where
     T: NewHandler + 'static,
 {
     t: Arc<T>,
-    handle: Handle,
     client_addr: SocketAddr,
 }
 
@@ -65,7 +61,7 @@ where
     type Request = Request;
     type Response = Response;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Future = Box<Future<Item = Self::Response, Error = Self::Error> + Send>;
 
     fn call(&self, req: Self::Request) -> Self::Future {
         let mut state = State::new();
@@ -74,7 +70,6 @@ where
 
         let (method, uri, version, headers, body) = req.deconstruct();
 
-        state.put(self.handle.clone());
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);
@@ -112,7 +107,7 @@ mod tests {
     #[test]
     fn new_handler_closure() {
         let mut core = Core::new().unwrap();
-        let service = GothamService::new(Arc::new(|| Ok(handler)), core.handle());
+        let service = GothamService::new(Arc::new(|| Ok(handler)));
 
         let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
         let f = service
@@ -129,7 +124,7 @@ mod tests {
         });
 
         let mut core = Core::new().unwrap();
-        let service = GothamService::new(Arc::new(router), core.handle());
+        let service = GothamService::new(Arc::new(router));
 
         let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
         let f = service

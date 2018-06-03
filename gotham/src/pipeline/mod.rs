@@ -49,7 +49,7 @@ use state::{request_id, State};
 ///     // Implementation elided.
 ///     // Appends `1` to `MiddlewareData.vec`
 /// #     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #     {
 /// #         state.put(MiddlewareData { vec: vec![1] });
 /// #         chain(state)
@@ -63,7 +63,7 @@ use state::{request_id, State};
 ///     // Implementation elided.
 ///     // Appends `2` to `MiddlewareData.vec`
 /// #     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #     {
 /// #         state.borrow_mut::<MiddlewareData>().vec.push(2);
 /// #         chain(state)
@@ -77,7 +77,7 @@ use state::{request_id, State};
 ///     // Implementation elided.
 ///     // Appends `3` to `MiddlewareData.vec`
 /// #     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #     {
 /// #         state.borrow_mut::<MiddlewareData>().vec.push(3);
 /// #         chain(state)
@@ -152,7 +152,7 @@ where
     /// will be served with the `f` function.
     fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         trace!("[{}] calling middleware", request_id(&state));
         self.chain.call(state, f)
@@ -193,7 +193,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #
 /// # impl Middleware for MiddlewareOne {
 /// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #   {
 /// #       chain(state)
 /// #   }
@@ -201,7 +201,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #
 /// # impl Middleware for MiddlewareTwo {
 /// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #   {
 /// #       chain(state)
 /// #   }
@@ -209,7 +209,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #
 /// # impl Middleware for MiddlewareThree {
 /// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #   {
 /// #       chain(state)
 /// #   }
@@ -252,7 +252,7 @@ where
     pub fn add<M>(self, m: M) -> PipelineBuilder<(M, T)>
     where
         M: NewMiddleware,
-        M::Instance: 'static,
+        M::Instance: Send + 'static,
         Self: Sized,
     {
         // "cons" the most recently added `NewMiddleware` onto the front of the list. This is
@@ -276,8 +276,8 @@ where
 mod tests {
     use super::*;
 
-    use hyper::{Response, StatusCode};
     use futures::future;
+    use hyper::{Response, StatusCode};
 
     use handler::{Handler, IntoHandlerError};
     use middleware::Middleware;
@@ -310,7 +310,7 @@ mod tests {
     impl Middleware for Number {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -335,7 +335,7 @@ mod tests {
     impl Middleware for Addition {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
