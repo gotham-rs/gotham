@@ -1,21 +1,21 @@
 //! Defines the `GothamService` type which is used to wrap a Gotham application and interface with
 //! Hyper.
 
-use std::thread;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::panic::AssertUnwindSafe;
+use std::sync::Arc;
+use std::thread;
 
+use futures::Future;
 use hyper;
 use hyper::server::Service;
 use hyper::{Request, Response};
-use futures::Future;
 use tokio_core::reactor::Handle;
 
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
-use state::{request_id, set_request_id, State};
 use state::client_addr::put_client_addr;
+use state::{request_id, set_request_id, State};
 
 mod timing;
 mod trap;
@@ -27,21 +27,19 @@ where
     T: NewHandler + 'static,
 {
     t: Arc<T>,
-    handle: Handle,
 }
 
 impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    pub(crate) fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
-        GothamService { t, handle }
+    pub(crate) fn new(t: Arc<T>, _handle: Handle) -> GothamService<T> {
+        GothamService { t }
     }
 
     pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
         ConnectedGothamService {
             t: self.t.clone(),
-            handle: self.handle.clone(),
             client_addr,
         }
     }
@@ -54,7 +52,6 @@ where
     T: NewHandler + 'static,
 {
     t: Arc<T>,
-    handle: Handle,
     client_addr: SocketAddr,
 }
 
@@ -74,7 +71,6 @@ where
 
         let (method, uri, version, headers, body) = req.deconstruct();
 
-        state.put(self.handle.clone());
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);
