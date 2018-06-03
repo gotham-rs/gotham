@@ -55,14 +55,14 @@ pub use self::request::RequestBuilder;
 /// ```
 pub struct TestServer<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     data: Rc<TestServerData<NH>>,
 }
 
 struct TestServerData<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     core: RefCell<Core>,
     http: Http,
@@ -92,7 +92,7 @@ impl From<UriError> for TestRequestError {
 
 impl<NH> Clone for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn clone(&self) -> TestServer<NH> {
         TestServer {
@@ -103,7 +103,7 @@ where
 
 impl<NH> TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
@@ -213,7 +213,7 @@ where
 
 impl<NH> BodyReader for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
@@ -233,7 +233,7 @@ where
 /// Client interface for issuing requests to a `TestServer`.
 pub struct TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     client: Client<TestConnect>,
     test_server: TestServer<NH>,
@@ -241,7 +241,7 @@ where
 
 impl<NH> TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
     pub fn head(self, uri: &str) -> RequestBuilder<NH> {

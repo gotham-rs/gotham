@@ -28,7 +28,7 @@ use state::request_id::RequestId;
 /// #   });
 /// # }
 /// ```
-pub trait StateData: Any {}
+pub trait StateData: Any + Send {}
 
 impl StateData for Body {}
 impl StateData for Method {}

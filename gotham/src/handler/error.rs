@@ -11,7 +11,7 @@ use state::{request_id, State};
 /// `Response`.
 pub struct HandlerError {
     status_code: StatusCode,
-    cause: Box<Error>,
+    cause: Box<Error + Send>,
 }
 
 /// Allows conversion into a HandlerError from an implementing type.
@@ -48,7 +48,7 @@ pub trait IntoHandlerError {
 
 impl<E> IntoHandlerError for E
 where
-    E: Error + 'static,
+    E: Error + Send + 'static,
 {
     fn into_handler_error(self) -> HandlerError {
         trace!(" converting Error to HandlerError: {}", self);

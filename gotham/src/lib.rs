@@ -31,6 +31,7 @@ extern crate rand;
 extern crate regex;
 #[macro_use]
 extern crate serde;
+extern crate tokio;
 extern crate tokio_core;
 extern crate url;
 extern crate uuid;
@@ -49,70 +50,46 @@ mod service;
 pub mod state;
 pub mod test;
 
-use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
-use std::thread;
 
 use futures::{Future, Stream};
 use hyper::server::Http;
-use tokio_core::reactor::Core;
+use hyper::Chunk;
+use tokio::net::TcpListener;
 
 use handler::NewHandler;
 use service::GothamService;
 
-/// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
+/// Starts a Gotham application.
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs,
 {
-    let threads = num_cpus::get();
-    let (listener, addr) = ::tcp_listener(addr);
-
-    let protocol = Arc::new(Http::new());
+    let (listener, addr) = tcp_listener(addr);
     let new_handler = Arc::new(new_handler);
+    let gotham_service = GothamService::new(new_handler);
+    let protocol = Arc::new(Http::<Chunk>::new());
 
     info!(
         target: "gotham::start",
-        " Gotham listening on http://{} with {} threads",
-        addr,
-        threads,
+        " Gotham listening on http://{}",
+        addr
     );
 
-    for thread_n in 0..threads - 1 {
-        let listener = listener.try_clone().expect("unable to clone TCP listener");
-        let protocol = protocol.clone();
-        let new_handler = new_handler.clone();
-        thread::Builder::new()
-            .name(format!("gotham-{}", thread_n))
-            .spawn(move || start_core(listener, &addr, &protocol, new_handler))
-            .expect("unable to spawn thread");
-    }
+    let server = listener
+        .incoming()
+        .map_err(|e| panic!("error = {:?}", e))
+        .for_each(move |socket| {
+            let service = gotham_service.connect(addr);
+            let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
-    start_core(listener, &addr, &protocol, new_handler);
-}
+            tokio::spawn(f);
+            Ok(())
+        });
 
-fn start_core<NH>(listener: TcpListener, addr: &SocketAddr, protocol: &Http, new_handler: Arc<NH>)
-where
-    NH: NewHandler + 'static,
-{
-    let mut core = Core::new().expect("unable to spawn tokio reactor");
-    let handle = core.handle();
-
-    let gotham_service = GothamService::new(new_handler);
-
-    let listener = tokio_core::net::TcpListener::from_listener(listener, addr, &handle)
-        .expect("unable to convert TCP listener to tokio listener");
-
-    let f = Box::new(listener.incoming().for_each(move |(socket, addr)| {
-        let service = gotham_service.connect(addr);
-        let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
-
-        handle.spawn(f);
-        Ok(())
-    }));
-
-    core.run(f).expect("unable to run reactor over listener");
+    tokio::run(server);
 }
 
 fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
@@ -125,7 +102,7 @@ where
         Err(_) => panic!("unable to parse listener address"),
     };
 
-    let listener = TcpListener::bind(addr).expect("unable to open TCP listener");
+    let listener = TcpListener::bind(&addr).expect("unable to open TCP listener");
 
     (listener, addr)
 }
