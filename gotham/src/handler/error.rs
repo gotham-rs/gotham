@@ -127,8 +127,8 @@ impl HandlerError {
     }
 }
 
-impl IntoResponse for HandlerError {
-    fn into_response(self, state: &State) -> Response {
+impl<B> IntoResponse<B> for HandlerError {
+    fn into_response(self, state: &State) -> Response<B> {
         debug!(
             "[{}] HandlerError generating {} {} response: {}",
             request_id(state),

@@ -7,7 +7,7 @@ use std::io;
 use std::panic::RefUnwindSafe;
 
 use futures::{future, Future};
-use hyper::Response;
+use hyper::{Body, Response};
 
 use state::State;
 
@@ -19,7 +19,7 @@ pub use self::error::{HandlerError, IntoHandlerError};
 ///
 /// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate
 /// an appropriate HTTP error response.
-pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)> + Send;
+pub type HandlerFuture<T = Body> = Future<Item = (State, T), Error = (State, HandlerError)> + Send;
 
 /// A `Handler` is an asynchronous function, taking a `State` value which represents the request
 /// and related runtime state, and returns a future which resolves to a response.
@@ -247,24 +247,24 @@ where
 ///
 /// This is used to allow functions with different return types to satisfy the `Handler` trait
 /// bound via the generic function implementation.
-pub trait IntoHandlerFuture {
+pub trait IntoHandlerFuture<B> {
     /// Converts this value into a boxed future resolving to a state and response.
-    fn into_handler_future(self) -> Box<HandlerFuture>;
+    fn into_handler_future(self) -> Box<HandlerFuture<B>>;
 }
 
-impl<T> IntoHandlerFuture for (State, T)
+impl<B, T> IntoHandlerFuture<B> for (State, T)
 where
-    T: IntoResponse,
+    T: IntoResponse<B>,
 {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
+    fn into_handler_future(self) -> Box<HandlerFuture<B>> {
         let (state, t) = self;
         let response = t.into_response(&state);
         Box::new(future::ok((state, response)))
     }
 }
 
-impl IntoHandlerFuture for Box<HandlerFuture> {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
+impl<B> IntoHandlerFuture<B> for Box<HandlerFuture<B>> {
+    fn into_handler_future(self) -> Box<HandlerFuture<B>> {
         self
     }
 }
@@ -331,23 +331,23 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # }
 /// ```
 
-pub trait IntoResponse {
+pub trait IntoResponse<B> {
     /// Converts this value into a `hyper::Response`
-    fn into_response(self, state: &State) -> Response;
+    fn into_response(self, state: &State) -> Response<B>;
 }
 
-impl IntoResponse for Response {
-    fn into_response(self, _state: &State) -> Response {
+impl<B> IntoResponse<B> for Response<B> {
+    fn into_response(self, _state: &State) -> Response<B> {
         self
     }
 }
 
-impl<T, E> IntoResponse for ::std::result::Result<T, E>
+impl<B, T, E> IntoResponse<B> for ::std::result::Result<T, E>
 where
-    T: IntoResponse,
-    E: IntoResponse,
+    T: IntoResponse<B>,
+    E: IntoResponse<B>,
 {
-    fn into_response(self, state: &State) -> Response {
+    fn into_response(self, state: &State) -> Response<B> {
         match self {
             Ok(res) => res.into_response(state),
             Err(e) => e.into_response(state),
@@ -355,10 +355,10 @@ where
     }
 }
 
-impl<F, R> Handler for F
+impl<B, F, R> Handler for F
 where
     F: FnOnce(State) -> R + Send,
-    R: IntoHandlerFuture,
+    R: IntoHandlerFuture<B>,
 {
     fn handle(self, state: State) -> Box<HandlerFuture> {
         self(state).into_handler_future()
