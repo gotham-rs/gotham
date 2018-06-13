@@ -10,8 +10,7 @@ use base64;
 use bincode;
 use futures::{future, Future};
 use hyper::header::{Cookie, HeaderMap, SetCookie};
-use hyper::server::Response;
-use hyper::StatusCode;
+use hyper::{Response, StatusCode};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
@@ -856,9 +855,9 @@ where
     }
 }
 
-fn persist_session<T>(
-    (mut state, mut response): (State, Response),
-) -> future::FutureResult<(State, Response), (State, HandlerError)>
+fn persist_session<B, T>(
+    (mut state, mut response): (State, Response<B>),
+) -> future::FutureResult<(State, Response<B>), (State, HandlerError)>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
@@ -895,7 +894,7 @@ where
     }
 }
 
-fn send_cookie<T>(response: &mut Response, session_data: &SessionData<T>)
+fn send_cookie<B, T>(response: &mut Response<B>, session_data: &SessionData<T>)
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
@@ -905,7 +904,7 @@ where
     write_cookie(cookie_string, response);
 }
 
-fn reset_cookie(response: &mut Response, session_drop_data: &SessionDropData) {
+fn reset_cookie<B>(response: &mut Response<B>, session_drop_data: &SessionDropData) {
     let cookie_string = session_drop_data
         .cookie_config
         .to_cookie_string("discarded");
@@ -916,7 +915,7 @@ fn reset_cookie(response: &mut Response, session_drop_data: &SessionDropData) {
     write_cookie(cookie_string, response);
 }
 
-fn write_cookie(cookie: String, response: &mut Response) {
+fn write_cookie<B>(cookie: String, response: &mut Response<B>) {
     let headers = response.headers_mut();
     if let Some(existing_cookies) = headers.get_mut::<SetCookie>() {
         return existing_cookies.push(cookie);
@@ -926,11 +925,11 @@ fn write_cookie(cookie: String, response: &mut Response) {
     headers.set(set_cookie);
 }
 
-fn write_session<T>(
+fn write_session<B, T>(
     state: State,
-    response: Response,
+    response: Response<B>,
     session_data: SessionData<T>,
-) -> future::FutureResult<(State, Response), (State, HandlerError)>
+) -> future::FutureResult<(State, Response<B>), (State, HandlerError)>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
