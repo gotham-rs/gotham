@@ -13,7 +13,6 @@ use std::{io, net};
 use futures::{future, sync::oneshot, Future, Stream};
 use futures_timer::Delay;
 use hyper::client::{self, Client};
-use hyper::error::UriError;
 use hyper::header::ContentType;
 use hyper::server::conn::Http;
 use hyper::{self, Body, Method, Request, Response, Uri};
@@ -84,14 +83,6 @@ pub enum TestRequestError {
     IoError(io::Error),
     /// A `hyper::Error` occurred before a response was received.
     HyperError(hyper::Error),
-    /// The URL could not be parsed when building the request.
-    UriError(UriError),
-}
-
-impl From<UriError> for TestRequestError {
-    fn from(error: UriError) -> TestRequestError {
-        TestRequestError::UriError(error)
-    }
 }
 
 impl<NH> Clone for TestServer<NH>
@@ -356,12 +347,12 @@ where
 
     /// Parse the URI and begin constructing a request with the given HTTP method.
     pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<NH> {
-        RequestBuilder::new(self, method, uri.parse())
+        RequestBuilder::new(self, method, uri.parse().unwrap())
     }
 
     /// Begin constructing a request with the given HTTP method and Uri.
     pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<NH> {
-        RequestBuilder::new(self, method, Ok(uri))
+        RequestBuilder::new(self, method, uri)
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.

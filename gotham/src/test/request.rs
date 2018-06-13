@@ -1,4 +1,3 @@
-use hyper::error::UriError;
 use hyper::header::Header;
 use hyper::{Body, Method, Request, Uri};
 
@@ -20,11 +19,7 @@ impl<NH> RequestBuilder<NH>
 where
     NH: NewHandler + 'static,
 {
-    pub(super) fn new(
-        client: TestClient<NH>,
-        method: Method,
-        uri: Result<Uri, UriError>,
-    ) -> RequestBuilder<NH> {
+    pub(super) fn new(client: TestClient<NH>, method: Method, uri: Uri) -> RequestBuilder<NH> {
         let request = match uri {
             Ok(uri) => Ok(Request::new(method, uri)),
             Err(e) => Err(e.into()),
