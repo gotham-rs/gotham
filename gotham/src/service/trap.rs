@@ -186,7 +186,7 @@ mod tests {
 
     use std::io;
 
-    use hyper::{Headers, StatusCode};
+    use hyper::{HeaderMap, StatusCode};
 
     use handler::{HandlerFuture, IntoHandlerError};
     use helpers::http::response::create_response;
@@ -202,7 +202,7 @@ mod tests {
         };
 
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
@@ -228,7 +228,7 @@ mod tests {
         };
 
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
@@ -248,7 +248,7 @@ mod tests {
         };
 
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
@@ -266,7 +266,7 @@ mod tests {
         };
 
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
@@ -284,7 +284,7 @@ mod tests {
         };
 
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
@@ -306,7 +306,7 @@ mod tests {
         };
 
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));

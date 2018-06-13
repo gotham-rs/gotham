@@ -1,7 +1,7 @@
 //! Defines the `ContentTypeHeaderRouteMatcher`.
 
+use hyper::header::{ContentType, HeaderMap};
 use hyper::StatusCode;
-use hyper::header::{ContentType, Headers};
 use mime;
 
 use router::non_match::RouteNonMatch;
@@ -19,7 +19,7 @@ use state::{request_id, FromState, State};
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # fn main() {
-/// #   use hyper::header::{Headers, ContentType};
+/// #   use hyper::header::{HeaderMap, ContentType};
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::RouteMatcher;
 /// #   use gotham::router::route::matcher::content_type::ContentTypeHeaderRouteMatcher;
@@ -30,23 +30,23 @@ use state::{request_id, FromState, State};
 /// let matcher = ContentTypeHeaderRouteMatcher::new(supported_media_types);
 ///
 /// // No content type header
-/// state.put(Headers::new());
+/// state.put(HeaderMap::new());
 /// assert!(matcher.is_match(&state).is_err());
 ///
 /// // Content type header of `application/json`
-/// let mut headers = Headers::new();
+/// let mut headers = HeaderMap::new();
 /// headers.set(ContentType::json());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
 ///
 /// // Not a valid Content-Type header
-/// let mut headers = Headers::new();
+/// let mut headers = HeaderMap::new();
 /// headers.set(ContentType::text());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_err());
 ///
 /// // At least one supported content type header
-/// let mut headers = Headers::new();
+/// let mut headers = HeaderMap::new();
 /// headers.set(ContentType::text());
 /// headers.set(ContentType::json());
 /// state.put(headers);
@@ -72,7 +72,7 @@ impl RouteMatcher for ContentTypeHeaderRouteMatcher {
     /// Determines if the `Request` was made using a `Content-Type` header that includes a
     /// supported media type. A missing `Content-Type` header will not match.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
-        let headers = Headers::borrow_from(state);
+        let headers = HeaderMap::borrow_from(state);
         match headers.get::<ContentType>() {
             Some(content_type) => {
                 if self.supported_media_types.contains(&content_type.0) {

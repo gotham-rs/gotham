@@ -4,8 +4,8 @@
 //! iterate to find the first matching `Route` (indicated by `Route::is_match`). The request will
 //! be dispatched to the first `Route` which matches.
 
-pub mod matcher;
 pub mod dispatch;
+pub mod matcher;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
@@ -206,14 +206,14 @@ where
 mod tests {
     use super::*;
 
-    use std::str::FromStr;
     use futures::Async;
-    use hyper::{Headers, Method, StatusCode, Uri};
+    use hyper::{HeaderMap, Method, StatusCode, Uri};
+    use std::str::FromStr;
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use pipeline::set::*;
     use helpers::http::request::path::RequestPathSegments;
     use helpers::http::response::create_response;
+    use pipeline::set::*;
     use router::builder::*;
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
@@ -234,7 +234,7 @@ mod tests {
         let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         match route.dispatch(state).poll() {
@@ -267,7 +267,7 @@ mod tests {
         let mut state = State::new();
         state.put(Method::Get);
         state.put(Uri::from_str("https://example.com/").unwrap());
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         state.put(RequestPathSegments::new("/"));
         set_request_id(&mut state);
 

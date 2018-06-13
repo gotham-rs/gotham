@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use base64;
 use bincode;
 use futures::{future, Future};
-use hyper::header::{Cookie, Headers, SetCookie};
+use hyper::header::{Cookie, HeaderMap, SetCookie};
 use hyper::server::Response;
 use hyper::StatusCode;
 use rand::Rng;
@@ -798,7 +798,7 @@ where
         Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
         Self: Sized,
     {
-        let session_identifier = Headers::borrow_from(&state)
+        let session_identifier = HeaderMap::borrow_from(&state)
             .get::<Cookie>()
             .and_then(|c| c.get(self.cookie_config.name.as_ref()))
             .map(|value| SessionIdentifier {
@@ -1033,7 +1033,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::header::Headers;
+    use hyper::header::HeaderMap;
     use hyper::{Response, StatusCode};
     use rand;
     use std::sync::Mutex;
@@ -1185,7 +1185,7 @@ mod tests {
         };
 
         let mut state = State::new();
-        let mut headers = Headers::new();
+        let mut headers = HeaderMap::new();
         headers.set::<Cookie>(cookies);
         state.put(headers);
 

@@ -1,7 +1,7 @@
 //! Defines the `AcceptHeaderRouterMatcher`.
 
+use hyper::header::{Accept, HeaderMap};
 use hyper::StatusCode;
-use hyper::header::{Accept, Headers};
 use mime;
 
 use router::non_match::RouteNonMatch;
@@ -21,7 +21,7 @@ use state::{request_id, FromState, State};
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # fn main() {
-/// #   use hyper::header::{Headers, Accept};
+/// #   use hyper::header::{HeaderMap, Accept};
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{AcceptHeaderRouteMatcher, RouteMatcher};
 /// #
@@ -31,36 +31,36 @@ use state::{request_id, FromState, State};
 /// let matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///
 /// // No accept header
-/// state.put(Headers::new());
+/// state.put(HeaderMap::new());
 /// assert!(matcher.is_match(&state).is_ok());
 ///
 /// // Accept header of `*/*`
-/// let mut headers = Headers::new();
+/// let mut headers = HeaderMap::new();
 /// headers.set(Accept::star());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
 ///
 /// // Accept header of `application/json`
-/// let mut headers = Headers::new();
+/// let mut headers = HeaderMap::new();
 /// headers.set(Accept::json());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
 ///
 /// // Not a valid Accept header
-/// let mut headers = Headers::new();
+/// let mut headers = HeaderMap::new();
 /// headers.set(Accept::text());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_err());
 ///
 /// // At least one supported accept header
-/// let mut headers = Headers::new();
+/// let mut headers = HeaderMap::new();
 /// headers.set(Accept::text());
 /// headers.set(Accept::json());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
 
 /// // Accept header of `image/*`
-/// let mut headers = Headers::new();
+/// let mut headers = HeaderMap::new();
 /// headers.set(Accept::image());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
@@ -91,7 +91,7 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         // Request method is valid, ensure valid Accept header
-        let headers = Headers::borrow_from(state);
+        let headers = HeaderMap::borrow_from(state);
         match headers.get::<Accept>() {
             Some(accept) => {
                 let acceptable_media_types = accept.iter().map(|qi| &qi.item).collect::<Vec<_>>();

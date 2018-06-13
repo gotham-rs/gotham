@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use hyper::{Body, Headers, HttpVersion, Method, Uri};
+use hyper::{Body, HeaderMap, HttpVersion, Method, Uri};
 
 use helpers::http::request::path::RequestPathSegments;
 use state::request_id::RequestId;
@@ -34,7 +34,7 @@ impl StateData for Body {}
 impl StateData for Method {}
 impl StateData for Uri {}
 impl StateData for HttpVersion {}
-impl StateData for Headers {}
+impl StateData for HeaderMap {}
 
 impl StateData for RequestPathSegments {}
 impl StateData for RequestId {}

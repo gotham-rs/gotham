@@ -1,17 +1,17 @@
 //! Defines the Gotham `Router` and supporting types.
 
 pub mod builder;
-pub mod tree;
-pub mod route;
-pub mod response;
 pub mod non_match;
+pub mod response;
+pub mod route;
+pub mod tree;
 
 use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
-use hyper::{Response, StatusCode};
 use hyper::header::Allow;
+use hyper::{Response, StatusCode};
 
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use helpers::http::request::path::RequestPathSegments;
@@ -117,8 +117,9 @@ impl Handler for Router {
 
 impl Router {
     /// Manually assembles a `Router` instance from a provided `Tree`.
-    #[deprecated(since = "0.2.0",
-                 note = "use the new `gotham::router::builder` API to construct a Router")]
+    #[deprecated(
+        since = "0.2.0", note = "use the new `gotham::router::builder` API to construct a Router"
+    )]
     pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
         Router::internal_new(tree, response_finalizer)
     }
@@ -193,9 +194,9 @@ impl Router {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
+    use hyper::header::{ContentLength, HeaderMap};
     use hyper::{Method, Uri};
-    use hyper::header::{ContentLength, Headers};
+    use std::str::FromStr;
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use handler::HandlerError;
@@ -204,8 +205,8 @@ mod tests {
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Extractors, RouteImpl};
-    use router::tree::TreeBuilder;
     use router::tree::node::{NodeBuilder, SegmentType};
+    use router::tree::TreeBuilder;
     use state::set_request_id;
 
     fn handler(state: State) -> (State, Response) {
@@ -223,7 +224,7 @@ mod tests {
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         r.handle(state).wait()
@@ -242,7 +243,7 @@ mod tests {
         let mut state = State::new();
         state.put(method);
         state.put(uri);
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         match router.handle(state).wait() {

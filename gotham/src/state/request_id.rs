@@ -1,6 +1,6 @@
 //! Defines a unique id per `Request` that should be output with all logging.
 
-use hyper::header::Headers;
+use hyper::header::HeaderMap;
 use uuid::Uuid;
 
 use state::{FromState, State};
@@ -21,7 +21,7 @@ pub(super) struct RequestId {
 /// that a value for `RequestId` is always available.
 pub(crate) fn set_request_id<'a>(state: &'a mut State) -> &'a str {
     if !state.has::<RequestId>() {
-        let request_id = match Headers::borrow_from(state).get_raw("X-Request-ID") {
+        let request_id = match HeaderMap::borrow_from(state).get_raw("X-Request-ID") {
             Some(ex_req_id) => {
                 let id = String::from_utf8(ex_req_id.one().unwrap().to_vec()).unwrap();
                 trace!(
@@ -72,7 +72,7 @@ mod tests {
     fn uses_an_external_request_id() {
         let mut state = State::new();
 
-        let mut headers = Headers::new();
+        let mut headers = HeaderMap::new();
         headers.set_raw("X-Request-ID", "1-2-3-4");
         state.put(headers);
 
@@ -86,7 +86,7 @@ mod tests {
     #[test]
     fn sets_a_unique_request_id() {
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
 
         {
             let r = set_request_id(&mut state);
