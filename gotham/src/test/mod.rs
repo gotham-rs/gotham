@@ -407,26 +407,26 @@ trait BodyReader {
 /// assert_eq!(&body[..], b"This is the body content.");
 /// # }
 /// ```
-pub struct TestResponse {
-    response: Response,
+pub struct TestResponse<B> {
+    response: Response<B>,
     reader: Box<BodyReader>,
 }
 
-impl Deref for TestResponse {
-    type Target = Response;
+impl<B> Deref for TestResponse<B> {
+    type Target = Response<B>;
 
-    fn deref(&self) -> &Response {
+    fn deref(&self) -> &Response<B> {
         &self.response
     }
 }
 
-impl DerefMut for TestResponse {
-    fn deref_mut(&mut self) -> &mut Response {
+impl<B> DerefMut for TestResponse<B> {
+    fn deref_mut(&mut self) -> &mut Response<B> {
         &mut self.response
     }
 }
 
-impl TestResponse {
+impl<B> TestResponse<B> {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
     pub fn read_body(self) -> hyper::Result<Vec<u8>> {
