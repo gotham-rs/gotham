@@ -1,4 +1,4 @@
-use hyper::header::Header;
+use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
 
 use handler::NewHandler;
@@ -30,14 +30,14 @@ where
 
     /// Adds the given header into the underlying `Request`, replacing any existing header of the
     /// same type.
-    pub fn with_header<H>(self, header: H) -> RequestBuilder<NH>
+    pub fn with_header<N>(self, name: N, value: HeaderValue) -> RequestBuilder<NH>
     where
-        H: Header,
+        N: IntoHeaderName,
     {
         let mut request = self.request;
 
         if let Ok(ref mut req) = request {
-            req.headers_mut().set(header);
+            req.headers_mut().insert(name, value);
         }
 
         RequestBuilder { request, ..self }

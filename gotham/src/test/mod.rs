@@ -13,7 +13,7 @@ use std::{io, net};
 use futures::{future, sync::oneshot, Future, Stream};
 use futures_timer::Delay;
 use hyper::client::{self, Client};
-use hyper::header::ContentType;
+use hyper::header::CONTENT_TYPE;
 use hyper::server::conn::Http;
 use hyper::{self, Body, Method, Request, Response, Uri};
 use mime;
@@ -282,7 +282,7 @@ where
     {
         self.build_request(Method::POST, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Begin constructing a POST request using this `TestClient`.
@@ -292,7 +292,7 @@ where
     {
         self.build_request_uri(Method::POST, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Parse the URI and begin constructing a PUT request using this `TestClient`.
@@ -302,7 +302,7 @@ where
     {
         self.build_request(Method::PUT, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
@@ -312,7 +312,7 @@ where
     {
         self.build_request_uri(Method::PUT, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Parse the URI and begin constructing a PATCH request using this `TestClient`.
@@ -322,7 +322,7 @@ where
     {
         self.build_request(Method::PATCH, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
@@ -332,7 +332,7 @@ where
     {
         self.build_request_uri(Method::PATCH, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Parse the URI and begin constructing a DELETE request using this `TestClient`.
