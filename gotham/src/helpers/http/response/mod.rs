@@ -1,6 +1,7 @@
 //! Helpers for HTTP response generation
 
-use hyper::header::{ContentLength, ContentType, Location};
+use hyper::header::{HeaderMap, HeaderName, CONTENT_LENGTH, CONTENT_TYPE, LOCATION,
+                    X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
 use hyper::{Method, Response, StatusCode};
 use mime::Mime;
 use std::borrow::Cow;
@@ -23,7 +24,7 @@ type Body = (Vec<u8>, Mime);
 /// # extern crate mime;
 /// #
 /// # use hyper::{Response, StatusCode};
-/// # use hyper::header::{ContentLength, ContentType};
+/// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::test::TestServer;
@@ -51,15 +52,8 @@ type Body = (Vec<u8>, Mime);
 /// #     assert_eq!(response.status(), StatusCode::OK);
 /// #     assert!(response.headers().get_raw("X-Request-ID").is_some());
 /// #
-/// #     assert_eq!(
-/// #         *response.headers().get::<ContentType>().unwrap(),
-/// #         ContentType(mime::TEXT_PLAIN)
-/// #     );
-/// #
-/// #     assert_eq!(
-/// #         *response.headers().get::<ContentLength>().unwrap(),
-/// #         ContentLength(BODY.len() as u64)
-/// #     );
+/// #     assert_eq!(response.headers()[CONTENT_TYPE], "text/plain");
+/// #     assert_eq!(response.headers()[CONTENT_LENGTH], BODY.len().to_string());
 /// # }
 /// ```
 pub fn create_response<B>(state: &State, status: StatusCode, body: Option<Body>) -> Response<B> {
@@ -168,7 +162,7 @@ pub fn create_temporary_redirect<B, L: Into<Cow<'static, str>>>(
 /// # extern crate mime;
 /// #
 /// # use hyper::{Response, StatusCode};
-/// # use hyper::header::{ContentLength, ContentType};
+/// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::extend_response;
 /// # use gotham::test::TestServer;
@@ -199,15 +193,8 @@ pub fn create_temporary_redirect<B, L: Into<Cow<'static, str>>>(
 /// #     assert_eq!(response.status(), StatusCode::OK);
 /// #     assert!(response.headers().get_raw("X-Request-ID").is_some());
 /// #
-/// #     assert_eq!(
-/// #         *response.headers().get::<ContentType>().unwrap(),
-/// #         ContentType(mime::TEXT_PLAIN)
-/// #     );
-/// #
-/// #     assert_eq!(
-/// #         *response.headers().get::<ContentLength>().unwrap(),
-/// #         ContentLength(BODY.len() as u64)
-/// #     );
+/// #     assert_eq!(response.headers()[CONTENT_TYPE], "text/plain");
+/// #     assert_eq!(response.headers()[CONTENT_LENGTH], BODY.len().to_string());
 /// # }
 /// ```
 pub fn extend_response<B>(
@@ -319,7 +306,7 @@ pub fn extend_response<B>(
 /// # extern crate mime;
 /// #
 /// # use hyper::{Response, StatusCode};
-/// # use hyper::header::{ContentLength, ContentType};
+/// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_headers;
 /// # use gotham::test::TestServer;
@@ -349,16 +336,8 @@ pub fn extend_response<B>(
 ///     .unwrap();
 ///
 /// assert_eq!(response.status(), StatusCode::OK);
-///
-/// assert_eq!(
-///     *response.headers().get::<ContentType>().unwrap(),
-///     ContentType(mime::TEXT_PLAIN)
-/// );
-///
-/// assert_eq!(
-///     *response.headers().get::<ContentLength>().unwrap(),
-///     ContentLength(BODY.len() as u64)
-/// );
+/// assert_eq!(response.headers()[CONTENT_TYPE], "text/plain");
+/// assert_eq!(response.headers()[CONTENT_LENGTH], BODY.len().to_string());
 /// #
 /// # // e.g.:
 /// # // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
@@ -390,21 +369,19 @@ pub fn set_headers<B>(
     length: Option<u64>,
 ) {
     let headers = res.headers_mut();
+    let content_length = length.unwrap_or(0).to_string();
 
-    match length {
-        Some(length) => headers.set(ContentLength(length)),
-        None => headers.set(ContentLength(0)),
+    headers.insert(CONTENT_LENGTH, content_length.parse().unwrap());
+
+    if let Some(mime) = mime {
+        headers.insert(CONTENT_TYPE, mime.to_string().parse().unwrap());
     }
 
-    match mime {
-        Some(mime) => headers.set(ContentType(mime)),
-        None => (),
-    };
+    set_request_id(state, headers);
 
-    headers.set_raw("X-Request-ID", request_id(state));
-    headers.set_raw("X-Frame-Options", "DENY");
-    headers.set_raw("X-XSS-Protection", "1; mode=block");
-    headers.set_raw("X-Content-Type-Options", "nosniff");
+    headers.insert(X_FRAME_OPTIONS, "DENY".parse().unwrap());
+    headers.insert(X_XSS_PROTECTION, "1; mode=block".parse().unwrap());
+    headers.insert(X_CONTENT_TYPE_OPTIONS, "nosniff".parse().unwrap());
 }
 
 /// Sets redirect headers on a given `Response`.
@@ -457,6 +434,12 @@ pub fn set_redirect_headers<B, L: Into<Cow<'static, str>>>(
     location: L,
 ) {
     let headers = res.headers_mut();
-    headers.set_raw("X-Request-ID", request_id(state));
-    headers.set(Location::new(location));
+    set_request_id(state, headers);
+    headers.insert(LOCATION, location.into().to_string().parse().unwrap());
+}
+
+/// Sets the request id inside a given `HeaderMap`.
+fn set_request_id(state: &State, headers: &mut HeaderMap) {
+    let request_id = HeaderName::from_lowercase(b"x-request-id").unwrap();
+    headers.insert(request_id, request_id(state).parse().unwrap());
 }
