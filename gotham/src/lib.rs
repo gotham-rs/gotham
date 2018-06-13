@@ -54,7 +54,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use futures::{Future, Stream};
-use hyper::server::Http;
+use hyper::server::conn::Http;
 use hyper::Chunk;
 use tokio::net::TcpListener;
 

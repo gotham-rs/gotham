@@ -15,7 +15,7 @@ use futures_timer::Delay;
 use hyper::client::{self, Client};
 use hyper::error::UriError;
 use hyper::header::ContentType;
-use hyper::server::{self, Http};
+use hyper::server::conn::Http;
 use hyper::{self, Body, Method, Request, Response, Uri};
 use mime;
 use mio;
@@ -121,7 +121,7 @@ where
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
     pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
         let data = TestServerData {
-            http: server::Http::new(),
+            http: Http::new(),
             timeout,
             runtime: RwLock::new(Runtime::new().unwrap()),
             gotham_service: GothamService::new(Arc::new(new_handler)),
