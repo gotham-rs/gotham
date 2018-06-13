@@ -10,7 +10,7 @@ use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
-use hyper::header::Allow;
+use hyper::header::ALLOW;
 use hyper::{Response, StatusCode};
 
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
@@ -93,7 +93,9 @@ impl Handler for Router {
                             trace!("[{}] responding with error status", request_id(&state));
                             let mut res = create_response(&state, status, None);
                             if let StatusCode::METHOD_NOT_ALLOWED = status {
-                                res.headers_mut().set(Allow(allow));
+                                for allowed in allow {
+                                    res.headers_mut().insert(ALLOW, allowed.parse().unwrap());
+                                }
                             }
                             Box::new(future::ok((state, res)))
                         }
