@@ -62,7 +62,7 @@ type Body = (Vec<u8>, Mime);
 /// #     );
 /// # }
 /// ```
-pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) -> Response {
+pub fn create_response<B>(state: &State, status: StatusCode, body: Option<Body>) -> Response<B> {
     let mut res = Response::new();
     extend_response(state, &mut res, status, body);
     res
@@ -102,10 +102,10 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// #     );
 /// # }
 /// ```
-pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
+pub fn create_permanent_redirect<B, L: Into<Cow<'static, str>>>(
     state: &State,
     location: L,
-) -> Response {
+) -> Response<B> {
     let mut res = Response::new().with_status(StatusCode::PERMANENT_REDIRECT);
     set_redirect_headers(state, &mut res, location);
     res
@@ -145,10 +145,10 @@ pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
 /// #     );
 /// # }
 /// ```
-pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
+pub fn create_temporary_redirect<B, L: Into<Cow<'static, str>>>(
     state: &State,
     location: L,
-) -> Response {
+) -> Response<B> {
     let mut res = Response::new().with_status(StatusCode::TEMPORARY_REDIRECT);
     set_redirect_headers(state, &mut res, location);
     res
@@ -210,7 +210,12 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
 /// #     );
 /// # }
 /// ```
-pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, body: Option<Body>) {
+pub fn extend_response<B>(
+    state: &State,
+    res: &mut Response<B>,
+    status: StatusCode,
+    body: Option<Body>,
+) {
     if usize::max_value() > u64::max_value() as usize {
         error!(
             "[{}] unable to handle content_length of response, outside u64 bounds",
@@ -378,7 +383,12 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # );
 /// # }
 /// ```
-pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length: Option<u64>) {
+pub fn set_headers<B>(
+    state: &State,
+    res: &mut Response<B>,
+    mime: Option<Mime>,
+    length: Option<u64>,
+) {
     let headers = res.headers_mut();
 
     match length {
@@ -441,9 +451,9 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
 /// # assert!(response.headers().get_raw("X-Request-ID").is_some());
 /// # }
 /// ```
-pub fn set_redirect_headers<L: Into<Cow<'static, str>>>(
+pub fn set_redirect_headers<B, L: Into<Cow<'static, str>>>(
     state: &State,
-    res: &mut Response,
+    res: &mut Response<B>,
     location: L,
 ) {
     let headers = res.headers_mut();

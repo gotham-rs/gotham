@@ -20,10 +20,10 @@ use state::{request_id, State};
 ///
 /// Timing information is recorded and logged, except in the case of a panic where the timer is
 /// moved and cannot be recovered.
-pub(super) fn call_handler<'a, T>(
+pub(super) fn call_handler<'a, B, T>(
     t: &T,
     state: AssertUnwindSafe<State>,
-) -> Box<Future<Item = Response, Error = hyper::Error> + Send + 'a>
+) -> Box<Future<Item = Response<B>, Error = hyper::Error> + Send + 'a>
 where
     T: NewHandler + 'a,
 {
@@ -56,11 +56,11 @@ where
     }
 }
 
-fn finalize_success_response(
+fn finalize_success_response<B>(
     timer: Timer,
     state: State,
-    response: Response,
-) -> FutureResult<Response, hyper::Error> {
+    response: Response<B>,
+) -> FutureResult<Response<B>, hyper::Error> {
     let timing = timer.elapsed(&state);
 
     info!(
@@ -74,11 +74,11 @@ fn finalize_success_response(
     future::ok(timing.add_to_response(response))
 }
 
-fn finalize_error_response(
+fn finalize_error_response<B>(
     timer: Timer,
     state: State,
     err: HandlerError,
-) -> FutureResult<Response, hyper::Error> {
+) -> FutureResult<Response<B>, hyper::Error> {
     let timing = timer.elapsed(&state);
 
     {
@@ -99,7 +99,7 @@ fn finalize_error_response(
     future::ok(err.into_response(&state))
 }
 
-fn finalize_panic_response(timer: Timer) -> FutureResult<Response, hyper::Error> {
+fn finalize_panic_response<B>(timer: Timer) -> FutureResult<Response<B>, hyper::Error> {
     let timing = timer.elapsed_no_logging();
 
     error!(
@@ -110,9 +110,9 @@ fn finalize_panic_response(timer: Timer) -> FutureResult<Response, hyper::Error>
     future::ok(Response::new().with_status(StatusCode::INTERNAL_SERVER_ERROR))
 }
 
-fn finalize_catch_unwind_response(
-    result: Result<Result<Response, hyper::Error>, Box<Any + Send>>,
-) -> FutureResult<Response, hyper::Error> {
+fn finalize_catch_unwind_response<B>(
+    result: Result<Result<Response<B>, hyper::Error>, Box<Any + Send>>,
+) -> FutureResult<Response<B>, hyper::Error> {
     let response = result
         .unwrap_or_else(|_| {
             let e = io::Error::new(
