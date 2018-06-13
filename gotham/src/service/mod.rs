@@ -8,8 +8,8 @@ use std::thread;
 
 use futures::Future;
 use hyper;
-use hyper::server::Service;
-use hyper::{Request, Response};
+use hyper::service::Service;
+use hyper::{Body, Request, Response};
 
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
@@ -58,12 +58,12 @@ impl<T> Service for ConnectedGothamService<T>
 where
     T: NewHandler,
 {
-    type Request = Request;
-    type Response = Response;
+    type ReqBody = Body;
+    type ResBody = Body;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error> + Send>;
+    type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send>;
 
-    fn call(&self, req: Self::Request) -> Self::Future {
+    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
         let mut state = State::new();
 
         put_client_addr(&mut state, self.client_addr);
