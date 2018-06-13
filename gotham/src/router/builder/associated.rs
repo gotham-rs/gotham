@@ -3,13 +3,13 @@ use std::panic::RefUnwindSafe;
 
 use hyper::Method;
 
+use extractor::{PathExtractor, QueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
+use router::builder::SingleRouteBuilder;
 use router::route::matcher::{AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher,
                              RouteMatcher};
-use extractor::{PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
-use router::builder::SingleRouteBuilder;
 
 pub type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;
 pub type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;
@@ -297,7 +297,7 @@ where
     /// # fn router() -> Router {
     /// build_simple_router(|route| {
     ///     route.associate("/resource", |assoc| {
-    ///         assoc.request(vec![Method::Get, Method::Head, Method::Post]).to(handler);
+    ///         assoc.request(vec![Method::GET, Method::HEAD, Method::POST]).to(handler);
     ///     });
     /// })
     /// # }
@@ -385,7 +385,7 @@ where
     pub fn head<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Head])
+        self.request(vec![Method::HEAD])
     }
 
     /// Associates a route which matches `GET` or `HEAD` requests to the current path.
@@ -435,7 +435,7 @@ where
     pub fn get_or_head<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Get, Method::Head])
+        self.request(vec![Method::GET, Method::HEAD])
     }
 
     /// Associates a route which matches `GET` requests to the current path.
@@ -478,7 +478,7 @@ where
     pub fn get<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Get])
+        self.request(vec![Method::GET])
     }
 
     /// Associates a route which matches `POST` requests to the current path.
@@ -522,7 +522,7 @@ where
     pub fn post<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Post])
+        self.request(vec![Method::POST])
     }
 
     /// Associates a route which matches `PUT` requests to the current path.
@@ -566,7 +566,7 @@ where
     pub fn put<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Put])
+        self.request(vec![Method::PUT])
     }
 
     /// Associates a route which matches `PATCH` requests to the current path.
@@ -610,7 +610,7 @@ where
     pub fn patch<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Patch])
+        self.request(vec![Method::PATCH])
     }
 
     /// Associates a route which matches `DELETE` requests to the current path.
@@ -653,7 +653,7 @@ where
     pub fn delete<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Delete])
+        self.request(vec![Method::DELETE])
     }
 
     /// Associates a route which matches `OPTIONS` requests to the current path.
@@ -687,7 +687,7 @@ where
     /// # fn main() {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #   let request = Request::new(
-    /// #       Method::Options,
+    /// #       Method::OPTIONS,
     /// #       "https://example.com/resource".parse().unwrap()
     /// #   );
     /// #   let response = test_server.client().perform(request).unwrap();
@@ -697,6 +697,6 @@ where
     pub fn options<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Options])
+        self.request(vec![Method::OPTIONS])
     }
 }

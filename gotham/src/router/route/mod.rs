@@ -227,7 +227,7 @@ mod tests {
         }
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let methods = vec![Method::Get];
+        let methods = vec![Method::GET];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
@@ -258,14 +258,14 @@ mod tests {
         });
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let methods = vec![Method::Get];
+        let methods = vec![Method::GET];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = Box::new(DispatcherImpl::new(secondary_router, (), pipeline_set));
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
 
         let mut state = State::new();
-        state.put(Method::Get);
+        state.put(Method::GET);
         state.put(Uri::from_str("https://example.com/").unwrap());
         state.put(HeaderMap::new());
         state.put(RequestPathSegments::new("/"));

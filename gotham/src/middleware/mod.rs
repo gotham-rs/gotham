@@ -232,7 +232,7 @@ pub mod session;
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
 ///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
-///         if *Method::borrow_from(&state) == Method::Get {
+///         if *Method::borrow_from(&state) == Method::GET {
 ///             chain(state)
 ///         } else {
 ///             let response = create_response(&state, StatusCode::MethodNotAllowed, None);

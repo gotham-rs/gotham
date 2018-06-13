@@ -107,7 +107,7 @@ mod tests {
     fn new_handler_closure() {
         let service = GothamService::new(Arc::new(|| Ok(handler)));
 
-        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let req = Request::new(Method::GET, "http://localhost/".parse().unwrap());
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
@@ -123,7 +123,7 @@ mod tests {
 
         let service = GothamService::new(Arc::new(router));
 
-        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let req = Request::new(Method::GET, "http://localhost/".parse().unwrap());
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);

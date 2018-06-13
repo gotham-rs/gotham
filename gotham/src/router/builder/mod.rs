@@ -501,19 +501,19 @@ mod tests {
             service.call(req).wait().unwrap()
         };
 
-        let response = call(Request::new(Method::Get, "/".parse().unwrap()));
+        let response = call(Request::new(Method::GET, "/".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);
 
-        let response = call(Request::new(Method::Post, "/api/submit".parse().unwrap()));
+        let response = call(Request::new(Method::POST, "/api/submit".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Accepted);
 
-        let response = call(Request::new(Method::Get, "/hello/world".parse().unwrap()));
+        let response = call(Request::new(Method::GET, "/hello/world".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Hello, world!");
 
         let response = call(Request::new(
-            Method::Get,
+            Method::GET,
             "/hello/world/more/path/here/handled/by/glob"
                 .parse()
                 .unwrap(),
@@ -522,12 +522,12 @@ mod tests {
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Globbed");
 
-        let response = call(Request::new(Method::Get, "/delegated/b".parse().unwrap()));
+        let response = call(Request::new(Method::GET, "/delegated/b".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
 
-        let response = call(Request::new(Method::Get, "/goodbye/world".parse().unwrap()));
+        let response = call(Request::new(Method::GET, "/goodbye/world".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(
@@ -535,33 +535,33 @@ mod tests {
             "Goodbye, world!"
         );
 
-        let response = call(Request::new(Method::Get, "/goodbye/9875".parse().unwrap()));
+        let response = call(Request::new(Method::GET, "/goodbye/9875".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::NotFound);
 
         let response = call(Request::new(
-            Method::Get,
+            Method::GET,
             "/literal/:param/*".parse().unwrap(),
         ));
         assert_eq!(response.status(), StatusCode::Created);
 
-        let response = call(Request::new(Method::Get, "/literal/a/b".parse().unwrap()));
+        let response = call(Request::new(Method::GET, "/literal/a/b".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::NotFound);
 
-        let response = call(Request::new(Method::Get, "/add?x=16&y=71".parse().unwrap()));
+        let response = call(Request::new(Method::GET, "/add?x=16&y=71".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "16 + 71 = 87");
 
-        let response = call(Request::new(Method::Post, "/resource".parse().unwrap()));
+        let response = call(Request::new(Method::POST, "/resource".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Created);
 
-        let response = call(Request::new(Method::Patch, "/resource".parse().unwrap()));
+        let response = call(Request::new(Method::PATCH, "/resource".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Accepted);
 
-        let response = call(Request::new(Method::Delete, "/resource".parse().unwrap()));
+        let response = call(Request::new(Method::DELETE, "/resource".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Accepted);
 
-        let response = call(Request::new(Method::Get, "/resource".parse().unwrap()));
+        let response = call(Request::new(Method::GET, "/resource".parse().unwrap()));
         assert_eq!(response.status(), StatusCode::Ok);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&response_bytes[..], b"It's a resource.");

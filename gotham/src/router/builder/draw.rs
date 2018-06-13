@@ -3,13 +3,13 @@ use std::panic::RefUnwindSafe;
 
 use hyper::Method;
 
+use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::route::matcher::{AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher,
-                             RouteMatcher};
-use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
                       SingleRouteBuilder};
+use router::route::matcher::{AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher,
+                             RouteMatcher};
 use router::tree::node::{NodeBuilder, SegmentType};
 use router::tree::regex::ConstrainedSegmentRegex;
 
@@ -85,7 +85,7 @@ where
     /// # }
     /// ```
     fn get_or_head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Get, Method::Head], path)
+        self.request(vec![Method::GET, Method::HEAD], path)
     }
 
     /// Creates a route which matches **only** `GET` requests to the given path (ignoring `HEAD`
@@ -123,7 +123,7 @@ where
     /// # }
     /// ```
     fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Get], path)
+        self.request(vec![Method::GET], path)
     }
 
     /// Creates a route which matches `HEAD` requests to the given path.
@@ -160,7 +160,7 @@ where
     /// # }
     /// ```
     fn head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Head], path)
+        self.request(vec![Method::HEAD], path)
     }
 
     /// Creates a route which matches `POST` requests to the given path.
@@ -198,7 +198,7 @@ where
     /// # }
     /// ```
     fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Post], path)
+        self.request(vec![Method::POST], path)
     }
 
     /// Creates a route which matches `PUT` requests to the given path.
@@ -236,7 +236,7 @@ where
     /// # }
     /// ```
     fn put<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Put], path)
+        self.request(vec![Method::PUT], path)
     }
 
     /// Creates a route which matches `PATCH` requests to the given path.
@@ -274,7 +274,7 @@ where
     /// # }
     /// ```
     fn patch<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Patch], path)
+        self.request(vec![Method::PATCH], path)
     }
 
     /// Creates a route which matches `DELETE` requests to the given path.
@@ -311,7 +311,7 @@ where
     /// # }
     /// ```
     fn delete<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Delete], path)
+        self.request(vec![Method::DELETE], path)
     }
 
     /// Creates a route which matches `OPTIONS` requests to the given path.
@@ -341,7 +341,7 @@ where
     /// # fn main() {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #   let request = Request::new(
-    /// #       Method::Options,
+    /// #       Method::OPTIONS,
     /// #       "https://example.com/request/path".parse().unwrap()
     /// #   );
     /// #   let response = test_server.client().perform(request).unwrap();
@@ -349,7 +349,7 @@ where
     /// # }
     /// ```
     fn options<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Options], path)
+        self.request(vec![Method::OPTIONS], path)
     }
 
     /// Creates a single route which matches any requests to the given `path` with one of the
@@ -365,7 +365,7 @@ where
     /// # extern crate hyper;
     /// #
     /// # use hyper::{Response, StatusCode};
-    /// # use hyper::Method::*;
+    /// # use hyper::Method;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -377,7 +377,7 @@ where
     /// #
     /// # fn router() -> Router {
     /// build_simple_router(|route| {
-    ///     route.request(vec![Get, Head], "/request/path").to(my_handler);
+    ///     route.request(vec![Method::GET, Method::HEAD], "/request/path").to(my_handler);
     /// })
     /// # }
     /// #
@@ -956,14 +956,14 @@ where
 mod tests {
     use std::io;
 
-    use hyper::{Response, StatusCode};
     use futures::future;
+    use hyper::{Response, StatusCode};
 
     use handler::HandlerFuture;
-    use middleware::{Middleware, NewMiddleware};
-    use pipeline::*;
-    use pipeline::single::*;
     use helpers::http::response::create_response;
+    use middleware::{Middleware, NewMiddleware};
+    use pipeline::single::*;
+    use pipeline::*;
     use router::builder::*;
     use state::State;
     use test::TestServer;

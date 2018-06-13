@@ -237,7 +237,7 @@ mod tests {
         let tree = tree_builder.finalize();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
-        let method = Method::Get;
+        let method = Method::GET;
         let uri = Uri::from_str("https://test.gotham.rs").unwrap();
 
         let mut state = State::new();
@@ -261,7 +261,7 @@ mod tests {
         let tree = tree_builder.finalize();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
-        match send_request(router, Method::Get, "https://test.gotham.rs") {
+        match send_request(router, Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::NotFound);
             }
@@ -276,7 +276,7 @@ mod tests {
         let mut tree_builder = TreeBuilder::new();
 
         let route = {
-            let methods = vec![Method::Post];
+            let methods = vec![Method::POST];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
@@ -288,7 +288,7 @@ mod tests {
         let tree = tree_builder.finalize();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
-        match send_request(router, Method::Get, "https://test.gotham.rs") {
+        match send_request(router, Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::MethodNotAllowed);
             }
@@ -303,7 +303,7 @@ mod tests {
         let mut tree_builder = TreeBuilder::new();
 
         let route = {
-            let methods = vec![Method::Get];
+            let methods = vec![Method::GET];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
@@ -315,7 +315,7 @@ mod tests {
         let tree = tree_builder.finalize();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
-        match send_request(router, Method::Get, "https://test.gotham.rs") {
+        match send_request(router, Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::Ok);
             }
@@ -331,7 +331,7 @@ mod tests {
             let mut tree_builder = TreeBuilder::new();
 
             let route = {
-                let methods = vec![Method::Get];
+                let methods = vec![Method::GET];
                 let matcher = MethodOnlyRouteMatcher::new(methods);
                 let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
                 let extractors: Extractors<
@@ -352,7 +352,7 @@ mod tests {
         let mut delegated_node = NodeBuilder::new("var", SegmentType::Dynamic);
 
         let route = {
-            let methods = vec![Method::Get];
+            let methods = vec![Method::GET];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(delegated_router, (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
@@ -367,7 +367,7 @@ mod tests {
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         // Ensure that top level tree has no route
-        match send_request(router.clone(), Method::Get, "https://test.gotham.rs") {
+        match send_request(router.clone(), Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::NotFound);
             }
@@ -375,7 +375,7 @@ mod tests {
         };
 
         // Ensure that top level tree of delegated router has route that responds correctly
-        match send_request(router, Method::Get, "https://test.gotham.rs/api") {
+        match send_request(router, Method::GET, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::Ok);
             }
@@ -397,7 +397,7 @@ mod tests {
         let response_finalizer = response_finalizer_builder.finalize();
         let router = Router::new(tree, response_finalizer);
 
-        match send_request(router, Method::Get, "https://test.gotham.rs/api") {
+        match send_request(router, Method::GET, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
                 assert_eq!(
                     *res.headers().get::<ContentLength>().unwrap(),

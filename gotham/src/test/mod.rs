@@ -266,22 +266,22 @@ where
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
     pub fn head(self, uri: &str) -> RequestBuilder<NH> {
-        self.build_request(Method::Head, uri)
+        self.build_request(Method::HEAD, uri)
     }
 
     /// Begin constructing a HEAD request using this `TestClient`.
     pub fn head_uri(self, uri: Uri) -> RequestBuilder<NH> {
-        self.build_request_uri(Method::Head, uri)
+        self.build_request_uri(Method::HEAD, uri)
     }
 
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
     pub fn get(self, uri: &str) -> RequestBuilder<NH> {
-        self.build_request(Method::Get, uri)
+        self.build_request(Method::GET, uri)
     }
 
     /// Begin constructing a GET request using this `TestClient`.
     pub fn get_uri(self, uri: Uri) -> RequestBuilder<NH> {
-        self.build_request_uri(Method::Get, uri)
+        self.build_request_uri(Method::GET, uri)
     }
 
     /// Parse the URI and begin constructing a POST request using this `TestClient`.
@@ -289,7 +289,7 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request(Method::Post, uri)
+        self.build_request(Method::POST, uri)
             .with_body(body)
             .with_header(ContentType(content_type))
     }
@@ -299,7 +299,7 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request_uri(Method::Post, uri)
+        self.build_request_uri(Method::POST, uri)
             .with_body(body)
             .with_header(ContentType(content_type))
     }
@@ -309,7 +309,7 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request(Method::Put, uri)
+        self.build_request(Method::PUT, uri)
             .with_body(body)
             .with_header(ContentType(content_type))
     }
@@ -319,7 +319,7 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request_uri(Method::Put, uri)
+        self.build_request_uri(Method::PUT, uri)
             .with_body(body)
             .with_header(ContentType(content_type))
     }
@@ -329,7 +329,7 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request(Method::Patch, uri)
+        self.build_request(Method::PATCH, uri)
             .with_body(body)
             .with_header(ContentType(content_type))
     }
@@ -339,19 +339,19 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request_uri(Method::Patch, uri)
+        self.build_request_uri(Method::PATCH, uri)
             .with_body(body)
             .with_header(ContentType(content_type))
     }
 
     /// Parse the URI and begin constructing a DELETE request using this `TestClient`.
     pub fn delete(self, uri: &str) -> RequestBuilder<NH> {
-        self.build_request(Method::Delete, uri)
+        self.build_request(Method::DELETE, uri)
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
     pub fn delete_uri(self, uri: Uri) -> RequestBuilder<NH> {
-        self.build_request_uri(Method::Delete, uri)
+        self.build_request_uri(Method::DELETE, uri)
     }
 
     /// Parse the URI and begin constructing a request with the given HTTP method.

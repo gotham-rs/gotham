@@ -228,7 +228,7 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
             res.set_status(status);
 
             match *Method::borrow_from(state) {
-                Method::Head => (),
+                Method::HEAD => (),
                 _ => res.set_body(body),
             };
         }

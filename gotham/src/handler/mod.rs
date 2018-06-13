@@ -321,7 +321,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let mut tree_builder = TreeBuilder::new();
 /// #   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 /// #   let finalizer = ResponseFinalizerBuilder::new().finalize();
-/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
+/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::GET]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
 /// #   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
