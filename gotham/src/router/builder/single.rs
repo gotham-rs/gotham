@@ -1,13 +1,13 @@
 use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
+use handler::{Handler, NewHandler};
 use pipeline::chain::PipelineHandleChain;
 use router::builder::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor,
                       SingleRouteBuilder};
-use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::matcher::RouteMatcher;
 use router::route::dispatch::DispatcherImpl;
-use handler::{Handler, NewHandler};
+use router::route::matcher::RouteMatcher;
+use router::route::{Delegation, Extractors, RouteImpl};
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
@@ -30,7 +30,7 @@ use handler::{Handler, NewHandler};
 /// #
 /// fn my_handler(state: State) -> (State, Response) {
 ///     // Handler implementation elided.
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
+/// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
 /// }
 /// #
 /// # fn router() -> Router {
@@ -50,7 +50,7 @@ use handler::{Handler, NewHandler};
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub trait DefineSingleRoute {
@@ -75,7 +75,7 @@ pub trait DefineSingleRoute {
     /// #
     /// fn my_handler(state: State) -> (State, Response) {
     ///     // Handler implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     /// #
     /// # fn router() -> Router {
@@ -95,7 +95,7 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn to<H>(self, handler: H)
@@ -138,7 +138,7 @@ pub trait DefineSingleRoute {
     /// impl Handler for MyHandler {
     ///     fn handle(self, state: State) -> Box<HandlerFuture> {
     ///         // Handler implementation elided.
-    /// #       let response = Response::new().with_status(StatusCode::Accepted);
+    /// #       let response = Response::new().with_status(StatusCode::ACCEPTED);
     /// #       Box::new(future::ok((state, response)))
     ///     }
     /// }
@@ -159,7 +159,7 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn to_new_handler<NH>(self, new_handler: NH)
@@ -201,7 +201,7 @@ pub trait DefineSingleRoute {
     ///     // Handler implementation elided.
     /// #   assert_eq!(params.name, "world");
     /// #   }
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     /// #
     /// # fn router() -> Router {
@@ -226,7 +226,7 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/hello/world")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
@@ -269,7 +269,7 @@ pub trait DefineSingleRoute {
     ///
     ///     // Handler implementation elided.
     /// #   assert_eq!(id, 42);
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     /// #
     /// # fn router() -> Router {
@@ -294,7 +294,7 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/request/path?id=42")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn with_query_string_extractor<NQSE>(
@@ -321,7 +321,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -349,14 +349,14 @@ pub trait DefineSingleRoute {
     /// #       .with_header(accept_header)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/request/path")
     /// #       .with_header(text_accept_header)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::NotAcceptable);
+    /// #   assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
     /// # }
     /// ```
     fn add_route_matcher<NRM>(self, matcher: NRM) -> <Self as ExtendRouteMatcher<NRM>>::Output

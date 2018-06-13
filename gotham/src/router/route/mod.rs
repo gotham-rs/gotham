@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn internal_route_tests() {
         fn handler(state: State) -> (State, Response) {
-            let res = create_response(&state, StatusCode::Accepted, None);
+            let res = create_response(&state, StatusCode::ACCEPTED, None);
             (state, res)
         }
 
@@ -239,7 +239,7 @@ mod tests {
 
         match route.dispatch(state).poll() {
             Ok(Async::Ready((_state, response))) => {
-                assert_eq!(response.status(), StatusCode::Accepted)
+                assert_eq!(response.status(), StatusCode::ACCEPTED)
             }
             Ok(Async::NotReady) => panic!("expected future to be completed already"),
             Err((_state, e)) => panic!("error polling future: {}", e),
@@ -249,7 +249,7 @@ mod tests {
     #[test]
     fn external_route_tests() {
         fn handler(state: State) -> (State, Response) {
-            let res = create_response(&state, StatusCode::Accepted, None);
+            let res = create_response(&state, StatusCode::ACCEPTED, None);
             (state, res)
         }
 
@@ -273,7 +273,7 @@ mod tests {
 
         match route.dispatch(state).poll() {
             Ok(Async::Ready((_state, response))) => {
-                assert_eq!(response.status(), StatusCode::Accepted)
+                assert_eq!(response.status(), StatusCode::ACCEPTED)
             }
             Ok(Async::NotReady) => panic!("expected future to be completed already"),
             Err((_state, e)) => panic!("error polling future: {}", e),

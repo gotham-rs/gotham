@@ -45,7 +45,7 @@ pub use self::request::RequestBuilder;
 /// # use hyper::{Response, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response) {
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
+/// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
 /// # }
 /// #
 /// # fn main() {
@@ -54,7 +54,7 @@ pub use self::request::RequestBuilder;
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
 /// let response = test_server.client().get("http://localhost/").perform().unwrap();
-/// assert_eq!(response.status(), StatusCode::Accepted);
+/// assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub struct TestServer<NH = Router>
@@ -399,7 +399,7 @@ trait BodyReader {
 /// # fn my_handler(state: State) -> (State, Response) {
 /// #   let body = "This is the body content.".to_string().into_bytes();;
 /// #   let response = create_response(&state,
-/// #                                  StatusCode::Ok,
+/// #                                  StatusCode::OK,
 /// #                                  Some((body, mime::TEXT_PLAIN)));
 /// #
 /// #   (state, response)
@@ -411,7 +411,7 @@ trait BodyReader {
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
 /// let response = test_server.client().get("http://localhost/").perform().unwrap();
-/// assert_eq!(response.status(), StatusCode::Ok);
+/// assert_eq!(response.status(), StatusCode::OK);
 /// let body = response.read_body().unwrap();
 /// assert_eq!(&body[..], b"This is the body content.");
 /// # }
@@ -501,7 +501,7 @@ mod tests {
             match path.as_str() {
                 "/" => {
                     let response = server::Response::new()
-                        .with_status(StatusCode::Ok)
+                        .with_status(StatusCode::OK)
                         .with_body(self.response.clone());
 
                     Box::new(future::ok((state, response)))
@@ -509,7 +509,7 @@ mod tests {
                 "/timeout" => Box::new(future::empty()),
                 "/myaddr" => {
                     let response = server::Response::new()
-                        .with_status(StatusCode::Ok)
+                        .with_status(StatusCode::OK)
                         .with_body(format!("{}", client_addr(&state).unwrap()));
 
                     Box::new(future::ok((state, response)))
@@ -546,7 +546,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let buf = response.read_utf8_body().unwrap();
         assert_eq!(buf, format!("time: {}", ticks));
     }
@@ -594,7 +594,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let buf = response.read_body().unwrap();
         let received_addr: net::SocketAddr = String::from_utf8(buf).unwrap().parse().unwrap();
         assert_eq!(received_addr, client_addr);
@@ -611,7 +611,7 @@ mod tests {
                         let resp_data = body.to_vec();
                         let res = create_response(
                             &state,
-                            StatusCode::Ok,
+                            StatusCode::OK,
                             Some((resp_data, mime::TEXT_PLAIN)),
                         );
                         future::ok((state, res))
@@ -634,7 +634,7 @@ mod tests {
             .perform()
             .expect("request successful");
 
-        assert_eq!(res.status(), StatusCode::Ok);
+        assert_eq!(res.status(), StatusCode::OK);
 
         {
             let content_type = res.headers().get::<ContentType>().expect("ContentType");

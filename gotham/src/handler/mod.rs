@@ -308,7 +308,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// impl IntoResponse for MyStruct {
 ///     fn into_response(self, _state: &State) -> Response {
 ///         Response::new()
-///             .with_status(StatusCode::Ok)
+///             .with_status(StatusCode::OK)
 ///             .with_body(self.value)
 ///     }
 /// }

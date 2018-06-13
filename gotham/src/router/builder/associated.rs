@@ -85,7 +85,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -116,14 +116,14 @@ where
     /// #       .with_header(accept_header)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/resource/path")
     /// #       .with_header(text_accept_header)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::NotAcceptable);
+    /// #   assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
     /// # }
     /// ```
     pub fn add_route_matcher<'b, NM>(
@@ -164,7 +164,7 @@ where
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
     /// #   assert_eq!(state.borrow::<MyPathExtractor>().id, 42);
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #[derive(Deserialize, StateData, StaticResponseExtender)]
@@ -189,7 +189,7 @@ where
     /// #       .get("https://example.com/resource/42")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn with_path_extractor<'b, NPE>(
@@ -229,7 +229,7 @@ where
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
     /// #   assert_eq!(state.borrow::<MyQueryStringExtractor>().val.as_str(), "test_val");
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #[derive(StateData, Deserialize, StaticResponseExtender)]
@@ -254,7 +254,7 @@ where
     /// #       .get("https://example.com/resource?val=test_val")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn with_query_string_extractor<'b, NQSE>(
@@ -290,7 +290,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -309,19 +309,19 @@ where
     /// #       .get("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .head("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .post("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn request<'b>(
@@ -361,7 +361,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -379,7 +379,7 @@ where
     /// #       .head("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn head<'b>(
@@ -404,7 +404,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -423,13 +423,13 @@ where
     /// #       .get("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .head("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn get_or_head<'b>(
@@ -454,7 +454,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -472,7 +472,7 @@ where
     /// #       .get("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn get<'b>(
@@ -498,7 +498,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -516,7 +516,7 @@ where
     /// #       .post("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn post<'b>(
@@ -542,7 +542,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -560,7 +560,7 @@ where
     /// #       .put("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn put<'b>(
@@ -586,7 +586,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -604,7 +604,7 @@ where
     /// #       .patch("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn patch<'b>(
@@ -629,7 +629,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -647,7 +647,7 @@ where
     /// #       .delete("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn delete<'b>(
@@ -672,7 +672,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -691,7 +691,7 @@ where
     /// #       "https://example.com/resource".parse().unwrap()
     /// #   );
     /// #   let response = test_server.client().perform(request).unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn options<'b>(

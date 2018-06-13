@@ -83,10 +83,10 @@ impl RouteMatcher for ContentTypeHeaderRouteMatcher {
                     "[{}] did not specify a Content-Type with a media type supported by this Route",
                     request_id(&state)
                 );
-                Err(RouteNonMatch::new(StatusCode::UnsupportedMediaType))
+                Err(RouteNonMatch::new(StatusCode::UNSUPPORTED_MEDIA_TYPE))
             }
             // The client has not specified a `Content-Type` header.
-            None => Err(RouteNonMatch::new(StatusCode::UnsupportedMediaType)),
+            None => Err(RouteNonMatch::new(StatusCode::UNSUPPORTED_MEDIA_TYPE)),
         }
     }
 }

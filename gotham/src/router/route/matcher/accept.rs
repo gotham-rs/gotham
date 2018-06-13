@@ -105,7 +105,7 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
                     "[{}] did not provide an Accept with media types supported by this Route",
                     request_id(&state)
                 );
-                Err(RouteNonMatch::new(StatusCode::NotAcceptable))
+                Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
             }
             // The client has not specified an `Accept` header, as we can now respond with any type
             // this is valid.

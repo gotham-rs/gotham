@@ -106,7 +106,7 @@ impl RouteMatcher for MethodOnlyRouteMatcher {
                 request_id(&state),
                 method
             );
-            Err(RouteNonMatch::new(StatusCode::MethodNotAllowed)
+            Err(RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED)
                 .with_allow_list(self.methods.as_slice()))
         }
     }

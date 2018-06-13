@@ -218,7 +218,7 @@ impl SessionCookieConfig {
 ///     };
 ///
 ///     let response = create_response(&state,
-///                                    StatusCode::Ok,
+///                                    StatusCode::OK,
 ///                                    Some((body, mime::TEXT_PLAIN)));
 ///
 ///     (state, response)
@@ -943,7 +943,7 @@ where
                 e
             );
 
-            let response = create_response(&state, StatusCode::InternalServerError, None);
+            let response = create_response(&state, StatusCode::INTERNAL_SERVER_ERROR, None);
             return future::ok((state, response));
         }
     };
@@ -966,7 +966,7 @@ where
             future::ok((state, response))
         }
         Err(_) => {
-            let response = create_response(&state, StatusCode::InternalServerError, None);
+            let response = create_response(&state, StatusCode::INTERNAL_SERVER_ERROR, None);
             return future::ok((state, response));
         }
     }
@@ -1180,7 +1180,7 @@ mod tests {
 
             Box::new(future::ok((
                 state,
-                Response::new().with_status(StatusCode::Accepted),
+                Response::new().with_status(StatusCode::ACCEPTED),
             ))) as Box<HandlerFuture>
         };
 

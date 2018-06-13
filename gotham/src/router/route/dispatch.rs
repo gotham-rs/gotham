@@ -91,7 +91,7 @@ mod tests {
         (
             state,
             Response::new()
-                .with_status(StatusCode::Ok)
+                .with_status(StatusCode::OK)
                 .with_body(format!("{}", number)),
         )
     }

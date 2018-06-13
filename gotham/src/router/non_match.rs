@@ -24,10 +24,10 @@ use hyper::{Method, StatusCode};
 /// impl RouteMatcher for MyRouteMatcher {
 ///     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
 ///         match state.borrow::<Method>() {
-///             &Method::Get => Ok(()),
+///             &Method::GET => Ok(()),
 ///             _ => Err(
-///                 RouteNonMatch::new(StatusCode::StatusCode::METHOD_NOT_ALLOWED)
-///                     .with_allow_list(&[Method::Get]),
+///                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED)
+///                     .with_allow_list(&[Method::GET]),
 ///             ),
 ///         }
 ///     }
@@ -35,7 +35,7 @@ use hyper::{Method, StatusCode};
 /// #
 /// # fn main() {
 /// #     State::with_new(|state| {
-/// #         state.put(Method::Post);
+/// #         state.put(Method::POST);
 /// #         assert!(MyRouteMatcher.is_match(&state).is_err());
 /// #     });
 /// # }
@@ -287,7 +287,15 @@ mod tests {
 
     #[test]
     fn intersection_tests() {
-        let all = [Delete, Get, Head, Options, Patch, Post, Put];
+        let all = [
+            Method::DELETE,
+            Method::GET,
+            Method::HEAD,
+            Method::OPTIONS,
+            Method::PATCH,
+            Method::POST,
+            Method::PUT,
+        ];
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
             .intersection(RouteNonMatch::new(StatusCode::NOT_FOUND))
@@ -297,26 +305,37 @@ mod tests {
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
             .intersection(
-                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Get]),
+                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
             )
             .deconstruct();
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(&allow_list[..], &[Get]);
+        assert_eq!(&allow_list[..], &[Method::GET]);
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
-            .with_allow_list(&[Get, Patch, Post])
+            .with_allow_list(&[Method::GET, Method::PATCH, Method::POST])
             .intersection(
-                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED)
-                    .with_allow_list(&[Get, Post, Options]),
+                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[
+                    Method::GET,
+                    Method::POST,
+                    Method::OPTIONS,
+                ]),
             )
             .deconstruct();
         assert_eq!(status, StatusCode::NOT_ACCEPTABLE);
-        assert_eq!(&allow_list[..], &[Get, Post]);
+        assert_eq!(&allow_list[..], &[Method::GET, Method::POST]);
     }
 
     #[test]
     fn union_tests() {
-        let all = [Delete, Get, Head, Options, Patch, Post, Put];
+        let all = [
+            Method::DELETE,
+            Method::GET,
+            Method::HEAD,
+            Method::OPTIONS,
+            Method::PATCH,
+            Method::POST,
+            Method::PUT,
+        ];
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
             .union(RouteNonMatch::new(StatusCode::NOT_FOUND))
@@ -325,35 +344,43 @@ mod tests {
         assert_eq!(&allow_list[..], &all);
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
-            .union(RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Get]))
+            .union(
+                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
+            )
             .deconstruct();
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(&allow_list[..], &all);
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
-            .with_allow_list(&[Get, Patch, Post])
+            .with_allow_list(&[Method::GET, Method::PATCH, Method::POST])
             .union(
-                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED)
-                    .with_allow_list(&[Get, Post, Options]),
+                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[
+                    Method::GET,
+                    Method::POST,
+                    Method::OPTIONS,
+                ]),
             )
             .deconstruct();
         assert_eq!(status, StatusCode::NOT_ACCEPTABLE);
-        assert_eq!(&allow_list[..], &[Get, Options, Patch, Post]);
+        assert_eq!(
+            &allow_list[..],
+            &[Method::GET, Method::OPTIONS, Method::PATCH, Method::POST]
+        );
     }
 
     #[test]
     fn deconstruct_tests() {
         let (_, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
             .with_allow_list(&[
-                Delete,
-                Get,
-                Head,
-                Options,
-                Patch,
-                Post,
-                Put,
+                Method::DELETE,
+                Method::GET,
+                Method::HEAD,
+                Method::OPTIONS,
+                Method::PATCH,
+                Method::POST,
+                Method::PUT,
                 Method::CONNECT,
-                Trace,
+                Method::TRACE,
                 Extension("PROPFIND".to_owned()),
                 Extension("PROPSET".to_owned()),
             ])
@@ -363,16 +390,16 @@ mod tests {
             &allow_list[..],
             &[
                 Method::CONNECT,
-                Delete,
-                Get,
-                Head,
-                Options,
-                Patch,
-                Post,
+                Method::DELETE,
+                Method::GET,
+                Method::HEAD,
+                Method::OPTIONS,
+                Method::PATCH,
+                Method::POST,
                 Extension("PROPFIND".to_owned()),
                 Extension("PROPSET".to_owned()),
-                Put,
-                Trace,
+                Method::PUT,
+                Method::TRACE,
             ]
         );
     }

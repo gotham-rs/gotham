@@ -101,7 +101,7 @@ mod tests {
     use super::*;
 
     fn handler(state: State) -> (State, Response) {
-        let res = create_response(&state, StatusCode::Ok, None);
+        let res = create_response(&state, StatusCode::OK, None);
         (state, res)
     }
 

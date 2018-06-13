@@ -63,7 +63,7 @@ impl Node {
     /// Where no `Route` instances will accept the `Request` the resulting Error will be the
     /// union of the `RouteNonMatch` values returned from each `Route`.
     ///
-    /// In the situation where all these avenues are exhausted an InternalServerError will be
+    /// In the situation where all these avenues are exhausted an INTERNAL_SERVER_ERROR will be
     /// provided.
     pub(crate) fn select_route<'a>(
         &'a self,
@@ -98,7 +98,7 @@ impl Node {
                     "[{}] invalid state, no routes. sending internal server error",
                     request_id(state)
                 );
-                Err(RouteNonMatch::new(StatusCode::InternalServerError))
+                Err(RouteNonMatch::new(StatusCode::INTERNAL_SERVER_ERROR))
             }
         }
     }
@@ -626,7 +626,7 @@ mod tests {
             Some((_, node, _, _)) => match node.select_route(&state) {
                 Err(e) => {
                     let (status, mut allow_list) = e.deconstruct();
-                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
                     allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
                     assert_eq!(allow_list, vec![Method::PATCH, Method::POST]);
                 }
@@ -640,7 +640,7 @@ mod tests {
             Some((_, node, _, _)) => match node.select_route(&state) {
                 Err(e) => {
                     let (status, mut allow_list) = e.deconstruct();
-                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
                     allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
                     assert_eq!(allow_list, vec![Method::GET]);
                 }

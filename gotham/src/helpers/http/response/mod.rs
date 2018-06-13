@@ -33,7 +33,7 @@ type Body = (Vec<u8>, Mime);
 /// fn handler(state: State) -> (State, Response) {
 ///     let response = create_response(
 ///         &state,
-///         StatusCode::Ok,
+///         StatusCode::OK,
 ///         Some((BODY.to_vec(), mime::TEXT_PLAIN)),
 ///     );
 ///
@@ -48,7 +48,7 @@ type Body = (Vec<u8>, Mime);
 /// #         .perform()
 /// #         .unwrap();
 /// #
-/// #     assert_eq!(response.status(), StatusCode::Ok);
+/// #     assert_eq!(response.status(), StatusCode::OK);
 /// #     assert!(response.headers().get_raw("X-Request-ID").is_some());
 /// #
 /// #     assert_eq!(
@@ -95,7 +95,7 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// #         .perform()
 /// #         .unwrap();
 /// #
-/// #     assert_eq!(response.status(), StatusCode::PermanentRedirect);
+/// #     assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
 /// #     assert_eq!(
 /// #         response.headers().get::<Location>(),
 /// #         Some(&Location::new("/over-there"))
@@ -106,7 +106,7 @@ pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
     state: &State,
     location: L,
 ) -> Response {
-    let mut res = Response::new().with_status(StatusCode::PermanentRedirect);
+    let mut res = Response::new().with_status(StatusCode::PERMANENT_REDIRECT);
     set_redirect_headers(state, &mut res, location);
     res
 }
@@ -138,7 +138,7 @@ pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
 /// #         .perform()
 /// #         .unwrap();
 /// #
-/// #     assert_eq!(response.status(), StatusCode::TemporaryRedirect);
+/// #     assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
 /// #     assert_eq!(
 /// #         response.headers().get::<Location>(),
 /// #         Some(&Location::new("/quick-detour"))
@@ -149,7 +149,7 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
     state: &State,
     location: L,
 ) -> Response {
-    let mut res = Response::new().with_status(StatusCode::TemporaryRedirect);
+    let mut res = Response::new().with_status(StatusCode::TEMPORARY_REDIRECT);
     set_redirect_headers(state, &mut res, location);
     res
 }
@@ -181,7 +181,7 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
 ///     extend_response(
 ///         &state,
 ///         &mut response,
-///         StatusCode::Ok,
+///         StatusCode::OK,
 ///         Some((BODY.to_vec(), mime::TEXT_PLAIN)),
 ///     );
 ///
@@ -196,7 +196,7 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
 /// #         .perform()
 /// #         .unwrap();
 /// #
-/// #     assert_eq!(response.status(), StatusCode::Ok);
+/// #     assert_eq!(response.status(), StatusCode::OK);
 /// #     assert!(response.headers().get_raw("X-Request-ID").is_some());
 /// #
 /// #     assert_eq!(
@@ -258,7 +258,7 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # use gotham::test::TestServer;
 /// #
 /// fn handler(state: State) -> (State, Response) {
-///     let mut response = Response::new().with_status(StatusCode::Accepted);
+///     let mut response = Response::new().with_status(StatusCode::ACCEPTED);
 ///
 ///     set_headers(
 ///         &state,
@@ -279,7 +279,7 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 ///     .perform()
 ///     .unwrap();
 ///
-/// assert_eq!(response.status(), StatusCode::Accepted);
+/// assert_eq!(response.status(), StatusCode::ACCEPTED);
 ///
 /// // e.g.:
 /// // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
@@ -322,7 +322,7 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// static BODY: &'static [u8] = b"Hello, world!";
 ///
 /// fn handler(state: State) -> (State, Response) {
-///     let mut response = Response::new().with_status(StatusCode::Ok).with_body(BODY.to_vec());
+///     let mut response = Response::new().with_status(StatusCode::OK).with_body(BODY.to_vec());
 ///
 ///     set_headers(
 ///         &state,
@@ -343,7 +343,7 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 ///     .perform()
 ///     .unwrap();
 ///
-/// assert_eq!(response.status(), StatusCode::Ok);
+/// assert_eq!(response.status(), StatusCode::OK);
 ///
 /// assert_eq!(
 ///     *response.headers().get::<ContentType>().unwrap(),
@@ -412,7 +412,7 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
 /// # use gotham::helpers::http::response::set_redirect_headers;
 /// # use gotham::test::TestServer;
 /// fn handler(state: State) -> (State, Response) {
-///     let mut response = Response::new().with_status(StatusCode::PermanentRedirect);
+///     let mut response = Response::new().with_status(StatusCode::PERMANENT_REDIRECT);
 ///
 ///     set_redirect_headers(
 ///         &state,
@@ -432,7 +432,7 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
 ///     .perform()
 ///     .unwrap();
 ///
-/// assert_eq!(response.status(), StatusCode::PermanentRedirect);
+/// assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
 ///
 /// assert_eq!(
 ///     *response.headers().get::<Location>().unwrap(),

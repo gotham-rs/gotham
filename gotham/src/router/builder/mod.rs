@@ -50,7 +50,7 @@ pub use self::single::DefineSingleRoute;
 /// #
 /// # fn my_handler(state: State) -> (State, Response) {
 /// #   assert!(state.has::<SessionData<Session>>());
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
+/// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
 /// # }
 /// #
 /// fn router() -> Router {
@@ -71,7 +71,7 @@ pub use self::single::DefineSingleRoute;
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub fn build_router<C, P, F>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F) -> Router
@@ -113,7 +113,7 @@ where
 /// # use gotham::test::TestServer;
 /// #
 /// # fn my_handler(state: State) -> (State, Response) {
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
+/// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
 /// # }
 /// #
 /// fn router() -> Router {
@@ -128,7 +128,7 @@ where
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub fn build_simple_router<F>(f: F) -> Router
@@ -174,7 +174,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::InternalServerError))
+    /// #   (state, Response::new().with_status(StatusCode::INTERNAL_SERVER_ERROR))
     /// # }
     /// #
     /// struct MyExtender;
@@ -196,7 +196,7 @@ where
     ///
     /// fn router() -> Router {
     ///     build_simple_router(|route| {
-    ///         route.add_response_extender(StatusCode::InternalServerError, MyExtender);
+    ///         route.add_response_extender(StatusCode::INTERNAL_SERVER_ERROR, MyExtender);
     /// #
     /// #       route.get("/").to(my_handler);
     ///     })
@@ -208,7 +208,7 @@ where
     /// #       .get("https://example.com/")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::InternalServerError);
+    /// #   assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     /// #
     /// #   {
     /// #       let warning = response.headers().get::<Warning>().unwrap();
@@ -358,31 +358,31 @@ mod tests {
     mod welcome {
         use super::*;
         pub fn index(state: State) -> (State, Response) {
-            (state, Response::new().with_status(StatusCode::Ok))
+            (state, Response::new().with_status(StatusCode::OK))
         }
 
         pub fn literal(state: State) -> (State, Response) {
-            (state, Response::new().with_status(StatusCode::Created))
+            (state, Response::new().with_status(StatusCode::CREATED))
         }
 
         pub fn hello(mut state: State) -> (State, Response) {
             let params = state.take::<SalutationParams>();
             let response = Response::new()
-                .with_status(StatusCode::Ok)
+                .with_status(StatusCode::OK)
                 .with_body(format!("Hello, {}!", params.name));
             (state, response)
         }
 
         pub fn globbed(state: State) -> (State, Response) {
             let response = Response::new()
-                .with_status(StatusCode::Ok)
+                .with_status(StatusCode::OK)
                 .with_body("Globbed");
             (state, response)
         }
 
         pub fn delegated(state: State) -> (State, Response) {
             let response = Response::new()
-                .with_status(StatusCode::Ok)
+                .with_status(StatusCode::OK)
                 .with_body("Delegated");
             (state, response)
         }
@@ -390,7 +390,7 @@ mod tests {
         pub fn goodbye(mut state: State) -> (State, Response) {
             let params = state.take::<SalutationParams>();
             let response = Response::new()
-                .with_status(StatusCode::Ok)
+                .with_status(StatusCode::OK)
                 .with_body(format!("Goodbye, {}!", params.name));
             (state, response)
         }
@@ -398,7 +398,7 @@ mod tests {
         pub fn add(mut state: State) -> (State, Response) {
             let params = state.take::<AddParams>();
             let response = Response::new()
-                .with_status(StatusCode::Ok)
+                .with_status(StatusCode::OK)
                 .with_body(format!(
                     "{} + {} = {}",
                     params.x,
@@ -412,24 +412,24 @@ mod tests {
     mod resource {
         use super::*;
         pub fn create(state: State) -> (State, Response) {
-            let response = Response::new().with_status(StatusCode::Created);
+            let response = Response::new().with_status(StatusCode::CREATED);
             (state, response)
         }
 
         pub fn destroy(state: State) -> (State, Response) {
-            let response = Response::new().with_status(StatusCode::Accepted);
+            let response = Response::new().with_status(StatusCode::ACCEPTED);
             (state, response)
         }
 
         pub fn show(state: State) -> (State, Response) {
             let response = Response::new()
-                .with_status(StatusCode::Ok)
+                .with_status(StatusCode::OK)
                 .with_body("It's a resource.");
             (state, response)
         }
 
         pub fn update(state: State) -> (State, Response) {
-            let response = Response::new().with_status(StatusCode::Accepted);
+            let response = Response::new().with_status(StatusCode::ACCEPTED);
             (state, response)
         }
     }
@@ -437,7 +437,7 @@ mod tests {
     mod api {
         use super::*;
         pub fn submit(state: State) -> (State, Response) {
-            (state, Response::new().with_status(StatusCode::Accepted))
+            (state, Response::new().with_status(StatusCode::ACCEPTED))
         }
     }
 
@@ -502,13 +502,13 @@ mod tests {
         };
 
         let response = call(Request::new(Method::GET, "/".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let response = call(Request::new(Method::POST, "/api/submit".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
 
         let response = call(Request::new(Method::GET, "/hello/world".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Hello, world!");
 
@@ -518,17 +518,17 @@ mod tests {
                 .parse()
                 .unwrap(),
         ));
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Globbed");
 
         let response = call(Request::new(Method::GET, "/delegated/b".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
 
         let response = call(Request::new(Method::GET, "/goodbye/world".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(
             &String::from_utf8(response_bytes).unwrap(),
@@ -536,33 +536,33 @@ mod tests {
         );
 
         let response = call(Request::new(Method::GET, "/goodbye/9875".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
         let response = call(Request::new(
             Method::GET,
             "/literal/:param/*".parse().unwrap(),
         ));
-        assert_eq!(response.status(), StatusCode::Created);
+        assert_eq!(response.status(), StatusCode::CREATED);
 
         let response = call(Request::new(Method::GET, "/literal/a/b".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
         let response = call(Request::new(Method::GET, "/add?x=16&y=71".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "16 + 71 = 87");
 
         let response = call(Request::new(Method::POST, "/resource".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Created);
+        assert_eq!(response.status(), StatusCode::CREATED);
 
         let response = call(Request::new(Method::PATCH, "/resource".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
 
         let response = call(Request::new(Method::DELETE, "/resource".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
 
         let response = call(Request::new(Method::GET, "/resource".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&response_bytes[..], b"It's a resource.");
     }

@@ -59,7 +59,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -75,13 +75,13 @@ where
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .head("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn get_or_head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
@@ -104,7 +104,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -119,7 +119,7 @@ where
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
@@ -141,7 +141,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -156,7 +156,7 @@ where
     /// #       .head("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
@@ -179,7 +179,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -194,7 +194,7 @@ where
     /// #       .post("https://example.com/request/path", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
@@ -217,7 +217,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -232,7 +232,7 @@ where
     /// #       .put("https://example.com/request/path", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn put<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
@@ -255,7 +255,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -270,7 +270,7 @@ where
     /// #       .patch("https://example.com/request/path", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn patch<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
@@ -292,7 +292,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -307,7 +307,7 @@ where
     /// #       .delete("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn delete<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
@@ -329,7 +329,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -345,7 +345,7 @@ where
     /// #       "https://example.com/request/path".parse().unwrap()
     /// #   );
     /// #   let response = test_server.client().perform(request).unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn options<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
@@ -372,7 +372,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -388,13 +388,13 @@ where
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .head("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     ///
@@ -412,7 +412,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -439,14 +439,14 @@ where
     /// #       .with_header(accept_header)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/request/path")
     /// #       .with_header(text_accept_header)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::NotAcceptable);
+    /// #   assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
     /// #
     /// #   // No Accept type being provided is valid for the AcceptHeaderRouterMatcher
     /// #   // Proves the method is not considered
@@ -454,7 +454,7 @@ where
     /// #       .delete("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn request<'b, IRM, M>(
@@ -496,7 +496,7 @@ where
     /// # mod api {
     /// #   use super::*;
     /// #   pub fn list(state: State) -> (State, Response) {
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// #   }
     /// # }
     /// #
@@ -515,7 +515,7 @@ where
     /// #       .get("https://example.com/api/list")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn scope<F>(&mut self, path: &str, f: F)
@@ -564,7 +564,7 @@ where
     /// #   pub fn list(state: State) -> (State, Response) {
     /// #       assert!(state.has::<SessionData<Session>>());
     /// #       assert!(!state.has::<SessionData<AdminSession>>());
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// #   }
     /// # }
     /// #
@@ -573,14 +573,14 @@ where
     /// #   pub fn handler(state: State) -> (State, Response) {
     /// #       assert!(state.has::<SessionData<Session>>());
     /// #       assert!(state.has::<SessionData<AdminSession>>());
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// #   }
     /// # }
     /// #
     /// # fn handler(state: State) -> (State, Response) {
     /// #   assert!(!state.has::<SessionData<Session>>());
     /// #   assert!(!state.has::<SessionData<AdminSession>>());
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -626,13 +626,13 @@ where
     /// #       .get("https://example.com/")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/resource/list")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn with_pipeline_chain<F, NC>(&mut self, pipeline_chain: NC, f: F)
@@ -668,7 +668,7 @@ where
     /// fn admin_router() -> Router {
     ///     // Implementation elided
     /// #   fn handler(state: State) -> (State, Response) {
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// #   }
     /// #
     /// #   build_simple_router(|route| {
@@ -688,7 +688,7 @@ where
     /// #       .get("https://example.com/admin")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn delegate<'b>(&'b mut self, path: &str) -> DelegateRouteBuilder<'b, C, P> {
@@ -730,7 +730,7 @@ where
     ///     // Implementation elided
     /// #   fn handler(state: State) -> (State, Response) {
     /// #       assert!(!state.has::<SessionData<Session>>());
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// #   }
     /// #
     /// #   build_simple_router(|route| {
@@ -739,7 +739,7 @@ where
     /// }
     /// # fn handler(state: State) -> (State, Response) {
     /// #   assert!(state.has::<SessionData<Session>>());
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     ///
     /// # fn router() -> Router {
@@ -764,13 +764,13 @@ where
     /// #       .get("https://example.com/")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/api")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn delegate_without_pipelines<'b>(&'b mut self, path: &str) -> DelegateRouteBuilder<'b, (), P> {
@@ -804,17 +804,17 @@ where
     /// #   use super::*;
     ///     pub fn show(state: State) -> (State, Response) {
     ///         // Implementation elided.
-    /// #       (state, Response::new().with_status(StatusCode::NoContent))
+    /// #       (state, Response::new().with_status(StatusCode::NO_CONTENT))
     ///     }
     ///
     ///     pub fn update(state: State) -> (State, Response) {
     ///         // Implementation elided.
-    /// #       (state, Response::new().with_status(StatusCode::Created))
+    /// #       (state, Response::new().with_status(StatusCode::CREATED))
     ///     }
     ///
     ///     pub fn delete(state: State) -> (State, Response) {
     ///         // Implementation elided.
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
     ///     }
     /// }
     ///
@@ -835,19 +835,19 @@ where
     /// #       .get("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::NoContent);
+    /// #   assert_eq!(response.status(), StatusCode::NO_CONTENT);
     /// #
     /// #   let response = test_server.client()
     /// #       .patch("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Created);
+    /// #   assert_eq!(response.status(), StatusCode::CREATED);
     /// #
     /// #   let response = test_server.client()
     /// #       .delete("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn associate<'b, F>(&'b mut self, path: &str, f: F)
@@ -986,7 +986,7 @@ mod tests {
         {
             let f = future::ok((
                 state,
-                Response::new().with_status(StatusCode::InternalServerError),
+                Response::new().with_status(StatusCode::INTERNAL_SERVER_ERROR),
             ));
 
             Box::new(f)
@@ -994,7 +994,7 @@ mod tests {
     }
 
     fn test_handler(state: State) -> (State, Response) {
-        let response = create_response(&state, StatusCode::Accepted, None);
+        let response = create_response(&state, StatusCode::ACCEPTED, None);
         (state, response)
     }
 
@@ -1016,7 +1016,7 @@ mod tests {
             .get("http://localhost/test/")
             .perform()
             .unwrap();
-        assert_eq!(response.status(), StatusCode::InternalServerError);
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[test]
@@ -1039,6 +1039,6 @@ mod tests {
             .get("http://localhost/test/")
             .perform()
             .unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 }

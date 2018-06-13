@@ -1,7 +1,7 @@
 //! Defines storage for the remote address of the client
 
-use std::net::SocketAddr;
 use state::{FromState, State, StateData};
+use std::net::SocketAddr;
 
 struct ClientAddr {
     addr: SocketAddr,
@@ -34,7 +34,7 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 ///     let body = format!("{}", addr);
 ///     let response = create_response(
 ///         &state,
-///         StatusCode::Ok,
+///         StatusCode::OK,
 ///         Some((body.into_bytes(), mime::TEXT_PLAIN)),
 ///     );
 ///
@@ -49,7 +49,7 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// #       .perform()
 /// #       .unwrap();
 /// #
-/// #   assert_eq!(response.status(), StatusCode::Ok);
+/// #   assert_eq!(response.status(), StatusCode::OK);
 /// #
 /// #   let buf = response.read_body().unwrap();
 /// #   assert_eq!(buf.as_slice(), b"127.0.0.1:9816");

@@ -92,7 +92,7 @@ impl Handler for Router {
 
                             trace!("[{}] responding with error status", request_id(&state));
                             let mut res = create_response(&state, status, None);
-                            if let StatusCode::MethodNotAllowed = status {
+                            if let StatusCode::METHOD_NOT_ALLOWED = status {
                                 res.headers_mut().set(Allow(allow));
                             }
                             Box::new(future::ok((state, res)))
@@ -100,13 +100,13 @@ impl Handler for Router {
                     }
                 } else {
                     trace!("[{}] did not find routable node", request_id(&state));
-                    let res = create_response(&state, StatusCode::NotFound, None);
+                    let res = create_response(&state, StatusCode::NOT_FOUND, None);
                     Box::new(future::ok((state, res)))
                 }
             }
             None => {
                 trace!("[{}] invalid request path segments", request_id(&state));
-                let res = create_response(&state, StatusCode::InternalServerError, None);
+                let res = create_response(&state, StatusCode::INTERNAL_SERVER_ERROR, None);
                 Box::new(future::ok((state, res)))
             }
         };
@@ -248,7 +248,7 @@ mod tests {
 
         match router.handle(state).wait() {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::InternalServerError);
+                assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -263,7 +263,7 @@ mod tests {
 
         match send_request(router, Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::NotFound);
+                assert_eq!(res.status(), StatusCode::NOT_FOUND);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -290,7 +290,7 @@ mod tests {
 
         match send_request(router, Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::MethodNotAllowed);
+                assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -317,7 +317,7 @@ mod tests {
 
         match send_request(router, Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::Ok);
+                assert_eq!(res.status(), StatusCode::OK);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -369,7 +369,7 @@ mod tests {
         // Ensure that top level tree has no route
         match send_request(router.clone(), Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::NotFound);
+                assert_eq!(res.status(), StatusCode::NOT_FOUND);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -377,7 +377,7 @@ mod tests {
         // Ensure that top level tree of delegated router has route that responds correctly
         match send_request(router, Method::GET, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::Ok);
+                assert_eq!(res.status(), StatusCode::OK);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -393,7 +393,7 @@ mod tests {
         let not_found_extender = |_s: &mut State, r: &mut Response| {
             r.headers_mut().set(ContentLength(3u64));
         };
-        response_finalizer_builder.add(StatusCode::NotFound, Box::new(not_found_extender));
+        response_finalizer_builder.add(StatusCode::NOT_FOUND, Box::new(not_found_extender));
         let response_finalizer = response_finalizer_builder.finalize();
         let router = Router::new(tree, response_finalizer);
 

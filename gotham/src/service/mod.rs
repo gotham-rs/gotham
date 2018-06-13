@@ -99,7 +99,7 @@ mod tests {
     use state::State;
 
     fn handler(state: State) -> (State, Response) {
-        let res = create_response(&state, StatusCode::Accepted, None);
+        let res = create_response(&state, StatusCode::ACCEPTED, None);
         (state, res)
     }
 
@@ -112,7 +112,7 @@ mod tests {
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
         let response = f.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
     #[test]
@@ -128,6 +128,6 @@ mod tests {
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
         let response = f.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 }

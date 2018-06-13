@@ -107,7 +107,7 @@ fn finalize_panic_response(timer: Timer) -> FutureResult<Response, hyper::Error>
         timing
     );
 
-    future::ok(Response::new().with_status(StatusCode::InternalServerError))
+    future::ok(Response::new().with_status(StatusCode::INTERNAL_SERVER_ERROR))
 }
 
 fn finalize_catch_unwind_response(
@@ -124,7 +124,7 @@ fn finalize_catch_unwind_response(
         })
         .unwrap_or_else(|_| {
             error!("[PANIC][A panic occurred while polling the future]");
-            Response::new().with_status(StatusCode::InternalServerError)
+            Response::new().with_status(StatusCode::INTERNAL_SERVER_ERROR)
         });
 
     future::ok(response)
@@ -196,7 +196,7 @@ mod tests {
     fn success() {
         let new_handler = || {
             Ok(|state| {
-                let res = create_response(&state, StatusCode::Accepted, None);
+                let res = create_response(&state, StatusCode::ACCEPTED, None);
                 (state, res)
             })
         };
@@ -207,7 +207,7 @@ mod tests {
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = r.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
     #[test]
@@ -215,7 +215,7 @@ mod tests {
         let new_handler = || {
             Ok(|state| {
                 let f = future::lazy(move || {
-                    let res = create_response(&state, StatusCode::Accepted, None);
+                    let res = create_response(&state, StatusCode::ACCEPTED, None);
                     future::ok((state, res))
                 });
 
@@ -233,7 +233,7 @@ mod tests {
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = r.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
     #[test]
@@ -253,7 +253,7 @@ mod tests {
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = r.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::InternalServerError);
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[test]
@@ -271,7 +271,7 @@ mod tests {
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = r.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::InternalServerError);
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[test]
@@ -289,7 +289,7 @@ mod tests {
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = r.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::InternalServerError);
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[test]
@@ -311,6 +311,6 @@ mod tests {
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = r.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::InternalServerError);
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
