@@ -1,11 +1,10 @@
 //! Helpers for HTTP response generation
 
-use std::borrow::Cow;
-use hyper::{Method, Response, StatusCode};
 use hyper::header::{ContentLength, ContentType, Location};
+use hyper::{Method, Response, StatusCode};
 use mime::Mime;
+use std::borrow::Cow;
 
-use helpers::http::header::{XContentTypeOptions, XFrameOptions, XRequestId, XXssProtection};
 use state::{request_id, FromState, State};
 
 type Body = (Vec<u8>, Mime);
@@ -27,7 +26,6 @@ type Body = (Vec<u8>, Mime);
 /// # use hyper::header::{ContentLength, ContentType};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_response;
-/// # use gotham::helpers::http::header::XRequestId;
 /// # use gotham::test::TestServer;
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
@@ -51,7 +49,7 @@ type Body = (Vec<u8>, Mime);
 /// #         .unwrap();
 /// #
 /// #     assert_eq!(response.status(), StatusCode::Ok);
-/// #     assert!(response.headers().get::<XRequestId>().is_some());
+/// #     assert!(response.headers().get_raw("X-Request-ID").is_some());
 /// #
 /// #     assert_eq!(
 /// #         *response.headers().get::<ContentType>().unwrap(),
@@ -173,7 +171,6 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
 /// # use hyper::header::{ContentLength, ContentType};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::extend_response;
-/// # use gotham::helpers::http::header::XRequestId;
 /// # use gotham::test::TestServer;
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
@@ -200,7 +197,7 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
 /// #         .unwrap();
 /// #
 /// #     assert_eq!(response.status(), StatusCode::Ok);
-/// #     assert!(response.headers().get::<XRequestId>().is_some());
+/// #     assert!(response.headers().get_raw("X-Request-ID").is_some());
 /// #
 /// #     assert_eq!(
 /// #         *response.headers().get::<ContentType>().unwrap(),
@@ -258,7 +255,6 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # use hyper::{Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_headers;
-/// # use gotham::helpers::http::header::*;
 /// # use gotham::test::TestServer;
 /// #
 /// fn handler(state: State) -> (State, Response) {
@@ -287,24 +283,24 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 ///
 /// // e.g.:
 /// // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
-/// assert!(response.headers().get::<XRequestId>().is_some());
+/// assert!(response.headers().get_raw("X-Request-ID").is_some());
 ///
 /// // X-Frame-Options: DENY
 /// assert_eq!(
-///     *response.headers().get::<XFrameOptions>().unwrap(),
-///     XFrameOptions::Deny,
+///     response.headers().get_raw("X-Frame-Options").unwrap(),
+///     "DENY",
 /// );
 ///
 /// // X-XSS-Protection: 1; mode=block
 /// assert_eq!(
-///     *response.headers().get::<XXssProtection>().unwrap(),
-///     XXssProtection::EnableBlock,
+///     response.headers().get_raw("X-XSS-Protection").unwrap(),
+///     "1; mode=block",
 /// );
 ///
 /// // X-Content-Type-Options: nosniff
 /// assert_eq!(
-///     *response.headers().get::<XContentTypeOptions>().unwrap(),
-///     XContentTypeOptions::NoSniff,
+///     response.headers().get_raw( "X-Content-Type-Options").unwrap(),
+///     "nosniff",
 /// );
 /// # }
 /// ```
@@ -321,7 +317,6 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// # use hyper::header::{ContentLength, ContentType};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_headers;
-/// # use gotham::helpers::http::header::*;
 /// # use gotham::test::TestServer;
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
@@ -362,24 +357,24 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 /// #
 /// # // e.g.:
 /// # // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
-/// # assert!(response.headers().get::<XRequestId>().is_some());
+/// # assert!(response.headers().get_raw("X-Request-ID").is_some());
 /// #
 /// # // X-Frame-Options: DENY
 /// # assert_eq!(
-/// #     *response.headers().get::<XFrameOptions>().unwrap(),
-/// #     XFrameOptions::Deny,
+/// #     response.headers().get_raw("X-Frame-Options").unwrap(),
+/// #     "DENY",
 /// # );
 /// #
 /// # // X-XSS-Protection: 1; mode=block
 /// # assert_eq!(
-/// #     *response.headers().get::<XXssProtection>().unwrap(),
-/// #     XXssProtection::EnableBlock,
+/// #     response.headers().get_raw("X-XSS-Protection").unwrap(),
+/// #     "1; mode=block",
 /// # );
 /// #
 /// # // X-Content-Type-Options: nosniff
 /// # assert_eq!(
-/// #     *response.headers().get::<XContentTypeOptions>().unwrap(),
-/// #     XContentTypeOptions::NoSniff,
+/// #     response.headers().get_raw("X-Content-Type-Options").unwrap(),
+/// #     "nosniff",
 /// # );
 /// # }
 /// ```
@@ -396,10 +391,10 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
         None => (),
     };
 
-    headers.set(XRequestId(request_id(state).into()));
-    headers.set(XFrameOptions::Deny);
-    headers.set(XXssProtection::EnableBlock);
-    headers.set(XContentTypeOptions::NoSniff);
+    headers.set_raw("X-Request-ID", request_id(state));
+    headers.set_raw("X-Frame-Options", "DENY");
+    headers.set_raw("X-XSS-Protection", "1; mode=block");
+    headers.set_raw("X-Content-Type-Options", "nosniff");
 }
 
 /// Sets redirect headers on a given `Response`.
@@ -415,7 +410,6 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
 /// # use hyper::header::Location;
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_redirect_headers;
-/// # use gotham::helpers::http::header::*;
 /// # use gotham::test::TestServer;
 /// fn handler(state: State) -> (State, Response) {
 ///     let mut response = Response::new().with_status(StatusCode::PermanentRedirect);
@@ -444,7 +438,7 @@ pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length
 ///     *response.headers().get::<Location>().unwrap(),
 ///     Location::new("http://example.com/somewhere-else")
 /// );
-/// # assert!(response.headers().get::<XRequestId>().is_some());
+/// # assert!(response.headers().get_raw("X-Request-ID").is_some());
 /// # }
 /// ```
 pub fn set_redirect_headers<L: Into<Cow<'static, str>>>(
@@ -453,6 +447,6 @@ pub fn set_redirect_headers<L: Into<Cow<'static, str>>>(
     location: L,
 ) {
     let headers = res.headers_mut();
-    headers.set(XRequestId(request_id(state).into()));
+    headers.set_raw("X-Request-ID", request_id(state));
     headers.set(Location::new(location));
 }

@@ -3,7 +3,6 @@
 use hyper::header::Headers;
 use uuid::Uuid;
 
-use helpers::http::header::XRequestId;
 use state::{FromState, State};
 
 /// A container type for the value returned by `request_id`.
@@ -22,15 +21,14 @@ pub(super) struct RequestId {
 /// that a value for `RequestId` is always available.
 pub(crate) fn set_request_id<'a>(state: &'a mut State) -> &'a str {
     if !state.has::<RequestId>() {
-        let request_id = match Headers::borrow_from(state).get::<XRequestId>() {
+        let request_id = match Headers::borrow_from(state).get_raw("X-Request-ID") {
             Some(ex_req_id) => {
+                let id = String::from_utf8(ex_req_id.one().unwrap().to_vec()).unwrap();
                 trace!(
                     "[{}] RequestId set from external source via X-Request-ID header",
-                    ex_req_id.0.clone()
+                    id
                 );
-                RequestId {
-                    val: ex_req_id.0.clone(),
-                }
+                RequestId { val: id }
             }
             None => {
                 let val = Uuid::new_v4().hyphenated().to_string();
@@ -75,7 +73,7 @@ mod tests {
         let mut state = State::new();
 
         let mut headers = Headers::new();
-        headers.set(XRequestId("1-2-3-4".to_string()));
+        headers.set_raw("X-Request-ID", "1-2-3-4");
         state.put(headers);
 
         {
