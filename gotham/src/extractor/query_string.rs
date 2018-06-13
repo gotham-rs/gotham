@@ -1,8 +1,8 @@
-use serde::{Deserialize, Deserializer};
 use hyper::Response;
+use serde::{Deserialize, Deserializer};
 
-use state::{State, StateData};
 use router::response::extender::StaticResponseExtender;
+use state::{State, StateData};
 
 /// Defines a binding for storing the query parameters from the `Request` URI in `State`. On
 /// failure the `StaticResponseExtender` implementation extends the `Response` to indicate why the
@@ -55,7 +55,7 @@ use router::response::extender::StaticResponseExtender;
 ///
 ///     let response = create_response(
 ///         &state,
-///         StatusCode::Ok,
+///         StatusCode::OK,
 ///         Some((body.into_bytes(), mime::TEXT_PLAIN)),
 ///     );
 ///
@@ -78,12 +78,13 @@ use router::response::extender::StaticResponseExtender;
 /// #       .get("http://example.com/test?x=15&y=b")
 /// #       .perform()
 /// #       .unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Ok);
+/// #   assert_eq!(response.status(), StatusCode::OK);
 /// #   let body = response.read_utf8_body().unwrap();
 /// #   assert_eq!(body, "x = 15, y = B");
 /// # }
-pub trait QueryStringExtractor
-    : for<'de> Deserialize<'de> + StaticResponseExtender + StateData {
+pub trait QueryStringExtractor:
+    for<'de> Deserialize<'de> + StaticResponseExtender + StateData
+{
 }
 
 impl<T> QueryStringExtractor for T

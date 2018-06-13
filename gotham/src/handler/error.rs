@@ -11,7 +11,7 @@ use state::{request_id, State};
 /// `Response`.
 pub struct HandlerError {
     status_code: StatusCode,
-    cause: Box<Error>,
+    cause: Box<Error + Send>,
 }
 
 /// Allows conversion into a HandlerError from an implementing type.
@@ -48,13 +48,13 @@ pub trait IntoHandlerError {
 
 impl<E> IntoHandlerError for E
 where
-    E: Error + 'static,
+    E: Error + Send + 'static,
 {
     fn into_handler_error(self) -> HandlerError {
         trace!(" converting Error to HandlerError: {}", self);
 
         HandlerError {
-            status_code: StatusCode::InternalServerError,
+            status_code: StatusCode::INTERNAL_SERVER_ERROR,
             cause: Box::new(self),
         }
     }
@@ -106,7 +106,7 @@ impl HandlerError {
     ///
     ///     let handler_error = io_error
     ///         .into_handler_error()
-    ///         .with_status(StatusCode::ImATeapot);
+    ///         .with_status(StatusCode::IM_A_TEAPOT);
     ///
     ///     Box::new(future::err((state, handler_error)))
     /// }
@@ -115,7 +115,7 @@ impl HandlerError {
     /// #
     /// let test_server = TestServer::new(|| Ok(handler)).unwrap();
     /// let response = test_server.client().get("http://example.com/").perform().unwrap();
-    /// assert_eq!(response.status(), StatusCode::ImATeapot);
+    /// assert_eq!(response.status(), StatusCode::IM_A_TEAPOT);
     /// #
     /// # }
     /// ```
@@ -127,8 +127,8 @@ impl HandlerError {
     }
 }
 
-impl IntoResponse for HandlerError {
-    fn into_response(self, state: &State) -> Response {
+impl<B> IntoResponse<B> for HandlerError {
+    fn into_response(self, state: &State) -> Response<B> {
         debug!(
             "[{}] HandlerError generating {} {} response: {}",
             request_id(state),

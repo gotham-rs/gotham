@@ -3,13 +3,13 @@ use std::panic::RefUnwindSafe;
 
 use hyper::Method;
 
+use extractor::{PathExtractor, QueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
+use router::builder::SingleRouteBuilder;
 use router::route::matcher::{AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher,
                              RouteMatcher};
-use extractor::{PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
-use router::builder::SingleRouteBuilder;
 
 pub type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;
 pub type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;
@@ -85,7 +85,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -116,14 +116,14 @@ where
     /// #       .with_header(accept_header)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/resource/path")
     /// #       .with_header(text_accept_header)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::NotAcceptable);
+    /// #   assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
     /// # }
     /// ```
     pub fn add_route_matcher<'b, NM>(
@@ -164,7 +164,7 @@ where
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
     /// #   assert_eq!(state.borrow::<MyPathExtractor>().id, 42);
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #[derive(Deserialize, StateData, StaticResponseExtender)]
@@ -189,7 +189,7 @@ where
     /// #       .get("https://example.com/resource/42")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn with_path_extractor<'b, NPE>(
@@ -229,7 +229,7 @@ where
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
     /// #   assert_eq!(state.borrow::<MyQueryStringExtractor>().val.as_str(), "test_val");
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #[derive(StateData, Deserialize, StaticResponseExtender)]
@@ -254,7 +254,7 @@ where
     /// #       .get("https://example.com/resource?val=test_val")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn with_query_string_extractor<'b, NQSE>(
@@ -290,14 +290,14 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
     /// # fn router() -> Router {
     /// build_simple_router(|route| {
     ///     route.associate("/resource", |assoc| {
-    ///         assoc.request(vec![Method::Get, Method::Head, Method::Post]).to(handler);
+    ///         assoc.request(vec![Method::GET, Method::HEAD, Method::POST]).to(handler);
     ///     });
     /// })
     /// # }
@@ -309,19 +309,19 @@ where
     /// #       .get("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .head("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .post("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn request<'b>(
@@ -361,7 +361,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -379,13 +379,13 @@ where
     /// #       .head("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn head<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Head])
+        self.request(vec![Method::HEAD])
     }
 
     /// Associates a route which matches `GET` or `HEAD` requests to the current path.
@@ -404,7 +404,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -423,19 +423,19 @@ where
     /// #       .get("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .head("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn get_or_head<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Get, Method::Head])
+        self.request(vec![Method::GET, Method::HEAD])
     }
 
     /// Associates a route which matches `GET` requests to the current path.
@@ -454,7 +454,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -472,13 +472,13 @@ where
     /// #       .get("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn get<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Get])
+        self.request(vec![Method::GET])
     }
 
     /// Associates a route which matches `POST` requests to the current path.
@@ -498,7 +498,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -516,13 +516,13 @@ where
     /// #       .post("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn post<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Post])
+        self.request(vec![Method::POST])
     }
 
     /// Associates a route which matches `PUT` requests to the current path.
@@ -542,7 +542,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -560,13 +560,13 @@ where
     /// #       .put("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn put<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Put])
+        self.request(vec![Method::PUT])
     }
 
     /// Associates a route which matches `PATCH` requests to the current path.
@@ -586,7 +586,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -604,13 +604,13 @@ where
     /// #       .patch("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn patch<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Patch])
+        self.request(vec![Method::PATCH])
     }
 
     /// Associates a route which matches `DELETE` requests to the current path.
@@ -629,7 +629,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -647,13 +647,13 @@ where
     /// #       .delete("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn delete<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Delete])
+        self.request(vec![Method::DELETE])
     }
 
     /// Associates a route which matches `OPTIONS` requests to the current path.
@@ -672,7 +672,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response) {
     ///     // Implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
     /// }
     ///
     /// #
@@ -687,16 +687,16 @@ where
     /// # fn main() {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #   let request = Request::new(
-    /// #       Method::Options,
+    /// #       Method::OPTIONS,
     /// #       "https://example.com/resource".parse().unwrap()
     /// #   );
     /// #   let response = test_server.client().perform(request).unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     pub fn options<'b>(
         &'b mut self,
     ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
-        self.request(vec![Method::Options])
+        self.request(vec![Method::OPTIONS])
     }
 }

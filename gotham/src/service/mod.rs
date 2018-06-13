@@ -1,21 +1,20 @@
 //! Defines the `GothamService` type which is used to wrap a Gotham application and interface with
 //! Hyper.
 
-use std::thread;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::panic::AssertUnwindSafe;
+use std::sync::Arc;
+use std::thread;
 
-use hyper;
-use hyper::server::Service;
-use hyper::{Request, Response};
 use futures::Future;
-use tokio_core::reactor::Handle;
+use hyper;
+use hyper::service::Service;
+use hyper::{Body, Request, Response};
 
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
-use state::{request_id, set_request_id, State};
 use state::client_addr::put_client_addr;
+use state::{request_id, set_request_id, State};
 
 mod timing;
 mod trap;
@@ -27,21 +26,19 @@ where
     T: NewHandler + 'static,
 {
     t: Arc<T>,
-    handle: Handle,
 }
 
 impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    pub(crate) fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
-        GothamService { t, handle }
+    pub(crate) fn new(t: Arc<T>) -> GothamService<T> {
+        GothamService { t }
     }
 
     pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
         ConnectedGothamService {
             t: self.t.clone(),
-            handle: self.handle.clone(),
             client_addr,
         }
     }
@@ -54,7 +51,6 @@ where
     T: NewHandler + 'static,
 {
     t: Arc<T>,
-    handle: Handle,
     client_addr: SocketAddr,
 }
 
@@ -62,19 +58,18 @@ impl<T> Service for ConnectedGothamService<T>
 where
     T: NewHandler,
 {
-    type Request = Request;
-    type Response = Response;
+    type ReqBody = Body;
+    type ResBody = Body;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send>;
 
-    fn call(&self, req: Self::Request) -> Self::Future {
+    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
         let mut state = State::new();
 
         put_client_addr(&mut state, self.client_addr);
 
         let (method, uri, version, headers, body) = req.deconstruct();
 
-        state.put(self.handle.clone());
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);
@@ -98,28 +93,26 @@ mod tests {
     use super::*;
 
     use hyper::{Method, StatusCode};
-    use tokio_core::reactor::Core;
 
     use helpers::http::response::create_response;
     use router::builder::*;
     use state::State;
 
     fn handler(state: State) -> (State, Response) {
-        let res = create_response(&state, StatusCode::Accepted, None);
+        let res = create_response(&state, StatusCode::ACCEPTED, None);
         (state, res)
     }
 
     #[test]
     fn new_handler_closure() {
-        let mut core = Core::new().unwrap();
-        let service = GothamService::new(Arc::new(|| Ok(handler)), core.handle());
+        let service = GothamService::new(Arc::new(|| Ok(handler)));
 
-        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let req = Request::new(Method::GET, "http://localhost/".parse().unwrap());
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = core.run(f).unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        let response = f.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
     #[test]
@@ -128,14 +121,13 @@ mod tests {
             route.get("/").to(handler);
         });
 
-        let mut core = Core::new().unwrap();
-        let service = GothamService::new(Arc::new(router), core.handle());
+        let service = GothamService::new(Arc::new(router));
 
-        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let req = Request::new(Method::GET, "http://localhost/".parse().unwrap());
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = core.run(f).unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        let response = f.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 }

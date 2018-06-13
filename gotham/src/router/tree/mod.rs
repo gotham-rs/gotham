@@ -90,18 +90,18 @@ mod tests {
     use hyper::{Method, Response, StatusCode};
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use pipeline::set::*;
     use helpers::http::request::path::RequestPathSegments;
     use helpers::http::response::create_response;
-    use router::route::matcher::MethodOnlyRouteMatcher;
+    use pipeline::set::*;
     use router::route::dispatch::DispatcherImpl;
+    use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Delegation, Extractors, RouteImpl};
     use state::State;
 
     use super::*;
 
     fn handler(state: State) -> (State, Response) {
-        let res = create_response(&state, StatusCode::Ok, None);
+        let res = create_response(&state, StatusCode::OK, None);
         (state, res)
     }
 
@@ -114,7 +114,7 @@ mod tests {
 
         let mut thing_node_builder = NodeBuilder::new("thing", SegmentType::Dynamic);
         let thing_route = {
-            let methods = vec![Method::Get];
+            let methods = vec![Method::GET];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =

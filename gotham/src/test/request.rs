@@ -1,6 +1,5 @@
+use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
-use hyper::error::UriError;
-use hyper::header::Header;
 
 use handler::NewHandler;
 use test::{TestClient, TestRequestError, TestResponse};
@@ -13,18 +12,14 @@ where
     NH: NewHandler + 'static,
 {
     client: TestClient<NH>,
-    request: Result<Request, TestRequestError>,
+    request: Result<Request<Body>, TestRequestError>,
 }
 
 impl<NH> RequestBuilder<NH>
 where
     NH: NewHandler + 'static,
 {
-    pub(super) fn new(
-        client: TestClient<NH>,
-        method: Method,
-        uri: Result<Uri, UriError>,
-    ) -> RequestBuilder<NH> {
+    pub(super) fn new(client: TestClient<NH>, method: Method, uri: Uri) -> RequestBuilder<NH> {
         let request = match uri {
             Ok(uri) => Ok(Request::new(method, uri)),
             Err(e) => Err(e.into()),
@@ -35,14 +30,14 @@ where
 
     /// Adds the given header into the underlying `Request`, replacing any existing header of the
     /// same type.
-    pub fn with_header<H>(self, header: H) -> RequestBuilder<NH>
+    pub fn with_header<N>(self, name: N, value: HeaderValue) -> RequestBuilder<NH>
     where
-        H: Header,
+        N: IntoHeaderName,
     {
         let mut request = self.request;
 
         if let Ok(ref mut req) = request {
-            req.headers_mut().set(header);
+            req.headers_mut().insert(name, value);
         }
 
         RequestBuilder { request, ..self }

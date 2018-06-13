@@ -14,34 +14,34 @@ use state::State;
 /// # extern crate mime;
 /// # fn main() {
 /// #   use hyper::Method;
-/// #   use hyper::header::{Headers, Accept};
+/// #   use hyper::header::{HeaderMap, Accept};
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher,
 ///                                          AndRouteMatcher, AcceptHeaderRouteMatcher};
 /// #
 /// #   State::with_new(|state| {
 /// #
-///   let methods = vec![Method::Get, Method::Head];
+///   let methods = vec![Method::GET, Method::HEAD];
 ///   let supported_media_types = vec![mime::APPLICATION_JSON];
 ///   let method_matcher = MethodOnlyRouteMatcher::new(methods);
 ///	  let accept_matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///   let matcher = AndRouteMatcher::new(method_matcher, accept_matcher);
 ///
-///   state.put(Method::Get);
+///   state.put(Method::GET);
 ///
 ///   // Request that matches both requirements
-///   let mut headers = Headers::new();
+///   let mut headers = HeaderMap::new();
 ///   headers.set(Accept::json());
 ///   state.put(headers);
 ///   assert!(matcher.is_match(&state).is_ok());
 ///
 ///   // Request that fails method requirements
-///   state.put(Method::Post);
+///   state.put(Method::POST);
 ///   assert!(matcher.is_match(&state).is_err());
 ///
 ///   // Request that fails accept header
-///   state.put(Method::Get);
-///   let mut headers = Headers::new();
+///   state.put(Method::GET);
+///   let mut headers = HeaderMap::new();
 ///   headers.set(Accept::text());
 ///   state.put(headers);
 ///   assert!(matcher.is_match(&state).is_err());

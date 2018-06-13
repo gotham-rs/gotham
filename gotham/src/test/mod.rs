@@ -2,26 +2,29 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use std::{cell, io, net, time};
 use std::cell::RefCell;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use std::time::Duration;
+use std::{io, net};
 
-use futures::{future, Future, Stream};
-use hyper::{self, Body, Method, Request, Response, Uri};
+use futures::{future, sync::oneshot, Future, Stream};
+use futures_timer::Delay;
 use hyper::client::{self, Client};
-use hyper::error::UriError;
-use hyper::header::ContentType;
-use hyper::server::{self, Http};
+use hyper::header::CONTENT_TYPE;
+use hyper::server::conn::Http;
+use hyper::{self, Body, Method, Request, Response, Uri};
 use mime;
 use mio;
-use tokio_core::reactor::{Core, PollEvented, Timeout};
+use tokio::reactor::PollEvented2;
+use tokio::runtime::Runtime;
+use tokio_core::reactor::Core;
 
 use handler::NewHandler;
-use service::GothamService;
 use router::Router;
+use service::GothamService;
 
 mod request;
 
@@ -41,7 +44,7 @@ pub use self::request::RequestBuilder;
 /// # use hyper::{Response, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response) {
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
+/// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
 /// # }
 /// #
 /// # fn main() {
@@ -50,23 +53,23 @@ pub use self::request::RequestBuilder;
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
 /// let response = test_server.client().get("http://localhost/").perform().unwrap();
-/// assert_eq!(response.status(), StatusCode::Accepted);
+/// assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub struct TestServer<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     data: Rc<TestServerData<NH>>,
 }
 
 struct TestServerData<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
-    core: RefCell<Core>,
     http: Http,
     timeout: u64,
+    runtime: RwLock<Runtime>,
     gotham_service: GothamService<NH>,
 }
 
@@ -80,19 +83,11 @@ pub enum TestRequestError {
     IoError(io::Error),
     /// A `hyper::Error` occurred before a response was received.
     HyperError(hyper::Error),
-    /// The URL could not be parsed when building the request.
-    UriError(UriError),
-}
-
-impl From<UriError> for TestRequestError {
-    fn from(error: UriError) -> TestRequestError {
-        TestRequestError::UriError(error)
-    }
 }
 
 impl<NH> Clone for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn clone(&self) -> TestServer<NH> {
         TestServer {
@@ -103,7 +98,7 @@ where
 
 impl<NH> TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
@@ -116,19 +111,15 @@ where
 
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
     pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
-        Core::new().map(|core| {
-            let handle = core.handle();
+        let data = TestServerData {
+            http: Http::new(),
+            timeout,
+            runtime: RwLock::new(Runtime::new().unwrap()),
+            gotham_service: GothamService::new(Arc::new(new_handler)),
+        };
 
-            let data = TestServerData {
-                core: RefCell::new(core),
-                http: server::Http::new(),
-                timeout,
-                gotham_service: GothamService::new(Arc::new(new_handler), handle),
-            };
-
-            TestServer {
-                data: Rc::new(data),
-            }
+        Ok(TestServer {
+            data: Rc::new(data),
         })
     }
 
@@ -148,8 +139,6 @@ where
     }
 
     fn try_client_with_address(&self, client_addr: net::SocketAddr) -> io::Result<TestClient<NH>> {
-        let handle = self.data.core.borrow().handle();
-
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
@@ -161,10 +150,10 @@ where
         };
 
         let cs = mio::net::TcpStream::from_stream(cs)?;
-        let cs = PollEvented::new(cs, &handle)?;
+        let cs = PollEvented2::new(cs);
 
         let ss = mio::net::TcpStream::from_stream(ss)?;
-        let ss = PollEvented::new(ss, &handle)?;
+        let ss = PollEvented2::new(ss);
 
         let service = self.data.gotham_service.connect(client_addr);
         let f = self.data
@@ -173,13 +162,19 @@ where
             .map(|_| ())
             .map_err(|_| ());
 
-        handle.spawn(f);
+        {
+            self.data.runtime.read().unwrap().spawn(f);
+        }
 
-        let client = Client::configure()
-            .connector(TestConnect {
-                stream: cell::RefCell::new(Some(cs)),
+        let client = Core::new()
+            .map(|core| {
+                Client::configure()
+                    .connector(TestConnect {
+                        stream: RefCell::new(Some(cs)),
+                    })
+                    .build(&core.handle())
             })
-            .build(&self.data.core.borrow().handle());
+            .unwrap();
 
         Ok(TestClient {
             client,
@@ -193,29 +188,45 @@ where
     /// the timeout is triggered.
     fn run_request<F>(&self, f: F) -> Result<F::Item, TestRequestError>
     where
-        F: Future<Error = hyper::Error>,
+        F: Future<Error = hyper::Error> + Send + 'static,
+        F::Item: Send,
     {
-        let timeout_duration = time::Duration::from_secs(self.data.timeout);
-        let timeout = Timeout::new(timeout_duration, &self.data.core.borrow().handle())
-            .map_err(|e| TestRequestError::IoError(e))?;
+        let timeout_duration = Duration::from_secs(self.data.timeout);
+        let timeout = Delay::new(timeout_duration);
 
-        let run_result = {
-            let mut core = self.data.core.borrow_mut();
-            core.run(f.select2(timeout))
-        };
-
-        match run_result {
+        match self.run_future(f.select2(timeout)) {
             Ok(future::Either::A((item, _))) => Ok(item),
             Ok(future::Either::B(_)) => Err(TestRequestError::TimedOut),
             Err(future::Either::A((e, _))) => Err(TestRequestError::HyperError(e)),
             Err(future::Either::B((e, _))) => Err(TestRequestError::IoError(e)),
         }
     }
+
+    /// Runs a future inside of the internal runtime.
+    ///
+    /// This blocks on the result of the future and behaves like a synchronous
+    /// polling call of the future, even if it might be on another thread.
+    fn run_future<F, R, E>(&mut self, future: F) -> Result<R, E>
+    where
+        F: Send + 'static + Future<Item = R, Error = E>,
+        R: Send + 'static,
+        E: Send + 'static,
+    {
+        let (tx, rx) = oneshot::channel();
+        {
+            self.data
+                .runtime
+                .read()
+                .unwrap()
+                .spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
+        }
+        rx.wait().unwrap()
+    }
 }
 
 impl<NH> BodyReader for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
@@ -224,8 +235,7 @@ where
             let f: hyper::Body = response.body();
             let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
 
-            let mut core = self.data.core.borrow_mut();
-            core.run(f)
+            self.run_future(f)
         };
 
         r.map(|_| buf)
@@ -235,7 +245,7 @@ where
 /// Client interface for issuing requests to a `TestServer`.
 pub struct TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     client: Client<TestConnect>,
     test_server: TestServer<NH>,
@@ -243,26 +253,26 @@ where
 
 impl<NH> TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
     pub fn head(self, uri: &str) -> RequestBuilder<NH> {
-        self.build_request(Method::Head, uri)
+        self.build_request(Method::HEAD, uri)
     }
 
     /// Begin constructing a HEAD request using this `TestClient`.
     pub fn head_uri(self, uri: Uri) -> RequestBuilder<NH> {
-        self.build_request_uri(Method::Head, uri)
+        self.build_request_uri(Method::HEAD, uri)
     }
 
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
     pub fn get(self, uri: &str) -> RequestBuilder<NH> {
-        self.build_request(Method::Get, uri)
+        self.build_request(Method::GET, uri)
     }
 
     /// Begin constructing a GET request using this `TestClient`.
     pub fn get_uri(self, uri: Uri) -> RequestBuilder<NH> {
-        self.build_request_uri(Method::Get, uri)
+        self.build_request_uri(Method::GET, uri)
     }
 
     /// Parse the URI and begin constructing a POST request using this `TestClient`.
@@ -270,9 +280,9 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request(Method::Post, uri)
+        self.build_request(Method::POST, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Begin constructing a POST request using this `TestClient`.
@@ -280,9 +290,9 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request_uri(Method::Post, uri)
+        self.build_request_uri(Method::POST, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Parse the URI and begin constructing a PUT request using this `TestClient`.
@@ -290,9 +300,9 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request(Method::Put, uri)
+        self.build_request(Method::PUT, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
@@ -300,9 +310,9 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request_uri(Method::Put, uri)
+        self.build_request_uri(Method::PUT, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Parse the URI and begin constructing a PATCH request using this `TestClient`.
@@ -310,9 +320,9 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request(Method::Patch, uri)
+        self.build_request(Method::PATCH, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
@@ -320,29 +330,29 @@ where
     where
         T: Into<Body>,
     {
-        self.build_request_uri(Method::Patch, uri)
+        self.build_request_uri(Method::PATCH, uri)
             .with_body(body)
-            .with_header(ContentType(content_type))
+            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
     }
 
     /// Parse the URI and begin constructing a DELETE request using this `TestClient`.
     pub fn delete(self, uri: &str) -> RequestBuilder<NH> {
-        self.build_request(Method::Delete, uri)
+        self.build_request(Method::DELETE, uri)
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
     pub fn delete_uri(self, uri: Uri) -> RequestBuilder<NH> {
-        self.build_request_uri(Method::Delete, uri)
+        self.build_request_uri(Method::DELETE, uri)
     }
 
     /// Parse the URI and begin constructing a request with the given HTTP method.
     pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<NH> {
-        RequestBuilder::new(self, method, uri.parse())
+        RequestBuilder::new(self, method, uri.parse().unwrap())
     }
 
     /// Begin constructing a request with the given HTTP method and Uri.
     pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<NH> {
-        RequestBuilder::new(self, method, Ok(uri))
+        RequestBuilder::new(self, method, uri)
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
@@ -380,7 +390,7 @@ trait BodyReader {
 /// # fn my_handler(state: State) -> (State, Response) {
 /// #   let body = "This is the body content.".to_string().into_bytes();;
 /// #   let response = create_response(&state,
-/// #                                  StatusCode::Ok,
+/// #                                  StatusCode::OK,
 /// #                                  Some((body, mime::TEXT_PLAIN)));
 /// #
 /// #   (state, response)
@@ -392,31 +402,31 @@ trait BodyReader {
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
 /// let response = test_server.client().get("http://localhost/").perform().unwrap();
-/// assert_eq!(response.status(), StatusCode::Ok);
+/// assert_eq!(response.status(), StatusCode::OK);
 /// let body = response.read_body().unwrap();
 /// assert_eq!(&body[..], b"This is the body content.");
 /// # }
 /// ```
-pub struct TestResponse {
-    response: Response,
+pub struct TestResponse<B> {
+    response: Response<B>,
     reader: Box<BodyReader>,
 }
 
-impl Deref for TestResponse {
-    type Target = Response;
+impl<B> Deref for TestResponse<B> {
+    type Target = Response<B>;
 
-    fn deref(&self) -> &Response {
+    fn deref(&self) -> &Response<B> {
         &self.response
     }
 }
 
-impl DerefMut for TestResponse {
-    fn deref_mut(&mut self) -> &mut Response {
+impl<B> DerefMut for TestResponse<B> {
+    fn deref_mut(&mut self) -> &mut Response<B> {
         &mut self.response
     }
 }
 
-impl TestResponse {
+impl<B> TestResponse<B> {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
     pub fn read_body(self) -> hyper::Result<Vec<u8>> {
@@ -436,13 +446,13 @@ impl TestResponse {
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
 struct TestConnect {
-    stream: cell::RefCell<Option<PollEvented<mio::net::TcpStream>>>,
+    stream: RefCell<Option<PollEvented2<mio::net::TcpStream>>>,
 }
 
 impl client::Service for TestConnect {
     type Request = hyper::Uri;
     type Error = io::Error;
-    type Response = PollEvented<mio::net::TcpStream>;
+    type Response = PollEvented2<mio::net::TcpStream>;
     type Future = future::FutureResult<Self::Response, Self::Error>;
 
     fn call(&self, _req: Self::Request) -> Self::Future {
@@ -463,8 +473,8 @@ mod tests {
 
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use hyper::{Body, StatusCode, Uri};
     use hyper::header::{ContentLength, ContentType};
+    use hyper::{Body, StatusCode, Uri};
     use mime;
 
     use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
@@ -482,7 +492,7 @@ mod tests {
             match path.as_str() {
                 "/" => {
                     let response = server::Response::new()
-                        .with_status(StatusCode::Ok)
+                        .with_status(StatusCode::OK)
                         .with_body(self.response.clone());
 
                     Box::new(future::ok((state, response)))
@@ -490,7 +500,7 @@ mod tests {
                 "/timeout" => Box::new(future::empty()),
                 "/myaddr" => {
                     let response = server::Response::new()
-                        .with_status(StatusCode::Ok)
+                        .with_status(StatusCode::OK)
                         .with_body(format!("{}", client_addr(&state).unwrap()));
 
                     Box::new(future::ok((state, response)))
@@ -527,7 +537,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let buf = response.read_utf8_body().unwrap();
         assert_eq!(buf, format!("time: {}", ticks));
     }
@@ -575,7 +585,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let buf = response.read_body().unwrap();
         let received_addr: net::SocketAddr = String::from_utf8(buf).unwrap().parse().unwrap();
         assert_eq!(received_addr, client_addr);
@@ -592,7 +602,7 @@ mod tests {
                         let resp_data = body.to_vec();
                         let res = create_response(
                             &state,
-                            StatusCode::Ok,
+                            StatusCode::OK,
                             Some((resp_data, mime::TEXT_PLAIN)),
                         );
                         future::ok((state, res))
@@ -615,7 +625,7 @@ mod tests {
             .perform()
             .expect("request successful");
 
-        assert_eq!(res.status(), StatusCode::Ok);
+        assert_eq!(res.status(), StatusCode::OK);
 
         {
             let content_type = res.headers().get::<ContentType>().expect("ContentType");

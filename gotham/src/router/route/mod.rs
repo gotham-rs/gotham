@@ -4,8 +4,8 @@
 //! iterate to find the first matching `Route` (indicated by `Route::is_match`). The request will
 //! be dispatched to the first `Route` which matches.
 
-pub mod matcher;
 pub mod dispatch;
+pub mod matcher;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
@@ -206,14 +206,14 @@ where
 mod tests {
     use super::*;
 
-    use std::str::FromStr;
     use futures::Async;
-    use hyper::{Headers, Method, StatusCode, Uri};
+    use hyper::{HeaderMap, Method, StatusCode, Uri};
+    use std::str::FromStr;
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use pipeline::set::*;
     use helpers::http::request::path::RequestPathSegments;
     use helpers::http::response::create_response;
+    use pipeline::set::*;
     use router::builder::*;
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
@@ -222,24 +222,24 @@ mod tests {
     #[test]
     fn internal_route_tests() {
         fn handler(state: State) -> (State, Response) {
-            let res = create_response(&state, StatusCode::Accepted, None);
+            let res = create_response(&state, StatusCode::ACCEPTED, None);
             (state, res)
         }
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let methods = vec![Method::Get];
+        let methods = vec![Method::GET];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         match route.dispatch(state).poll() {
             Ok(Async::Ready((_state, response))) => {
-                assert_eq!(response.status(), StatusCode::Accepted)
+                assert_eq!(response.status(), StatusCode::ACCEPTED)
             }
             Ok(Async::NotReady) => panic!("expected future to be completed already"),
             Err((_state, e)) => panic!("error polling future: {}", e),
@@ -249,7 +249,7 @@ mod tests {
     #[test]
     fn external_route_tests() {
         fn handler(state: State) -> (State, Response) {
-            let res = create_response(&state, StatusCode::Accepted, None);
+            let res = create_response(&state, StatusCode::ACCEPTED, None);
             (state, res)
         }
 
@@ -258,22 +258,22 @@ mod tests {
         });
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let methods = vec![Method::Get];
+        let methods = vec![Method::GET];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = Box::new(DispatcherImpl::new(secondary_router, (), pipeline_set));
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
 
         let mut state = State::new();
-        state.put(Method::Get);
+        state.put(Method::GET);
         state.put(Uri::from_str("https://example.com/").unwrap());
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         state.put(RequestPathSegments::new("/"));
         set_request_id(&mut state);
 
         match route.dispatch(state).poll() {
             Ok(Async::Ready((_state, response))) => {
-                assert_eq!(response.status(), StatusCode::Accepted)
+                assert_eq!(response.status(), StatusCode::ACCEPTED)
             }
             Ok(Async::NotReady) => panic!("expected future to be completed already"),
             Err((_state, e)) => panic!("error polling future: {}", e),

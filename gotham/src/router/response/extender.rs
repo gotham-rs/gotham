@@ -1,24 +1,24 @@
 //! Defines functionality for extending a Response.
 
-use std::panic::RefUnwindSafe;
-use hyper::Response;
+use hyper::{Body, Response};
 use state::{request_id, State};
+use std::panic::RefUnwindSafe;
 
 /// Extend the `Response` based on current `State` and `Response` data.
 pub trait StaticResponseExtender: RefUnwindSafe {
     /// Extend the response.
-    fn extend(&mut State, &mut Response);
+    fn extend(&mut State, &mut Response<Body>);
 }
 
 /// Allow complex types to extend the `Response` based on current `State` and `Response` data.
 pub trait ResponseExtender: RefUnwindSafe {
     /// Extend the Response
-    fn extend(&self, &mut State, &mut Response);
+    fn extend(&self, &mut State, &mut Response<Body>);
 }
 
 impl<F> ResponseExtender for F
 where
-    F: Fn(&mut State, &mut Response) + Send + Sync + RefUnwindSafe,
+    F: Fn(&mut State, &mut Response<Body>) + Send + Sync + RefUnwindSafe,
 {
     fn extend(&self, state: &mut State, res: &mut Response) {
         trace!(
@@ -35,7 +35,7 @@ where
 pub struct NoopResponseExtender;
 
 impl StaticResponseExtender for NoopResponseExtender {
-    fn extend(state: &mut State, res: &mut Response) {
+    fn extend(state: &mut State, res: &mut Response<Body>) {
         trace!(
             "[{}] NoopResponseExtender invoked, does not make any changes to Response",
             request_id(&state)
@@ -57,7 +57,7 @@ impl StaticResponseExtender for NoopResponseExtender {
 }
 
 impl ResponseExtender for NoopResponseExtender {
-    fn extend(&self, state: &mut State, res: &mut Response) {
+    fn extend(&self, state: &mut State, res: &mut Response<Body>) {
         trace!(
             "[{}] NoopResponseExtender invoked on instance, does not make any changes to Response",
             request_id(&state)

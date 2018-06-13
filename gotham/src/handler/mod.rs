@@ -6,8 +6,8 @@
 use std::io;
 use std::panic::RefUnwindSafe;
 
-use hyper::Response;
 use futures::{future, Future};
+use hyper::{Body, Response};
 
 use state::State;
 
@@ -19,7 +19,7 @@ pub use self::error::{HandlerError, IntoHandlerError};
 ///
 /// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate
 /// an appropriate HTTP error response.
-pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)>;
+pub type HandlerFuture<T = Body> = Future<Item = (State, T), Error = (State, HandlerError)> + Send;
 
 /// A `Handler` is an asynchronous function, taking a `State` value which represents the request
 /// and related runtime state, and returns a future which resolves to a response.
@@ -141,7 +141,7 @@ pub type HandlerFuture = Future<Item = (State, Response), Error = (State, Handle
 /// # assert_type(MyCustomHandler);
 /// # }
 /// ```
-pub trait Handler {
+pub trait Handler: Send {
     /// Handles the request, returning a boxed future which resolves to a response.
     fn handle(self, state: State) -> Box<HandlerFuture>;
 }
@@ -225,7 +225,7 @@ pub trait Handler {
 /// ```
 pub trait NewHandler: Send + Sync + RefUnwindSafe {
     /// The type of `Handler` created by the `NewHandler`.
-    type Instance: Handler;
+    type Instance: Handler + Send;
 
     /// Create and return a new `Handler` value.
     fn new_handler(&self) -> io::Result<Self::Instance>;
@@ -234,7 +234,7 @@ pub trait NewHandler: Send + Sync + RefUnwindSafe {
 impl<F, H> NewHandler for F
 where
     F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
-    H: Handler,
+    H: Handler + Send,
 {
     type Instance = H;
 
@@ -247,24 +247,24 @@ where
 ///
 /// This is used to allow functions with different return types to satisfy the `Handler` trait
 /// bound via the generic function implementation.
-pub trait IntoHandlerFuture {
+pub trait IntoHandlerFuture<B> {
     /// Converts this value into a boxed future resolving to a state and response.
-    fn into_handler_future(self) -> Box<HandlerFuture>;
+    fn into_handler_future(self) -> Box<HandlerFuture<B>>;
 }
 
-impl<T> IntoHandlerFuture for (State, T)
+impl<B, T> IntoHandlerFuture<B> for (State, T)
 where
-    T: IntoResponse,
+    T: IntoResponse<B>,
 {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
+    fn into_handler_future(self) -> Box<HandlerFuture<B>> {
         let (state, t) = self;
         let response = t.into_response(&state);
         Box::new(future::ok((state, response)))
     }
 }
 
-impl IntoHandlerFuture for Box<HandlerFuture> {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
+impl<B> IntoHandlerFuture<B> for Box<HandlerFuture<B>> {
+    fn into_handler_future(self) -> Box<HandlerFuture<B>> {
         self
     }
 }
@@ -308,7 +308,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// impl IntoResponse for MyStruct {
 ///     fn into_response(self, _state: &State) -> Response {
 ///         Response::new()
-///             .with_status(StatusCode::Ok)
+///             .with_status(StatusCode::OK)
 ///             .with_body(self.value)
 ///     }
 /// }
@@ -321,7 +321,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let mut tree_builder = TreeBuilder::new();
 /// #   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 /// #   let finalizer = ResponseFinalizerBuilder::new().finalize();
-/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
+/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::GET]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
 /// #   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
@@ -331,23 +331,23 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # }
 /// ```
 
-pub trait IntoResponse {
+pub trait IntoResponse<B> {
     /// Converts this value into a `hyper::Response`
-    fn into_response(self, state: &State) -> Response;
+    fn into_response(self, state: &State) -> Response<B>;
 }
 
-impl IntoResponse for Response {
-    fn into_response(self, _state: &State) -> Response {
+impl<B> IntoResponse<B> for Response<B> {
+    fn into_response(self, _state: &State) -> Response<B> {
         self
     }
 }
 
-impl<T, E> IntoResponse for ::std::result::Result<T, E>
+impl<B, T, E> IntoResponse<B> for ::std::result::Result<T, E>
 where
-    T: IntoResponse,
-    E: IntoResponse,
+    T: IntoResponse<B>,
+    E: IntoResponse<B>,
 {
-    fn into_response(self, state: &State) -> Response {
+    fn into_response(self, state: &State) -> Response<B> {
         match self {
             Ok(res) => res.into_response(state),
             Err(e) => e.into_response(state),
@@ -355,10 +355,10 @@ where
     }
 }
 
-impl<F, R> Handler for F
+impl<B, F, R> Handler for F
 where
-    F: FnOnce(State) -> R,
-    R: IntoHandlerFuture,
+    F: FnOnce(State) -> R + Send,
+    R: IntoHandlerFuture<B>,
 {
     fn handle(self, state: State) -> Box<HandlerFuture> {
         self(state).into_handler_future()

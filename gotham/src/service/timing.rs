@@ -5,7 +5,6 @@ use std::fmt::{self, Display, Formatter};
 use chrono::prelude::*;
 use hyper::Response;
 
-use helpers::http::header::XRuntimeMicroseconds;
 use state::{request_id, State};
 
 /// Used by `GothamService` to time requests. The `elapsed` function returns the elapsed time
@@ -58,11 +57,13 @@ pub(super) enum Timing {
 impl Timing {
     /// Converts a `Response` into a new `Response` with the `X-Runtime-Microseconds` header
     /// included (assuming the time elapsed was able to be measured).
-    pub(super) fn add_to_response(&self, response: Response) -> Response {
-        match *self {
-            Timing::Microseconds(i) => response.with_header(XRuntimeMicroseconds(i)),
-            Timing::Invalid => response,
+    pub(super) fn add_to_response(&self, mut response: Response) -> Response {
+        if let Timing::Microseconds(i) = *self {
+            response
+                .headers_mut()
+                .set_raw("X-Runtime-Microseconds", i.to_string());
         }
+        response
     }
 }
 

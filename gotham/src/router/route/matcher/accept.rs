@@ -1,7 +1,7 @@
 //! Defines the `AcceptHeaderRouterMatcher`.
 
+use hyper::header::{HeaderMap, ACCEPT};
 use hyper::StatusCode;
-use hyper::header::{Accept, Headers};
 use mime;
 
 use router::non_match::RouteNonMatch;
@@ -21,7 +21,7 @@ use state::{request_id, FromState, State};
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # fn main() {
-/// #   use hyper::header::{Headers, Accept};
+/// #   use hyper::header::{HeaderMap, ACCEPT};
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{AcceptHeaderRouteMatcher, RouteMatcher};
 /// #
@@ -31,37 +31,37 @@ use state::{request_id, FromState, State};
 /// let matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///
 /// // No accept header
-/// state.put(Headers::new());
+/// state.put(HeaderMap::new());
 /// assert!(matcher.is_match(&state).is_ok());
 ///
 /// // Accept header of `*/*`
-/// let mut headers = Headers::new();
-/// headers.set(Accept::star());
+/// let mut headers = HeaderMap::new();
+/// headers.insert(ACCEPT, "*/*".parse().unwrap());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
 ///
 /// // Accept header of `application/json`
-/// let mut headers = Headers::new();
-/// headers.set(Accept::json());
+/// let mut headers = HeaderMap::new();
+/// headers.insert(ACCEPT, "application/json".parse().unwrap());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
 ///
 /// // Not a valid Accept header
-/// let mut headers = Headers::new();
-/// headers.set(Accept::text());
+/// let mut headers = HeaderMap::new();
+/// headers.insert(ACCEPT, "text/plain".parse().unwrap());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_err());
 ///
 /// // At least one supported accept header
-/// let mut headers = Headers::new();
-/// headers.set(Accept::text());
-/// headers.set(Accept::json());
+/// let mut headers = HeaderMap::new();
+/// headers.insert(ACCEPT, "text/plain".parse().unwrap());
+/// headers.insert(ACCEPT, "application/json".parse().unwrap());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
 
 /// // Accept header of `image/*`
-/// let mut headers = Headers::new();
-/// headers.set(Accept::image());
+/// let mut headers = HeaderMap::new();
+/// headers.insert(ACCEPT, "image/*".parse().unwrap());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
 /// #
@@ -77,7 +77,10 @@ impl AcceptHeaderRouteMatcher {
     /// Creates a new `AcceptHeaderRouteMatcher`
     pub fn new(supported_media_types: Vec<mime::Mime>) -> Self {
         AcceptHeaderRouteMatcher {
-            supported_media_types,
+            supported_media_types: supported_media_types
+                .iter()
+                .map(|m| m.to_string())
+                .collect(),
         }
     }
 }
@@ -91,21 +94,18 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         // Request method is valid, ensure valid Accept header
-        let headers = Headers::borrow_from(state);
-        match headers.get::<Accept>() {
+        let headers = HeaderMap::borrow_from(state);
+        match headers.get(ACCEPT) {
             Some(accept) => {
-                let acceptable_media_types = accept.iter().map(|qi| &qi.item).collect::<Vec<_>>();
-                for ra in acceptable_media_types {
-                    if *ra == mime::STAR_STAR || self.supported_media_types.contains(ra) {
-                        return Ok(());
-                    }
+                if accept == "*/*" || self.supported_media_types.contains(accept) {
+                    return Ok(());
                 }
 
                 trace!(
                     "[{}] did not provide an Accept with media types supported by this Route",
                     request_id(&state)
                 );
-                Err(RouteNonMatch::new(StatusCode::NotAcceptable))
+                Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
             }
             // The client has not specified an `Accept` header, as we can now respond with any type
             // this is valid.

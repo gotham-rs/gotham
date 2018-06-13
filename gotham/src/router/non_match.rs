@@ -24,10 +24,10 @@ use hyper::{Method, StatusCode};
 /// impl RouteMatcher for MyRouteMatcher {
 ///     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
 ///         match state.borrow::<Method>() {
-///             &Method::Get => Ok(()),
+///             &Method::GET => Ok(()),
 ///             _ => Err(
-///                 RouteNonMatch::new(StatusCode::MethodNotAllowed)
-///                     .with_allow_list(&[Method::Get]),
+///                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED)
+///                     .with_allow_list(&[Method::GET]),
 ///             ),
 ///         }
 ///     }
@@ -35,7 +35,7 @@ use hyper::{Method, StatusCode};
 /// #
 /// # fn main() {
 /// #     State::with_new(|state| {
-/// #         state.put(Method::Post);
+/// #         state.put(Method::POST);
 /// #         assert!(MyRouteMatcher.is_match(&state).is_err());
 /// #     });
 /// # }
@@ -103,18 +103,16 @@ impl From<RouteNonMatch> for StatusCode {
 }
 
 fn higher_precedence_status(lhs: StatusCode, rhs: StatusCode) -> StatusCode {
-    use hyper::StatusCode::*;
-
     match (lhs, rhs) {
         // For 404, prefer routes that indicated *some* kind of match.
-        (NotFound, _) => rhs,
-        (_, NotFound) => lhs,
+        (StatusCode::NOT_FOUND, _) => rhs,
+        (_, StatusCode::NOT_FOUND) => lhs,
         // For 405, prefer routes that matched the HTTP method.
-        (MethodNotAllowed, _) => rhs,
-        (_, MethodNotAllowed) => lhs,
+        (StatusCode::METHOD_NOT_ALLOWED, _) => rhs,
+        (_, StatusCode::METHOD_NOT_ALLOWED) => lhs,
         // For 406, allow "harder" errors to overrule.
-        (NotAcceptable, _) => rhs,
-        (_, NotAcceptable) => lhs,
+        (StatusCode::NOT_ACCEPTABLE, _) => rhs,
+        (_, StatusCode::NOT_ACCEPTABLE) => lhs,
         // This is a silly safeguard that prefers errors over non-errors. This should never be
         // needed, but guards against strange custom `RouteMatcher` impls in applications.
         (_, _) if lhs.is_client_error() => lhs,
@@ -190,8 +188,6 @@ impl Default for MethodSet {
 
 impl<'a> From<&'a [Method]> for MethodSet {
     fn from(methods: &[Method]) -> MethodSet {
-        use hyper::Method::*;
-
         let (
             mut connect,
             mut delete,
@@ -203,46 +199,38 @@ impl<'a> From<&'a [Method]> for MethodSet {
             mut put,
             mut trace,
         ) = (
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
+            false, false, false, false, false, false, false, false, false,
         );
 
         let mut other = HashSet::new();
 
         for method in methods {
             match *method {
-                Connect => {
+                Method::CONNECT => {
                     connect = true;
                 }
-                Delete => {
+                Method::DELETE => {
                     delete = true;
                 }
-                Get => {
+                Method::GET => {
                     get = true;
                 }
-                Head => {
+                Method::HEAD => {
                     head = true;
                 }
-                Options => {
+                Method::OPTIONS => {
                     options = true;
                 }
-                Patch => {
+                Method::PATCH => {
                     patch = true;
                 }
-                Post => {
+                Method::POST => {
                     post = true;
                 }
-                Put => {
+                Method::PUT => {
                     put = true;
                 }
-                Trace => {
+                Method::TRACE => {
                     trace = true;
                 }
                 _ => {
@@ -269,15 +257,15 @@ impl<'a> From<&'a [Method]> for MethodSet {
 impl From<MethodSet> for Vec<Method> {
     fn from(method_set: MethodSet) -> Vec<Method> {
         let methods_with_flags: [(Method, bool); 9] = [
-            (Method::Connect, method_set.connect),
-            (Method::Delete, method_set.delete),
-            (Method::Get, method_set.get),
-            (Method::Head, method_set.head),
-            (Method::Options, method_set.options),
-            (Method::Patch, method_set.patch),
-            (Method::Post, method_set.post),
-            (Method::Put, method_set.put),
-            (Method::Trace, method_set.trace),
+            (Method::CONNECT, method_set.connect),
+            (Method::DELETE, method_set.delete),
+            (Method::GET, method_set.get),
+            (Method::HEAD, method_set.head),
+            (Method::OPTIONS, method_set.options),
+            (Method::PATCH, method_set.patch),
+            (Method::POST, method_set.post),
+            (Method::PUT, method_set.put),
+            (Method::TRACE, method_set.trace),
         ];
 
         let mut result = methods_with_flags
@@ -295,72 +283,104 @@ impl From<MethodSet> for Vec<Method> {
 mod tests {
     use super::*;
 
-    use hyper::Method::*;
-    use hyper::StatusCode::*;
+    use hyper::{Method, StatusCode};
 
     #[test]
     fn intersection_tests() {
-        let all = [Delete, Get, Head, Options, Patch, Post, Put];
+        let all = [
+            Method::DELETE,
+            Method::GET,
+            Method::HEAD,
+            Method::OPTIONS,
+            Method::PATCH,
+            Method::POST,
+            Method::PUT,
+        ];
 
-        let (status, allow_list) = RouteNonMatch::new(NotFound)
-            .intersection(RouteNonMatch::new(NotFound))
+        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
+            .intersection(RouteNonMatch::new(StatusCode::NOT_FOUND))
             .deconstruct();
-        assert_eq!(status, NotFound);
+        assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(&allow_list[..], &all);
 
-        let (status, allow_list) = RouteNonMatch::new(NotFound)
-            .intersection(RouteNonMatch::new(MethodNotAllowed).with_allow_list(&[Get]))
-            .deconstruct();
-        assert_eq!(status, MethodNotAllowed);
-        assert_eq!(&allow_list[..], &[Get]);
-
-        let (status, allow_list) = RouteNonMatch::new(NotAcceptable)
-            .with_allow_list(&[Get, Patch, Post])
+        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
             .intersection(
-                RouteNonMatch::new(MethodNotAllowed).with_allow_list(&[Get, Post, Options]),
+                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
             )
             .deconstruct();
-        assert_eq!(status, NotAcceptable);
-        assert_eq!(&allow_list[..], &[Get, Post]);
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(&allow_list[..], &[Method::GET]);
+
+        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
+            .with_allow_list(&[Method::GET, Method::PATCH, Method::POST])
+            .intersection(
+                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[
+                    Method::GET,
+                    Method::POST,
+                    Method::OPTIONS,
+                ]),
+            )
+            .deconstruct();
+        assert_eq!(status, StatusCode::NOT_ACCEPTABLE);
+        assert_eq!(&allow_list[..], &[Method::GET, Method::POST]);
     }
 
     #[test]
     fn union_tests() {
-        let all = [Delete, Get, Head, Options, Patch, Post, Put];
+        let all = [
+            Method::DELETE,
+            Method::GET,
+            Method::HEAD,
+            Method::OPTIONS,
+            Method::PATCH,
+            Method::POST,
+            Method::PUT,
+        ];
 
-        let (status, allow_list) = RouteNonMatch::new(NotFound)
-            .union(RouteNonMatch::new(NotFound))
+        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
+            .union(RouteNonMatch::new(StatusCode::NOT_FOUND))
             .deconstruct();
-        assert_eq!(status, NotFound);
+        assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(&allow_list[..], &all);
 
-        let (status, allow_list) = RouteNonMatch::new(NotFound)
-            .union(RouteNonMatch::new(MethodNotAllowed).with_allow_list(&[Get]))
+        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
+            .union(
+                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
+            )
             .deconstruct();
-        assert_eq!(status, MethodNotAllowed);
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(&allow_list[..], &all);
 
-        let (status, allow_list) = RouteNonMatch::new(NotAcceptable)
-            .with_allow_list(&[Get, Patch, Post])
-            .union(RouteNonMatch::new(MethodNotAllowed).with_allow_list(&[Get, Post, Options]))
+        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
+            .with_allow_list(&[Method::GET, Method::PATCH, Method::POST])
+            .union(
+                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[
+                    Method::GET,
+                    Method::POST,
+                    Method::OPTIONS,
+                ]),
+            )
             .deconstruct();
-        assert_eq!(status, NotAcceptable);
-        assert_eq!(&allow_list[..], &[Get, Options, Patch, Post]);
+        assert_eq!(status, StatusCode::NOT_ACCEPTABLE);
+        assert_eq!(
+            &allow_list[..],
+            &[Method::GET, Method::OPTIONS, Method::PATCH, Method::POST]
+        );
     }
 
     #[test]
     fn deconstruct_tests() {
-        let (_, allow_list) = RouteNonMatch::new(NotFound)
+        let (_, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
             .with_allow_list(&[
-                Delete,
-                Get,
-                Head,
-                Options,
-                Patch,
-                Post,
-                Put,
-                Connect,
-                Trace,
+                Method::DELETE,
+                Method::GET,
+                Method::HEAD,
+                Method::OPTIONS,
+                Method::PATCH,
+                Method::POST,
+                Method::PUT,
+                Method::CONNECT,
+                Method::TRACE,
                 Extension("PROPFIND".to_owned()),
                 Extension("PROPSET".to_owned()),
             ])
@@ -369,17 +389,17 @@ mod tests {
         assert_eq!(
             &allow_list[..],
             &[
-                Connect,
-                Delete,
-                Get,
-                Head,
-                Options,
-                Patch,
-                Post,
+                Method::CONNECT,
+                Method::DELETE,
+                Method::GET,
+                Method::HEAD,
+                Method::OPTIONS,
+                Method::PATCH,
+                Method::POST,
                 Extension("PROPFIND".to_owned()),
                 Extension("PROPSET".to_owned()),
-                Put,
-                Trace,
+                Method::PUT,
+                Method::TRACE,
             ]
         );
     }

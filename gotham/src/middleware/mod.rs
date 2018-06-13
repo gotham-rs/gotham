@@ -43,7 +43,7 @@ pub mod session;
 ///
 /// impl Middleware for NoopMiddleware {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         chain(state)
 ///     }
@@ -60,13 +60,13 @@ pub mod session;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::Accepted)))
+/// #               Ok(|state| (state, Response::new().with_status(StatusCode::ACCEPTED)))
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 ///
@@ -97,7 +97,7 @@ pub mod session;
 ///
 /// impl Middleware for MiddlewareWithStateData {
 ///     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         state.put(MiddlewareStateData { i: 10 });
 ///         chain(state)
@@ -118,14 +118,14 @@ pub mod session;
 /// #               Ok(|mut state: State| {
 /// #                   let data = state.take::<MiddlewareStateData>();
 /// #                   let body = format!("{}", data.i).into_bytes();
-/// #                   (state, Response::new().with_status(StatusCode::Ok).with_body(body))
+/// #                   (state, Response::new().with_status(StatusCode::OK).with_body(body))
 /// #               })
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Ok);
+/// #   assert_eq!(response.status(), StatusCode::OK);
 /// #   let body = response.read_utf8_body().unwrap();
 /// #   assert_eq!(&body, "10");
 /// # }
@@ -156,7 +156,7 @@ pub mod session;
 ///
 /// impl Middleware for MiddlewareAddingResponseHeader {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         let f = chain(state)
 ///             .map(|(state, mut response)| {
@@ -187,13 +187,13 @@ pub mod session;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::Accepted)))
+/// #               Ok(|state| (state, Response::new().with_status(StatusCode::ACCEPTED)))
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// #
 /// #   {
 /// #       let warning = response.headers().get::<Warning>().unwrap();
@@ -230,12 +230,12 @@ pub mod session;
 ///
 /// impl Middleware for ConditionalMiddleware {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
-///         if *Method::borrow_from(&state) == Method::Get {
+///         if *Method::borrow_from(&state) == Method::GET {
 ///             chain(state)
 ///         } else {
-///             let response = create_response(&state, StatusCode::MethodNotAllowed, None);
+///             let response = create_response(&state, StatusCode::METHOD_NOT_ALLOWED, None);
 ///             Box::new(future::ok((state, response)))
 ///         }
 ///     }
@@ -252,17 +252,17 @@ pub mod session;
 /// #       route
 /// #           .get_or_head("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::Accepted)))
+/// #               Ok(|state| (state, Response::new().with_status(StatusCode::ACCEPTED)))
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// #
 /// #   let response = test_server.client().head("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::MethodNotAllowed);
+/// #   assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
 /// # }
 /// ```
 ///
@@ -290,7 +290,7 @@ pub mod session;
 ///
 /// impl Middleware for AsyncMiddleware {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         // This could be any asynchronous action. `future::lazy(_)` defers a function
 ///         // until the next cycle of tokio's event loop.
@@ -310,13 +310,13 @@ pub mod session;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::Accepted)))
+/// #               Ok(|state| (state, Response::new().with_status(StatusCode::ACCEPTED)))
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub trait Middleware {
@@ -330,7 +330,7 @@ pub trait Middleware {
     ///   its function.
     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
         Self: Sized;
 }
 
