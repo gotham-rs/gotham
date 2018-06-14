@@ -30,7 +30,7 @@ use router::response::extender::StaticResponseExtender;
 /// #
 /// # use hyper::{Response, StatusCode};
 /// # use gotham::state::{FromState, State};
-/// # use gotham::http::response::create_response;
+/// # use gotham::helpers::http::response::create_response;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;

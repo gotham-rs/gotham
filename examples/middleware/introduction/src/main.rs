@@ -10,12 +10,12 @@ extern crate mime;
 use futures::{future, Future};
 use hyper::{Response, StatusCode};
 use hyper::header::{Headers, UserAgent};
-use gotham::http::response::create_response;
 use gotham::handler::HandlerFuture;
 use gotham::middleware::Middleware;
-use gotham::state::{FromState, State};
+use gotham::helpers::http::response::create_response;
 use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::state::{FromState, State};
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
 

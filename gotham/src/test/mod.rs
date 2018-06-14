@@ -374,7 +374,7 @@ trait BodyReader {
 /// # extern crate mime;
 /// #
 /// # use gotham::state::State;
-/// # use gotham::http::response::create_response;
+/// # use gotham::helpers::http::response::create_response;
 /// # use hyper::{Response, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response) {
@@ -468,7 +468,7 @@ mod tests {
     use mime;
 
     use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-    use http::response::create_response;
+    use helpers::http::response::create_response;
     use state::{client_addr, FromState, State};
 
     #[derive(Clone)]

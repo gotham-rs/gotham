@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::borrow::Borrow;
 use hyper::StatusCode;
 
-use http::PercentDecoded;
+use helpers::http::PercentDecoded;
 use router::non_match::RouteNonMatch;
 use router::route::{Delegation, Route};
 use router::tree::{Path, SegmentMapping, SegmentsProcessed};
@@ -376,12 +376,12 @@ mod tests {
 
     use hyper::{Headers, Method, Response};
 
-    use pipeline::set::*;
+    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Extractors, Route, RouteImpl};
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use http::request::path::RequestPathSegments;
+    use pipeline::set::*;
+    use helpers::http::request::path::RequestPathSegments;
     use state::{set_request_id, State};
 
     fn handler(state: State) -> (State, Response) {

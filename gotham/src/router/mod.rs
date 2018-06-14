@@ -14,8 +14,8 @@ use hyper::{Response, StatusCode};
 use hyper::header::Allow;
 
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
-use http::request::path::RequestPathSegments;
-use http::response::create_response;
+use helpers::http::request::path::RequestPathSegments;
+use helpers::http::response::create_response;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Delegation, Route};
 use router::tree::{SegmentMapping, Tree};
