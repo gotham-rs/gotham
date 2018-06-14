@@ -1,7 +1,7 @@
 //! Defines the `ContentTypeHeaderRouteMatcher`.
 
-use hyper::StatusCode;
 use hyper::header::{ContentType, Headers};
+use hyper::StatusCode;
 use mime;
 
 use router::non_match::RouteNonMatch;

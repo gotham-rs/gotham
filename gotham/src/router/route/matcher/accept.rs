@@ -1,7 +1,7 @@
 //! Defines the `AcceptHeaderRouterMatcher`.
 
-use hyper::StatusCode;
 use hyper::header::{Accept, Headers};
+use hyper::StatusCode;
 use mime;
 
 use router::non_match::RouteNonMatch;
