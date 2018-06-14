@@ -93,7 +93,6 @@ mod tests {
     use super::*;
 
     use hyper::{Method, StatusCode};
-    use tokio_core::reactor::Core;
 
     use helpers::http::response::create_response;
     use router::builder::*;
@@ -106,14 +105,13 @@ mod tests {
 
     #[test]
     fn new_handler_closure() {
-        let mut core = Core::new().unwrap();
         let service = GothamService::new(Arc::new(|| Ok(handler)));
 
         let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = core.run(f).unwrap();
+        let response = f.wait().unwrap();
         assert_eq!(response.status(), StatusCode::Accepted);
     }
 
@@ -123,14 +121,13 @@ mod tests {
             route.get("/").to(handler);
         });
 
-        let mut core = Core::new().unwrap();
         let service = GothamService::new(Arc::new(router));
 
         let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = core.run(f).unwrap();
+        let response = f.wait().unwrap();
         assert_eq!(response.status(), StatusCode::Accepted);
     }
 }

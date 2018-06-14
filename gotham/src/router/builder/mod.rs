@@ -325,7 +325,6 @@ mod tests {
     use futures::{Future, Stream};
     use hyper::server::Service;
     use hyper::{Method, Request, Response, StatusCode};
-    use tokio_core::reactor::Core;
 
     use middleware::session::NewSessionMiddleware;
     use pipeline::new_pipeline;
@@ -495,12 +494,11 @@ mod tests {
             route.delegate("/delegated").to_router(delegated_router);
         });
 
-        let mut core = Core::new().unwrap();
         let new_service = GothamService::new(Arc::new(router));
 
-        let mut call = move |req| {
+        let call = move |req| {
             let service = new_service.connect("127.0.0.1:10000".parse().unwrap());
-            core.run(service.call(req)).unwrap()
+            service.call(req).wait().unwrap()
         };
 
         let response = call(Request::new(Method::Get, "/".parse().unwrap()));
