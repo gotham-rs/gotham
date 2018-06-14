@@ -55,7 +55,7 @@
 //! # extern crate mime;
 //! #
 //! # use gotham::handler::*;
-//! # use gotham::http::response::*;
+//! # use gotham::helpers::http::response::*;
 //! # use gotham::router::Router;
 //! # use gotham::router::builder::*;
 //! # use gotham::pipeline::single::*;
@@ -158,10 +158,10 @@ extern crate hyper;
 #[cfg(test)]
 extern crate mime;
 
-mod state_data;
 mod job;
 mod middleware;
+mod state_data;
 
 pub use job::run_with_diesel;
-pub use state_data::Diesel;
 pub use middleware::DieselMiddleware;
+pub use state_data::Diesel;

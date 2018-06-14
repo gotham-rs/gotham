@@ -69,11 +69,11 @@ where
 mod tests {
     use super::*;
 
-    use std::io;
-    use hyper::StatusCode;
     use gotham::handler::{HandlerFuture, IntoHandlerError};
-    use gotham::http::response::create_response;
+    use gotham::helpers::http::response::create_response;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
+    use std::io;
 
     #[test]
     fn run_in_thread_pool_tests() {

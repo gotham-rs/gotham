@@ -28,7 +28,7 @@
 //! # use futures::Future;
 //! # use hyper::StatusCode;
 //! # use gotham::handler::{HandlerFuture, HandlerError, IntoHandlerError};
-//! # use gotham::http::response::create_response;
+//! # use gotham::helpers::http::response::create_response;
 //! # use gotham::state::State;
 //! # use gotham::router::Router;
 //! # use gotham::router::builder::*;

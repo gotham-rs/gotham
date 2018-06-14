@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 use gotham::state::{FromState, State};
 use gotham_middleware_workers::{run_with_worker, Job, PreparedJob};
 
-use futures::{Future, IntoFuture};
 use diesel::Connection;
+use futures::{Future, IntoFuture};
 
 use state_data::Diesel;
 
@@ -109,17 +109,17 @@ where
 mod tests {
     use super::*;
 
+    use diesel::sqlite::SqliteConnection;
+    use diesel::{self, RunQueryDsl};
     use gotham::handler::HandlerFuture;
-    use gotham::http::response::create_response;
-    use gotham::router::builder::*;
-    use gotham::router::Router;
-    use gotham::pipeline::single::*;
+    use gotham::helpers::http::response::create_response;
     use gotham::pipeline::new_pipeline;
+    use gotham::pipeline::single::*;
+    use gotham::router::Router;
+    use gotham::router::builder::*;
     use gotham::test::TestServer;
     use gotham_middleware_workers::WorkersMiddleware;
     use hyper::StatusCode;
-    use diesel::{self, RunQueryDsl};
-    use diesel::sqlite::SqliteConnection;
     use mime;
 
     use middleware::DieselMiddleware;

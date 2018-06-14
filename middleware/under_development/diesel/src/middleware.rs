@@ -4,9 +4,9 @@ use std::process;
 
 use futures::{future, Future};
 
+use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::state::{request_id, State};
-use gotham::handler::HandlerFuture;
 
 use diesel::Connection;
 use r2d2::{self, Pool};

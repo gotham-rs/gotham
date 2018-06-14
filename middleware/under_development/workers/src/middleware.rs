@@ -45,14 +45,14 @@ mod tests {
     use super::*;
 
     use futures::Future;
-    use hyper::StatusCode;
-    use mime;
-    use gotham::http::response::create_response;
-    use gotham::router::Router;
-    use gotham::router::builder::*;
+    use gotham::helpers::http::response::create_response;
     use gotham::pipeline::single::*;
     use gotham::pipeline::*;
+    use gotham::router::Router;
+    use gotham::router::builder::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
+    use mime;
 
     use job::*;
     use pool::*;

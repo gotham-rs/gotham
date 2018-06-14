@@ -92,13 +92,13 @@ mod tests {
 
     use futures::future::FutureResult;
     use futures_cpupool::CpuPool;
+    use gotham::handler::{HandlerFuture, IntoHandlerError};
+    use gotham::helpers::http::response::create_response;
+    use gotham::test::TestServer;
+    use hyper::StatusCode;
+    use mime;
     use std::io;
     use std::sync::{Arc, Mutex};
-    use hyper::StatusCode;
-    use gotham::handler::{HandlerFuture, IntoHandlerError};
-    use gotham::http::response::create_response;
-    use gotham::test::TestServer;
-    use mime;
 
     use pool::WorkersPool;
 
