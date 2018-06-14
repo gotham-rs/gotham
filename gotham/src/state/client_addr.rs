@@ -1,7 +1,7 @@
 //! Defines storage for the remote address of the client
 
-use std::net::SocketAddr;
 use state::{FromState, State, StateData};
+use std::net::SocketAddr;
 
 struct ClientAddr {
     addr: SocketAddr,

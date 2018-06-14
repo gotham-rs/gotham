@@ -3,13 +3,13 @@ use std::panic::RefUnwindSafe;
 
 use hyper::Method;
 
+use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::route::matcher::{AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher,
-                             RouteMatcher};
-use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
                       SingleRouteBuilder};
+use router::route::matcher::{AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher,
+                             RouteMatcher};
 use router::tree::node::{NodeBuilder, SegmentType};
 use router::tree::regex::ConstrainedSegmentRegex;
 
@@ -956,14 +956,14 @@ where
 mod tests {
     use std::io;
 
-    use hyper::{Response, StatusCode};
     use futures::future;
+    use hyper::{Response, StatusCode};
 
     use handler::HandlerFuture;
-    use middleware::{Middleware, NewMiddleware};
-    use pipeline::*;
-    use pipeline::single::*;
     use helpers::http::response::create_response;
+    use middleware::{Middleware, NewMiddleware};
+    use pipeline::single::*;
+    use pipeline::*;
     use router::builder::*;
     use state::State;
     use test::TestServer;

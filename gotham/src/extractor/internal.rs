@@ -4,14 +4,14 @@
 
 use std::error::Error;
 use std::fmt::{self, Display};
-use std::str::FromStr;
 use std::marker::PhantomData;
+use std::str::FromStr;
 
 use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess,
                 SeqAccess, VariantAccess, Visitor};
 
-use router::tree::SegmentMapping;
 use helpers::http::request::query_string::QueryStringMapping;
+use router::tree::SegmentMapping;
 
 /// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
 /// `PathExtractor` provided by the application.
@@ -859,8 +859,8 @@ mod tests {
     }
 
     mod byte_buf {
-        use std::fmt;
         use serde::de::*;
+        use std::fmt;
 
         pub fn deserialize<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
         where
@@ -922,8 +922,8 @@ mod tests {
     }
 
     mod borrowed_bytes {
-        use std::fmt;
         use serde::de::*;
+        use std::fmt;
 
         pub fn deserialize<'de, D>(de: D) -> Result<&'de [u8], D::Error>
         where
@@ -985,8 +985,8 @@ mod tests {
     }
 
     mod borrowed_str {
-        use std::fmt;
         use serde::de::*;
+        use std::fmt;
 
         pub fn deserialize<'de, D>(de: D) -> Result<&'de str, D::Error>
         where

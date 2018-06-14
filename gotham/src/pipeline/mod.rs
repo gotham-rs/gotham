@@ -276,8 +276,8 @@ where
 mod tests {
     use super::*;
 
-    use hyper::{Response, StatusCode};
     use futures::future;
+    use hyper::{Response, StatusCode};
 
     use handler::{Handler, IntoHandlerError};
     use middleware::Middleware;

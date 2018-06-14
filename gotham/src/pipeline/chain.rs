@@ -1,14 +1,14 @@
 //! Defines the types for connecting multiple pipeline handles into a "chain" when constructing the
 //! dispatcher for a route.
 
-use std::panic::RefUnwindSafe;
 use borrow_bag::{Handle, Lookup};
 use futures::future;
+use std::panic::RefUnwindSafe;
 
 use handler::{HandlerFuture, IntoHandlerError};
 use middleware::chain::NewMiddlewareChain;
-use pipeline::Pipeline;
 use pipeline::set::PipelineSet;
+use pipeline::Pipeline;
 use state::{request_id, State};
 
 /// A heterogeneous list of `Handle<P, _>` values, where `P` is a pipeline type. The pipelines are

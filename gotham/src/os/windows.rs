@@ -1,13 +1,13 @@
 use std::io;
 use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
-use std::thread;
 use std::sync::{Arc, Mutex};
+use std::thread;
 
+use futures::{future, task, Async, Future, Poll, Stream};
 use hyper::server::Http;
 use tokio_core;
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::{Core, Handle};
-use futures::{future, task, Async, Future, Poll, Stream};
 
 use handler::NewHandler;
 use service::GothamService;

@@ -12,16 +12,16 @@ extern crate serde_derive;
 extern crate tokio_core;
 extern crate tokio_timer;
 
-use std::time::Duration;
 use futures::{stream, Future, Stream};
+use std::time::Duration;
 
 use hyper::StatusCode;
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
-use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::builder::DefineSingleRoute;
+use gotham::router::builder::{build_simple_router, DrawRoutes};
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 use tokio_timer::{Timer, TimerError};

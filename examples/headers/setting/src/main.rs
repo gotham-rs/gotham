@@ -5,11 +5,11 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
 use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::State;
+use hyper::{Response, StatusCode};
 
 // Define a custom header via the standard Hyper provided macro
 header! { (GothamHeader, "X-Gotham") => [String] }

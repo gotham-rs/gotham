@@ -1,14 +1,14 @@
 //! Defines functionality for processing a request and trapping errors and panics in response
 //! generation.
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::error::Error;
 use std::any::Any;
+use std::error::Error;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::{io, mem};
 
-use hyper::{self, Response, StatusCode};
-use futures::Async;
 use futures::future::{self, Future, FutureResult};
+use futures::Async;
+use hyper::{self, Response, StatusCode};
 
 use handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use service::timing::Timer;
@@ -192,9 +192,9 @@ mod tests {
 
     use hyper::{Headers, StatusCode};
 
+    use handler::{HandlerFuture, IntoHandlerError};
     use helpers::http::response::create_response;
     use state::set_request_id;
-    use handler::{HandlerFuture, IntoHandlerError};
 
     #[test]
     fn success() {

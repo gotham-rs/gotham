@@ -18,8 +18,8 @@ mod handle;
 mod lookup;
 
 pub use append::Append;
-pub use lookup::Lookup;
 pub use handle::Handle;
+pub use lookup::Lookup;
 
 /// `BorrowBag` allows the storage of any value using `add(T)`, and returns a `Handle` which can be
 /// used to borrow the value back later. As the `BorrowBag` is add-only, `Handle` values remain
