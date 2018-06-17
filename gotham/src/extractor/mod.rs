@@ -8,9 +8,9 @@
 //! the data and store it within the request `State` before the request is dispatched to the
 //! `Handler`.
 
-mod query_string;
-mod path;
 pub(crate) mod internal;
+mod path;
+mod query_string;
 
-pub use self::query_string::*;
 pub use self::path::*;
+pub use self::query_string::*;

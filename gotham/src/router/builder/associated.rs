@@ -3,13 +3,13 @@ use std::panic::RefUnwindSafe;
 
 use hyper::Method;
 
+use extractor::{PathExtractor, QueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
+use router::builder::SingleRouteBuilder;
 use router::route::matcher::{AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher,
                              RouteMatcher};
-use extractor::{PathExtractor, QueryStringExtractor};
 use router::tree::node::NodeBuilder;
-use router::builder::SingleRouteBuilder;
 
 pub type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;
 pub type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;

@@ -1,8 +1,8 @@
 //! Defines functionality for finalizing a `Response` after all pipelines, middlewares, handlers
 //! and internal extenders have completed.
 
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use futures::future;
 use hyper::{Response, StatusCode};
@@ -28,8 +28,10 @@ pub struct ResponseFinalizerBuilder {
 
 impl ResponseFinalizerBuilder {
     /// Creates a new ResponseFinalizer instance.
-    #[deprecated(since = "0.2.0",
-                 note = "use the new `gotham::router::builder` API to configure ResponseExtenders")]
+    #[deprecated(
+        since = "0.2.0",
+        note = "use the new `gotham::router::builder` API to configure ResponseExtenders"
+    )]
     pub fn new() -> Self {
         ResponseFinalizerBuilder::internal_new()
     }

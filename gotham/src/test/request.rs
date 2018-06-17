@@ -1,6 +1,6 @@
-use hyper::{Body, Method, Request, Uri};
 use hyper::error::UriError;
 use hyper::header::Header;
+use hyper::{Body, Method, Request, Uri};
 
 use handler::NewHandler;
 use test::{TestClient, TestRequestError, TestResponse};

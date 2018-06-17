@@ -1,6 +1,6 @@
-use rand::{OsRng, Rng, SeedableRng};
-use rand::reseeding::{Reseeder, ReseedingRng};
 use rand::chacha::ChaChaRng;
+use rand::reseeding::{Reseeder, ReseedingRng};
+use rand::{OsRng, Rng, SeedableRng};
 
 pub(super) struct OsRngReseeder {
     os_rng: OsRng,

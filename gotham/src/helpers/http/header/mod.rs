@@ -1,20 +1,20 @@
 //! Defines HTTP headers which are set by Gotham but not provided by Hyper.
 
-mod x_request_id;
-mod x_frame_options;
-mod x_xss_protection;
 mod x_content_type_options;
+mod x_frame_options;
+mod x_request_id;
 mod x_runtime_microseconds;
+mod x_xss_protection;
 
-pub use helpers::http::header::x_request_id::XRequestId;
-pub use helpers::http::header::x_frame_options::XFrameOptions;
-pub use helpers::http::header::x_xss_protection::XXssProtection;
 pub use helpers::http::header::x_content_type_options::XContentTypeOptions;
+pub use helpers::http::header::x_frame_options::XFrameOptions;
+pub use helpers::http::header::x_request_id::XRequestId;
 pub use helpers::http::header::x_runtime_microseconds::XRuntimeMicroseconds;
+pub use helpers::http::header::x_xss_protection::XXssProtection;
 
-use std::str;
 use hyper;
 use hyper::header::Raw;
+use std::str;
 
 /// Reads a single, space delimited, raw string into a Vec.
 fn from_one_rws_delimited_raw_str<T: str::FromStr>(raw: &Raw) -> hyper::error::Result<Vec<T>> {
