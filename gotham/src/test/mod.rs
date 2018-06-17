@@ -2,26 +2,27 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use std::{cell, io, net, time};
 use std::cell::RefCell;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::Duration;
+use std::{io, net};
 
 use futures::{future, Future, Stream};
-use hyper::{self, Body, Method, Request, Response, Uri};
 use hyper::client::{self, Client};
 use hyper::error::UriError;
 use hyper::header::ContentType;
-use hyper::server::{self, Http};
+use hyper::server::Http;
+use hyper::{self, Body, Method, Request, Response, Uri};
 use mime;
 use mio;
 use tokio_core::reactor::{Core, PollEvented, Timeout};
 
 use handler::NewHandler;
-use service::GothamService;
 use router::Router;
+use service::GothamService;
 
 mod request;
 
@@ -55,14 +56,14 @@ pub use self::request::RequestBuilder;
 /// ```
 pub struct TestServer<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     data: Rc<TestServerData<NH>>,
 }
 
 struct TestServerData<NH = Router>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     core: RefCell<Core>,
     http: Http,
@@ -92,7 +93,7 @@ impl From<UriError> for TestRequestError {
 
 impl<NH> Clone for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn clone(&self) -> TestServer<NH> {
         TestServer {
@@ -103,7 +104,7 @@ where
 
 impl<NH> TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
@@ -117,13 +118,11 @@ where
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
     pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
         Core::new().map(|core| {
-            let handle = core.handle();
-
             let data = TestServerData {
-                core: RefCell::new(core),
-                http: server::Http::new(),
                 timeout,
-                gotham_service: GothamService::new(Arc::new(new_handler), handle),
+                core: RefCell::new(core),
+                http: Http::new(),
+                gotham_service: GothamService::new(Arc::new(new_handler)),
             };
 
             TestServer {
@@ -177,7 +176,7 @@ where
 
         let client = Client::configure()
             .connector(TestConnect {
-                stream: cell::RefCell::new(Some(cs)),
+                stream: RefCell::new(Some(cs)),
             })
             .build(&self.data.core.borrow().handle());
 
@@ -195,7 +194,7 @@ where
     where
         F: Future<Error = hyper::Error>,
     {
-        let timeout_duration = time::Duration::from_secs(self.data.timeout);
+        let timeout_duration = Duration::from_secs(self.data.timeout);
         let timeout = Timeout::new(timeout_duration, &self.data.core.borrow().handle())
             .map_err(|e| TestRequestError::IoError(e))?;
 
@@ -215,14 +214,15 @@ where
 
 impl<NH> BodyReader for TestServer<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
 
         let r = {
-            let f: hyper::Body = response.body();
-            let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
+            let f = response
+                .body()
+                .for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
 
             let mut core = self.data.core.borrow_mut();
             core.run(f)
@@ -235,7 +235,7 @@ where
 /// Client interface for issuing requests to a `TestServer`.
 pub struct TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     client: Client<TestConnect>,
     test_server: TestServer<NH>,
@@ -243,7 +243,7 @@ where
 
 impl<NH> TestClient<NH>
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
     pub fn head(self, uri: &str) -> RequestBuilder<NH> {
@@ -436,7 +436,7 @@ impl TestResponse {
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
 struct TestConnect {
-    stream: cell::RefCell<Option<PollEvented<mio::net::TcpStream>>>,
+    stream: RefCell<Option<PollEvented<mio::net::TcpStream>>>,
 }
 
 impl client::Service for TestConnect {
@@ -463,8 +463,8 @@ mod tests {
 
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use hyper::{Body, StatusCode, Uri};
     use hyper::header::{ContentLength, ContentType};
+    use hyper::{Body, Response, StatusCode, Uri};
     use mime;
 
     use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
@@ -481,7 +481,7 @@ mod tests {
             let path = Uri::borrow_from(&state).path().to_owned();
             match path.as_str() {
                 "/" => {
-                    let response = server::Response::new()
+                    let response = Response::new()
                         .with_status(StatusCode::Ok)
                         .with_body(self.response.clone());
 
@@ -489,7 +489,7 @@ mod tests {
                 }
                 "/timeout" => Box::new(future::empty()),
                 "/myaddr" => {
-                    let response = server::Response::new()
+                    let response = Response::new()
                         .with_status(StatusCode::Ok)
                         .with_body(format!("{}", client_addr(&state).unwrap()));
 

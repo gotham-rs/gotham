@@ -5,13 +5,13 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Body, Headers, HttpVersion, Method, Response, StatusCode, Uri};
 use futures::{future, Future, Stream};
+use hyper::{Body, Headers, HttpVersion, Method, Response, StatusCode, Uri};
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 /// Extract the main elements of the request except for the `Body`

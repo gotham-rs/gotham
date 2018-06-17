@@ -14,8 +14,8 @@ extern crate serde_json;
 use hyper::{Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 /// Holds data extracted from the Request query string.

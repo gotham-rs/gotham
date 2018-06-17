@@ -12,8 +12,8 @@ use std::time::SystemTime;
 
 use gotham::handler::{Handler, HandlerFuture, NewHandler};
 use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::State;
 
 // A struct which can store the state which it needs.

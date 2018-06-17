@@ -1,9 +1,9 @@
 //! Helpers for HTTP response generation
 
-use std::borrow::Cow;
-use hyper::{Method, Response, StatusCode};
 use hyper::header::{ContentLength, ContentType, Location};
+use hyper::{Method, Response, StatusCode};
 use mime::Mime;
+use std::borrow::Cow;
 
 use helpers::http::header::{XContentTypeOptions, XFrameOptions, XRequestId, XXssProtection};
 use state::{request_id, FromState, State};
