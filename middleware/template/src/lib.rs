@@ -19,9 +19,9 @@ use std::io;
 
 use futures::{future, Future};
 
+use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::state::{request_id, State};
-use gotham::handler::HandlerFuture;
 
 // Example of struct that stores owned data in State
 //

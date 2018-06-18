@@ -1,10 +1,10 @@
 use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
-use router::route::matcher::{AndRouteMatcher, RouteMatcher};
 use pipeline::chain::PipelineHandleChain;
-use router::builder::SingleRouteBuilder;
 use router::builder::single::DefineSingleRoute;
+use router::builder::SingleRouteBuilder;
+use router::route::matcher::{AndRouteMatcher, RouteMatcher};
 
 /// Describes the operation of replacing a `PathExtractor` on a route. This trait exists to remove
 /// type clutter from the documentation of `SingleRouteBuilder::with_path_extractor`.

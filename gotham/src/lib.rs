@@ -57,7 +57,6 @@ use futures::{Future, Stream};
 use hyper::server::conn::Http;
 use hyper::Chunk;
 use tokio::net::TcpListener;
-
 use handler::NewHandler;
 use service::GothamService;
 

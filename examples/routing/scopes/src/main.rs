@@ -5,8 +5,8 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use hyper::{Get, Head};
 
 mod handlers;

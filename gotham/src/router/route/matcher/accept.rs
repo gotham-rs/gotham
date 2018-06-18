@@ -98,8 +98,8 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
         match headers.get(ACCEPT) {
             Some(accept) => {
                 if accept == "*/*" || self.supported_media_types.contains(accept) {
-                    return Ok(());
-                }
+                        return Ok(());
+                    }
 
                 trace!(
                     "[{}] did not provide an Accept with media types supported by this Route",

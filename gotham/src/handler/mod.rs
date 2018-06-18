@@ -7,7 +7,7 @@ use std::io;
 use std::panic::RefUnwindSafe;
 
 use futures::{future, Future};
-use hyper::{Body, Response};
+use hyper::Response;
 
 use state::State;
 
@@ -19,7 +19,7 @@ pub use self::error::{HandlerError, IntoHandlerError};
 ///
 /// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate
 /// an appropriate HTTP error response.
-pub type HandlerFuture<T = Body> = Future<Item = (State, T), Error = (State, HandlerError)> + Send;
+pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)> + Send;
 
 /// A `Handler` is an asynchronous function, taking a `State` value which represents the request
 /// and related runtime state, and returns a future which resolves to a response.

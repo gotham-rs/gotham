@@ -83,6 +83,14 @@ pub enum TestRequestError {
     IoError(io::Error),
     /// A `hyper::Error` occurred before a response was received.
     HyperError(hyper::Error),
+    /// The URL could not be parsed when building the request.
+    UriError(UriError),
+}
+
+impl From<UriError> for TestRequestError {
+    fn from(error: UriError) -> TestRequestError {
+        TestRequestError::UriError(error)
+    }
 }
 
 impl<NH> Clone for TestServer<NH>
@@ -111,15 +119,16 @@ where
 
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
     pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
-        let data = TestServerData {
+
+            let data = TestServerData {
             http: Http::new(),
             timeout,
             runtime: RwLock::new(Runtime::new().unwrap()),
             gotham_service: GothamService::new(Arc::new(new_handler)),
-        };
+            };
 
         Ok(TestServer {
-            data: Rc::new(data),
+                data: Rc::new(data),
         })
     }
 
@@ -139,6 +148,7 @@ where
     }
 
     fn try_client_with_address(&self, client_addr: net::SocketAddr) -> io::Result<TestClient<NH>> {
+
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
@@ -169,9 +179,9 @@ where
         let client = Core::new()
             .map(|core| {
                 Client::configure()
-                    .connector(TestConnect {
+            .connector(TestConnect {
                         stream: RefCell::new(Some(cs)),
-                    })
+            })
                     .build(&core.handle())
             })
             .unwrap();
@@ -201,7 +211,6 @@ where
             Err(future::Either::B((e, _))) => Err(TestRequestError::IoError(e)),
         }
     }
-
     /// Runs a future inside of the internal runtime.
     ///
     /// This blocks on the result of the future and behaves like a synchronous
