@@ -12,7 +12,7 @@ use futures::{future, Future};
 use hyper::header::{Cookie, Headers, SetCookie};
 use hyper::server::Response;
 use hyper::StatusCode;
-use rand::Rng;
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 
 use super::{Middleware, NewMiddleware};
