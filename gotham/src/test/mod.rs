@@ -12,9 +12,10 @@ use std::{io, net};
 
 use futures::{future, sync::oneshot, Future, Stream};
 use futures_timer::Delay;
-use hyper::client::{self, Client};
+use hyper::client::Client;
 use hyper::header::CONTENT_TYPE;
 use hyper::server::conn::Http;
+use hyper::service;
 use hyper::{self, Body, Method, Request, Response, Uri};
 use mime;
 use mio;
@@ -83,14 +84,6 @@ pub enum TestRequestError {
     IoError(io::Error),
     /// A `hyper::Error` occurred before a response was received.
     HyperError(hyper::Error),
-    /// The URL could not be parsed when building the request.
-    UriError(UriError),
-}
-
-impl From<UriError> for TestRequestError {
-    fn from(error: UriError) -> TestRequestError {
-        TestRequestError::UriError(error)
-    }
 }
 
 impl<NH> Clone for TestServer<NH>
@@ -119,16 +112,15 @@ where
 
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
     pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
-
-            let data = TestServerData {
+        let data = TestServerData {
             http: Http::new(),
             timeout,
             runtime: RwLock::new(Runtime::new().unwrap()),
             gotham_service: GothamService::new(Arc::new(new_handler)),
-            };
+        };
 
         Ok(TestServer {
-                data: Rc::new(data),
+            data: Rc::new(data),
         })
     }
 
@@ -148,7 +140,6 @@ where
     }
 
     fn try_client_with_address(&self, client_addr: net::SocketAddr) -> io::Result<TestClient<NH>> {
-
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
@@ -179,9 +170,9 @@ where
         let client = Core::new()
             .map(|core| {
                 Client::configure()
-            .connector(TestConnect {
+                    .connector(TestConnect {
                         stream: RefCell::new(Some(cs)),
-            })
+                    })
                     .build(&core.handle())
             })
             .unwrap();
@@ -237,7 +228,7 @@ impl<NH> BodyReader for TestServer<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    fn read_body(&self, response: Response) -> hyper::Result<Vec<u8>> {
+    fn read_body(&self, response: Response<hyper::Body>) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
 
         let r = {
@@ -458,7 +449,7 @@ struct TestConnect {
     stream: RefCell<Option<PollEvented2<mio::net::TcpStream>>>,
 }
 
-impl client::Service for TestConnect {
+impl service::Service for TestConnect {
     type Request = hyper::Uri;
     type Error = io::Error;
     type Response = PollEvented2<mio::net::TcpStream>;

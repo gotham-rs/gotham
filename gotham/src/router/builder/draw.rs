@@ -993,7 +993,7 @@ mod tests {
         }
     }
 
-    fn test_handler(state: State) -> (State, Response) {
+    fn test_handler(state: State) -> (State, Response<()>) {
         let response = create_response(&state, StatusCode::ACCEPTED, None);
         (state, response)
     }

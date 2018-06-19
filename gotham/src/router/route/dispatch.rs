@@ -86,7 +86,7 @@ mod tests {
     use state::StateData;
     use test::TestServer;
 
-    fn handler(state: State) -> (State, Response) {
+    fn handler(state: State) -> (State, Response<()>) {
         let number = state.borrow::<Number>().value;
         (
             state,

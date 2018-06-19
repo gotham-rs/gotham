@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use base64;
 use bincode;
 use futures::{future, Future};
-use hyper::header::{Cookie, HeaderMap, SetCookie};
+use hyper::header::{Cookie, HeaderMap};
 use hyper::{Response, StatusCode};
 use rand::Rng;
 use serde::{Deserialize, Serialize};

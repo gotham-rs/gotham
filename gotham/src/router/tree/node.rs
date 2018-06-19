@@ -384,7 +384,7 @@ mod tests {
     use router::route::{Extractors, Route, RouteImpl};
     use state::{set_request_id, State};
 
-    fn handler(state: State) -> (State, Response) {
+    fn handler(state: State) -> (State, Response<()>) {
         (state, Response::new())
     }
 

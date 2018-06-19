@@ -357,15 +357,15 @@ mod tests {
 
     mod welcome {
         use super::*;
-        pub fn index(state: State) -> (State, Response) {
+        pub fn index(state: State) -> (State, Response<()>) {
             (state, Response::new().with_status(StatusCode::OK))
         }
 
-        pub fn literal(state: State) -> (State, Response) {
+        pub fn literal(state: State) -> (State, Response<()>) {
             (state, Response::new().with_status(StatusCode::CREATED))
         }
 
-        pub fn hello(mut state: State) -> (State, Response) {
+        pub fn hello(mut state: State) -> (State, Response<()>) {
             let params = state.take::<SalutationParams>();
             let response = Response::new()
                 .with_status(StatusCode::OK)
@@ -373,21 +373,21 @@ mod tests {
             (state, response)
         }
 
-        pub fn globbed(state: State) -> (State, Response) {
+        pub fn globbed(state: State) -> (State, Response<()>) {
             let response = Response::new()
                 .with_status(StatusCode::OK)
                 .with_body("Globbed");
             (state, response)
         }
 
-        pub fn delegated(state: State) -> (State, Response) {
+        pub fn delegated(state: State) -> (State, Response<()>) {
             let response = Response::new()
                 .with_status(StatusCode::OK)
                 .with_body("Delegated");
             (state, response)
         }
 
-        pub fn goodbye(mut state: State) -> (State, Response) {
+        pub fn goodbye(mut state: State) -> (State, Response<()>) {
             let params = state.take::<SalutationParams>();
             let response = Response::new()
                 .with_status(StatusCode::OK)
@@ -395,7 +395,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn add(mut state: State) -> (State, Response) {
+        pub fn add(mut state: State) -> (State, Response<()>) {
             let params = state.take::<AddParams>();
             let response = Response::new()
                 .with_status(StatusCode::OK)
@@ -411,24 +411,24 @@ mod tests {
 
     mod resource {
         use super::*;
-        pub fn create(state: State) -> (State, Response) {
+        pub fn create(state: State) -> (State, Response<()>) {
             let response = Response::new().with_status(StatusCode::CREATED);
             (state, response)
         }
 
-        pub fn destroy(state: State) -> (State, Response) {
+        pub fn destroy(state: State) -> (State, Response<()>) {
             let response = Response::new().with_status(StatusCode::ACCEPTED);
             (state, response)
         }
 
-        pub fn show(state: State) -> (State, Response) {
+        pub fn show(state: State) -> (State, Response<()>) {
             let response = Response::new()
                 .with_status(StatusCode::OK)
                 .with_body("It's a resource.");
             (state, response)
         }
 
-        pub fn update(state: State) -> (State, Response) {
+        pub fn update(state: State) -> (State, Response<()>) {
             let response = Response::new().with_status(StatusCode::ACCEPTED);
             (state, response)
         }
@@ -436,7 +436,7 @@ mod tests {
 
     mod api {
         use super::*;
-        pub fn submit(state: State) -> (State, Response) {
+        pub fn submit(state: State) -> (State, Response<()>) {
             (state, Response::new().with_status(StatusCode::ACCEPTED))
         }
     }

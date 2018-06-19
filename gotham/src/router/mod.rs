@@ -211,7 +211,7 @@ mod tests {
     use router::tree::TreeBuilder;
     use state::set_request_id;
 
-    fn handler(state: State) -> (State, Response) {
+    fn handler(state: State) -> (State, Response<()>) {
         (state, Response::new())
     }
 
@@ -219,7 +219,7 @@ mod tests {
         r: Router,
         method: Method,
         uri: &str,
-    ) -> Result<(State, Response), (State, HandlerError)> {
+    ) -> Result<(State, Response<()>), (State, HandlerError)> {
         let uri = Uri::from_str(uri).unwrap();
 
         let mut state = State::new();

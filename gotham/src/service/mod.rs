@@ -9,7 +9,7 @@ use std::thread;
 use futures::Future;
 use hyper;
 use hyper::service::Service;
-use hyper::{Body, Request, Response};
+use hyper::{Body, Request};
 
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
@@ -98,7 +98,7 @@ mod tests {
     use router::builder::*;
     use state::State;
 
-    fn handler(state: State) -> (State, Response) {
+    fn handler(state: State) -> (State, Response<()>) {
         let res = create_response(&state, StatusCode::ACCEPTED, None);
         (state, res)
     }
