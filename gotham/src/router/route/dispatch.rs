@@ -9,16 +9,16 @@ use pipeline::set::PipelineSet;
 use state::{request_id, State};
 
 /// Used by `Router` to dispatch requests via pipelines and finally into the configured `Handler`.
-pub trait Dispatcher: RefUnwindSafe {
+pub trait Dispatcher<B>: RefUnwindSafe {
     /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
-    fn dispatch(&self, state: State) -> Box<HandlerFuture>;
+    fn dispatch(&self, state: State) -> Box<HandlerFuture<B>>;
 }
 
 /// Default implementation of the `Dispatcher` trait.
-pub struct DispatcherImpl<H, C, P>
+pub struct DispatcherImpl<H, C, P, B>
 where
-    H: NewHandler,
-    C: PipelineHandleChain<P>,
+    H: NewHandler<B>,
+    C: PipelineHandleChain<P, B>,
     P: RefUnwindSafe,
 {
     new_handler: H,
@@ -26,11 +26,11 @@ where
     pipelines: PipelineSet<P>,
 }
 
-impl<H, C, P> DispatcherImpl<H, C, P>
+impl<H, C, P, B> DispatcherImpl<H, C, P, B>
 where
-    H: NewHandler,
+    H: NewHandler<B>,
     H::Instance: 'static,
-    C: PipelineHandleChain<P>,
+    C: PipelineHandleChain<P, B>,
     P: RefUnwindSafe,
 {
     /// Creates a new `DispatcherImpl`.
@@ -49,14 +49,14 @@ where
     }
 }
 
-impl<H, C, P> Dispatcher for DispatcherImpl<H, C, P>
+impl<H, C, P, B> Dispatcher<B> for DispatcherImpl<H, C, P, B>
 where
-    H: NewHandler,
+    H: NewHandler<B>,
     H::Instance: Send + 'static,
-    C: PipelineHandleChain<P>,
+    C: PipelineHandleChain<P, B>,
     P: RefUnwindSafe,
 {
-    fn dispatch(&self, state: State) -> Box<HandlerFuture> {
+    fn dispatch(&self, state: State) -> Box<HandlerFuture<B>> {
         match self.new_handler.new_handler() {
             Ok(h) => {
                 trace!("[{}] cloning handler", request_id(&state));

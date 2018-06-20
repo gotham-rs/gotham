@@ -366,10 +366,10 @@ pub trait DefineSingleRoute {
         Self::Output: DefineSingleRoute;
 }
 
-impl<'a, M, C, P, PE, QSE> DefineSingleRoute for SingleRouteBuilder<'a, M, C, P, PE, QSE>
+impl<'a, M, C, P, PE, QSE, B> DefineSingleRoute for SingleRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,

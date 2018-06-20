@@ -9,7 +9,7 @@ use std::thread;
 use futures::Future;
 use hyper;
 use hyper::service::Service;
-use hyper::{Body, Request};
+use hyper::{Body, Request, Response};
 
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
@@ -21,22 +21,22 @@ mod trap;
 
 /// Wraps a `NewHandler` which will be used to serve requests. Used in `gotham::os::*` to bind
 /// incoming connections to `ConnectedGothamService` values.
-pub(crate) struct GothamService<T>
+pub(crate) struct GothamService<T, B>
 where
-    T: NewHandler + 'static,
+    T: NewHandler<B> + 'static,
 {
     t: Arc<T>,
 }
 
-impl<T> GothamService<T>
+impl<T, B> GothamService<T, B>
 where
-    T: NewHandler + 'static,
+    T: NewHandler<B> + 'static,
 {
-    pub(crate) fn new(t: Arc<T>) -> GothamService<T> {
+    pub(crate) fn new(t: Arc<T>) -> GothamService<T, B> {
         GothamService { t }
     }
 
-    pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
+    pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T, B> {
         ConnectedGothamService {
             t: self.t.clone(),
             client_addr,
@@ -46,22 +46,22 @@ where
 
 /// A `GothamService` which has been connected to a client. The major difference is that a
 /// `client_addr` has been assigned (as this isn't available from Hyper).
-pub(crate) struct ConnectedGothamService<T>
+pub(crate) struct ConnectedGothamService<T, B>
 where
-    T: NewHandler + 'static,
+    T: NewHandler<B> + 'static,
 {
     t: Arc<T>,
     client_addr: SocketAddr,
 }
 
-impl<T> Service for ConnectedGothamService<T>
+impl<T, B> Service for ConnectedGothamService<T, B>
 where
-    T: NewHandler,
+    T: NewHandler<B>,
 {
     type ReqBody = Body;
     type ResBody = Body;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error>>;
 
     fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
         let mut state = State::new();

@@ -16,36 +16,36 @@ pub type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;
 
 /// The default type returned when building a single associated route. See
 /// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
-pub type AssociatedSingleRouteBuilder<'a, M, C, P, PE, QSE> =
-    SingleRouteBuilder<'a, M, C, P, PE, QSE>;
+pub type AssociatedSingleRouteBuilder<'a, M, C, P, PE, QSE, B> =
+    SingleRouteBuilder<'a, M, C, P, PE, QSE, B>;
 
 /// Implements the methods required for associating a number of routes with a single path. This is
 /// used by `DrawRoutes::associated`.
-pub struct AssociatedRouteBuilder<'a, M, C, P, PE, QSE>
+pub struct AssociatedRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut NodeBuilder<B>,
     matcher: M,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
     phantom: PhantomData<(PE, QSE)>,
 }
 
-impl<'a, C, P, PE, QSE> AssociatedRouteBuilder<'a, AnyRouteMatcher, C, P, PE, QSE>
+impl<'a, C, P, PE, QSE, B> AssociatedRouteBuilder<'a, AnyRouteMatcher, C, P, PE, QSE, B>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     /// Create an instance of AssociatedRouteBuilder
     pub fn new(
-        node_builder: &'a mut NodeBuilder,
+        node_builder: &'a mut NodeBuilder<B>,
         pipeline_chain: C,
         pipelines: PipelineSet<P>,
     ) -> Self {
@@ -59,10 +59,10 @@ where
     }
 }
 
-impl<'a, M, C, P, PE, QSE> AssociatedRouteBuilder<'a, M, C, P, PE, QSE>
+impl<'a, M, C, P, PE, QSE, B> AssociatedRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
@@ -129,7 +129,7 @@ where
     pub fn add_route_matcher<'b, NM>(
         &'b mut self,
         matcher: NM,
-    ) -> AssociatedRouteBuilder<'b, AssociatedRouteBuilderMatcher<M, NM>, C, P, PE, QSE>
+    ) -> AssociatedRouteBuilder<'b, AssociatedRouteBuilderMatcher<M, NM>, C, P, PE, QSE, B>
     where
         NM: RouteMatcher + Send + Sync + 'static,
     {
@@ -194,7 +194,7 @@ where
     /// ```
     pub fn with_path_extractor<'b, NPE>(
         &'b mut self,
-    ) -> AssociatedRouteBuilder<'b, M, C, P, NPE, QSE>
+    ) -> AssociatedRouteBuilder<'b, M, C, P, NPE, QSE, B>
     where
         NPE: PathExtractor + Send + Sync + 'static,
     {
@@ -259,7 +259,7 @@ where
     /// ```
     pub fn with_query_string_extractor<'b, NQSE>(
         &'b mut self,
-    ) -> AssociatedRouteBuilder<'b, M, C, P, PE, NQSE>
+    ) -> AssociatedRouteBuilder<'b, M, C, P, PE, NQSE, B>
     where
         NQSE: QueryStringExtractor + Send + Sync + 'static,
     {
@@ -327,7 +327,7 @@ where
     pub fn request<'b>(
         &'b mut self,
         methods: Vec<Method>,
-    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE, B> {
         let AssociatedRouteBuilder {
             ref mut node_builder,
             ref matcher,
@@ -384,7 +384,7 @@ where
     /// ```
     pub fn head<'b>(
         &'b mut self,
-    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE, B> {
         self.request(vec![Method::HEAD])
     }
 
@@ -434,7 +434,7 @@ where
     /// ```
     pub fn get_or_head<'b>(
         &'b mut self,
-    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE, B> {
         self.request(vec![Method::GET, Method::HEAD])
     }
 
@@ -477,7 +477,7 @@ where
     /// ```
     pub fn get<'b>(
         &'b mut self,
-    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE, B> {
         self.request(vec![Method::GET])
     }
 
@@ -521,7 +521,7 @@ where
     /// ```
     pub fn post<'b>(
         &'b mut self,
-    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE, B> {
         self.request(vec![Method::POST])
     }
 
@@ -565,7 +565,7 @@ where
     /// ```
     pub fn put<'b>(
         &'b mut self,
-    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE, B> {
         self.request(vec![Method::PUT])
     }
 
@@ -609,7 +609,7 @@ where
     /// ```
     pub fn patch<'b>(
         &'b mut self,
-    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE, B> {
         self.request(vec![Method::PATCH])
     }
 
@@ -652,7 +652,7 @@ where
     /// ```
     pub fn delete<'b>(
         &'b mut self,
-    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE, B> {
         self.request(vec![Method::DELETE])
     }
 
@@ -696,7 +696,7 @@ where
     /// ```
     pub fn options<'b>(
         &'b mut self,
-    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE> {
+    ) -> AssociatedSingleRouteBuilder<'b, AssociatedRouteMatcher<M>, C, P, PE, QSE, B> {
         self.request(vec![Method::OPTIONS])
     }
 }

@@ -74,11 +74,11 @@ pub use self::single::DefineSingleRoute;
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
-pub fn build_router<C, P, F>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F) -> Router
+pub fn build_router<C, P, F, B>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F) -> Router
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
-    F: FnOnce(&mut RouterBuilder<C, P>),
+    F: FnOnce(&mut RouterBuilder<C, P, B>),
 {
     let mut tree_builder = TreeBuilder::new();
 
@@ -131,9 +131,9 @@ where
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
-pub fn build_simple_router<F>(f: F) -> Router
+pub fn build_simple_router<F, B>(f: F) -> Router
 where
-    F: FnOnce(&mut RouterBuilder<(), ()>),
+    F: FnOnce(&mut RouterBuilder<(), (), B>),
 {
     let pipelines = finalize_pipeline_set(new_pipeline_set());
     let pipeline_chain = ();
@@ -143,20 +143,20 @@ where
 
 /// The top-level builder which is created by `build_router` and passed to the provided closure.
 /// See the `build_router` function and the `DrawRoutes` trait for usage.
-pub struct RouterBuilder<'a, C, P>
+pub struct RouterBuilder<'a, C, P, B>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut NodeBuilder<B>,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
     response_finalizer_builder: ResponseFinalizerBuilder,
 }
 
-impl<'a, C, P> RouterBuilder<'a, C, P>
+impl<'a, C, P, B> RouterBuilder<'a, C, P, B>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
     /// Adds a `ResponseExtender` to the `ResponseFinalizer` in the `Router`.
@@ -230,33 +230,33 @@ where
 
 /// A scoped builder, which is created by `DrawRoutes::scope` and passed to the provided closure.
 /// The `DrawRoutes` trait has documentation for using this type.
-pub struct ScopeBuilder<'a, C, P>
+pub struct ScopeBuilder<'a, C, P, B>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut NodeBuilder<B>,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
 }
 
 /// A delegated builder, which is created by `DrawRoutes::delegate` and returned. The `DrawRoutes`
 /// trait has documentation for using this type.
-pub struct DelegateRouteBuilder<'a, C, P>
+pub struct DelegateRouteBuilder<'a, C, P, B>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut NodeBuilder<B>,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
 }
 
 type DelegatedRoute = RouteImpl<AnyRouteMatcher, NoopPathExtractor, NoopQueryStringExtractor>;
 
-impl<'a, C, P> DelegateRouteBuilder<'a, C, P>
+impl<'a, C, P, B> DelegateRouteBuilder<'a, C, P, B>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
     /// Directs the delegated route to the given `Router`.
@@ -275,15 +275,15 @@ where
 
 /// Implements the traits required to define a single route, after determining which request paths
 /// will be dispatched here. The `DefineSingleRoute` trait has documentation for using this type.
-pub struct SingleRouteBuilder<'a, M, C, P, PE, QSE>
+pub struct SingleRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut NodeBuilder<B>,
     matcher: M,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
@@ -291,17 +291,17 @@ where
 }
 
 // Trait impls live with the traits.
-impl<'a, M, C, P, PE, QSE> SingleRouteBuilder<'a, M, C, P, PE, QSE>
+impl<'a, M, C, P, PE, QSE, B> SingleRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     /// Coerces the type of the internal `PhantomData`, to replace an extractor by changing the
     /// type parameter without changing anything else.
-    fn coerce<NPE, NQSE>(self) -> SingleRouteBuilder<'a, M, C, P, NPE, NQSE>
+    fn coerce<NPE, NQSE>(self) -> SingleRouteBuilder<'a, M, C, P, NPE, NQSE, B>
     where
         NPE: PathExtractor + Send + Sync + 'static,
         NQSE: QueryStringExtractor + Send + Sync + 'static,

@@ -25,12 +25,11 @@ pub(super) fn call_handler<'a, B, T>(
     state: AssertUnwindSafe<State>,
 ) -> Box<Future<Item = Response<B>, Error = hyper::Error> + Send + 'a>
 where
-    T: NewHandler + 'a,
+    T: NewHandler<B> + 'a,
 {
     let timer = Timer::new();
 
     let res = catch_unwind(move || {
-
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
         // immediately consuming it.

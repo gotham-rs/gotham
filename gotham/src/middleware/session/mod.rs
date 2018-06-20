@@ -477,7 +477,7 @@ where
     phantom: PhantomData<T>,
 }
 
-impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
+impl<B, T, ZB> NewMiddleware<ZB> for NewSessionMiddleware<B, T>
 where
     B: NewBackend,
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
@@ -787,14 +787,14 @@ where
     }
 }
 
-impl<B, T> Middleware for SessionMiddleware<B, T>
+impl<B, T, ZB> Middleware<ZB> for SessionMiddleware<B, T>
 where
     B: Backend + Send + 'static,
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture<ZB>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+        Chain: FnOnce(State) -> Box<HandlerFuture<ZB>> + Send + 'static,
         Self: Sized,
     {
         let session_identifier = HeaderMap::borrow_from(&state)

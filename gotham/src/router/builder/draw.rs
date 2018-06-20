@@ -17,32 +17,33 @@ use router::tree::regex::ConstrainedSegmentRegex;
 /// determining if it matches a request.
 ///
 /// See `router::builder::DefineSingleRoute` for an overview of route specification.
-pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
+pub type DefaultSingleRouteBuilder<'a, C, P, B> = SingleRouteBuilder<
     'a,
     MethodOnlyRouteMatcher,
     C,
     P,
     NoopPathExtractor,
     NoopQueryStringExtractor,
+    B,
 >;
 
 /// The type returned when building a route with explicit matching requirements.
 ///
 /// See `router::builder::DefineSingleRoute` for an overview of route specification.
-pub type ExplicitSingleRouteBuilder<'a, M, C, P> =
-    SingleRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
+pub type ExplicitSingleRouteBuilder<'a, M, C, P, B> =
+    SingleRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor, B>;
 
 /// The type passed to the function used when building associated routes. See
 /// `AssociatedRouteBuilder` for information about the API available for associated routes.
-pub type DefaultAssociatedRouteBuilder<'a, M, C, P> =
-    AssociatedRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
+pub type DefaultAssociatedRouteBuilder<'a, M, C, P, B> =
+    AssociatedRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor, B>;
 
 /// Defines functions used by a builder to determine which request paths will be dispatched to a
 /// route. This trait is implemented by the top-level `RouterBuilder`, and also the `ScopedBuilder`
 /// created by `DrawRoutes::scope`.
-pub trait DrawRoutes<C, P>
+pub trait DrawRoutes<C, P, B>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
     /// Creates a route which matches `GET` and `HEAD` requests to the given path.
@@ -84,7 +85,7 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn get_or_head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn get_or_head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P, B> {
         self.request(vec![Method::GET, Method::HEAD], path)
     }
 
@@ -122,7 +123,7 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P, B> {
         self.request(vec![Method::GET], path)
     }
 
@@ -159,7 +160,7 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P, B> {
         self.request(vec![Method::HEAD], path)
     }
 
@@ -197,7 +198,7 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P, B> {
         self.request(vec![Method::POST], path)
     }
 
@@ -235,7 +236,7 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn put<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn put<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P, B> {
         self.request(vec![Method::PUT], path)
     }
 
@@ -273,7 +274,7 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn patch<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn patch<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P, B> {
         self.request(vec![Method::PATCH], path)
     }
 
@@ -310,7 +311,7 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn delete<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn delete<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P, B> {
         self.request(vec![Method::DELETE], path)
     }
 
@@ -348,7 +349,7 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn options<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
+    fn options<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P, B> {
         self.request(vec![Method::OPTIONS], path)
     }
 
@@ -461,7 +462,7 @@ where
         &'b mut self,
         matcher: IRM,
         path: &str,
-    ) -> ExplicitSingleRouteBuilder<'b, M, C, P>
+    ) -> ExplicitSingleRouteBuilder<'b, M, C, P, B>
     where
         IRM: IntoRouteMatcher<Output = M>,
         M: RouteMatcher + Send + Sync + 'static,
@@ -520,7 +521,7 @@ where
     /// ```
     fn scope<F>(&mut self, path: &str, f: F)
     where
-        F: FnOnce(&mut ScopeBuilder<C, P>),
+        F: FnOnce(&mut ScopeBuilder<C, P, B>),
     {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
@@ -637,8 +638,8 @@ where
     /// ```
     fn with_pipeline_chain<F, NC>(&mut self, pipeline_chain: NC, f: F)
     where
-        F: FnOnce(&mut ScopeBuilder<NC, P>),
-        NC: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+        F: FnOnce(&mut ScopeBuilder<NC, P, B>),
+        NC: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     {
         let (node_builder, _pipeline_chain, pipelines) = self.component_refs();
 
@@ -691,7 +692,7 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn delegate<'b>(&'b mut self, path: &str) -> DelegateRouteBuilder<'b, C, P> {
+    fn delegate<'b>(&'b mut self, path: &str) -> DelegateRouteBuilder<'b, C, P, B> {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
 
@@ -773,7 +774,10 @@ where
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn delegate_without_pipelines<'b>(&'b mut self, path: &str) -> DelegateRouteBuilder<'b, (), P> {
+    fn delegate_without_pipelines<'b>(
+        &'b mut self,
+        path: &str,
+    ) -> DelegateRouteBuilder<'b, (), P, B> {
         let (node_builder, _pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
 
@@ -852,7 +856,7 @@ where
     /// ```
     fn associate<'b, F>(&'b mut self, path: &str, f: F)
     where
-        F: FnOnce(&mut DefaultAssociatedRouteBuilder<'b, AnyRouteMatcher, C, P>),
+        F: FnOnce(&mut DefaultAssociatedRouteBuilder<'b, AnyRouteMatcher, C, P, B>),
     {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
@@ -865,10 +869,10 @@ where
 
     /// Return the components that comprise this builder. For internal use only.
     #[doc(hidden)]
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>);
+    fn component_refs(&mut self) -> (&mut NodeBuilder<B>, &mut C, &PipelineSet<P>);
 }
 
-fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBuilder {
+fn descend<'n, B>(node_builder: &'n mut NodeBuilder<B>, path: &str) -> &'n mut NodeBuilder<B> {
     trace!("[walking to: {}]", path);
 
     let path = if path.starts_with("/") {
@@ -884,7 +888,7 @@ fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBui
     }
 }
 
-fn build_subtree<'n, 's, I>(node: &'n mut NodeBuilder, mut i: I) -> &'n mut NodeBuilder
+fn build_subtree<'n, 's, I, B>(node: &'n mut NodeBuilder<B>, mut i: I) -> &'n mut NodeBuilder<B>
 where
     I: Iterator<Item = &'s str>,
 {
@@ -924,12 +928,12 @@ where
     }
 }
 
-impl<'a, C, P> DrawRoutes<C, P> for RouterBuilder<'a, C, P>
+impl<'a, C, P, B> DrawRoutes<C, P, B> for RouterBuilder<'a, C, P, B>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+    fn component_refs(&mut self) -> (&mut NodeBuilder<B>, &mut C, &PipelineSet<P>) {
         (
             &mut self.node_builder,
             &mut self.pipeline_chain,
@@ -938,12 +942,12 @@ where
     }
 }
 
-impl<'a, C, P> DrawRoutes<C, P> for ScopeBuilder<'a, C, P>
+impl<'a, C, P, B> DrawRoutes<C, P, B> for ScopeBuilder<'a, C, P, B>
 where
-    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+    fn component_refs(&mut self) -> (&mut NodeBuilder<B>, &mut C, &PipelineSet<P>) {
         (
             &mut self.node_builder,
             &mut self.pipeline_chain,

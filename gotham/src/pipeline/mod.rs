@@ -116,43 +116,43 @@ use state::{request_id, State};
 ///     assert_eq!(response.read_utf8_body().unwrap(), "[1, 2, 3]");
 /// }
 /// ```
-pub struct Pipeline<T>
+pub struct Pipeline<T, B>
 where
-    T: NewMiddlewareChain,
+    T: NewMiddlewareChain<B>,
 {
     chain: T,
 }
 
 /// Represents an instance of a `Pipeline`. Returned from `Pipeline::construct()`.
-struct PipelineInstance<T>
+struct PipelineInstance<T, B>
 where
-    T: MiddlewareChain,
+    T: MiddlewareChain<B>,
 {
     chain: T,
 }
 
-impl<T> Pipeline<T>
+impl<T, B> Pipeline<T, B>
 where
-    T: NewMiddlewareChain,
+    T: NewMiddlewareChain<B>,
 {
     /// Constructs an instance of this `Pipeline` by creating all `Middleware` instances required
     /// to serve a request. If any middleware fails creation, its error will be returned.
-    fn construct(&self) -> io::Result<PipelineInstance<T::Instance>> {
+    fn construct(&self) -> io::Result<PipelineInstance<T::Instance, B>> {
         Ok(PipelineInstance {
             chain: self.chain.construct()?,
         })
     }
 }
 
-impl<T> PipelineInstance<T>
+impl<T, B> PipelineInstance<T, B>
 where
-    T: MiddlewareChain,
+    T: MiddlewareChain<B>,
 {
     /// Serves a request using this `PipelineInstance`. Requests that pass through all `Middleware`
     /// will be served with the `f` function.
-    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture<B>>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
     {
         trace!("[{}] calling middleware", request_id(&state));
         self.chain.call(state, f)
@@ -162,7 +162,7 @@ where
 /// Begins defining a new pipeline.
 ///
 /// See `PipelineBuilder` for information on using `new_pipeline()`.
-pub fn new_pipeline() -> PipelineBuilder<()> {
+pub fn new_pipeline<B>() -> PipelineBuilder<(), B> {
     trace!(" starting pipeline construction");
     // See: `impl NewMiddlewareChain for ()`
     PipelineBuilder { t: () }
@@ -228,30 +228,30 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 ///
 /// `(&mut state)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree` &rarr;
 /// `handler` (provided later, when building the router)
-pub struct PipelineBuilder<T>
+pub struct PipelineBuilder<T, B>
 where
-    T: NewMiddlewareChain,
+    T: NewMiddlewareChain<B>,
 {
     t: T,
 }
 
-impl<T> PipelineBuilder<T>
+impl<T, B> PipelineBuilder<T, B>
 where
-    T: NewMiddlewareChain,
+    T: NewMiddlewareChain<B>,
 {
     /// Builds a `Pipeline`, which contains all middleware in the order provided via `add` and is
     /// ready to process requests via a `NewHandler` provided to `Pipeline::call`.
-    pub fn build(self) -> Pipeline<T>
+    pub fn build(self) -> Pipeline<T, B>
     where
-        T: NewMiddlewareChain,
+        T: NewMiddlewareChain<B>,
     {
         Pipeline { chain: self.t }
     }
 
     /// Adds a `NewMiddleware` which will create a `Middleware` during request dispatch.
-    pub fn add<M>(self, m: M) -> PipelineBuilder<(M, T)>
+    pub fn add<M, B>(self, m: M) -> PipelineBuilder<(M, T), B>
     where
-        M: NewMiddleware,
+        M: NewMiddleware<B>,
         M::Instance: Send + 'static,
         Self: Sized,
     {

@@ -21,17 +21,17 @@ where
     fn replace_path_extractor(self) -> Self::Output;
 }
 
-impl<'a, M, C, P, PE, QSE, NPE> ReplacePathExtractor<NPE>
-    for SingleRouteBuilder<'a, M, C, P, PE, QSE>
+impl<'a, M, C, P, PE, QSE, NPE, B> ReplacePathExtractor<NPE>
+    for SingleRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
     NPE: PathExtractor + Send + Sync + 'static,
 {
-    type Output = SingleRouteBuilder<'a, M, C, P, NPE, QSE>;
+    type Output = SingleRouteBuilder<'a, M, C, P, NPE, QSE, B>;
 
     fn replace_path_extractor(self) -> Self::Output {
         self.coerce()
@@ -53,17 +53,17 @@ where
     fn replace_query_string_extractor(self) -> Self::Output;
 }
 
-impl<'a, M, C, P, PE, QSE, NQSE> ReplaceQueryStringExtractor<NQSE>
-    for SingleRouteBuilder<'a, M, C, P, PE, QSE>
+impl<'a, M, C, P, PE, QSE, NQSE, B> ReplaceQueryStringExtractor<NQSE>
+    for SingleRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
     NQSE: QueryStringExtractor + Send + Sync + 'static,
 {
-    type Output = SingleRouteBuilder<'a, M, C, P, PE, NQSE>;
+    type Output = SingleRouteBuilder<'a, M, C, P, PE, NQSE, B>;
 
     fn replace_query_string_extractor(self) -> Self::Output {
         self.coerce()
@@ -85,17 +85,18 @@ where
     fn extend_route_matcher(self, matcher: NRM) -> Self::Output;
 }
 
-impl<'a, M, NRM, C, P, PE, QSE> ExtendRouteMatcher<NRM> for SingleRouteBuilder<'a, M, C, P, PE, QSE>
+impl<'a, M, NRM, C, P, PE, QSE, B> ExtendRouteMatcher<NRM>
+    for SingleRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
     NRM: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P> + Send + Sync + 'static,
+    C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
 {
     /// The type returned when extending the existing `RouteMatcher` with the target type.
-    type Output = SingleRouteBuilder<'a, AndRouteMatcher<M, NRM>, C, P, PE, QSE>;
+    type Output = SingleRouteBuilder<'a, AndRouteMatcher<M, NRM>, C, P, PE, QSE, B>;
 
     fn extend_route_matcher(self, matcher: NRM) -> Self::Output {
         SingleRouteBuilder {

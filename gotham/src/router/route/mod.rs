@@ -48,7 +48,7 @@ pub enum Delegation {
 ///
 /// `Route` exists as a trait to allow abstraction over the generic types in `RouteImpl`. This
 /// trait should not be implemented outside of Gotham.
-pub trait Route: RefUnwindSafe {
+pub trait Route<ZB>: RefUnwindSafe {
     /// Determines if this `Route` should be invoked, based on the request data in `State.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;
 
@@ -63,17 +63,17 @@ pub trait Route: RefUnwindSafe {
     ) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when the `PathExtractor` fails.
-    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response);
+    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response<ZB>);
 
     /// Extracts the query string parameters and stores the `QueryStringExtractor` in `State`.
     fn extract_query_string(&self, state: &mut State) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when query string extraction fails.
-    fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response);
+    fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response<ZB>);
 
     /// Dispatches the request to this `Route`, which will execute the pipelines and the handler
     /// assigned to the `Route.
-    fn dispatch(&self, state: State) -> Box<HandlerFuture>;
+    fn dispatch(&self, state: State) -> Box<HandlerFuture<ZB>>;
 }
 
 /// Returned in the `Err` variant from `extract_query_string` or `extract_request_path`, this
@@ -141,7 +141,7 @@ where
     }
 }
 
-impl<RM, PE, QSE> Route for RouteImpl<RM, PE, QSE>
+impl<RM, PE, QSE, ZB> Route<ZB> for RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
     PE: PathExtractor,
@@ -155,7 +155,7 @@ where
         self.delegation
     }
 
-    fn dispatch(&self, state: State) -> Box<HandlerFuture> {
+    fn dispatch(&self, state: State) -> Box<HandlerFuture<ZB>> {
         self.dispatcher.dispatch(state)
     }
 
@@ -173,7 +173,7 @@ where
         }
     }
 
-    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response) {
+    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response<ZB>) {
         PE::extend(state, res)
     }
 
@@ -197,7 +197,7 @@ where
         }
     }
 
-    fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response) {
+    fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response<ZB>) {
         QSE::extend(state, res)
     }
 }

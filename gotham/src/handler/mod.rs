@@ -142,9 +142,9 @@ pub type HandlerFuture<B> =
 /// # assert_type(MyCustomHandler);
 /// # }
 /// ```
-pub trait Handler: Send {
+pub trait Handler<B>: Send {
     /// Handles the request, returning a boxed future which resolves to a response.
-    fn handle(self, state: State) -> Box<HandlerFuture>;
+    fn handle(self, state: State) -> Box<HandlerFuture<B>>;
 }
 
 /// A type which is used to spawn new `Handler` values. When implementing a custom `Handler` type,
@@ -224,18 +224,18 @@ pub trait Handler: Send {
 /// # assert_type(MyValueInstantiatingHandler);
 /// # }
 /// ```
-pub trait NewHandler: Send + Sync + RefUnwindSafe {
+pub trait NewHandler<B>: Send + Sync + RefUnwindSafe {
     /// The type of `Handler` created by the `NewHandler`.
-    type Instance: Handler + Send;
+    type Instance: Handler<B> + Send;
 
     /// Create and return a new `Handler` value.
     fn new_handler(&self) -> io::Result<Self::Instance>;
 }
 
-impl<F, H> NewHandler for F
+impl<F, H, B> NewHandler<B> for F
 where
     F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
-    H: Handler + Send,
+    H: Handler<B> + Send,
 {
     type Instance = H;
 
@@ -356,7 +356,7 @@ where
     }
 }
 
-impl<B, F, R> Handler for F
+impl<B, F, R> Handler<B> for F
 where
     F: FnOnce(State) -> R + Send,
     R: IntoHandlerFuture<B>,

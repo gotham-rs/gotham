@@ -116,5 +116,5 @@ impl<'de> Deserialize<'de> for NoopQueryStringExtractor {
 impl StateData for NoopQueryStringExtractor {}
 
 impl StaticResponseExtender for NoopQueryStringExtractor {
-    fn extend(_state: &mut State, _res: &mut Response) {}
+    fn extend<B>(_state: &mut State, _res: &mut Response<B>) {}
 }

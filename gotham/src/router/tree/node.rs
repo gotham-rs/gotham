@@ -38,17 +38,17 @@ pub enum SegmentType {
 ///
 /// Ultimately provides `0..n` `Route` instances which are further evaluated by the `Router` if
 /// the `Node` is determined to be the routable end point for a single path through the tree.
-pub struct Node {
+pub struct Node<B> {
     segment: String,
     segment_type: SegmentType,
 
-    routes: Vec<Box<Route + Send + Sync>>,
+    routes: Vec<Box<Route<B> + Send + Sync>>,
 
     delegating: bool,
-    children: Vec<Node>,
+    children: Vec<Node<B>>, // XXX all same response payload? -jdl
 }
 
-impl Node {
+impl<B> Node<B> {
     /// Provides the segment this `Node` represents.
     pub(crate) fn segment(&self) -> &str {
         &self.segment
@@ -68,7 +68,7 @@ impl Node {
     pub(crate) fn select_route<'a>(
         &'a self,
         state: &State,
-    ) -> Result<&'a Box<Route + Send + Sync>, RouteNonMatch> {
+    ) -> Result<&'a Box<Route<B> + Send + Sync>, RouteNonMatch> {
         let mut err: Result<(), RouteNonMatch> = Ok(());
 
         for r in self.routes.iter() {
@@ -125,7 +125,7 @@ impl Node {
     pub(crate) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
+    ) -> Option<(Path<'r>, &Node<B>, SegmentsProcessed, SegmentMapping<'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, leaf, c, sm)) => {
                 path.reverse();
@@ -140,7 +140,12 @@ impl Node {
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
         mut consumed_segments: Vec<&'r PercentDecoded>,
-    ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
+    ) -> Option<(
+        Vec<&Node<B>>,
+        &Node<B>,
+        SegmentsProcessed,
+        SegmentMapping<'r>,
+    )> {
         match req_path_segments.split_first() {
             Some((x, _)) if self.is_delegating(x) => {
                 // A delegated node terminates processing, start building result
@@ -221,16 +226,16 @@ impl Node {
 }
 
 /// Constructs a `Node` which is sorted and immutable.
-pub struct NodeBuilder {
+pub struct NodeBuilder<B> {
     segment: String,
     segment_type: SegmentType,
-    routes: Vec<Box<Route + Send + Sync>>,
+    routes: Vec<Box<Route<B> + Send + Sync>>,
 
     delegating: bool,
-    children: Vec<NodeBuilder>,
+    children: Vec<NodeBuilder<B>>, // XXX likewise... jdl
 }
 
-impl NodeBuilder {
+impl<B> NodeBuilder<B> {
     /// Creates new `NodeBuilder` for the given segment.
     pub fn new<S>(segment: S, segment_type: SegmentType) -> Self
     where
@@ -253,7 +258,7 @@ impl NodeBuilder {
 
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
-    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route<B> + Send + Sync>) {
         if route.delegation() == Delegation::External {
             if !self.routes.is_empty() {
                 panic!("Node which is externally delegating must have single Route");
@@ -271,7 +276,7 @@ impl NodeBuilder {
     }
 
     /// Adds a new child to this sub-tree structure
-    pub fn add_child(&mut self, child: NodeBuilder) {
+    pub fn add_child(&mut self, child: NodeBuilder<B>) {
         if self.delegating {
             panic!("Node which is externally delegating must not have existing children")
         }
@@ -293,7 +298,11 @@ impl NodeBuilder {
     }
 
     /// Borrow a child that represents the exact segment provided here.
-    pub fn borrow_child(&self, segment: &str, segment_type: SegmentType) -> Option<&NodeBuilder> {
+    pub fn borrow_child(
+        &self,
+        segment: &str,
+        segment_type: SegmentType,
+    ) -> Option<&NodeBuilder<B>> {
         self.children
             .iter()
             .find(|n| n.segment_type == segment_type && n.segment == segment)
@@ -304,14 +313,14 @@ impl NodeBuilder {
         &mut self,
         segment: &str,
         segment_type: SegmentType,
-    ) -> Option<&mut NodeBuilder> {
+    ) -> Option<&mut NodeBuilder<B>> {
         self.children
             .iter_mut()
             .find(|n| n.segment_type == segment_type && n.segment == segment)
     }
 
     /// Finalizes and sorts all internal data, including all children.
-    pub fn finalize(mut self) -> Node {
+    pub fn finalize(mut self) -> Node<B> {
         self.sort();
 
         let mut children = self.children
@@ -348,25 +357,25 @@ impl NodeBuilder {
     }
 }
 
-impl Ord for NodeBuilder {
-    fn cmp(&self, other: &NodeBuilder) -> Ordering {
+impl<B> Ord for NodeBuilder<B> {
+    fn cmp(&self, other: &NodeBuilder<B>) -> Ordering {
         (&self.segment_type, &self.segment).cmp(&(&other.segment_type, &other.segment))
     }
 }
 
-impl PartialOrd for NodeBuilder {
-    fn partial_cmp(&self, other: &NodeBuilder) -> Option<Ordering> {
+impl<B> PartialOrd for NodeBuilder<B> {
+    fn partial_cmp(&self, other: &NodeBuilder<B>) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl PartialEq for NodeBuilder {
-    fn eq(&self, other: &NodeBuilder) -> bool {
+impl<B> PartialEq for NodeBuilder<B> {
+    fn eq(&self, other: &NodeBuilder<B>) -> bool {
         (&self.segment_type, &self.segment) == (&other.segment_type, &other.segment)
     }
 }
 
-impl Eq for NodeBuilder {}
+impl<B> Eq for NodeBuilder<B> {}
 
 #[cfg(test)]
 mod tests {

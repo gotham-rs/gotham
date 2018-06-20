@@ -7,13 +7,14 @@ use pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
 use pipeline::{NewMiddlewareChain, Pipeline};
 
 /// A `PipelineSet` which contains only a single pipeline.
-pub type SinglePipelineSet<C> = PipelineSet<<() as Append<Pipeline<C>>>::Output>;
+pub type SinglePipelineSet<C, B> = PipelineSet<<() as Append<Pipeline<C, B>>>::Output>;
 
 /// A `Handle` for borrowing the only pipeline from a `SinglePipelineSet`.
-pub type SinglePipelineHandle<C> = Handle<Pipeline<C>, <() as Append<Pipeline<C>>>::Navigator>;
+pub type SinglePipelineHandle<C, B> =
+    Handle<Pipeline<C, B>, <() as Append<Pipeline<C, B>>>::Navigator>;
 
 /// A pipeline chain which contains only the single pipeline in a `SinglePipelineSet`.
-pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
+pub type SinglePipelineChain<C, B> = (SinglePipelineHandle<C, B>, ());
 
 /// Creates a single pipeline for use in applications with straightforward use cases for
 /// middleware.
@@ -48,9 +49,11 @@ pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
 /// });
 /// # }
 /// ```
-pub fn single_pipeline<C>(c: Pipeline<C>) -> (SinglePipelineChain<C>, SinglePipelineSet<C>)
+pub fn single_pipeline<C, B>(
+    c: Pipeline<C, B>,
+) -> (SinglePipelineChain<C, B>, SinglePipelineSet<C, B>)
 where
-    C: NewMiddlewareChain,
+    C: NewMiddlewareChain<B>,
 {
     let pipelines = new_pipeline_set();
     let (pipelines, single) = pipelines.add(c);
