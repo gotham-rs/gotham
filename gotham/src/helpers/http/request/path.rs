@@ -26,18 +26,13 @@ impl RequestPathSegments {
     /// ["/", "some", "path", "to", "my", "handler"]
     /// ```
     pub(crate) fn new<'r>(path: &'r str) -> Self {
-        let mut segments = vec!["/"];
-        segments.extend(
-            path.split('/')
-                .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
-                .collect::<Vec<&'r str>>(),
-        );
-
         let segments = Arc::new(
-            segments
+            vec!["/"]
                 .iter()
-                .filter_map(|s| PercentDecoded::new(s))
-                .collect::<Vec<PercentDecoded>>(),
+                .map(|s| *s)
+                .chain(path.split('/').filter(|s| !EXCLUDED_SEGMENTS.contains(s)))
+                .filter_map(PercentDecoded::new)
+                .collect(),
         );
 
         RequestPathSegments {
@@ -64,7 +59,7 @@ impl RequestPathSegments {
                     None
                 }
             })
-            .collect::<Vec<&PercentDecoded>>()
+            .collect()
     }
 
     /// Increases the current offset value.
