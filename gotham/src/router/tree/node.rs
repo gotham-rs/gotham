@@ -286,10 +286,7 @@ impl NodeBuilder {
 
     /// Determines if a child representing the exact segment provided exists.
     pub fn has_child(&self, segment: &str, segment_type: SegmentType) -> bool {
-        self.children
-            .iter()
-            .find(|n| n.segment_type == segment_type && n.segment == segment)
-            .is_some()
+        self.borrow_child(segment, segment_type).is_some()
     }
 
     /// Borrow a child that represents the exact segment provided here.
