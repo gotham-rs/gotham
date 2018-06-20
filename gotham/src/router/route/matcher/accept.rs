@@ -94,8 +94,7 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
         let headers = Headers::borrow_from(state);
         match headers.get::<Accept>() {
             Some(accept) => {
-                let acceptable_media_types = accept.iter().map(|qi| &qi.item).collect::<Vec<_>>();
-                for ra in acceptable_media_types {
+                for ra in accept.iter().map(|qi| &qi.item) {
                     if *ra == mime::STAR_STAR || self.supported_media_types.contains(ra) {
                         return Ok(());
                     }
