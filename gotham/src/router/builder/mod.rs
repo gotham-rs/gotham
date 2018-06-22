@@ -74,7 +74,7 @@ pub use self::single::DefineSingleRoute;
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
-pub fn build_router<C, P, F, B>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F) -> Router
+pub fn build_router<C, P, F, B>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F) -> Router<B>
 where
     C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
@@ -131,7 +131,7 @@ where
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
-pub fn build_simple_router<F, B>(f: F) -> Router
+pub fn build_simple_router<F, B>(f: F) -> Router<B>
 where
     F: FnOnce(&mut RouterBuilder<(), (), B>),
 {
@@ -260,7 +260,7 @@ where
     P: RefUnwindSafe + Send + Sync + 'static,
 {
     /// Directs the delegated route to the given `Router`.
-    pub fn to_router(self, router: Router) {
+    pub fn to_router(self, router: Router<B>) {
         let dispatcher = DispatcherImpl::new(router, self.pipeline_chain, self.pipelines);
         let route: DelegatedRoute = DelegatedRoute::new(
             AnyRouteMatcher::new(),

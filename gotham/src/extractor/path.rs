@@ -102,6 +102,6 @@ impl<'de> Deserialize<'de> for NoopPathExtractor {
 
 impl StateData for NoopPathExtractor {}
 
-impl StaticResponseExtender for NoopPathExtractor {
-    fn extend(_state: &mut State, _res: &mut Response) {}
+impl<B> StaticResponseExtender for NoopPathExtractor {
+    fn extend(_state: &mut State, _res: &mut Response<B>) {}
 }

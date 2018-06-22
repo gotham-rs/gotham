@@ -57,21 +57,21 @@ pub use self::request::RequestBuilder;
 /// assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
-pub struct TestServer<NH = Router>
+pub struct TestServer<B, NH = Router<B>>
 where
-    NH: NewHandler + Send + 'static,
+    NH: NewHandler<B> + Send + 'static,
 {
     data: Rc<TestServerData<NH>>,
 }
 
-struct TestServerData<NH = Router>
+struct TestServerData<B, NH = Router<B>>
 where
-    NH: NewHandler + Send + 'static,
+    NH: NewHandler<B> + Send + 'static,
 {
     http: Http,
     timeout: u64,
     runtime: RwLock<Runtime>,
-    gotham_service: GothamService<NH>,
+    gotham_service: GothamService<NH, B>,
 }
 
 /// The `TestRequestError` type represents all error states that can result from evaluating a
@@ -86,9 +86,9 @@ pub enum TestRequestError {
     HyperError(hyper::Error),
 }
 
-impl<NH> Clone for TestServer<NH>
+impl<NH, B> Clone for TestServer<NH>
 where
-    NH: NewHandler + Send + 'static,
+    NH: NewHandler<B> + Send + 'static,
 {
     fn clone(&self) -> TestServer<NH> {
         TestServer {
@@ -97,9 +97,9 @@ where
     }
 }
 
-impl<NH> TestServer<NH>
+impl<NH, B> TestServer<NH>
 where
-    NH: NewHandler + Send + 'static,
+    NH: NewHandler<B> + Send + 'static,
 {
     /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
@@ -127,19 +127,22 @@ where
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see a default socket address of `127.0.0.1:10000` as the source address for
     /// the connection.
-    pub fn client(&self) -> TestClient<NH> {
+    pub fn client(&self) -> TestClient<NH, B> {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
-    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<NH> {
+    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<NH, B> {
         self.try_client_with_address(client_addr)
             .expect("TestServer: unable to spawn client")
     }
 
-    fn try_client_with_address(&self, client_addr: net::SocketAddr) -> io::Result<TestClient<NH>> {
+    fn try_client_with_address(
+        &self,
+        client_addr: net::SocketAddr,
+    ) -> io::Result<TestClient<NH, B>> {
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
@@ -226,7 +229,7 @@ where
 
 impl<NH, ZB> BodyReader<ZB> for TestServer<NH>
 where
-    NH: NewHandler + Send + 'static,
+    NH: NewHandler<ZB> + Send + 'static,
 {
     fn read_body(&self, response: Response<ZB>) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
@@ -243,17 +246,17 @@ where
 }
 
 /// Client interface for issuing requests to a `TestServer`.
-pub struct TestClient<NH>
+pub struct TestClient<NH, B>
 where
-    NH: NewHandler + Send + 'static,
+    NH: NewHandler<B> + Send + 'static,
 {
     client: Client<TestConnect>,
     test_server: TestServer<NH>,
 }
 
-impl<NH, QB, ZB> TestClient<NH>
+impl<NH, QB, ZB> TestClient<NH, ZB>
 where
-    NH: NewHandler + Send + 'static,
+    NH: NewHandler<ZB> + Send + 'static,
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
     pub fn head(self, uri: &str) -> RequestBuilder<NH> {
