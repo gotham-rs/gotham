@@ -2,9 +2,6 @@
 
 use std::fmt;
 use std::str::FromStr;
-// TODO: Remove when this import isn't required in stable anymore.
-#[allow(deprecated, unused_imports)]
-use std::ascii::AsciiExt;
 
 use hyper;
 use hyper::header::{Formatter, Header, Raw};

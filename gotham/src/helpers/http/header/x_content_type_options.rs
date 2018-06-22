@@ -1,9 +1,6 @@
 //! Define the X-Content-Type-Options header.
 
 use std::fmt;
-// TODO: Remove when this import isn't required in stable anymore.
-#[allow(deprecated, unused_imports)]
-use std::ascii::AsciiExt;
 
 use hyper;
 use hyper::header::{parsing, Formatter, Header, Raw};
