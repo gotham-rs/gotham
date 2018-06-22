@@ -14,7 +14,7 @@ use hyper::{Request, Response};
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
 use state::client_addr::put_client_addr;
-use state::{request_id, set_request_id, State};
+use state::{set_request_id, State};
 
 mod timing;
 mod trap;
@@ -76,15 +76,17 @@ where
         state.put(version);
         state.put(headers);
         state.put(body);
-        set_request_id(&mut state);
 
-        debug!(
-            "[DEBUG][{}][Thread][{:?}]",
-            request_id(&state),
-            thread::current().id(),
-        );
+        {
+            let request_id = set_request_id(&mut state);
+            debug!(
+                "[DEBUG][{}][Thread][{:?}]",
+                request_id,
+                thread::current().id(),
+            );
+        };
 
-        trap::call_handler(self.t.as_ref(), AssertUnwindSafe(state))
+        trap::call_handler(&*self.t, AssertUnwindSafe(state))
     }
 }
 
