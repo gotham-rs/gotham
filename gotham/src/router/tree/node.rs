@@ -50,7 +50,7 @@ pub struct Node {
 
 impl Node {
     /// Provides the segment this `Node` represents.
-    pub(crate) fn segment(&self) -> &str {
+    pub(super) fn segment(&self) -> &str {
         &self.segment
     }
 
@@ -65,11 +65,11 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub(crate) fn select_route<'a>(
-        &'a self,
+    pub(in router) fn select_route(
+        &self,
         state: &State,
-    ) -> Result<&'a Box<Route + Send + Sync>, RouteNonMatch> {
-        let mut err: Result<(), RouteNonMatch> = Ok(());
+    ) -> Result<&Box<Route + Send + Sync>, RouteNonMatch> {
+        let mut err = Ok(());
 
         for r in self.routes.iter() {
             match r.is_match(state) {
@@ -105,7 +105,7 @@ impl Node {
 
     /// True is there is a least one `Route` represented by this `Node`, that is it can act as a
     /// leaf in a single path through the tree.
-    pub(crate) fn is_routable(&self) -> bool {
+    pub(super) fn is_routable(&self) -> bool {
         !self.routes.is_empty()
     }
 
@@ -122,7 +122,7 @@ impl Node {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub(crate) fn traverse<'r>(
+    pub(super) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
     ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
@@ -204,7 +204,7 @@ impl Node {
     }
 
     fn is_delegating(&self, req_path_segment: &PercentDecoded) -> bool {
-        self.is_match(req_path_segment) && self.delegating
+        self.delegating && self.is_match(req_path_segment)
     }
 
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
@@ -648,7 +648,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Node which is externally delegating must not have existing children")]
+    #[should_panic(
+        expected = "Node which is externally delegating must not have existing children"
+    )]
     fn panics_when_delegated_node_adds_children() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
@@ -659,7 +661,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Node which is externally delegating must not have existing children")]
+    #[should_panic(
+        expected = "Node which is externally delegating must not have existing children"
+    )]
     fn panics_when_node_with_children_is_provided_delegated_route() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
