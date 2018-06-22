@@ -361,7 +361,7 @@ where
     F: FnOnce(State) -> R + Send,
     R: IntoHandlerFuture<B>,
 {
-    fn handle(self, state: State) -> Box<HandlerFuture> {
+    fn handle(self, state: State) -> Box<HandlerFuture<B>> {
         self(state).into_handler_future()
     }
 }

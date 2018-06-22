@@ -82,14 +82,14 @@ use state::{State, StateData};
 /// #   let body = response.read_utf8_body().unwrap();
 /// #   assert_eq!(body, "x = 15, y = B");
 /// # }
-pub trait QueryStringExtractor:
-    for<'de> Deserialize<'de> + StaticResponseExtender + StateData
+pub trait QueryStringExtractor<B>:
+    for<'de> Deserialize<'de> + StaticResponseExtender<B> + StateData
 {
 }
 
-impl<T> QueryStringExtractor for T
+impl<T, B> QueryStringExtractor<B> for T
 where
-    for<'de> T: Deserialize<'de> + StaticResponseExtender + StateData,
+    for<'de> T: Deserialize<'de> + StaticResponseExtender<B> + StateData,
 {
 }
 
@@ -115,6 +115,6 @@ impl<'de> Deserialize<'de> for NoopQueryStringExtractor {
 
 impl StateData for NoopQueryStringExtractor {}
 
-impl StaticResponseExtender for NoopQueryStringExtractor {
-    fn extend<B>(_state: &mut State, _res: &mut Response<B>) {}
+impl<B> StaticResponseExtender<B> for NoopQueryStringExtractor {
+    fn extend(_state: &mut State, _res: &mut Response<B>) {}
 }

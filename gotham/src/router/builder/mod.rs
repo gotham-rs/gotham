@@ -151,7 +151,7 @@ where
     node_builder: &'a mut NodeBuilder<B>,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
-    response_finalizer_builder: ResponseFinalizerBuilder,
+    response_finalizer_builder: ResponseFinalizerBuilder<B>,
 }
 
 impl<'a, C, P, B> RouterBuilder<'a, C, P, B>
@@ -221,7 +221,7 @@ where
     /// ```
     pub fn add_response_extender<E>(&mut self, status_code: StatusCode, extender: E)
     where
-        E: ResponseExtender + Send + Sync + 'static,
+        E: ResponseExtender<B> + Send + Sync + 'static,
     {
         self.response_finalizer_builder
             .add(status_code, Box::new(extender))
@@ -280,8 +280,8 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<B> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
 {
     node_builder: &'a mut NodeBuilder<B>,
     matcher: M,
@@ -296,15 +296,15 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<B> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
 {
     /// Coerces the type of the internal `PhantomData`, to replace an extractor by changing the
     /// type parameter without changing anything else.
     fn coerce<NPE, NQSE>(self) -> SingleRouteBuilder<'a, M, C, P, NPE, NQSE, B>
     where
-        NPE: PathExtractor + Send + Sync + 'static,
-        NQSE: QueryStringExtractor + Send + Sync + 'static,
+        NPE: PathExtractor<B> + Send + Sync + 'static,
+        NQSE: QueryStringExtractor<B> + Send + Sync + 'static,
     {
         SingleRouteBuilder {
             node_builder: self.node_builder,
@@ -339,8 +339,8 @@ mod tests {
 
     impl StateData for SalutationParams {}
 
-    impl StaticResponseExtender for SalutationParams {
-        fn extend(_: &mut State, _: &mut Response) {}
+    impl<B> StaticResponseExtender<B> for SalutationParams {
+        fn extend(_: &mut State, _: &mut Response<B>) {}
     }
 
     #[derive(Deserialize)]
@@ -351,8 +351,8 @@ mod tests {
 
     impl StateData for AddParams {}
 
-    impl StaticResponseExtender for AddParams {
-        fn extend(_: &mut State, _: &mut Response) {}
+    impl<B> StaticResponseExtender<B> for AddParams {
+        fn extend(_: &mut State, _: &mut Response<B>) {}
     }
 
     mod welcome {

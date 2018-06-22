@@ -259,27 +259,27 @@ where
     NH: NewHandler<ZB> + Send + 'static,
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
-    pub fn head(self, uri: &str) -> RequestBuilder<NH> {
+    pub fn head(self, uri: &str) -> RequestBuilder<NH, QB> {
         self.build_request(Method::HEAD, uri)
     }
 
     /// Begin constructing a HEAD request using this `TestClient`.
-    pub fn head_uri(self, uri: Uri) -> RequestBuilder<NH> {
+    pub fn head_uri(self, uri: Uri) -> RequestBuilder<NH, QB> {
         self.build_request_uri(Method::HEAD, uri)
     }
 
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
-    pub fn get(self, uri: &str) -> RequestBuilder<NH> {
+    pub fn get(self, uri: &str) -> RequestBuilder<NH, QB> {
         self.build_request(Method::GET, uri)
     }
 
     /// Begin constructing a GET request using this `TestClient`.
-    pub fn get_uri(self, uri: Uri) -> RequestBuilder<NH> {
+    pub fn get_uri(self, uri: Uri) -> RequestBuilder<NH, QB> {
         self.build_request_uri(Method::GET, uri)
     }
 
     /// Parse the URI and begin constructing a POST request using this `TestClient`.
-    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
     where
         T: Into<Body>,
     {
@@ -289,7 +289,7 @@ where
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
     where
         T: Into<Body>,
     {
@@ -299,7 +299,7 @@ where
     }
 
     /// Parse the URI and begin constructing a PUT request using this `TestClient`.
-    pub fn put<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn put<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
     where
         T: Into<Body>,
     {
@@ -309,7 +309,7 @@ where
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn put_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
     where
         T: Into<Body>,
     {
@@ -319,7 +319,7 @@ where
     }
 
     /// Parse the URI and begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn patch<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
     where
         T: Into<Body>,
     {
@@ -329,7 +329,7 @@ where
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn patch_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
     where
         T: Into<Body>,
     {
@@ -339,22 +339,22 @@ where
     }
 
     /// Parse the URI and begin constructing a DELETE request using this `TestClient`.
-    pub fn delete(self, uri: &str) -> RequestBuilder<NH> {
+    pub fn delete(self, uri: &str) -> RequestBuilder<NH, QB> {
         self.build_request(Method::DELETE, uri)
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
-    pub fn delete_uri(self, uri: Uri) -> RequestBuilder<NH> {
+    pub fn delete_uri(self, uri: Uri) -> RequestBuilder<NH, QB> {
         self.build_request_uri(Method::DELETE, uri)
     }
 
     /// Parse the URI and begin constructing a request with the given HTTP method.
-    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<NH> {
+    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<NH, QB> {
         RequestBuilder::new(self, method, uri.parse().unwrap())
     }
 
     /// Begin constructing a request with the given HTTP method and Uri.
-    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<NH> {
+    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<NH, QB> {
         RequestBuilder::new(self, method, uri)
     }
 
@@ -476,7 +476,7 @@ mod tests {
 
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use hyper::header::{ContentLength, ContentType};
+    use hyper::header::CONTENT_LENGTH;
     use hyper::{Body, StatusCode, Uri};
     use mime;
 
@@ -489,8 +489,8 @@ mod tests {
         response: String,
     }
 
-    impl Handler for TestHandler {
-        fn handle(self, state: State) -> Box<HandlerFuture> {
+    impl<B> Handler<B> for TestHandler {
+        fn handle(self, state: State) -> Box<HandlerFuture<B>> {
             let path = Uri::borrow_from(&state).path().to_owned();
             match path.as_str() {
                 "/" => {
@@ -513,7 +513,7 @@ mod tests {
         }
     }
 
-    impl NewHandler for TestHandler {
+    impl<B> NewHandler<B> for TestHandler {
         type Instance = Self;
 
         fn new_handler(&self) -> io::Result<Self> {
@@ -596,7 +596,7 @@ mod tests {
 
     #[test]
     fn async_echo() {
-        fn handler(mut state: State) -> Box<HandlerFuture> {
+        fn handler<B>(mut state: State) -> Box<HandlerFuture<B>> {
             let f = Body::take_from(&mut state)
                 .concat2()
                 .then(move |full_body| match full_body {
@@ -631,12 +631,12 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
 
         {
-            let content_type = res.headers().get::<ContentType>().expect("ContentType");
+            let content_type = res.headers().get(CONTENT_TYPE).expect("ContentType");
             assert_eq!(content_type.0, mime::TEXT_PLAIN);
         }
 
         let content_length = {
-            let content_length = res.headers().get::<ContentLength>().expect("ContentLength");
+            let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
             assert_eq!(content_length.0, data.as_bytes().len() as u64);
 
             content_length.0

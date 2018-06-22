@@ -23,11 +23,11 @@ use state::{request_id, State};
 
 struct RouterData<B> {
     tree: Tree<B>,
-    response_finalizer: ResponseFinalizer,
+    response_finalizer: ResponseFinalizer<B>,
 }
 
 impl<B> RouterData<B> {
-    fn new(tree: Tree<B>, response_finalizer: ResponseFinalizer) -> RouterData<B> {
+    fn new(tree: Tree<B>, response_finalizer: ResponseFinalizer<B>) -> RouterData<B> {
         RouterData {
             tree,
             response_finalizer,
@@ -122,12 +122,12 @@ impl<B> Router<B> {
     #[deprecated(
         since = "0.2.0", note = "use the new `gotham::router::builder` API to construct a Router"
     )]
-    pub fn new(tree: Tree<B>, response_finalizer: ResponseFinalizer) -> Router<B> {
+    pub fn new(tree: Tree<B>, response_finalizer: ResponseFinalizer<B>) -> Router<B> {
         Router::internal_new(tree, response_finalizer)
     }
 
     /// Same as `new`, but private and not deprecated.
-    fn internal_new(tree: Tree<B>, response_finalizer: ResponseFinalizer) -> Router<B> {
+    fn internal_new(tree: Tree<B>, response_finalizer: ResponseFinalizer<B>) -> Router<B> {
         let router_data = RouterData::new(tree, response_finalizer);
         Router {
             data: Arc::new(router_data),
@@ -196,7 +196,7 @@ impl<B> Router<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::header::{ContentLength, HeaderMap};
+    use hyper::header::{HeaderMap, CONTENT_LENGTH};
     use hyper::{Method, Uri};
     use std::str::FromStr;
 
@@ -215,8 +215,8 @@ mod tests {
         (state, Response::new())
     }
 
-    fn send_request(
-        r: Router,
+    fn send_request<B>(
+        r: Router<B>,
         method: Method,
         uri: &str,
     ) -> Result<(State, Response<()>), (State, HandlerError)> {
@@ -393,7 +393,7 @@ mod tests {
 
         let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
         let not_found_extender = |_s: &mut State, r: &mut Response| {
-            r.headers_mut().set(ContentLength(3u64));
+            r.headers_mut().insert(CONTENT_LENGTH, 3u64);
         };
         response_finalizer_builder.add(StatusCode::NOT_FOUND, Box::new(not_found_extender));
         let response_finalizer = response_finalizer_builder.finalize();
@@ -401,10 +401,7 @@ mod tests {
 
         match send_request(router, Method::GET, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
-                assert_eq!(
-                    *res.headers().get::<ContentLength>().unwrap(),
-                    ContentLength(3u64)
-                );
+                assert_eq!(*res.headers().get(CONTENT_LENGTH), 3u64);
             }
             Err(_) => panic!("Router should have correctly handled request"),
         };

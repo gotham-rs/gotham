@@ -82,40 +82,40 @@ pub struct ExtractorFailed;
 
 /// Concrete type for a route in a Gotham web application. Values of this type are created by the
 /// `gotham::router::builder` API and held internally in the `Router` for dispatching requests.
-pub struct RouteImpl<RM, PE, QSE>
+pub struct RouteImpl<RM, PE, QSE, B>
 where
     RM: RouteMatcher,
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<B>,
+    QSE: QueryStringExtractor<B>,
 {
     matcher: RM,
-    dispatcher: Box<Dispatcher + Send + Sync>,
-    _extractors: Extractors<PE, QSE>,
+    dispatcher: Box<Dispatcher<B> + Send + Sync>,
+    _extractors: Extractors<PE, QSE, B>,
     delegation: Delegation,
 }
 
 /// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
 /// for use by `Middleware` and `Handler` implementations.
-pub struct Extractors<PE, QSE>
+pub struct Extractors<PE, QSE, B>
 where
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<B>,
+    QSE: QueryStringExtractor<B>,
 {
     rpe_phantom: PhantomData<PE>,
     qse_phantom: PhantomData<QSE>,
 }
 
-impl<RM, PE, QSE> RouteImpl<RM, PE, QSE>
+impl<RM, PE, QSE, B> RouteImpl<RM, PE, QSE, B>
 where
     RM: RouteMatcher,
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<B>,
+    QSE: QueryStringExtractor<B>,
 {
     /// Creates a new `RouteImpl` from the provided components.
     pub fn new(
         matcher: RM,
-        dispatcher: Box<Dispatcher + Send + Sync>,
-        _extractors: Extractors<PE, QSE>,
+        dispatcher: Box<Dispatcher<B> + Send + Sync>,
+        _extractors: Extractors<PE, QSE, B>,
         delegation: Delegation,
     ) -> Self {
         RouteImpl {
@@ -127,10 +127,10 @@ where
     }
 }
 
-impl<PE, QSE> Extractors<PE, QSE>
+impl<PE, QSE, B> Extractors<PE, QSE, B>
 where
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<B>,
+    QSE: QueryStringExtractor<B>,
 {
     /// Creates a new set of Extractors for use with a `RouteImpl`
     pub fn new() -> Self {
@@ -141,11 +141,11 @@ where
     }
 }
 
-impl<RM, PE, QSE, ZB> Route<ZB> for RouteImpl<RM, PE, QSE>
+impl<RM, PE, QSE, ZB> Route<ZB> for RouteImpl<RM, PE, QSE, ZB>
 where
     RM: RouteMatcher,
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<ZB>,
+    QSE: QueryStringExtractor<ZB>,
 {
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         self.matcher.is_match(state)

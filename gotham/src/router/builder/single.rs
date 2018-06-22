@@ -98,9 +98,9 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn to<H>(self, handler: H)
+    fn to<H, B>(self, handler: H)
     where
-        H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static;
+        H: Handler<B> + RefUnwindSafe + Copy + Send + Sync + 'static;
 
     /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
     /// values are constructed.
@@ -162,9 +162,9 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn to_new_handler<NH>(self, new_handler: NH)
+    fn to_new_handler<NH, B>(self, new_handler: NH)
     where
-        NH: NewHandler + 'static;
+        NH: NewHandler<B> + 'static;
 
     /// Applies a `PathExtractor` type to the current route, to extract path parameters into
     /// `State` with the given type.
@@ -229,10 +229,10 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
+    fn with_path_extractor<NPE, B>(self) -> <Self as ReplacePathExtractor<NPE, B>>::Output
     where
-        NPE: PathExtractor + Send + Sync + 'static,
-        Self: ReplacePathExtractor<NPE>,
+        NPE: PathExtractor<B> + Send + Sync + 'static,
+        Self: ReplacePathExtractor<NPE, B>,
         Self::Output: DefineSingleRoute;
 
     /// Applies a `QueryStringExtractor` type to the current route, to extract query parameters into
@@ -297,12 +297,12 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn with_query_string_extractor<NQSE>(
+    fn with_query_string_extractor<NQSE, B>(
         self,
-    ) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
+    ) -> <Self as ReplaceQueryStringExtractor<NQSE, B>>::Output
     where
-        NQSE: QueryStringExtractor + Send + Sync + 'static,
-        Self: ReplaceQueryStringExtractor<NQSE>,
+        NQSE: QueryStringExtractor<B> + Send + Sync + 'static,
+        Self: ReplaceQueryStringExtractor<NQSE, B>,
         Self::Output: DefineSingleRoute;
 
     /// Adds additional `RouteMatcher` requirements to the current route.
@@ -371,19 +371,19 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<B> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
 {
     fn to<H>(self, handler: H)
     where
-        H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static,
+        H: Handler<B> + RefUnwindSafe + Copy + Send + Sync + 'static,
     {
         self.to_new_handler(move || Ok(handler))
     }
 
     fn to_new_handler<NH>(self, new_handler: NH)
     where
-        NH: NewHandler + 'static,
+        NH: NewHandler<B> + 'static,
     {
         let dispatcher = DispatcherImpl::new(new_handler, self.pipeline_chain, self.pipelines);
         let route: RouteImpl<M, PE, QSE> = RouteImpl::new(
@@ -395,18 +395,18 @@ where
         self.node_builder.add_route(Box::new(route));
     }
 
-    fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
+    fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE, B>>::Output
     where
-        NPE: PathExtractor + Send + Sync + 'static,
+        NPE: PathExtractor<B> + Send + Sync + 'static,
     {
         self.replace_path_extractor()
     }
 
     fn with_query_string_extractor<NQSE>(
         self,
-    ) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
+    ) -> <Self as ReplaceQueryStringExtractor<NQSE, B>>::Output
     where
-        NQSE: QueryStringExtractor + Send + Sync + 'static,
+        NQSE: QueryStringExtractor<B> + Send + Sync + 'static,
     {
         self.replace_query_string_extractor()
     }

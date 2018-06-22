@@ -975,7 +975,7 @@ mod tests {
     #[derive(Clone, Copy)]
     struct QuickExitMiddleware;
 
-    impl NewMiddleware for QuickExitMiddleware {
+    impl<B> NewMiddleware<B> for QuickExitMiddleware {
         type Instance = Self;
 
         fn new_middleware(&self) -> io::Result<Self> {
@@ -983,10 +983,10 @@ mod tests {
         }
     }
 
-    impl Middleware for QuickExitMiddleware {
-        fn call<Chain>(self, state: State, _chain: Chain) -> Box<HandlerFuture>
+    impl<B> Middleware<B> for QuickExitMiddleware {
+        fn call<Chain>(self, state: State, _chain: Chain) -> Box<HandlerFuture<B>>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + 'static,
         {
             let f = future::ok((
                 state,

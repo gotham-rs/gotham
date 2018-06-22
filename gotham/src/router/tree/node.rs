@@ -125,7 +125,7 @@ impl<B> Node<B> {
     pub(crate) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'r>, &Node<B>, SegmentsProcessed, SegmentMapping<'r>)> {
+    ) -> Option<(Path<'r, B>, &Node<B>, SegmentsProcessed, SegmentMapping<'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, leaf, c, sm)) => {
                 path.reverse();
@@ -397,7 +397,7 @@ mod tests {
         (state, Response::new())
     }
 
-    fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
+    fn get_route<P, B>(pipeline_set: PipelineSet<P>) -> Box<Route<B> + Send + Sync>
     where
         P: Send + Sync + RefUnwindSafe + 'static,
     {
@@ -414,7 +414,7 @@ mod tests {
         Box::new(route)
     }
 
-    fn get_delegated_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
+    fn get_delegated_route<P, B>(pipeline_set: PipelineSet<P>) -> Box<Route<B> + Send + Sync>
     where
         P: Send + Sync + RefUnwindSafe + 'static,
     {
@@ -431,7 +431,7 @@ mod tests {
         Box::new(route)
     }
 
-    fn test_structure() -> NodeBuilder {
+    fn test_structure<B>() -> NodeBuilder<B> {
         let mut root: NodeBuilder = NodeBuilder::new("/", SegmentType::Static);
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 

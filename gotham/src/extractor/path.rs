@@ -74,11 +74,14 @@ use state::{State, StateData};
 /// #   let body = response.read_utf8_body().unwrap();
 /// #   assert_eq!(body, "id = 1551, slug = ten-reasons-serde-is-amazing");
 /// # }
-pub trait PathExtractor: for<'de> Deserialize<'de> + StaticResponseExtender + StateData {}
+pub trait PathExtractor<B>:
+    for<'de> Deserialize<'de> + StaticResponseExtender<B> + StateData
+{
+}
 
-impl<T> PathExtractor for T
+impl<T, B> PathExtractor<B> for T
 where
-    for<'de> T: Deserialize<'de> + StaticResponseExtender + StateData,
+    for<'de> T: Deserialize<'de> + StaticResponseExtender<B> + StateData,
 {
 }
 
@@ -102,6 +105,6 @@ impl<'de> Deserialize<'de> for NoopPathExtractor {
 
 impl StateData for NoopPathExtractor {}
 
-impl<B> StaticResponseExtender for NoopPathExtractor {
+impl<B> StaticResponseExtender<B> for NoopPathExtractor {
     fn extend(_state: &mut State, _res: &mut Response<B>) {}
 }

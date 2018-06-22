@@ -26,8 +26,8 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<B> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
 {
     node_builder: &'a mut NodeBuilder<B>,
     matcher: M,
@@ -40,8 +40,8 @@ impl<'a, C, P, PE, QSE, B> AssociatedRouteBuilder<'a, AnyRouteMatcher, C, P, PE,
 where
     C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<B> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
 {
     /// Create an instance of AssociatedRouteBuilder
     pub fn new(
@@ -64,8 +64,8 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P, B> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<B> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
 {
     /// Adds aadditional `RouteMatcher` requirements to all subsequently associated routes.
     ///
@@ -196,7 +196,7 @@ where
         &'b mut self,
     ) -> AssociatedRouteBuilder<'b, M, C, P, NPE, QSE, B>
     where
-        NPE: PathExtractor + Send + Sync + 'static,
+        NPE: PathExtractor<B> + Send + Sync + 'static,
     {
         AssociatedRouteBuilder {
             node_builder: self.node_builder,
@@ -261,7 +261,7 @@ where
         &'b mut self,
     ) -> AssociatedRouteBuilder<'b, M, C, P, PE, NQSE, B>
     where
-        NQSE: QueryStringExtractor + Send + Sync + 'static,
+        NQSE: QueryStringExtractor<B> + Send + Sync + 'static,
     {
         AssociatedRouteBuilder {
             node_builder: self.node_builder,

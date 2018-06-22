@@ -101,7 +101,7 @@ mod tests {
         value: i32,
     }
 
-    impl NewMiddleware for Number {
+    impl<B> NewMiddleware<B> for Number {
         type Instance = Number;
 
         fn new_middleware(&self) -> io::Result<Number> {
@@ -109,10 +109,10 @@ mod tests {
         }
     }
 
-    impl Middleware for Number {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+    impl<B> Middleware<B> for Number {
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture<B>>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -126,7 +126,7 @@ mod tests {
         value: i32,
     }
 
-    impl NewMiddleware for Addition {
+    impl<B> NewMiddleware<B> for Addition {
         type Instance = Addition;
 
         fn new_middleware(&self) -> io::Result<Addition> {
@@ -134,10 +134,10 @@ mod tests {
         }
     }
 
-    impl Middleware for Addition {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+    impl<B> Middleware<B> for Addition {
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture<B>>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
@@ -149,7 +149,7 @@ mod tests {
         value: i32,
     }
 
-    impl NewMiddleware for Multiplication {
+    impl<B> NewMiddleware<B> for Multiplication {
         type Instance = Multiplication;
 
         fn new_middleware(&self) -> io::Result<Multiplication> {
@@ -157,10 +157,10 @@ mod tests {
         }
     }
 
-    impl Middleware for Multiplication {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+    impl<B> Middleware<B> for Multiplication {
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture<B>>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value *= self.value;

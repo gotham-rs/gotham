@@ -8,9 +8,9 @@ use router::route::matcher::{AndRouteMatcher, RouteMatcher};
 
 /// Describes the operation of replacing a `PathExtractor` on a route. This trait exists to remove
 /// type clutter from the documentation of `SingleRouteBuilder::with_path_extractor`.
-pub trait ReplacePathExtractor<T>
+pub trait ReplacePathExtractor<T, B>
 where
-    T: PathExtractor,
+    T: PathExtractor<B>,
 {
     /// The type returned when replacing the `PathExtractor` with the target type.
     type Output: DefineSingleRoute;
@@ -21,15 +21,15 @@ where
     fn replace_path_extractor(self) -> Self::Output;
 }
 
-impl<'a, M, C, P, PE, QSE, NPE, B> ReplacePathExtractor<NPE>
+impl<'a, M, C, P, PE, QSE, NPE, B> ReplacePathExtractor<NPE, B>
     for SingleRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
-    NPE: PathExtractor + Send + Sync + 'static,
+    PE: PathExtractor<B> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
+    NPE: PathExtractor<B> + Send + Sync + 'static,
 {
     type Output = SingleRouteBuilder<'a, M, C, P, NPE, QSE, B>;
 
@@ -40,9 +40,9 @@ where
 
 /// Describes the operation of replacing a `QueryStringExtractor` on a route. This trait exists to
 /// remove type clutter from the documentation of `SingleRouteBuilder::with_query_string_extractor`.
-pub trait ReplaceQueryStringExtractor<T>
+pub trait ReplaceQueryStringExtractor<T, B>
 where
-    T: QueryStringExtractor,
+    T: QueryStringExtractor<B>,
 {
     /// The type returned when replacing the `QueryStringExtractor` with the target type.
     type Output: DefineSingleRoute;
@@ -53,15 +53,15 @@ where
     fn replace_query_string_extractor(self) -> Self::Output;
 }
 
-impl<'a, M, C, P, PE, QSE, NQSE, B> ReplaceQueryStringExtractor<NQSE>
+impl<'a, M, C, P, PE, QSE, NQSE, B> ReplaceQueryStringExtractor<NQSE, B>
     for SingleRouteBuilder<'a, M, C, P, PE, QSE, B>
 where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
-    NQSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<B> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
+    NQSE: QueryStringExtractor<B> + Send + Sync + 'static,
 {
     type Output = SingleRouteBuilder<'a, M, C, P, PE, NQSE, B>;
 
@@ -92,8 +92,8 @@ where
     NRM: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P, B> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<B> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
 {
     /// The type returned when extending the existing `RouteMatcher` with the target type.
     type Output = SingleRouteBuilder<'a, AndRouteMatcher<M, NRM>, C, P, PE, QSE, B>;

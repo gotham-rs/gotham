@@ -17,16 +17,16 @@ use router::response::extender::ResponseExtender;
 /// `gotham::router::builder` API. See `RouterBuilder::add_response_extender` for details on
 /// configuring `ResponseExtender` values for each `StatusCode`.
 #[derive(Clone)]
-pub struct ResponseFinalizer {
-    data: Arc<HashMap<StatusCode, Box<ResponseExtender + Send + Sync>>>,
+pub struct ResponseFinalizer<B> {
+    data: Arc<HashMap<StatusCode, Box<ResponseExtender<B> + Send + Sync>>>,
 }
 
 /// Builds an immutable `ResponseFinalizer`.
-pub struct ResponseFinalizerBuilder {
-    data: HashMap<StatusCode, Box<ResponseExtender + Send + Sync>>,
+pub struct ResponseFinalizerBuilder<B> {
+    data: HashMap<StatusCode, Box<ResponseExtender<B> + Send + Sync>>,
 }
 
-impl ResponseFinalizerBuilder {
+impl<B> ResponseFinalizerBuilder<B> {
     /// Creates a new ResponseFinalizer instance.
     #[deprecated(
         since = "0.2.0",
@@ -42,23 +42,27 @@ impl ResponseFinalizerBuilder {
     }
 
     /// Add an Finalizer for responses that have been assigned this status_code.
-    pub fn add(&mut self, status_code: StatusCode, extender: Box<ResponseExtender + Send + Sync>) {
+    pub fn add(
+        &mut self,
+        status_code: StatusCode,
+        extender: Box<ResponseExtender<B> + Send + Sync>,
+    ) {
         trace!(" adding response extender for {}", status_code);
         self.data.insert(status_code, extender);
     }
 
     /// Finalize population of error handlers for the application, ready for use by a `Router`
-    pub fn finalize(self) -> ResponseFinalizer {
+    pub fn finalize(self) -> ResponseFinalizer<B> {
         ResponseFinalizer {
             data: Arc::new(self.data),
         }
     }
 }
 
-impl ResponseFinalizer {
+impl<B> ResponseFinalizer<B> {
     /// Finalize the `Response` if a `ResponseFinalizer` has been supplied for the
     /// status code assigned to the `Response`.
-    pub fn finalize(&self, mut state: State, mut res: Response) -> Box<HandlerFuture> {
+    pub fn finalize(&self, mut state: State, mut res: Response<B>) -> Box<HandlerFuture<B>> {
         match self.data.get(&res.status()) {
             Some(extender) => {
                 trace!(

@@ -63,9 +63,9 @@ use service::GothamService;
 use tokio::net::TcpListener;
 
 /// Starts a Gotham application.
-pub fn start<NH, A>(addr: A, new_handler: NH)
+pub fn start<NH, A, B>(addr: A, new_handler: NH)
 where
-    NH: NewHandler + 'static,
+    NH: NewHandler<B> + 'static,
     A: ToSocketAddrs,
 {
     let (listener, addr) = tcp_listener(addr);

@@ -57,7 +57,7 @@ pub(super) enum Timing {
 impl Timing {
     /// Converts a `Response` into a new `Response` with the `X-Runtime-Microseconds` header
     /// included (assuming the time elapsed was able to be measured).
-    pub(super) fn add_to_response(&self, mut response: Response) -> Response {
+    pub(super) fn add_to_response<B>(&self, mut response: Response<B>) -> Response<B> {
         if let Timing::Microseconds(i) = *self {
             response
                 .headers_mut()
