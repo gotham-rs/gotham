@@ -1,5 +1,6 @@
 //! Defines helper functions for processing the request path
 
+use std::iter::once;
 use std::sync::Arc;
 
 use helpers::http::PercentDecoded;
@@ -27,9 +28,7 @@ impl RequestPathSegments {
     /// ```
     pub(crate) fn new<'r>(path: &'r str) -> Self {
         let segments = Arc::new(
-            vec!["/"]
-                .iter()
-                .map(|s| *s)
+            once("/")
                 .chain(path.split('/').filter(|s| !EXCLUDED_SEGMENTS.contains(s)))
                 .filter_map(PercentDecoded::new)
                 .collect(),
