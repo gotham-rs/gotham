@@ -72,8 +72,7 @@ impl RouteMatcher for ContentTypeHeaderRouteMatcher {
     /// Determines if the `Request` was made using a `Content-Type` header that includes a
     /// supported media type. A missing `Content-Type` header will not match.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
-        let headers = Headers::borrow_from(state);
-        match headers.get::<ContentType>() {
+        match Headers::borrow_from(state).get::<ContentType>() {
             Some(content_type) => {
                 if self.supported_media_types.contains(&content_type.0) {
                     return Ok(());

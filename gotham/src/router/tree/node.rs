@@ -142,20 +142,8 @@ impl Node {
         mut consumed_segments: Vec<&'r PercentDecoded>,
     ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match req_path_segments.split_first() {
-            Some((x, _)) if self.is_delegating(x) => {
-                // A delegated node terminates processing, start building result
-                trace!(" found delegator node `{}`", self.segment);
-
-                let mut sm = SegmentMapping::new();
-                if self.segment_type != SegmentType::Static {
-                    consumed_segments.push(x);
-                    sm.insert(self.segment(), consumed_segments);
-                };
-
-                Some((vec![self], self, 0, sm))
-            }
-            Some((x, xs)) if self.is_leaf(x, xs) => {
-                trace!(" found leaf node `{}`", self.segment);
+            Some((x, xs)) if self.is_delegating(x) || self.is_leaf(x, xs) => {
+                trace!(" found delegating/leaf node `{}`", self.segment);
 
                 let mut sm = SegmentMapping::new();
                 if self.segment_type != SegmentType::Static {

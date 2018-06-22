@@ -91,8 +91,7 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         // Request method is valid, ensure valid Accept header
-        let headers = Headers::borrow_from(state);
-        match headers.get::<Accept>() {
+        match Headers::borrow_from(state).get::<Accept>() {
             Some(accept) => {
                 for ra in accept.iter().map(|qi| &qi.item) {
                     if *ra == mime::STAR_STAR || self.supported_media_types.contains(ra) {
