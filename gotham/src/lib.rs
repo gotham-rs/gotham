@@ -40,6 +40,8 @@ extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
 
+extern crate cookie;
+
 pub mod extractor;
 pub mod handler;
 pub mod helpers;
@@ -54,11 +56,11 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use futures::{Future, Stream};
+use handler::NewHandler;
 use hyper::server::conn::Http;
 use hyper::Chunk;
-use tokio::net::TcpListener;
-use handler::NewHandler;
 use service::GothamService;
+use tokio::net::TcpListener;
 
 /// Starts a Gotham application.
 pub fn start<NH, A>(addr: A, new_handler: NH)

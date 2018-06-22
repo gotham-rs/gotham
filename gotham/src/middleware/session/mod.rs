@@ -8,8 +8,9 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use base64;
 use bincode;
+use cookie::Cookie;
 use futures::{future, Future};
-use hyper::header::{Cookie, HeaderMap};
+use hyper::header::{HeaderMap, SET_COOKIE};
 use hyper::{Response, StatusCode};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -916,13 +917,7 @@ fn reset_cookie<B>(response: &mut Response<B>, session_drop_data: &SessionDropDa
 }
 
 fn write_cookie<B>(cookie: String, response: &mut Response<B>) {
-    let headers = response.headers_mut();
-    if let Some(existing_cookies) = headers.get_mut::<SetCookie>() {
-        return existing_cookies.push(cookie);
-    }
-
-    let set_cookie = SetCookie(vec![cookie]);
-    headers.set(set_cookie);
+    response.headers_mut().append(SET_COOKIE, cookie);
 }
 
 fn write_session<B, T>(
@@ -1032,7 +1027,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::header::HeaderMap;
+    use hyper::header::{HeaderMap, COOKIE};
     use hyper::{Response, StatusCode};
     use rand;
     use std::sync::Mutex;
@@ -1164,9 +1159,6 @@ mod tests {
             .persist_session(identifier.clone(), &bytes)
             .unwrap();
 
-        let mut cookies = Cookie::new();
-        cookies.set("_gotham_session", identifier.value.clone());
-
         let received: Arc<Mutex<Option<u64>>> = Arc::new(Mutex::new(None));
         let r = received.clone();
 
@@ -1185,7 +1177,8 @@ mod tests {
 
         let mut state = State::new();
         let mut headers = HeaderMap::new();
-        headers.set::<Cookie>(cookies);
+        let cookie = Cookie::build("_gotham_session", identifier.value.clone()).finish();
+        headers.insert(COOKIE, cookie);
         state.put(headers);
 
         let r: Box<HandlerFuture> = m.call(state, handler);
