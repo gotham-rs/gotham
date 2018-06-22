@@ -14,31 +14,25 @@ pub(crate) type QueryStringMapping = HashMap<String, Vec<FormUrlDecoded>>;
 ///
 /// Keys that are provided but with no value associated are skipped.
 pub(crate) fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
-    match query {
-        Some(query) => {
-            let pairs = query.split(is_separator).filter(|pair| pair.contains("="));
+    let mut query_string_mapping = QueryStringMapping::new();
 
-            let mut query_string_mapping = QueryStringMapping::new();
+    if let Some(query) = query {
+        let pairs = query.split(is_separator).filter(|pair| pair.contains("="));
 
-            for p in pairs {
-                let mut sp = p.splitn(2, '=');
-                let (k, v) = (sp.next().unwrap(), sp.next().unwrap());
-                match form_url_decode(k) {
-                    Ok(k) => {
-                        let vec = query_string_mapping.entry(k).or_insert(Vec::new());
-                        match FormUrlDecoded::new(v) {
-                            Some(dv) => vec.push(dv),
-                            None => (),
-                        }
-                    }
-                    Err(_) => (),
-                };
-            }
+        for p in pairs {
+            let mut sp = p.splitn(2, '=');
+            let (k, v) = (sp.next().unwrap(), sp.next().unwrap());
 
-            query_string_mapping
+            if let Ok(k) = form_url_decode(k) {
+                let vec = query_string_mapping.entry(k).or_insert_with(Vec::new);
+                if let Some(dv) = FormUrlDecoded::new(v) {
+                    vec.push(dv);
+                }
+            };
         }
-        None => QueryStringMapping::new(),
     }
+
+    query_string_mapping
 }
 
 fn is_separator(c: char) -> bool {
