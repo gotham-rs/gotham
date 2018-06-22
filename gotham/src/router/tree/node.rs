@@ -175,7 +175,11 @@ impl Node {
                     // If we're in a Glob consume segment and continue
                     // otherwise we've failed to find a suitable way
                     // forward.
-                    None if self.segment_type == SegmentType::Glob => {
+                    None => {
+                        if self.segment_type != SegmentType::Glob {
+                            return None;
+                        }
+
                         trace!(" continuing with glob match for segment `{}`", self.segment);
                         consumed_segments.push(x);
                         match self.inner_traverse(xs, consumed_segments) {
@@ -183,11 +187,9 @@ impl Node {
                             None => None,
                         }
                     }
-                    None => None,
                 }
             }
-            Some(_) => None,
-            None => None,
+            _ => None,
         }
     }
 
@@ -204,7 +206,7 @@ impl Node {
     }
 
     fn is_leaf(&self, s: &PercentDecoded, rs: &[&PercentDecoded]) -> bool {
-        rs.is_empty() && self.is_match(s) && self.is_routable()
+        rs.is_empty() && self.is_routable() && self.is_match(s)
     }
 }
 
@@ -241,7 +243,7 @@ impl NodeBuilder {
 
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
-    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+    pub(in router) fn add_route(&mut self, route: Box<Route + Send + Sync>) {
         if route.delegation() == Delegation::External {
             if !self.routes.is_empty() {
                 panic!("Node which is externally delegating must have single Route");
@@ -259,7 +261,7 @@ impl NodeBuilder {
     }
 
     /// Adds a new child to this sub-tree structure
-    pub fn add_child(&mut self, child: NodeBuilder) {
+    pub(in router) fn add_child(&mut self, child: NodeBuilder) {
         if self.delegating {
             panic!("Node which is externally delegating must not have existing children")
         }
@@ -273,19 +275,23 @@ impl NodeBuilder {
     }
 
     /// Determines if a child representing the exact segment provided exists.
-    pub fn has_child(&self, segment: &str, segment_type: SegmentType) -> bool {
+    pub(in router) fn has_child(&self, segment: &str, segment_type: SegmentType) -> bool {
         self.borrow_child(segment, segment_type).is_some()
     }
 
     /// Borrow a child that represents the exact segment provided here.
-    pub fn borrow_child(&self, segment: &str, segment_type: SegmentType) -> Option<&NodeBuilder> {
+    pub(in router) fn borrow_child(
+        &self,
+        segment: &str,
+        segment_type: SegmentType,
+    ) -> Option<&NodeBuilder> {
         self.children
             .iter()
             .find(|n| n.segment_type == segment_type && n.segment == segment)
     }
 
     /// Mutably borrow a child that represents the exact segment provided here.
-    pub fn borrow_mut_child(
+    pub(in router) fn borrow_mut_child(
         &mut self,
         segment: &str,
         segment_type: SegmentType,
@@ -296,8 +302,8 @@ impl NodeBuilder {
     }
 
     /// Finalizes and sorts all internal data, including all children.
-    pub fn finalize(mut self) -> Node {
-        self.sort();
+    pub(in router) fn finalize(mut self) -> Node {
+        self.children.sort();
 
         let mut children = self.children
             .drain(..)
@@ -313,22 +319,6 @@ impl NodeBuilder {
             routes: self.routes,
             delegating: self.delegating,
             children,
-        }
-    }
-
-    // Sorts all children per `PartialEq` and `PartialOrd` implementations.
-    //
-    // Final ordering of Children is based on most to least specific SegmentType as follows:
-    //
-    // 1. Static
-    // 2. Constrained
-    // 3. Dynamic
-    // 4. Glob
-    fn sort(&mut self) {
-        self.children.sort();
-
-        for child in &mut self.children {
-            child.sort();
         }
     }
 }
