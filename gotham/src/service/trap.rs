@@ -46,14 +46,15 @@ where
             })
     });
 
-    match res {
-        Ok(f) => Box::new(
+    if let Ok(f) = res {
+        return Box::new(
             UnwindSafeFuture::new(f)
                 .catch_unwind()
                 .then(finalize_catch_unwind_response),
-        ),
-        Err(_) => Box::new(finalize_panic_response(timer)),
+        );
     }
+
+    Box::new(finalize_panic_response(timer))
 }
 
 fn finalize_success_response(

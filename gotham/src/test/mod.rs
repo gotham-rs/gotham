@@ -6,7 +6,6 @@ use std::cell::RefCell;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
-use std::sync::Arc;
 use std::time::Duration;
 use std::{io, net};
 
@@ -122,7 +121,7 @@ where
                 timeout,
                 core: RefCell::new(core),
                 http: Http::new(),
-                gotham_service: GothamService::new(Arc::new(new_handler)),
+                gotham_service: GothamService::new(new_handler),
             };
 
             TestServer {

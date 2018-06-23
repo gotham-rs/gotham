@@ -68,7 +68,6 @@ where
     A: ToSocketAddrs,
 {
     let (listener, addr) = tcp_listener(addr);
-    let new_handler = Arc::new(new_handler);
     let gotham_service = GothamService::new(new_handler);
     let protocol = Arc::new(Http::<Chunk>::new());
     let service = Arc::new(gotham_service.connect(addr));

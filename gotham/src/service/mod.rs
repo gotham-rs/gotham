@@ -25,21 +25,23 @@ pub(crate) struct GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    t: Arc<T>,
+    handler: Arc<T>,
 }
 
 impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    pub(crate) fn new(t: Arc<T>) -> GothamService<T> {
-        GothamService { t }
+    pub(crate) fn new(handler: T) -> GothamService<T> {
+        GothamService {
+            handler: Arc::new(handler),
+        }
     }
 
     pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
         ConnectedGothamService {
-            t: self.t.clone(),
-            client_addr,
+            handler: self.handler.clone(),
+            client_addr: Arc::new(client_addr),
         }
     }
 }
@@ -50,8 +52,8 @@ pub(crate) struct ConnectedGothamService<T>
 where
     T: NewHandler + 'static,
 {
-    t: Arc<T>,
-    client_addr: SocketAddr,
+    handler: Arc<T>,
+    client_addr: Arc<SocketAddr>,
 }
 
 impl<T> Service for ConnectedGothamService<T>
@@ -66,7 +68,7 @@ where
     fn call(&self, req: Self::Request) -> Self::Future {
         let mut state = State::new();
 
-        put_client_addr(&mut state, self.client_addr);
+        put_client_addr(&mut state, *self.client_addr);
 
         let (method, uri, version, headers, body) = req.deconstruct();
 
@@ -86,7 +88,7 @@ where
             );
         };
 
-        trap::call_handler(&*self.t, AssertUnwindSafe(state))
+        trap::call_handler(&*self.handler, AssertUnwindSafe(state))
     }
 }
 
