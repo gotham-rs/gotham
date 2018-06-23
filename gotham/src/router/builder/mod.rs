@@ -320,8 +320,6 @@ where
 mod tests {
     use super::*;
 
-    use std::sync::Arc;
-
     use futures::{Future, Stream};
     use hyper::server::Service;
     use hyper::{Method, Request, Response, StatusCode};
@@ -494,7 +492,7 @@ mod tests {
             route.delegate("/delegated").to_router(delegated_router);
         });
 
-        let new_service = GothamService::new(Arc::new(router));
+        let new_service = GothamService::new(router);
 
         let call = move |req| {
             let service = new_service.connect("127.0.0.1:10000".parse().unwrap());
