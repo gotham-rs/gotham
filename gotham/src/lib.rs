@@ -70,7 +70,6 @@ where
     let (listener, addr) = tcp_listener(addr);
     let gotham_service = GothamService::new(new_handler);
     let protocol = Arc::new(Http::<Chunk>::new());
-    let service = Arc::new(gotham_service.connect(addr));
 
     info!(
         target: "gotham::start",
@@ -82,9 +81,8 @@ where
         .incoming()
         .map_err(|e| panic!("error = {:?}", e))
         .for_each(move |socket| {
-            let f = protocol
-                .serve_connection(socket, service.clone())
-                .then(|_| Ok(()));
+            let service = gotham_service.connect(socket.peer_addr().unwrap());
+            let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
             tokio::spawn(f);
             Ok(())
