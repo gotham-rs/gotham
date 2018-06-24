@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use helpers::http::PercentDecoded;
+use hyper::Body;
 use router::route::Route;
 use router::tree::node::{Node, NodeBuilder, SegmentType};
 
@@ -11,7 +12,7 @@ pub mod regex;
 
 /// A depth ordered `Vec` of `Node` instances that create a routable path through the `Tree` for the
 /// matched `Request` path.
-type Path<'a, B> = Vec<&'a Node<B>>;
+type Path<'a> = Vec<&'a Node>;
 
 /// Number of segments from a `Request` path that are considered to have been processed
 /// by an `Router` traversing its `Tree`.
@@ -25,27 +26,27 @@ pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
 ///
 /// The `Tree` is created by the `gotham::router::builder` API and used internally by the `Router`
 /// to determine the valid `Route` instances for a request path before dispatch.
-pub struct Tree<B> {
-    root: Node<B>,
+pub struct Tree {
+    root: Node,
 }
 
-impl<B> Tree<B> {
+impl Tree {
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
     pub(crate) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'r, B>, &Node<B>, SegmentsProcessed, SegmentMapping<'r>)> {
+    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
 }
 
 /// Constructs a `Tree` which is sorted and immutable.
-pub struct TreeBuilder<B> {
-    root: NodeBuilder<B>,
+pub struct TreeBuilder {
+    root: NodeBuilder,
 }
 
-impl<B> TreeBuilder<B> {
+impl TreeBuilder {
     /// Creates a new `Tree` and root `Node`.
     pub fn new() -> Self {
         trace!(" creating new tree");
@@ -55,7 +56,7 @@ impl<B> TreeBuilder<B> {
     }
 
     /// Adds a direct child to the root of the `TreeBuilder`.
-    pub fn add_child(&mut self, child: NodeBuilder<B>) {
+    pub fn add_child(&mut self, child: NodeBuilder) {
         self.root.add_child(child);
     }
 
@@ -68,17 +69,17 @@ impl<B> TreeBuilder<B> {
     }
 
     /// Borrow the root `NodeBuilder` as mutable.
-    pub fn borrow_root_mut(&mut self) -> &mut NodeBuilder<B> {
+    pub fn borrow_root_mut(&mut self) -> &mut NodeBuilder {
         &mut self.root
     }
 
     /// Adds a `Route` be evaluated by the `Router` when the root of the `Tree` is requested.
-    pub fn add_route(&mut self, route: Box<Route<B> + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route<ResBody = Body> + Send + Sync>) {
         self.root.add_route(route);
     }
 
     /// Finalizes and sorts all internal data and creates a Tree for use with a `Router`.
-    pub fn finalize(self) -> Tree<B> {
+    pub fn finalize(self) -> Tree {
         Tree {
             root: self.root.finalize(),
         }

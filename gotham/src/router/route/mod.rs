@@ -10,7 +10,7 @@ pub mod matcher;
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use hyper::{Response, Uri};
+use hyper::{Body, Response, Uri};
 
 use extractor::{self, PathExtractor, QueryStringExtractor};
 use handler::HandlerFuture;
@@ -48,7 +48,8 @@ pub enum Delegation {
 ///
 /// `Route` exists as a trait to allow abstraction over the generic types in `RouteImpl`. This
 /// trait should not be implemented outside of Gotham.
-pub trait Route<ZB>: RefUnwindSafe {
+pub trait Route: RefUnwindSafe {
+    type ResBody;
     /// Determines if this `Route` should be invoked, based on the request data in `State.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;
 
@@ -63,17 +64,21 @@ pub trait Route<ZB>: RefUnwindSafe {
     ) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when the `PathExtractor` fails.
-    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response<ZB>);
+    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response<Self::ResBody>);
 
     /// Extracts the query string parameters and stores the `QueryStringExtractor` in `State`.
     fn extract_query_string(&self, state: &mut State) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when query string extraction fails.
-    fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response<ZB>);
+    fn extend_response_on_query_string_error(
+        &self,
+        state: &mut State,
+        res: &mut Response<Self::ResBody>,
+    );
 
     /// Dispatches the request to this `Route`, which will execute the pipelines and the handler
     /// assigned to the `Route.
-    fn dispatch(&self, state: State) -> Box<HandlerFuture<ZB>>;
+    fn dispatch(&self, state: State) -> Box<HandlerFuture>;
 }
 
 /// Returned in the `Err` variant from `extract_query_string` or `extract_request_path`, this
@@ -82,40 +87,40 @@ pub struct ExtractorFailed;
 
 /// Concrete type for a route in a Gotham web application. Values of this type are created by the
 /// `gotham::router::builder` API and held internally in the `Router` for dispatching requests.
-pub struct RouteImpl<RM, PE, QSE, B>
+pub struct RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    PE: PathExtractor<B>,
-    QSE: QueryStringExtractor<B>,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
     matcher: RM,
-    dispatcher: Box<Dispatcher<B> + Send + Sync>,
-    _extractors: Extractors<PE, QSE, B>,
+    dispatcher: Box<Dispatcher + Send + Sync>,
+    _extractors: Extractors<PE, QSE>,
     delegation: Delegation,
 }
 
 /// Extractors used by `RouteImpl` to acquire request data and change into a type safe form
 /// for use by `Middleware` and `Handler` implementations.
-pub struct Extractors<PE, QSE, B>
+pub struct Extractors<PE, QSE>
 where
-    PE: PathExtractor<B>,
-    QSE: QueryStringExtractor<B>,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
     rpe_phantom: PhantomData<PE>,
     qse_phantom: PhantomData<QSE>,
 }
 
-impl<RM, PE, QSE, B> RouteImpl<RM, PE, QSE, B>
+impl<RM, PE, QSE> RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    PE: PathExtractor<B>,
-    QSE: QueryStringExtractor<B>,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
     /// Creates a new `RouteImpl` from the provided components.
     pub fn new(
         matcher: RM,
-        dispatcher: Box<Dispatcher<B> + Send + Sync>,
-        _extractors: Extractors<PE, QSE, B>,
+        dispatcher: Box<Dispatcher + Send + Sync>,
+        _extractors: Extractors<PE, QSE>,
         delegation: Delegation,
     ) -> Self {
         RouteImpl {
@@ -127,10 +132,10 @@ where
     }
 }
 
-impl<PE, QSE, B> Extractors<PE, QSE, B>
+impl<PE, QSE> Extractors<PE, QSE>
 where
-    PE: PathExtractor<B>,
-    QSE: QueryStringExtractor<B>,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
     /// Creates a new set of Extractors for use with a `RouteImpl`
     pub fn new() -> Self {
@@ -141,12 +146,14 @@ where
     }
 }
 
-impl<RM, PE, QSE, ZB> Route<ZB> for RouteImpl<RM, PE, QSE, ZB>
+impl<RM, PE, QSE> Route for RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    PE: PathExtractor<ZB>,
-    QSE: QueryStringExtractor<ZB>,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
+    type ResBody = Body;
+
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         self.matcher.is_match(state)
     }
@@ -155,7 +162,7 @@ where
         self.delegation
     }
 
-    fn dispatch(&self, state: State) -> Box<HandlerFuture<ZB>> {
+    fn dispatch(&self, state: State) -> Box<HandlerFuture> {
         self.dispatcher.dispatch(state)
     }
 
@@ -173,7 +180,7 @@ where
         }
     }
 
-    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response<ZB>) {
+    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response<Self::ResBody>) {
         PE::extend(state, res)
     }
 
@@ -197,7 +204,11 @@ where
         }
     }
 
-    fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response<ZB>) {
+    fn extend_response_on_query_string_error(
+        &self,
+        state: &mut State,
+        res: &mut Response<Self::ResBody>,
+    ) {
         QSE::extend(state, res)
     }
 }

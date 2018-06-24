@@ -319,7 +319,7 @@ pub mod session;
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
-pub trait Middleware<B> {
+pub trait Middleware {
     /// Entry point to the middleware. To pass the request on to the application, the middleware
     /// invokes the `chain` function with the provided `state`.
     ///
@@ -328,9 +328,9 @@ pub trait Middleware<B> {
     /// * Not modify any request components added to `State` by Gotham.
     /// * Avoid modifying parts of the `State` that don't strictly need to be modified to perform
     ///   its function.
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture<B>>
+    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
+        Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
         Self: Sized;
 }
 
@@ -373,9 +373,9 @@ pub trait Middleware<B> {
 /// #   // Just for the implied type assertion.
 /// #   new_pipeline().add(MyMiddleware).build();
 /// # }
-pub trait NewMiddleware<B>: Sync + RefUnwindSafe {
+pub trait NewMiddleware: Sync + RefUnwindSafe {
     /// The type of `Middleware` created by the `NewMiddleware`.
-    type Instance: Middleware<B>;
+    type Instance: Middleware;
 
     /// Create and return a new `Middleware` value.
     fn new_middleware(&self) -> io::Result<Self::Instance>;

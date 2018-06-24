@@ -23,9 +23,11 @@ use tokio::reactor::PollEvented2;
 use tokio::runtime::Runtime;
 use tokio_core::reactor::Core;
 
-use handler::NewHandler;
+use handler::{IntoHandlerFuture, NewHandler};
 use router::Router;
 use service::GothamService;
+
+use state;
 
 mod request;
 
@@ -57,21 +59,21 @@ pub use self::request::RequestBuilder;
 /// assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
-pub struct TestServer<B, NH = Router<B>>
+pub struct TestServer<NH = Router>
 where
-    NH: NewHandler<B> + Send + 'static,
+    NH: NewHandler + Send + 'static,
 {
     data: Rc<TestServerData<NH>>,
 }
 
-struct TestServerData<B, NH = Router<B>>
+struct TestServerData<NH = Router>
 where
-    NH: NewHandler<B> + Send + 'static,
+    NH: NewHandler + Send + 'static,
 {
     http: Http,
     timeout: u64,
     runtime: RwLock<Runtime>,
-    gotham_service: GothamService<NH, B>,
+    gotham_service: GothamService<NH>,
 }
 
 /// The `TestRequestError` type represents all error states that can result from evaluating a
@@ -86,9 +88,9 @@ pub enum TestRequestError {
     HyperError(hyper::Error),
 }
 
-impl<NH, B> Clone for TestServer<NH>
+impl<NH> Clone for TestServer<NH>
 where
-    NH: NewHandler<B> + Send + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn clone(&self) -> TestServer<NH> {
         TestServer {
@@ -97,9 +99,9 @@ where
     }
 }
 
-impl<NH, B> TestServer<NH>
+impl<NH> TestServer<NH>
 where
-    NH: NewHandler<B> + Send + 'static,
+    NH: NewHandler + Send + 'static,
 {
     /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
@@ -127,22 +129,19 @@ where
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see a default socket address of `127.0.0.1:10000` as the source address for
     /// the connection.
-    pub fn client(&self) -> TestClient<NH, B> {
+    pub fn client(&self) -> TestClient<NH> {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
-    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<NH, B> {
+    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<NH> {
         self.try_client_with_address(client_addr)
             .expect("TestServer: unable to spawn client")
     }
 
-    fn try_client_with_address(
-        &self,
-        client_addr: net::SocketAddr,
-    ) -> io::Result<TestClient<NH, B>> {
+    fn try_client_with_address(&self, client_addr: net::SocketAddr) -> io::Result<TestClient<NH>> {
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
@@ -229,7 +228,7 @@ where
 
 impl<NH, ZB> BodyReader<ZB> for TestServer<NH>
 where
-    NH: NewHandler<ZB> + Send + 'static,
+    NH: NewHandler + Send + 'static,
 {
     fn read_body(&self, response: Response<ZB>) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
@@ -246,40 +245,42 @@ where
 }
 
 /// Client interface for issuing requests to a `TestServer`.
-pub struct TestClient<NH, B>
+pub struct TestClient<NH>
 where
-    NH: NewHandler<B> + Send + 'static,
+    NH: NewHandler + Send + 'static,
 {
     client: Client<TestConnect>,
     test_server: TestServer<NH>,
 }
 
-impl<NH, QB, ZB> TestClient<NH, ZB>
+impl<NH, H, IHF> TestClient<NH>
 where
-    NH: NewHandler<ZB> + Send + 'static,
+    NH: NewHandler + Send + 'static + Fn() -> io::Result<H>,
+    H: Send + FnOnce(state::State) -> IHF,
+    IHF: IntoHandlerFuture + Sized,
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
-    pub fn head(self, uri: &str) -> RequestBuilder<NH, QB> {
+    pub fn head(self, uri: &str) -> RequestBuilder<NH> {
         self.build_request(Method::HEAD, uri)
     }
 
     /// Begin constructing a HEAD request using this `TestClient`.
-    pub fn head_uri(self, uri: Uri) -> RequestBuilder<NH, QB> {
+    pub fn head_uri(self, uri: Uri) -> RequestBuilder<NH> {
         self.build_request_uri(Method::HEAD, uri)
     }
 
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
-    pub fn get(self, uri: &str) -> RequestBuilder<NH, QB> {
+    pub fn get(self, uri: &str) -> RequestBuilder<NH> {
         self.build_request(Method::GET, uri)
     }
 
     /// Begin constructing a GET request using this `TestClient`.
-    pub fn get_uri(self, uri: Uri) -> RequestBuilder<NH, QB> {
+    pub fn get_uri(self, uri: Uri) -> RequestBuilder<NH> {
         self.build_request_uri(Method::GET, uri)
     }
 
     /// Parse the URI and begin constructing a POST request using this `TestClient`.
-    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
+    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -289,7 +290,7 @@ where
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
+    pub fn post_uri<T, QB>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -299,7 +300,7 @@ where
     }
 
     /// Parse the URI and begin constructing a PUT request using this `TestClient`.
-    pub fn put<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
+    pub fn put<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -309,7 +310,7 @@ where
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
+    pub fn put_uri<T, QB>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -319,7 +320,7 @@ where
     }
 
     /// Parse the URI and begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
+    pub fn patch<T, QB>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -329,7 +330,7 @@ where
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH, QB>
+    pub fn patch_uri<T, QB>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -339,27 +340,27 @@ where
     }
 
     /// Parse the URI and begin constructing a DELETE request using this `TestClient`.
-    pub fn delete(self, uri: &str) -> RequestBuilder<NH, QB> {
+    pub fn delete(self, uri: &str) -> RequestBuilder<NH> {
         self.build_request(Method::DELETE, uri)
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
-    pub fn delete_uri(self, uri: Uri) -> RequestBuilder<NH, QB> {
+    pub fn delete_uri(self, uri: Uri) -> RequestBuilder<NH> {
         self.build_request_uri(Method::DELETE, uri)
     }
 
     /// Parse the URI and begin constructing a request with the given HTTP method.
-    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<NH, QB> {
+    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<NH> {
         RequestBuilder::new(self, method, uri.parse().unwrap())
     }
 
     /// Begin constructing a request with the given HTTP method and Uri.
-    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<NH, QB> {
+    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<NH> {
         RequestBuilder::new(self, method, uri)
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform(self, req: Request<QB>) -> Result<TestResponse<QB, ZB>, TestRequestError> {
+    pub fn perform<QB>(self, req: Request<QB>) -> Result<TestResponse<QB, Body>, TestRequestError> {
         self.test_server
             .run_request(self.client.request(req))
             .map(|response| TestResponse {
@@ -453,12 +454,12 @@ struct TestConnect {
 }
 
 impl service::Service for TestConnect {
-    type ReqBody = hyper::Uri;
-    type ResBody = PollEvented2<mio::net::TcpStream>;
+    type ReqBody = Body;
+    type ResBody = Body;
     type Error = io::Error;
     type Future = future::FutureResult<Response<Self::ResBody>, Self::Error>;
 
-    fn call(&self, _req: hyper::Request<Self::ReqBody>) -> Self::Future {
+    fn call(&mut self, _req: hyper::Request<Self::ReqBody>) -> Self::Future {
         match self.stream.try_borrow_mut().map(|ref mut o| o.take()) {
             Ok(Some(stream)) => future::ok(stream),
             Ok(None) => future::err(io::Error::new(io::ErrorKind::Other, "stream already taken")),
@@ -477,7 +478,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use hyper::header::CONTENT_LENGTH;
-    use hyper::{Body, StatusCode, Uri};
+    use hyper::{Body, Response, StatusCode, Uri};
     use mime;
 
     use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
@@ -489,12 +490,12 @@ mod tests {
         response: String,
     }
 
-    impl<B> Handler<B> for TestHandler {
-        fn handle(self, state: State) -> Box<HandlerFuture<B>> {
+    impl Handler for TestHandler {
+        fn handle(self, state: State) -> Box<HandlerFuture> {
             let path = Uri::borrow_from(&state).path().to_owned();
             match path.as_str() {
                 "/" => {
-                    let response = server::Response::new()
+                    let response = Response::new()
                         .with_status(StatusCode::OK)
                         .with_body(self.response.clone());
 
@@ -502,7 +503,7 @@ mod tests {
                 }
                 "/timeout" => Box::new(future::empty()),
                 "/myaddr" => {
-                    let response = server::Response::new()
+                    let response = Response::new()
                         .with_status(StatusCode::OK)
                         .with_body(format!("{}", client_addr(&state).unwrap()));
 
@@ -513,7 +514,7 @@ mod tests {
         }
     }
 
-    impl<B> NewHandler<B> for TestHandler {
+    impl NewHandler for TestHandler {
         type Instance = Self;
 
         fn new_handler(&self) -> io::Result<Self> {
@@ -596,7 +597,7 @@ mod tests {
 
     #[test]
     fn async_echo() {
-        fn handler<B>(mut state: State) -> Box<HandlerFuture<B>> {
+        fn handler<B>(mut state: State) -> Box<HandlerFuture> {
             let f = Body::take_from(&mut state)
                 .concat2()
                 .then(move |full_body| match full_body {

@@ -21,22 +21,22 @@ mod trap;
 
 /// Wraps a `NewHandler` which will be used to serve requests. Used in `gotham::os::*` to bind
 /// incoming connections to `ConnectedGothamService` values.
-pub(crate) struct GothamService<T, B>
+pub(crate) struct GothamService<T>
 where
-    T: NewHandler<B> + 'static,
+    T: NewHandler + 'static,
 {
     t: Arc<T>,
 }
 
-impl<T, B> GothamService<T, B>
+impl<T> GothamService<T>
 where
-    T: NewHandler<B> + 'static,
+    T: NewHandler + 'static,
 {
-    pub(crate) fn new(t: Arc<T>) -> GothamService<T, B> {
+    pub(crate) fn new(t: Arc<T>) -> GothamService<T> {
         GothamService { t }
     }
 
-    pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T, B> {
+    pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
         ConnectedGothamService {
             t: self.t.clone(),
             client_addr,
@@ -46,20 +46,20 @@ where
 
 /// A `GothamService` which has been connected to a client. The major difference is that a
 /// `client_addr` has been assigned (as this isn't available from Hyper).
-pub(crate) struct ConnectedGothamService<T, B>
+pub(crate) struct ConnectedGothamService<T>
 where
-    T: NewHandler<B> + 'static,
+    T: NewHandler + 'static,
 {
     t: Arc<T>,
     client_addr: SocketAddr,
 }
 
-impl<T, B> Service for ConnectedGothamService<T, B>
+impl<T> Service for ConnectedGothamService<T>
 where
-    T: NewHandler<B>,
+    T: NewHandler,
 {
-    type ReqBody = Body;
-    type ResBody = Body;
+    type ReqBody = Body; // required by hyper::server::conn::Http::serve_connection()
+    type ResBody = Body; // has to impl Payload...
     type Error = hyper::Error;
     type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error>>;
 

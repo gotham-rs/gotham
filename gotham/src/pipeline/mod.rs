@@ -116,43 +116,43 @@ use state::{request_id, State};
 ///     assert_eq!(response.read_utf8_body().unwrap(), "[1, 2, 3]");
 /// }
 /// ```
-pub struct Pipeline<T, B>
+pub struct Pipeline<T>
 where
-    T: NewMiddlewareChain<B>,
+    T: NewMiddlewareChain,
 {
     chain: T,
 }
 
 /// Represents an instance of a `Pipeline`. Returned from `Pipeline::construct()`.
-struct PipelineInstance<T, B>
+struct PipelineInstance<T>
 where
-    T: MiddlewareChain<B>,
+    T: MiddlewareChain,
 {
     chain: T,
 }
 
-impl<T, B> Pipeline<T, B>
+impl<T> Pipeline<T>
 where
-    T: NewMiddlewareChain<B>,
+    T: NewMiddlewareChain,
 {
     /// Constructs an instance of this `Pipeline` by creating all `Middleware` instances required
     /// to serve a request. If any middleware fails creation, its error will be returned.
-    fn construct(&self) -> io::Result<PipelineInstance<T::Instance, B>> {
+    fn construct(&self) -> io::Result<PipelineInstance<T::Instance>> {
         Ok(PipelineInstance {
             chain: self.chain.construct()?,
         })
     }
 }
 
-impl<T, B> PipelineInstance<T, B>
+impl<T> PipelineInstance<T>
 where
-    T: MiddlewareChain<B>,
+    T: MiddlewareChain,
 {
     /// Serves a request using this `PipelineInstance`. Requests that pass through all `Middleware`
     /// will be served with the `f` function.
-    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture<B>>
+    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         trace!("[{}] calling middleware", request_id(&state));
         self.chain.call(state, f)
@@ -162,7 +162,7 @@ where
 /// Begins defining a new pipeline.
 ///
 /// See `PipelineBuilder` for information on using `new_pipeline()`.
-pub fn new_pipeline<B>() -> PipelineBuilder<(), B> {
+pub fn new_pipeline() -> PipelineBuilder<()> {
     trace!(" starting pipeline construction");
     // See: `impl NewMiddlewareChain for ()`
     PipelineBuilder { t: () }
@@ -228,30 +228,30 @@ pub fn new_pipeline<B>() -> PipelineBuilder<(), B> {
 ///
 /// `(&mut state)` &rarr; `MiddlewareOne` &rarr; `MiddlewareTwo` &rarr; `MiddlewareThree` &rarr;
 /// `handler` (provided later, when building the router)
-pub struct PipelineBuilder<T, B>
+pub struct PipelineBuilder<T>
 where
-    T: NewMiddlewareChain<B>,
+    T: NewMiddlewareChain,
 {
     t: T,
 }
 
-impl<T, B> PipelineBuilder<T, B>
+impl<T> PipelineBuilder<T>
 where
-    T: NewMiddlewareChain<B>,
+    T: NewMiddlewareChain,
 {
     /// Builds a `Pipeline`, which contains all middleware in the order provided via `add` and is
     /// ready to process requests via a `NewHandler` provided to `Pipeline::call`.
-    pub fn build(self) -> Pipeline<T, B>
+    pub fn build(self) -> Pipeline<T>
     where
-        T: NewMiddlewareChain<B>,
+        T: NewMiddlewareChain,
     {
         Pipeline { chain: self.t }
     }
 
     /// Adds a `NewMiddleware` which will create a `Middleware` during request dispatch.
-    pub fn add<M, B>(self, m: M) -> PipelineBuilder<(M, T), B>
+    pub fn add<M>(self, m: M) -> PipelineBuilder<(M, T)>
     where
-        M: NewMiddleware<B>,
+        M: NewMiddleware,
         M::Instance: Send + 'static,
         Self: Sized,
     {
@@ -299,7 +299,7 @@ mod tests {
         value: i32,
     }
 
-    impl<B> NewMiddleware<B> for Number {
+    impl NewMiddleware for Number {
         type Instance = Number;
 
         fn new_middleware(&self) -> io::Result<Number> {
@@ -307,10 +307,10 @@ mod tests {
         }
     }
 
-    impl<B> Middleware<B> for Number {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture<B>>
+    impl Middleware for Number {
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -324,7 +324,7 @@ mod tests {
         value: i32,
     }
 
-    impl<B> NewMiddleware<B> for Addition {
+    impl NewMiddleware for Addition {
         type Instance = Addition;
 
         fn new_middleware(&self) -> io::Result<Addition> {
@@ -332,10 +332,10 @@ mod tests {
         }
     }
 
-    impl<B> Middleware<B> for Addition {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture<B>>
+    impl Middleware for Addition {
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
@@ -347,7 +347,7 @@ mod tests {
         value: i32,
     }
 
-    impl<B> NewMiddleware<B> for Multiplication {
+    impl NewMiddleware for Multiplication {
         type Instance = Multiplication;
 
         fn new_middleware(&self) -> io::Result<Multiplication> {
@@ -355,10 +355,10 @@ mod tests {
         }
     }
 
-    impl<B> Middleware<B> for Multiplication {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture<B>>
+    impl Middleware for Multiplication {
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value *= self.value;

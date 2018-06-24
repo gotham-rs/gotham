@@ -12,18 +12,18 @@ use state::{request_id, State};
 /// This type should never be implemented outside of Gotham, does not form part of the public API,
 /// and is subject to change without notice.
 #[doc(hidden)]
-pub unsafe trait NewMiddlewareChain<B>: RefUnwindSafe + Sized {
-    type Instance: MiddlewareChain<B>;
+pub unsafe trait NewMiddlewareChain: RefUnwindSafe + Sized {
+    type Instance: MiddlewareChain;
 
     /// Create and return a new `MiddlewareChain` value.
     fn construct(&self) -> io::Result<Self::Instance>;
 }
 
-unsafe impl<T, U, B> NewMiddlewareChain<B> for (T, U)
+unsafe impl<T, U> NewMiddlewareChain for (T, U)
 where
-    T: NewMiddleware<B>,
+    T: NewMiddleware,
     T::Instance: Send + 'static,
-    U: NewMiddlewareChain<B>,
+    U: NewMiddlewareChain,
 {
     type Instance = (T::Instance, U::Instance);
 
@@ -38,7 +38,7 @@ where
     }
 }
 
-unsafe impl<B> NewMiddlewareChain<B> for () {
+unsafe impl NewMiddlewareChain for () {
     type Instance = ();
 
     fn construct(&self) -> io::Result<Self::Instance> {
@@ -54,17 +54,17 @@ unsafe impl<B> NewMiddlewareChain<B> for () {
 /// This type should never be implemented outside of Gotham, does not form part of the public API,
 /// and is subject to change without notice.
 #[doc(hidden)]
-pub unsafe trait MiddlewareChain<B>: Sized {
+pub unsafe trait MiddlewareChain: Sized {
     /// Recursive function for processing middleware and chaining to the given function.
-    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture<B>>
+    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static;
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static;
 }
 
-unsafe impl<B> MiddlewareChain<B> for () {
-    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture<B>>
+unsafe impl MiddlewareChain for () {
+    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         // At the last item in the `MiddlewareChain`, the function is invoked to serve the
         // request. `f` is the nested function of all `Middleware` and the `Handler`.
@@ -76,14 +76,14 @@ unsafe impl<B> MiddlewareChain<B> for () {
     }
 }
 
-unsafe impl<T, U, B> MiddlewareChain<B> for (T, U)
+unsafe impl<T, U> MiddlewareChain for (T, U)
 where
-    T: Middleware<B> + Send + 'static,
-    U: MiddlewareChain<B>,
+    T: Middleware + Send + 'static,
+    U: MiddlewareChain,
 {
-    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture<B>>
+    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         let (m, p) = self;
         // Construct the function from the inside, out. Starting with a function which calls the

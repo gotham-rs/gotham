@@ -25,7 +25,7 @@ pub(super) fn call_handler<'a, B, T>(
     state: AssertUnwindSafe<State>,
 ) -> Box<Future<Item = Response<B>, Error = hyper::Error> + Send + 'a>
 where
-    T: NewHandler<B> + 'a,
+    T: NewHandler + 'a,
 {
     let timer = Timer::new();
 
@@ -50,7 +50,7 @@ where
         Ok(f) => Box::new(
             UnwindSafeFuture::new(f)
                 .catch_unwind()
-                .then(finalize_catch_unwind_response),
+                .then(finalize_catch_unwind_response), // must be Future<Item = impl Payload>
         ),
         Err(_) => Box::new(finalize_panic_response(timer)),
     }

@@ -2,6 +2,7 @@ use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
 use handler::{Handler, NewHandler};
+use hyper::Body;
 use pipeline::chain::PipelineHandleChain;
 use router::builder::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor,
                       SingleRouteBuilder};
@@ -98,9 +99,9 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn to<H, B>(self, handler: H)
+    fn to<H>(self, handler: H)
     where
-        H: Handler<B> + RefUnwindSafe + Copy + Send + Sync + 'static;
+        H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static;
 
     /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
     /// values are constructed.
@@ -162,9 +163,9 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn to_new_handler<NH, B>(self, new_handler: NH)
+    fn to_new_handler<NH>(self, new_handler: NH)
     where
-        NH: NewHandler<B> + 'static;
+        NH: NewHandler + 'static;
 
     /// Applies a `PathExtractor` type to the current route, to extract path parameters into
     /// `State` with the given type.
@@ -229,10 +230,10 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn with_path_extractor<NPE, B>(self) -> <Self as ReplacePathExtractor<NPE, B>>::Output
+    fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
     where
-        NPE: PathExtractor<B> + Send + Sync + 'static,
-        Self: ReplacePathExtractor<NPE, B>,
+        NPE: PathExtractor<Body> + Send + Sync + 'static,
+        Self: ReplacePathExtractor<NPE>,
         Self::Output: DefineSingleRoute;
 
     /// Applies a `QueryStringExtractor` type to the current route, to extract query parameters into
@@ -297,12 +298,12 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn with_query_string_extractor<NQSE, B>(
+    fn with_query_string_extractor<NQSE>(
         self,
-    ) -> <Self as ReplaceQueryStringExtractor<NQSE, B>>::Output
+    ) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
     where
-        NQSE: QueryStringExtractor<B> + Send + Sync + 'static,
-        Self: ReplaceQueryStringExtractor<NQSE, B>,
+        NQSE: QueryStringExtractor<Body> + Send + Sync + 'static,
+        Self: ReplaceQueryStringExtractor<NQSE>,
         Self::Output: DefineSingleRoute;
 
     /// Adds additional `RouteMatcher` requirements to the current route.
@@ -366,24 +367,24 @@ pub trait DefineSingleRoute {
         Self::Output: DefineSingleRoute;
 }
 
-impl<'a, M, C, P, PE, QSE, B> DefineSingleRoute for SingleRouteBuilder<'a, M, C, P, PE, QSE, B>
+impl<'a, M, C, P, PE, QSE> DefineSingleRoute for SingleRouteBuilder<'a, M, C, P, PE, QSE>
 where
     M: RouteMatcher + Send + Sync + 'static,
-    C: PipelineHandleChain<P, B> + Send + Sync + 'static,
+    C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor<B> + Send + Sync + 'static,
-    QSE: QueryStringExtractor<B> + Send + Sync + 'static,
+    PE: PathExtractor<Body> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<Body> + Send + Sync + 'static,
 {
     fn to<H>(self, handler: H)
     where
-        H: Handler<B> + RefUnwindSafe + Copy + Send + Sync + 'static,
+        H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static,
     {
         self.to_new_handler(move || Ok(handler))
     }
 
     fn to_new_handler<NH>(self, new_handler: NH)
     where
-        NH: NewHandler<B> + 'static,
+        NH: NewHandler + 'static,
     {
         let dispatcher = DispatcherImpl::new(new_handler, self.pipeline_chain, self.pipelines);
         let route: RouteImpl<M, PE, QSE> = RouteImpl::new(
@@ -395,18 +396,18 @@ where
         self.node_builder.add_route(Box::new(route));
     }
 
-    fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE, B>>::Output
+    fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
     where
-        NPE: PathExtractor<B> + Send + Sync + 'static,
+        NPE: PathExtractor<Body> + Send + Sync + 'static,
     {
         self.replace_path_extractor()
     }
 
     fn with_query_string_extractor<NQSE>(
         self,
-    ) -> <Self as ReplaceQueryStringExtractor<NQSE, B>>::Output
+    ) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
     where
-        NQSE: QueryStringExtractor<B> + Send + Sync + 'static,
+        NQSE: QueryStringExtractor<Body> + Send + Sync + 'static,
     {
         self.replace_query_string_extractor()
     }

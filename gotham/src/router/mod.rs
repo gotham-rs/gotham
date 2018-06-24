@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use futures::{future, Future};
 use hyper::header::ALLOW;
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use helpers::http::request::path::RequestPathSegments;
@@ -21,13 +21,13 @@ use router::route::{Delegation, Route};
 use router::tree::{SegmentMapping, Tree};
 use state::{request_id, State};
 
-struct RouterData<B> {
-    tree: Tree<B>,
-    response_finalizer: ResponseFinalizer<B>,
+struct RouterData {
+    tree: Tree,
+    response_finalizer: ResponseFinalizer,
 }
 
-impl<B> RouterData<B> {
-    fn new(tree: Tree<B>, response_finalizer: ResponseFinalizer<B>) -> RouterData<B> {
+impl RouterData {
+    fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> RouterData {
         RouterData {
             tree,
             response_finalizer,
@@ -48,12 +48,12 @@ impl<B> RouterData<B> {
 /// Please see the documentation for `DrawRoutes::delegate` within `gotham::router::builder` in
 /// order to delegate to other `Router` instances.
 #[derive(Clone)]
-pub struct Router<B> {
-    data: Arc<RouterData<B>>,
+pub struct Router {
+    data: Arc<RouterData>,
 }
 
-impl<B> NewHandler<B> for Router<B> {
-    type Instance = Router<B>;
+impl NewHandler for Router {
+    type Instance = Router;
 
     // Creates a new Router instance to route new HTTP requests
     fn new_handler(&self) -> io::Result<Self::Instance> {
@@ -62,10 +62,10 @@ impl<B> NewHandler<B> for Router<B> {
     }
 }
 
-impl<B> Handler<B> for Router<B> {
+impl Handler for Router {
     /// Handles the `Request` by determining the correct `Route` from the internal `Tree`, storing
     /// any path related variables in `State` and dispatching to the associated `Handler`.
-    fn handle(self, mut state: State) -> Box<HandlerFuture<B>> {
+    fn handle(self, mut state: State) -> Box<HandlerFuture> {
         trace!("[{}] starting", request_id(&state));
 
         let future = match state.try_take::<RequestPathSegments>() {
@@ -117,17 +117,17 @@ impl<B> Handler<B> for Router<B> {
     }
 }
 
-impl<B> Router<B> {
+impl Router {
     /// Manually assembles a `Router` instance from a provided `Tree`.
     #[deprecated(
         since = "0.2.0", note = "use the new `gotham::router::builder` API to construct a Router"
     )]
-    pub fn new(tree: Tree<B>, response_finalizer: ResponseFinalizer<B>) -> Router<B> {
+    pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
         Router::internal_new(tree, response_finalizer)
     }
 
     /// Same as `new`, but private and not deprecated.
-    fn internal_new(tree: Tree<B>, response_finalizer: ResponseFinalizer<B>) -> Router<B> {
+    fn internal_new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
         let router_data = RouterData::new(tree, response_finalizer);
         Router {
             data: Arc::new(router_data),
@@ -138,8 +138,8 @@ impl<B> Router<B> {
         &self,
         mut state: State,
         sm: SegmentMapping,
-        route: &Box<Route<B> + Send + Sync>,
-    ) -> Box<HandlerFuture<B>> {
+        route: &Box<Route<ResBody = Body> + Send + Sync>,
+    ) -> Box<HandlerFuture> {
         match route.extract_request_path(&mut state, sm) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
@@ -171,7 +171,7 @@ impl<B> Router<B> {
         }
     }
 
-    fn finalize_response(&self, result: Box<HandlerFuture<B>>) -> Box<HandlerFuture<B>> {
+    fn finalize_response(&self, result: Box<HandlerFuture>) -> Box<HandlerFuture> {
         let response_finalizer = self.data.response_finalizer.clone();
         let f = result
             .or_else(|(state, err)| {
@@ -215,8 +215,8 @@ mod tests {
         (state, Response::new())
     }
 
-    fn send_request<B>(
-        r: Router<B>,
+    fn send_request(
+        r: Router,
         method: Method,
         uri: &str,
     ) -> Result<(State, Response<()>), (State, HandlerError)> {

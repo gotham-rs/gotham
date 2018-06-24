@@ -56,7 +56,7 @@ type Body = (Vec<u8>, Mime);
 /// #     assert_eq!(response.headers()[CONTENT_LENGTH], BODY.len().to_string());
 /// # }
 /// ```
-pub fn create_response<B>(state: &State, status: StatusCode, body: Option<Body>) -> Response<B> {
+pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) -> Response<Body> {
     let mut res = Response::new();
     extend_response(state, &mut res, status, body);
     res
@@ -197,9 +197,9 @@ pub fn create_temporary_redirect<B, L: Into<Cow<'static, str>>>(
 /// #     assert_eq!(response.headers()[CONTENT_LENGTH], BODY.len().to_string());
 /// # }
 /// ```
-pub fn extend_response<B>(
+pub fn extend_response(
     state: &State,
-    res: &mut Response<B>,
+    res: &mut Response<Body>,
     status: StatusCode,
     body: Option<Body>,
 ) {

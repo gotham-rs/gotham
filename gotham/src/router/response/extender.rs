@@ -1,6 +1,6 @@
 //! Defines functionality for extending a Response.
 
-use hyper::Response;
+use hyper::{Body, Response};
 use state::{request_id, State};
 use std::panic::RefUnwindSafe;
 
@@ -34,8 +34,8 @@ where
 /// This is likely to only be useful in documentation or example code.
 pub struct NoopResponseExtender;
 
-impl<B> StaticResponseExtender<B> for NoopResponseExtender {
-    fn extend(state: &mut State, res: &mut Response<B>) {
+impl StaticResponseExtender<Body> for NoopResponseExtender {
+    fn extend(state: &mut State, res: &mut Response<Body>) {
         trace!(
             "[{}] NoopResponseExtender invoked, does not make any changes to Response",
             request_id(&state)
@@ -56,8 +56,8 @@ impl<B> StaticResponseExtender<B> for NoopResponseExtender {
     }
 }
 
-impl<B> ResponseExtender<B> for NoopResponseExtender {
-    fn extend(&self, state: &mut State, res: &mut Response<B>) {
+impl ResponseExtender<Body> for NoopResponseExtender {
+    fn extend(&self, state: &mut State, res: &mut Response<Body>) {
         trace!(
             "[{}] NoopResponseExtender invoked on instance, does not make any changes to Response",
             request_id(&state)

@@ -9,16 +9,16 @@ use pipeline::set::PipelineSet;
 use state::{request_id, State};
 
 /// Used by `Router` to dispatch requests via pipelines and finally into the configured `Handler`.
-pub trait Dispatcher<B>: RefUnwindSafe {
+pub trait Dispatcher: RefUnwindSafe {
     /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
-    fn dispatch(&self, state: State) -> Box<HandlerFuture<B>>;
+    fn dispatch(&self, state: State) -> Box<HandlerFuture>;
 }
 
 /// Default implementation of the `Dispatcher` trait.
-pub struct DispatcherImpl<H, C, P, B>
+pub struct DispatcherImpl<H, C, P>
 where
-    H: NewHandler<B>,
-    C: PipelineHandleChain<P, B>,
+    H: NewHandler,
+    C: PipelineHandleChain<P>,
     P: RefUnwindSafe,
 {
     new_handler: H,
@@ -26,11 +26,11 @@ where
     pipelines: PipelineSet<P>,
 }
 
-impl<H, C, P, B> DispatcherImpl<H, C, P, B>
+impl<H, C, P> DispatcherImpl<H, C, P>
 where
-    H: NewHandler<B>,
+    H: NewHandler,
     H::Instance: 'static,
-    C: PipelineHandleChain<P, B>,
+    C: PipelineHandleChain<P>,
     P: RefUnwindSafe,
 {
     /// Creates a new `DispatcherImpl`.
@@ -49,14 +49,14 @@ where
     }
 }
 
-impl<H, C, P, B> Dispatcher<B> for DispatcherImpl<H, C, P, B>
+impl<H, C, P> Dispatcher for DispatcherImpl<H, C, P>
 where
-    H: NewHandler<B>,
+    H: NewHandler,
     H::Instance: Send + 'static,
-    C: PipelineHandleChain<P, B>,
+    C: PipelineHandleChain<P>,
     P: RefUnwindSafe,
 {
-    fn dispatch(&self, state: State) -> Box<HandlerFuture<B>> {
+    fn dispatch(&self, state: State) -> Box<HandlerFuture> {
         match self.new_handler.new_handler() {
             Ok(h) => {
                 trace!("[{}] cloning handler", request_id(&state));
@@ -101,7 +101,7 @@ mod tests {
         value: i32,
     }
 
-    impl<B> NewMiddleware<B> for Number {
+    impl NewMiddleware for Number {
         type Instance = Number;
 
         fn new_middleware(&self) -> io::Result<Number> {
@@ -109,10 +109,10 @@ mod tests {
         }
     }
 
-    impl<B> Middleware<B> for Number {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture<B>>
+    impl Middleware for Number {
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -126,7 +126,7 @@ mod tests {
         value: i32,
     }
 
-    impl<B> NewMiddleware<B> for Addition {
+    impl NewMiddleware for Addition {
         type Instance = Addition;
 
         fn new_middleware(&self) -> io::Result<Addition> {
@@ -134,10 +134,10 @@ mod tests {
         }
     }
 
-    impl<B> Middleware<B> for Addition {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture<B>>
+    impl Middleware for Addition {
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
@@ -149,7 +149,7 @@ mod tests {
         value: i32,
     }
 
-    impl<B> NewMiddleware<B> for Multiplication {
+    impl NewMiddleware for Multiplication {
         type Instance = Multiplication;
 
         fn new_middleware(&self) -> io::Result<Multiplication> {
@@ -157,10 +157,10 @@ mod tests {
         }
     }
 
-    impl<B> Middleware<B> for Multiplication {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture<B>>
+    impl Middleware for Multiplication {
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture<B>> + Send + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value *= self.value;

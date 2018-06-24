@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use handler::IntoResponse;
 use helpers::http::response::create_response;
@@ -127,8 +127,9 @@ impl HandlerError {
     }
 }
 
-impl<B> IntoResponse<B> for HandlerError {
-    fn into_response(self, state: &State) -> Response<B> {
+impl IntoResponse for HandlerError {
+    type ResBody = Body;
+    fn into_response(self, state: &State) -> Response<Self::ResBody> {
         debug!(
             "[{}] HandlerError generating {} {} response: {}",
             request_id(state),

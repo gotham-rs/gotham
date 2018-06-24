@@ -58,20 +58,19 @@ use std::sync::Arc;
 use futures::{Future, Stream};
 use handler::NewHandler;
 use hyper::server::conn::Http;
-use hyper::Chunk;
 use service::GothamService;
 use tokio::net::TcpListener;
 
 /// Starts a Gotham application.
-pub fn start<NH, A, B>(addr: A, new_handler: NH)
+pub fn start<NH, A>(addr: A, new_handler: NH)
 where
-    NH: NewHandler<B> + 'static,
+    NH: NewHandler + 'static,
     A: ToSocketAddrs,
 {
     let (listener, addr) = tcp_listener(addr);
     let new_handler = Arc::new(new_handler);
     let gotham_service = GothamService::new(new_handler);
-    let protocol = Arc::new(Http::<Chunk>::new());
+    let protocol = Arc::new(Http::new());
 
     info!(
         target: "gotham::start",

@@ -1,6 +1,6 @@
 //! Defines `Node` and `SegmentType` for `Tree`
 
-use hyper::StatusCode;
+use hyper::{Body, StatusCode};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 
@@ -38,17 +38,17 @@ pub enum SegmentType {
 ///
 /// Ultimately provides `0..n` `Route` instances which are further evaluated by the `Router` if
 /// the `Node` is determined to be the routable end point for a single path through the tree.
-pub struct Node<B> {
+pub struct Node {
     segment: String,
     segment_type: SegmentType,
 
-    routes: Vec<Box<Route<B> + Send + Sync>>,
+    routes: Vec<Box<Route<ResBody = Body> + Send + Sync>>,
 
     delegating: bool,
-    children: Vec<Node<B>>, // XXX all same response payload? -jdl
+    children: Vec<Node>, // XXX all same response payload? -jdl
 }
 
-impl<B> Node<B> {
+impl Node {
     /// Provides the segment this `Node` represents.
     pub(crate) fn segment(&self) -> &str {
         &self.segment
@@ -68,7 +68,7 @@ impl<B> Node<B> {
     pub(crate) fn select_route<'a>(
         &'a self,
         state: &State,
-    ) -> Result<&'a Box<Route<B> + Send + Sync>, RouteNonMatch> {
+    ) -> Result<&'a Box<Route<ResBody = Body> + Send + Sync>, RouteNonMatch> {
         let mut err: Result<(), RouteNonMatch> = Ok(());
 
         for r in self.routes.iter() {
@@ -125,7 +125,7 @@ impl<B> Node<B> {
     pub(crate) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'r, B>, &Node<B>, SegmentsProcessed, SegmentMapping<'r>)> {
+    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match self.inner_traverse(req_path_segments, vec![]) {
             Some((mut path, leaf, c, sm)) => {
                 path.reverse();
@@ -140,12 +140,7 @@ impl<B> Node<B> {
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
         mut consumed_segments: Vec<&'r PercentDecoded>,
-    ) -> Option<(
-        Vec<&Node<B>>,
-        &Node<B>,
-        SegmentsProcessed,
-        SegmentMapping<'r>,
-    )> {
+    ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match req_path_segments.split_first() {
             Some((x, _)) if self.is_delegating(x) => {
                 // A delegated node terminates processing, start building result
@@ -226,16 +221,16 @@ impl<B> Node<B> {
 }
 
 /// Constructs a `Node` which is sorted and immutable.
-pub struct NodeBuilder<B> {
+pub struct NodeBuilder {
     segment: String,
     segment_type: SegmentType,
-    routes: Vec<Box<Route<B> + Send + Sync>>,
+    routes: Vec<Box<Route<ResBody = Body> + Send + Sync>>,
 
     delegating: bool,
-    children: Vec<NodeBuilder<B>>, // XXX likewise... jdl
+    children: Vec<NodeBuilder>, // XXX likewise... jdl
 }
 
-impl<B> NodeBuilder<B> {
+impl NodeBuilder {
     /// Creates new `NodeBuilder` for the given segment.
     pub fn new<S>(segment: S, segment_type: SegmentType) -> Self
     where
@@ -258,7 +253,7 @@ impl<B> NodeBuilder<B> {
 
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
-    pub fn add_route(&mut self, route: Box<Route<B> + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route<ResBody = Body> + Send + Sync>) {
         if route.delegation() == Delegation::External {
             if !self.routes.is_empty() {
                 panic!("Node which is externally delegating must have single Route");
@@ -276,7 +271,7 @@ impl<B> NodeBuilder<B> {
     }
 
     /// Adds a new child to this sub-tree structure
-    pub fn add_child(&mut self, child: NodeBuilder<B>) {
+    pub fn add_child(&mut self, child: NodeBuilder) {
         if self.delegating {
             panic!("Node which is externally delegating must not have existing children")
         }
@@ -298,11 +293,7 @@ impl<B> NodeBuilder<B> {
     }
 
     /// Borrow a child that represents the exact segment provided here.
-    pub fn borrow_child(
-        &self,
-        segment: &str,
-        segment_type: SegmentType,
-    ) -> Option<&NodeBuilder<B>> {
+    pub fn borrow_child(&self, segment: &str, segment_type: SegmentType) -> Option<&NodeBuilder> {
         self.children
             .iter()
             .find(|n| n.segment_type == segment_type && n.segment == segment)
@@ -313,14 +304,14 @@ impl<B> NodeBuilder<B> {
         &mut self,
         segment: &str,
         segment_type: SegmentType,
-    ) -> Option<&mut NodeBuilder<B>> {
+    ) -> Option<&mut NodeBuilder> {
         self.children
             .iter_mut()
             .find(|n| n.segment_type == segment_type && n.segment == segment)
     }
 
     /// Finalizes and sorts all internal data, including all children.
-    pub fn finalize(mut self) -> Node<B> {
+    pub fn finalize(mut self) -> Node {
         self.sort();
 
         let mut children = self.children
@@ -357,25 +348,25 @@ impl<B> NodeBuilder<B> {
     }
 }
 
-impl<B> Ord for NodeBuilder<B> {
-    fn cmp(&self, other: &NodeBuilder<B>) -> Ordering {
+impl Ord for NodeBuilder {
+    fn cmp(&self, other: &NodeBuilder) -> Ordering {
         (&self.segment_type, &self.segment).cmp(&(&other.segment_type, &other.segment))
     }
 }
 
-impl<B> PartialOrd for NodeBuilder<B> {
-    fn partial_cmp(&self, other: &NodeBuilder<B>) -> Option<Ordering> {
+impl PartialOrd for NodeBuilder {
+    fn partial_cmp(&self, other: &NodeBuilder) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<B> PartialEq for NodeBuilder<B> {
-    fn eq(&self, other: &NodeBuilder<B>) -> bool {
+impl PartialEq for NodeBuilder {
+    fn eq(&self, other: &NodeBuilder) -> bool {
         (&self.segment_type, &self.segment) == (&other.segment_type, &other.segment)
     }
 }
 
-impl<B> Eq for NodeBuilder<B> {}
+impl Eq for NodeBuilder {}
 
 #[cfg(test)]
 mod tests {
@@ -397,7 +388,7 @@ mod tests {
         (state, Response::new())
     }
 
-    fn get_route<P, B>(pipeline_set: PipelineSet<P>) -> Box<Route<B> + Send + Sync>
+    fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route<ResBody = Body> + Send + Sync>
     where
         P: Send + Sync + RefUnwindSafe + 'static,
     {
@@ -414,7 +405,9 @@ mod tests {
         Box::new(route)
     }
 
-    fn get_delegated_route<P, B>(pipeline_set: PipelineSet<P>) -> Box<Route<B> + Send + Sync>
+    fn get_delegated_route<P>(
+        pipeline_set: PipelineSet<P>,
+    ) -> Box<Route<ResBody = Body> + Send + Sync>
     where
         P: Send + Sync + RefUnwindSafe + 'static,
     {
@@ -431,7 +424,7 @@ mod tests {
         Box::new(route)
     }
 
-    fn test_structure<B>() -> NodeBuilder<B> {
+    fn test_structure() -> NodeBuilder {
         let mut root: NodeBuilder = NodeBuilder::new("/", SegmentType::Static);
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 
