@@ -8,16 +8,16 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use base64;
 use bincode;
-use cookie::Cookie;
+use cookie::{Cookie, CookieJar};
 use futures::{future, Future};
-use hyper::header::{HeaderMap, SET_COOKIE};
-use hyper::{Response, StatusCode};
+use hyper::header::{HeaderMap, COOKIE, SET_COOKIE};
+use hyper::{Body, Response, StatusCode};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use super::{Middleware, NewMiddleware};
 use handler::{HandlerError, HandlerFuture, IntoHandlerError};
-use helpers::http::response::create_response;
+use helpers::http::response::extend_response;
 use state::{self, FromState, State, StateData};
 
 mod backend;
@@ -788,6 +788,18 @@ where
     }
 }
 
+fn state_cookies(state: &State) -> CookieJar {
+    HeaderMap::borrow_from(&state)
+        .get_all(COOKIE)
+        .iter()
+        .flat_map(|cv| cv.to_str())
+        .flat_map(|cs| Cookie::parse(cs.to_owned()))
+        .fold(CookieJar::new(), |jar, cookie| {
+            jar.add_original(cookie);
+            jar
+        })
+}
+
 impl<B, T> Middleware for SessionMiddleware<B, T>
 where
     B: Backend + Send + 'static,
@@ -798,9 +810,9 @@ where
         Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
         Self: Sized,
     {
-        let session_identifier = HeaderMap::borrow_from(&state)
-            .get::<Cookie>()
-            .and_then(|c| c.get(self.cookie_config.name.as_ref()))
+        let session_identifier = state_cookies(&state)
+            .get(&self.cookie_config.name)
+            .map(|cookie| cookie.value())
             .map(|value| SessionIdentifier {
                 value: value.to_owned(),
             });
@@ -817,7 +829,7 @@ where
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
                     .and_then(|state| chain(state))
-                    .and_then(persist_session::<T>);
+                    .and_then(persist_session::<Body, T>);
 
                 Box::new(f)
             }
@@ -829,7 +841,7 @@ where
 
                 let f = self.new_session(state)
                     .and_then(|state| chain(state))
-                    .and_then(persist_session::<T>);
+                    .and_then(persist_session::<Body, T>);
 
                 Box::new(f)
             }
@@ -861,6 +873,7 @@ fn persist_session<B, T>(
 ) -> future::FutureResult<(State, Response<B>), (State, HandlerError)>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
+    B: Default,
 {
     match state.try_take::<SessionDropData>() {
         Some(ref session_drop_data) => {
@@ -917,7 +930,9 @@ fn reset_cookie<B>(response: &mut Response<B>, session_drop_data: &SessionDropDa
 }
 
 fn write_cookie<B>(cookie: String, response: &mut Response<B>) {
-    response.headers_mut().append(SET_COOKIE, cookie);
+    response
+        .headers_mut()
+        .append(SET_COOKIE, cookie.parse().unwrap());
 }
 
 fn write_session<B, T>(
@@ -927,6 +942,7 @@ fn write_session<B, T>(
 ) -> future::FutureResult<(State, Response<B>), (State, HandlerError)>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
+    B: Default,
 {
     let bytes = match bincode::serialize(&session_data.value) {
         Ok(bytes) => bytes,
@@ -937,8 +953,15 @@ where
                 e
             );
 
-            let response = create_response(&state, StatusCode::INTERNAL_SERVER_ERROR, None);
-            return future::ok((state, response));
+            let mut builder = Response::builder();
+            extend_response(
+                &state,
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &mut builder,
+                None,
+            );
+
+            return future::ok((state, builder.body(B::default()).unwrap()));
         }
     };
 
@@ -960,8 +983,15 @@ where
             future::ok((state, response))
         }
         Err(_) => {
-            let response = create_response(&state, StatusCode::INTERNAL_SERVER_ERROR, None);
-            return future::ok((state, response));
+            let mut builder = Response::builder();
+            extend_response(
+                &state,
+                StatusCode::INTERNAL_SERVER_ERROR,
+                &mut builder,
+                None,
+            );
+
+            return future::ok((state, builder.body(B::default()).unwrap()));
         }
     }
 }
@@ -1027,6 +1057,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use http::header::HeaderValue;
     use hyper::header::{HeaderMap, COOKIE};
     use hyper::{Response, StatusCode};
     use rand;
@@ -1171,14 +1202,20 @@ mod tests {
 
             Box::new(future::ok((
                 state,
-                Response::new().with_status(StatusCode::ACCEPTED),
+                Response::builder()
+                    .status(StatusCode::ACCEPTED)
+                    .body(Body::empty())
+                    .unwrap(),
             ))) as Box<HandlerFuture>
         };
 
         let mut state = State::new();
         let mut headers = HeaderMap::new();
         let cookie = Cookie::build("_gotham_session", identifier.value.clone()).finish();
-        headers.insert(COOKIE, cookie);
+        headers.insert(
+            COOKIE,
+            HeaderValue::from_str(cookie.to_str().unwrap()).unwrap(),
+        );
         state.put(headers);
 
         let r: Box<HandlerFuture> = m.call(state, handler);

@@ -868,7 +868,7 @@ where
     fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>);
 }
 
-fn descend<'n, B>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBuilder {
+fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBuilder {
     trace!("[walking to: {}]", path);
 
     let path = if path.starts_with("/") {
@@ -884,7 +884,7 @@ fn descend<'n, B>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut Node
     }
 }
 
-fn build_subtree<'n, 's, I, B>(node: &'n mut NodeBuilder, mut i: I) -> &'n mut NodeBuilder
+fn build_subtree<'n, 's, I>(node: &'n mut NodeBuilder, mut i: I) -> &'n mut NodeBuilder
 where
     I: Iterator<Item = &'s str>,
 {

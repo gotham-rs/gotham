@@ -1,14 +1,15 @@
 //! Helpers for HTTP response generation
 
+use http::response;
 use hyper::header::{HeaderMap, HeaderName, CONTENT_LENGTH, CONTENT_TYPE, LOCATION,
                     X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
-use hyper::{Method, Response, StatusCode};
+use hyper::{Body, Method, Response, StatusCode};
 use mime::Mime;
 use std::borrow::Cow;
 
 use state::{request_id, FromState, State};
 
-type Body = (Vec<u8>, Mime);
+type DataMime = (Vec<u8>, Mime);
 
 /// Creates a `Response` object and populates it with a set of default headers that help to improve
 /// security and conformance to best practice.
@@ -56,10 +57,20 @@ type Body = (Vec<u8>, Mime);
 /// #     assert_eq!(response.headers()[CONTENT_LENGTH], BODY.len().to_string());
 /// # }
 /// ```
-pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) -> Response<Body> {
-    let mut res = Response::new();
-    extend_response(state, &mut res, status, body);
-    res
+pub fn create_response(
+    state: &State,
+    status: StatusCode,
+    body: Option<DataMime>,
+) -> Response<Body> {
+    let mut builder = Response::builder();
+    extend_response(state, status, &mut builder, body.map(|(_, mime)| mime));
+    match body {
+        Some((body, mime)) => match *Method::borrow_from(state) {
+            Method::HEAD => builder.body(Body::empty()),
+            _ => builder.body(body.into()),
+        },
+        None => builder.body(Body::empty()),
+    }.unwrap()
 }
 
 /// Produces a simple empty `Response` with a `Location` header and a 301
@@ -96,11 +107,14 @@ pub fn create_response(state: &State, status: StatusCode, body: Option<Body>) ->
 /// #     );
 /// # }
 /// ```
-pub fn create_permanent_redirect<B, L: Into<Cow<'static, str>>>(
+pub fn create_permanent_redirect<B: Default, L: Into<Cow<'static, str>>>(
     state: &State,
     location: L,
 ) -> Response<B> {
-    let mut res = Response::new().with_status(StatusCode::PERMANENT_REDIRECT);
+    let mut res = Response::builder()
+        .status(StatusCode::PERMANENT_REDIRECT)
+        .body(B::default())
+        .unwrap();
     set_redirect_headers(state, &mut res, location);
     res
 }
@@ -139,11 +153,14 @@ pub fn create_permanent_redirect<B, L: Into<Cow<'static, str>>>(
 /// #     );
 /// # }
 /// ```
-pub fn create_temporary_redirect<B, L: Into<Cow<'static, str>>>(
+pub fn create_temporary_redirect<B: Default, L: Into<Cow<'static, str>>>(
     state: &State,
     location: L,
 ) -> Response<B> {
-    let mut res = Response::new().with_status(StatusCode::TEMPORARY_REDIRECT);
+    let mut res = Response::builder()
+        .status(StatusCode::TEMPORARY_REDIRECT)
+        .body(B::default())
+        .unwrap();
     set_redirect_headers(state, &mut res, location);
     res
 }
@@ -199,9 +216,9 @@ pub fn create_temporary_redirect<B, L: Into<Cow<'static, str>>>(
 /// ```
 pub fn extend_response(
     state: &State,
-    res: &mut Response<Body>,
     status: StatusCode,
-    body: Option<Body>,
+    builder: &mut response::Builder,
+    mime: Option<Mime>,
 ) {
     if usize::max_value() > u64::max_value() as usize {
         error!(
@@ -214,21 +231,14 @@ pub fn extend_response(
         );
     }
 
-    match body {
-        Some((body, mime)) => {
-            set_headers(state, res, Some(mime), Some(body.len() as u64));
-            res.set_status(status);
-
-            match *Method::borrow_from(state) {
-                Method::HEAD => (),
-                _ => res.set_body(body),
-            };
-        }
-        None => {
-            set_headers(state, res, None, None);
-            res.set_status(status);
-        }
-    };
+    match mime {
+        Some(mime) => builder.header(CONTENT_TYPE, mime.as_ref()),
+        None => builder,
+    }.header(
+        HeaderName::from_lowercase(b"x-request-id").unwrap(),
+        request_id(state),
+    )
+        .status(status);
 }
 
 /// Sets a number of default headers in a `Response` that ensure security and conformance to
@@ -440,6 +450,8 @@ pub fn set_redirect_headers<B, L: Into<Cow<'static, str>>>(
 
 /// Sets the request id inside a given `HeaderMap`.
 fn set_request_id(state: &State, headers: &mut HeaderMap) {
-    let request_id = HeaderName::from_lowercase(b"x-request-id").unwrap();
-    headers.insert(request_id, request_id(state).parse().unwrap());
+    headers.insert(
+        HeaderName::from_lowercase(b"x-request-id").unwrap(),
+        request_id(state).parse().unwrap(),
+    );
 }

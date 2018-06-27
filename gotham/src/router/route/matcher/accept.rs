@@ -77,10 +77,7 @@ impl AcceptHeaderRouteMatcher {
     /// Creates a new `AcceptHeaderRouteMatcher`
     pub fn new(supported_media_types: Vec<mime::Mime>) -> Self {
         AcceptHeaderRouteMatcher {
-            supported_media_types: supported_media_types
-                .iter()
-                .map(|m| m.to_string())
-                .collect(),
+            supported_media_types,
         }
     }
 }
@@ -97,9 +94,15 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
         let headers = HeaderMap::borrow_from(state);
         match headers.get(ACCEPT) {
             Some(accept) => {
-                if accept == "*/*" || self.supported_media_types.contains(accept) {
-                        return Ok(());
-                    }
+                if accept == "*/*"
+                    || self.supported_media_types.contains(&accept
+                        .to_str()
+                        .unwrap()
+                        .parse()
+                        .unwrap())
+                {
+                    return Ok(());
+                }
 
                 trace!(
                     "[{}] did not provide an Accept with media types supported by this Route",

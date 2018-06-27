@@ -20,10 +20,11 @@ where
     NH: NewHandler + 'static,
 {
     pub(super) fn new(client: TestClient<NH>, method: Method, uri: Uri) -> RequestBuilder<NH> {
-        let request = match uri {
-            Ok(uri) => Ok(Request::new(method, uri)),
-            Err(e) => Err(e.into()),
-        };
+        let request = Ok(Request::builder()
+            .method(method)
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap());
 
         RequestBuilder { client, request }
     }
@@ -59,7 +60,7 @@ where
 
     /// Send a constructed request using the `TestClient` used to create this builder, and await
     /// the response.
-    pub fn perform(self) -> Result<TestResponse<NH, Body>, TestRequestError> {
+    pub fn perform(self) -> Result<TestResponse<NH>, TestRequestError> {
         self.client.perform(self.request?)
     }
 }

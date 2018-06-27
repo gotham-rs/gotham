@@ -41,6 +41,7 @@ extern crate uuid;
 extern crate serde_derive;
 
 extern crate cookie;
+extern crate http;
 
 pub mod extractor;
 pub mod handler;

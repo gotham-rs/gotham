@@ -381,8 +381,8 @@ mod tests {
                 Method::PUT,
                 Method::CONNECT,
                 Method::TRACE,
-                Method::Extension("PROPFIND".to_owned()),
-                Method::Extension("PROPSET".to_owned()),
+                Method::from_bytes(b"PROPFIND"),
+                Method::from_bytes(b"PROPSET"),
             ])
             .deconstruct();
 
@@ -396,8 +396,8 @@ mod tests {
                 Method::OPTIONS,
                 Method::PATCH,
                 Method::POST,
-                Method::Extension("PROPFIND".to_owned()),
-                Method::Extension("PROPSET".to_owned()),
+                Method::from_bytes(b"PROPFIND"),
+                Method::from_bytes(b"PROPSET"),
                 Method::PUT,
                 Method::TRACE,
             ]

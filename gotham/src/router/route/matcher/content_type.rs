@@ -63,10 +63,7 @@ impl ContentTypeHeaderRouteMatcher {
     /// Creates a new `ContentTypeHeaderRouteMatcher`
     pub fn new(supported_media_types: Vec<mime::Mime>) -> Self {
         ContentTypeHeaderRouteMatcher {
-            supported_media_types: supported_media_types
-                .iter()
-                .map(|m| m.to_string())
-                .collect(),
+            supported_media_types,
         }
     }
 }
@@ -78,7 +75,12 @@ impl RouteMatcher for ContentTypeHeaderRouteMatcher {
         let headers = HeaderMap::borrow_from(state);
         match headers.get(CONTENT_TYPE) {
             Some(content_type) => {
-                if self.supported_media_types.contains(content_type) {
+                if self.supported_media_types.contains(&content_type
+                    .to_str()
+                    .unwrap()
+                    .parse()
+                    .unwrap())
+                {
                     return Ok(());
                 }
 

@@ -34,6 +34,7 @@ num_cpus = "1.2"
 crossbeam = "0.3"
 regex = "1.0"
 cookie = "0.10"
+http = "0.1.7"
 
 [dev-dependencies]
 gotham_derive = { path = "../gotham_derive" }

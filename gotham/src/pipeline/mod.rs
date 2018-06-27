@@ -288,9 +288,10 @@ mod tests {
         let number = state.borrow::<Number>().value;
         (
             state,
-            Response::new()
-                .with_status(StatusCode::OK)
-                .with_body(format!("{}", number)),
+            Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("{}", number))
+                .unwrap(),
         )
     }
 

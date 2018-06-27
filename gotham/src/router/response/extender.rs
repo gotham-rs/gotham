@@ -40,19 +40,7 @@ impl StaticResponseExtender<Body> for NoopResponseExtender {
             "[{}] NoopResponseExtender invoked, does not make any changes to Response",
             request_id(&state)
         );
-        match res.body_ref() {
-            Some(_) => {
-                // Full implementations should not make extensions if they find this state
-                trace!(
-                    "[{}] found response body, no change made",
-                    request_id(&state)
-                );
-            }
-            None => {
-                // Full implementations should make extensions if they find this state
-                trace!("[{}] no response body, no change made", request_id(&state));
-            }
-        }
+        trace!("[{}] no response body, no change made", request_id(&state));
     }
 }
 
@@ -62,18 +50,6 @@ impl ResponseExtender<Body> for NoopResponseExtender {
             "[{}] NoopResponseExtender invoked on instance, does not make any changes to Response",
             request_id(&state)
         );
-        match res.body_ref() {
-            Some(_) => {
-                // Full implementations should not make extensions if they find this state
-                trace!(
-                    "[{}] found response body, no change made",
-                    request_id(&state)
-                );
-            }
-            None => {
-                // Full implementations should make extensions if they find this state
-                trace!("[{}] no response body, no change made", request_id(&state));
-            }
-        }
+        trace!("[{}] no response body, no change made", request_id(&state));
     }
 }

@@ -21,9 +21,9 @@ pub(super) struct RequestId {
 /// that a value for `RequestId` is always available.
 pub(crate) fn set_request_id<'a>(state: &'a mut State) -> &'a str {
     if !state.has::<RequestId>() {
-        let request_id = match HeaderMap::borrow_from(state).get_raw("X-Request-ID") {
+        let request_id = match HeaderMap::borrow_from(state).get("X-Request-ID") {
             Some(ex_req_id) => {
-                let id = String::from_utf8(ex_req_id.one().unwrap().to_vec()).unwrap();
+                let id = String::from_utf8(ex_req_id.as_bytes().into()).unwrap();
                 trace!(
                     "[{}] RequestId set from external source via X-Request-ID header",
                     id

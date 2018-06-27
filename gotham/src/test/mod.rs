@@ -226,15 +226,15 @@ where
     }
 }
 
-impl<NH, ZB> BodyReader<ZB> for TestServer<NH>
+impl<NH> BodyReader for TestServer<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    fn read_body(&self, response: Response<ZB>) -> hyper::Result<Vec<u8>> {
+    fn read_body(&self, response: Response<Body>) -> hyper::Result<Vec<u8>> {
         let mut buf = Vec::new();
 
         let r = {
-            let f: hyper::Body = response.body();
+            let f = response.body();
             let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
 
             self.run_future(f)
@@ -360,7 +360,7 @@ where
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform<QB>(self, req: Request<QB>) -> Result<TestResponse<QB, Body>, TestRequestError> {
+    pub fn perform<QB>(self, req: Request<QB>) -> Result<TestResponse<Body>, TestRequestError> {
         self.test_server
             .run_request(self.client.request(req))
             .map(|response| TestResponse {
@@ -370,10 +370,10 @@ where
     }
 }
 
-trait BodyReader<B> {
+trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
     /// response holds a buffer containing all bytes of the response body.
-    fn read_body(&self, response: Response<B>) -> hyper::Result<Vec<u8>>;
+    fn read_body(&self, response: Response<Body>) -> hyper::Result<Vec<u8>>;
 }
 
 /// Wrapping struct for the `Response` returned by a `TestClient`. Provides access to the
@@ -411,12 +411,12 @@ trait BodyReader<B> {
 /// assert_eq!(&body[..], b"This is the body content.");
 /// # }
 /// ```
-pub struct TestResponse<QB, ZB> {
+pub struct TestResponse<ZB> {
     response: Response<ZB>,
-    reader: Box<BodyReader<QB>>,
+    reader: Box<BodyReader>,
 }
 
-impl<QB, ZB> Deref for TestResponse<QB, ZB> {
+impl<ZB> Deref for TestResponse<ZB> {
     type Target = Response<ZB>;
 
     fn deref(&self) -> &Response<ZB> {
@@ -424,13 +424,13 @@ impl<QB, ZB> Deref for TestResponse<QB, ZB> {
     }
 }
 
-impl<QB, ZB> DerefMut for TestResponse<QB, ZB> {
+impl<ZB> DerefMut for TestResponse<ZB> {
     fn deref_mut(&mut self) -> &mut Response<ZB> {
         &mut self.response
     }
 }
 
-impl<QB, ZB> TestResponse<QB, ZB> {
+impl<ZB> TestResponse<ZB> {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
     pub fn read_body(self) -> hyper::Result<Vec<u8>> {

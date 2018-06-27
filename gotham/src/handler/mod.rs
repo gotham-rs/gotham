@@ -255,7 +255,7 @@ pub trait IntoHandlerFuture {
 
 impl<T> IntoHandlerFuture for (State, T)
 where
-    T: IntoResponse,
+    T: IntoResponse<ResBody = Body>,
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;

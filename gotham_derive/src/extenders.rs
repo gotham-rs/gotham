@@ -10,10 +10,12 @@ pub(crate) fn bad_request_static_response_extender(ast: &syn::DeriveInput) -> qu
             #ty_generics #where_clause
         {
             fn extend(state: &mut ::gotham::state::State, res: &mut ::hyper::Response) {
-                ::gotham::helpers::http::response::extend_response(state,
-                                                          res,
-                                                          ::hyper::StatusCode::BadRequest,
-                                                          None);
+                ::gotham::helpers::http::response::extend_response(
+                    state,
+                    res,
+                    ::hyper::StatusCode::BadRequest,
+                    None,
+                );
             }
         }
     }

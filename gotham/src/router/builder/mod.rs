@@ -357,30 +357,30 @@ mod tests {
     mod welcome {
         use super::*;
         pub fn index(state: State) -> (State, Response<()>) {
-            (state, Response::new().with_status(StatusCode::OK))
+            (state, Response::new(()).with_status(StatusCode::OK))
         }
 
         pub fn literal(state: State) -> (State, Response<()>) {
-            (state, Response::new().with_status(StatusCode::CREATED))
+            (state, Response::new(()).with_status(StatusCode::CREATED))
         }
 
         pub fn hello(mut state: State) -> (State, Response<()>) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new()
+            let response = Response::new(())
                 .with_status(StatusCode::OK)
                 .with_body(format!("Hello, {}!", params.name));
             (state, response)
         }
 
         pub fn globbed(state: State) -> (State, Response<()>) {
-            let response = Response::new()
+            let response = Response::new(())
                 .with_status(StatusCode::OK)
                 .with_body("Globbed");
             (state, response)
         }
 
         pub fn delegated(state: State) -> (State, Response<()>) {
-            let response = Response::new()
+            let response = Response::new(())
                 .with_status(StatusCode::OK)
                 .with_body("Delegated");
             (state, response)
@@ -388,7 +388,7 @@ mod tests {
 
         pub fn goodbye(mut state: State) -> (State, Response<()>) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new()
+            let response = Response::new(())
                 .with_status(StatusCode::OK)
                 .with_body(format!("Goodbye, {}!", params.name));
             (state, response)

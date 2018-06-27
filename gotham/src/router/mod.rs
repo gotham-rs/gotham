@@ -10,7 +10,7 @@ use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
-use hyper::header::ALLOW;
+use hyper::header::{HeaderValue, ALLOW};
 use hyper::{Body, Response, StatusCode};
 
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
@@ -94,7 +94,10 @@ impl Handler for Router {
                             let mut res = create_response(&state, status, None);
                             if let StatusCode::METHOD_NOT_ALLOWED = status {
                                 for allowed in allow {
-                                    res.headers_mut().insert(ALLOW, allowed.parse().unwrap());
+                                    res.headers_mut().append(
+                                        ALLOW,
+                                        HeaderValue::from_str(allowed.as_str()).unwrap(),
+                                    );
                                 }
                             }
                             Box::new(future::ok((state, res)))
@@ -153,7 +156,7 @@ impl Router {
                         error!("[{}] the server cannot or will not process the request due to a client error within the query string",
                                request_id(&state));
 
-                        let mut res = Response::new();
+                        let mut res = Response::new(Body::empty());
                         route.extend_response_on_query_string_error(&mut state, &mut res);
                         Box::new(future::ok((state, res)))
                     }
@@ -164,7 +167,7 @@ impl Router {
                     "[{}] the server cannot or will not process the request due to a client error on the request path",
                     request_id(&state)
                 );
-                let mut res = Response::new();
+                let mut res = Response::new(Body::empty());
                 route.extend_response_on_path_error(&mut state, &mut res);
                 Box::new(future::ok((state, res)))
             }
@@ -212,7 +215,7 @@ mod tests {
     use state::set_request_id;
 
     fn handler(state: State) -> (State, Response<()>) {
-        (state, Response::new())
+        (state, Response::new(()))
     }
 
     fn send_request(
@@ -392,7 +395,7 @@ mod tests {
         let tree = tree_builder.finalize();
 
         let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
-        let not_found_extender = |_s: &mut State, r: &mut Response| {
+        let not_found_extender = |_s: &mut State, r: &mut Response<Body>| {
             r.headers_mut().insert(CONTENT_LENGTH, 3u64);
         };
         response_finalizer_builder.add(StatusCode::NOT_FOUND, Box::new(not_found_extender));
@@ -401,7 +404,7 @@ mod tests {
 
         match send_request(router, Method::GET, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
-                assert_eq!(*res.headers().get(CONTENT_LENGTH), 3u64);
+                assert_eq!(res.headers().get(CONTENT_LENGTH).unwrap(), 3u64);
             }
             Err(_) => panic!("Router should have correctly handled request"),
         };

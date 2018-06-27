@@ -26,6 +26,7 @@ pub(super) fn call_handler<'a, B, T>(
 ) -> Box<Future<Item = Response<B>, Error = hyper::Error> + Send + 'a>
 where
     T: NewHandler + 'a,
+    B: Send,
 {
     let timer = Timer::new();
 
@@ -64,7 +65,7 @@ fn finalize_success_response<B>(
     let timing = timer.elapsed(&state);
 
     info!(
-        "[RESPONSE][{}][{}][{}][{}]",
+        "[RESPONSE][{}][{:?}][{}][{}]",
         request_id(&state),
         response.version(),
         response.status(),

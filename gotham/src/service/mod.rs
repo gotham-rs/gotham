@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::thread;
 
 use futures::Future;
+use http::request;
 use hyper;
 use hyper::service::Service;
 use hyper::{Body, Request, Response};
@@ -61,14 +62,24 @@ where
     type ReqBody = Body; // required by hyper::server::conn::Http::serve_connection()
     type ResBody = Body; // has to impl Payload...
     type Error = hyper::Error;
-    type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error>>;
+    type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
         let mut state = State::new();
 
         put_client_addr(&mut state, self.client_addr);
 
-        let (method, uri, version, headers, body) = req.deconstruct();
+        let (
+            request::Parts {
+                method: method,
+                uri: uri,
+                version: version,
+                headers: headers,
+                //extensions?
+                ..
+            },
+            body,
+        ) = req.into_parts();
 
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);

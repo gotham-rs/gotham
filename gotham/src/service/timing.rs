@@ -3,6 +3,7 @@
 use std::fmt::{self, Display, Formatter};
 
 use chrono::prelude::*;
+use hyper::header::HeaderValue;
 use hyper::Response;
 
 use state::{request_id, State};
@@ -59,9 +60,10 @@ impl Timing {
     /// included (assuming the time elapsed was able to be measured).
     pub(super) fn add_to_response<B>(&self, mut response: Response<B>) -> Response<B> {
         if let Timing::Microseconds(i) = *self {
-            response
-                .headers_mut()
-                .set_raw("X-Runtime-Microseconds", i.to_string());
+            response.headers_mut().insert(
+                "X-Runtime-Microseconds",
+                HeaderValue::from_str(&i.to_string()).unwrap(),
+            );
         }
         response
     }
