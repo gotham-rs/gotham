@@ -9,10 +9,6 @@ use router::tree::node::{Node, NodeBuilder, SegmentType};
 pub mod node;
 pub mod regex;
 
-/// A depth ordered `Vec` of `Node` instances that create a routable path through the `Tree` for the
-/// matched `Request` path.
-type Path<'a> = Vec<&'a Node>;
-
 /// Number of segments from a `Request` path that are considered to have been processed
 /// by an `Router` traversing its `Tree`.
 type SegmentsProcessed = usize;
@@ -34,7 +30,7 @@ impl Tree {
     pub(crate) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
+    ) -> Option<(&Node, SegmentsProcessed, SegmentMapping<'r>)> {
         trace!(" starting tree traversal");
         self.root.traverse(req_path_segments)
     }
@@ -131,9 +127,8 @@ mod tests {
 
         let request_path_segments = RequestPathSegments::new("/%61ctiv%61te/workflow5");
         match tree.traverse(request_path_segments.segments().as_slice()) {
-            Some((path, leaf, segments_processed, segment_mapping)) => {
-                assert!(path.last().unwrap().is_routable());
-                assert_eq!(path.last().unwrap().segment(), leaf.segment());
+            Some((leaf, segments_processed, segment_mapping)) => {
+                assert!(leaf.is_routable());
                 assert_eq!(segments_processed, 2);
                 assert_eq!(
                     segment_mapping

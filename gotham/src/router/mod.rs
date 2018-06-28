@@ -70,7 +70,7 @@ impl Handler for Router {
 
         let future = match state.try_take::<RequestPathSegments>() {
             Some(rps) => {
-                if let Some((_, leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
+                if let Some((leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
                     match leaf.select_route(&state) {
                         Ok(route) => match route.delegation() {
                             Delegation::External => {

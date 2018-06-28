@@ -8,7 +8,7 @@ use helpers::http::PercentDecoded;
 use router::non_match::RouteNonMatch;
 use router::route::{Delegation, Route};
 use router::tree::regex::ConstrainedSegmentRegex;
-use router::tree::{Path, SegmentMapping, SegmentsProcessed};
+use router::tree::{SegmentMapping, SegmentsProcessed};
 use state::{request_id, State};
 
 /// Indicates the type of segment which is being represented by this Node.
@@ -125,14 +125,8 @@ impl Node {
     pub(super) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
-        match self.inner_traverse(req_path_segments, vec![]) {
-            Some((mut path, leaf, c, sm)) => {
-                path.reverse();
-                Some((path, leaf, c, sm))
-            }
-            None => None,
-        }
+    ) -> Option<(&Node, SegmentsProcessed, SegmentMapping<'r>)> {
+        self.inner_traverse(req_path_segments, vec![])
     }
 
     #[allow(unknown_lints, type_complexity)]
@@ -140,7 +134,7 @@ impl Node {
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
         mut consumed_segments: Vec<&'r PercentDecoded>,
-    ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
+    ) -> Option<(&Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match req_path_segments.split_first() {
             Some((x, xs)) if self.is_delegating(x) || self.is_leaf(x, xs) => {
                 trace!(" found delegating/leaf node `{}`", self.segment);
@@ -151,7 +145,7 @@ impl Node {
                     sm.insert(self.segment(), consumed_segments);
                 };
 
-                Some((vec![self], self, 0, sm))
+                Some((self, 0, sm))
             }
             Some((x, xs)) if self.is_match(x) => {
                 trace!(" found node `{}`", self.segment);
@@ -162,14 +156,13 @@ impl Node {
                     .next();
 
                 match child {
-                    Some((mut path, leaf, sp, mut sm)) => {
+                    Some((leaf, sp, mut sm)) => {
                         if self.segment_type != SegmentType::Static {
                             consumed_segments.push(x);
                             sm.insert(&self.segment, consumed_segments);
-                            path.push(self);
                         }
 
-                        Some((path, leaf, sp + 1, sm))
+                        Some((leaf, sp + 1, sm))
                     }
 
                     // If we're in a Glob consume segment and continue
@@ -183,7 +176,7 @@ impl Node {
                         trace!(" continuing with glob match for segment `{}`", self.segment);
                         consumed_segments.push(x);
                         match self.inner_traverse(xs, consumed_segments) {
-                            Some((nodes, n, sp, sm)) => Some((nodes, n, sp + 1, sm)),
+                            Some((n, sp, sm)) => Some((n, sp + 1, sm)),
                             None => None,
                         }
                     }
@@ -534,9 +527,8 @@ mod tests {
         // GET /seg3/seg4
         let rs = RequestPathSegments::new("/seg3/seg4");
         match root.traverse(&rs.segments()) {
-            Some((path, leaf, sp, _)) => {
-                assert_eq!(path.last().unwrap().segment(), "seg4");
-                assert_eq!(path.last().unwrap().segment(), leaf.segment());
+            Some((leaf, sp, _)) => {
+                assert_eq!(leaf.segment(), "seg4");
                 assert_eq!(sp, 2);
             }
             None => panic!("traversal should have succeeded here"),
@@ -549,8 +541,8 @@ mod tests {
         // GET /seg5/seg6
         let rs = RequestPathSegments::new("/seg5/seg6");
         match root.traverse(&rs.segments()) {
-            Some((path, _, sp, _)) => {
-                assert_eq!(path.last().unwrap().segment(), "seg6");
+            Some((leaf, sp, _)) => {
+                assert_eq!(leaf.segment(), "seg6");
                 assert_eq!(sp, 2);
             }
             None => panic!("traversal should have succeeded here"),
@@ -559,8 +551,8 @@ mod tests {
         // GET /seg5/someval/seg7
         let rs = RequestPathSegments::new("/seg5/someval/seg7");
         match root.traverse(&rs.segments()) {
-            Some((path, _, sp, _)) => {
-                assert_eq!(path.last().unwrap().segment(), "seg7");
+            Some((leaf, sp, _)) => {
+                assert_eq!(leaf.segment(), "seg7");
                 assert_eq!(sp, 3);
             }
             None => panic!("traversal should have succeeded here"),
@@ -569,8 +561,8 @@ mod tests {
         // GET /some/path/seg9/another/path
         let rs = RequestPathSegments::new("/some/path/seg9/another/branch");
         match root.traverse(&rs.segments()) {
-            Some((path, _, sp, _)) => {
-                assert_eq!(path.last().unwrap().segment(), "seg10");
+            Some((leaf, sp, _)) => {
+                assert_eq!(leaf.segment(), "seg10");
                 assert_eq!(sp, 5);
             }
             None => panic!("traversal should have succeeded here"),
@@ -579,8 +571,8 @@ mod tests {
         let rs = RequestPathSegments::new("/resource/5001");
         let expected_segment = "id";
         match root.traverse(&rs.segments()) {
-            Some((path, _, sp, _)) => {
-                assert_eq!(path.last().unwrap().segment(), expected_segment);
+            Some((leaf, sp, _)) => {
+                assert_eq!(leaf.segment(), expected_segment);
                 assert_eq!(sp, 2);
             }
             None => panic!("traversal should have succeeded here"),
@@ -598,7 +590,7 @@ mod tests {
 
         let rs = RequestPathSegments::new("/seg2");
         match root.traverse(&rs.segments()) {
-            Some((_, node, _, _)) => match node.select_route(&state) {
+            Some((node, _, _)) => match node.select_route(&state) {
                 Err(e) => {
                     let (status, mut allow_list) = e.deconstruct();
                     assert_eq!(status, StatusCode::MethodNotAllowed);
@@ -612,7 +604,7 @@ mod tests {
 
         let rs = RequestPathSegments::new("/resource/100");
         match root.traverse(&rs.segments()) {
-            Some((_, node, _, _)) => match node.select_route(&state) {
+            Some((node, _, _)) => match node.select_route(&state) {
                 Err(e) => {
                     let (status, mut allow_list) = e.deconstruct();
                     assert_eq!(status, StatusCode::MethodNotAllowed);
@@ -688,8 +680,8 @@ mod tests {
             &PercentDecoded::new("activate").unwrap(),
             &PercentDecoded::new("workflow").unwrap(),
         ]) {
-            Some((path, _leaf, segments_processed, _segment_mapping)) => {
-                assert!(path.last().unwrap().is_routable());
+            Some((leaf, segments_processed, _segment_mapping)) => {
+                assert!(leaf.is_routable());
                 assert_eq!(segments_processed, 2);
             }
             None => panic!(),
