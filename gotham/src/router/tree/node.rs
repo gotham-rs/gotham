@@ -384,8 +384,8 @@ mod tests {
     use router::route::{Extractors, Route, RouteImpl};
     use state::{set_request_id, State};
 
-    fn handler(state: State) -> (State, Response<()>) {
-        (state, Response::new())
+    fn handler(state: State) -> (State, Response<Body>) {
+        (state, Response::new(Body::empty()))
     }
 
     fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route<ResBody = Body> + Send + Sync>

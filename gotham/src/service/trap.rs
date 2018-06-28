@@ -8,7 +8,7 @@ use std::{io, mem};
 
 use futures::future::{self, Future, FutureResult, IntoFuture};
 use futures::Async;
-use hyper::{self, Response, StatusCode};
+use hyper::{self, Body, Response, StatusCode};
 
 use handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use service::timing::Timer;
@@ -26,7 +26,7 @@ pub(super) fn call_handler<'a, B, T>(
 ) -> Box<Future<Item = Response<B>, Error = hyper::Error> + Send + 'a>
 where
     T: NewHandler + 'a,
-    B: Send,
+    B: Send + Default,
 {
     let timer = Timer::new();
 
@@ -75,11 +75,11 @@ fn finalize_success_response<B>(
     future::ok(timing.add_to_response(response))
 }
 
-fn finalize_error_response<B>(
+fn finalize_error_response(
     timer: Timer,
     state: State,
     err: HandlerError,
-) -> FutureResult<Response<B>, hyper::Error> {
+) -> FutureResult<Response<Body>, hyper::Error> {
     let timing = timer.elapsed(&state);
 
     {
@@ -100,7 +100,7 @@ fn finalize_error_response<B>(
     future::ok(err.into_response(&state))
 }
 
-fn finalize_panic_response<B>(timer: Timer) -> FutureResult<Response<B>, hyper::Error> {
+fn finalize_panic_response<B: Default>(timer: Timer) -> FutureResult<Response<B>, hyper::Error> {
     let timing = timer.elapsed_no_logging();
 
     error!(
@@ -108,7 +108,12 @@ fn finalize_panic_response<B>(timer: Timer) -> FutureResult<Response<B>, hyper::
         timing
     );
 
-    future::ok(Response::new().with_status(StatusCode::INTERNAL_SERVER_ERROR))
+    future::ok(
+        Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(B::default())
+            .unwrap(),
+    )
 }
 
 fn finalize_catch_unwind_response<B>(
@@ -125,7 +130,10 @@ fn finalize_catch_unwind_response<B>(
         })
         .unwrap_or_else(|_| {
             error!("[PANIC][A panic occurred while polling the future]");
-            Response::new().with_status(StatusCode::INTERNAL_SERVER_ERROR)
+            Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::empty())
+                .unwrap()
         });
 
     future::ok(response)

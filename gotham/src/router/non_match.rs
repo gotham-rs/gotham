@@ -381,8 +381,8 @@ mod tests {
                 Method::PUT,
                 Method::CONNECT,
                 Method::TRACE,
-                Method::from_bytes(b"PROPFIND"),
-                Method::from_bytes(b"PROPSET"),
+                Method::from_bytes(b"PROPFIND").unwrap(),
+                Method::from_bytes(b"PROPSET").unwrap(),
             ])
             .deconstruct();
 
@@ -396,8 +396,8 @@ mod tests {
                 Method::OPTIONS,
                 Method::PATCH,
                 Method::POST,
-                Method::from_bytes(b"PROPFIND"),
-                Method::from_bytes(b"PROPSET"),
+                Method::from_bytes(b"PROPFIND").unwrap(),
+                Method::from_bytes(b"PROPSET").unwrap(),
                 Method::PUT,
                 Method::TRACE,
             ]

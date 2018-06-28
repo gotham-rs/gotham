@@ -52,7 +52,7 @@ where
         let mut request = self.request;
 
         if let Ok(ref mut req) = request {
-            req.set_body(body);
+            *req.body_mut() = body.into();
         }
 
         RequestBuilder { request, ..self }
@@ -60,7 +60,7 @@ where
 
     /// Send a constructed request using the `TestClient` used to create this builder, and await
     /// the response.
-    pub fn perform(self) -> Result<TestResponse<NH>, TestRequestError> {
+    pub fn perform(self) -> Result<TestResponse, TestRequestError> {
         self.client.perform(self.request?)
     }
 }

@@ -171,11 +171,9 @@ where
 
         let client = Core::new()
             .map(|core| {
-                Client::configure()
-                    .connector(TestConnect {
-                        stream: RefCell::new(Some(cs)),
-                    })
-                    .build(&core.handle())
+                Client::builder().build(TestConnect {
+                    stream: RefCell::new(Some(cs)),
+                })
             })
             .unwrap();
 
@@ -360,7 +358,7 @@ where
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform<QB>(self, req: Request<QB>) -> Result<TestResponse<Body>, TestRequestError> {
+    pub fn perform<QB>(self, req: Request<QB>) -> Result<TestResponse, TestRequestError> {
         self.test_server
             .run_request(self.client.request(req))
             .map(|response| TestResponse {
@@ -411,26 +409,26 @@ trait BodyReader {
 /// assert_eq!(&body[..], b"This is the body content.");
 /// # }
 /// ```
-pub struct TestResponse<ZB> {
-    response: Response<ZB>,
+pub struct TestResponse {
+    response: Response<Body>,
     reader: Box<BodyReader>,
 }
 
-impl<ZB> Deref for TestResponse<ZB> {
-    type Target = Response<ZB>;
+impl Deref for TestResponse {
+    type Target = Response<Body>;
 
-    fn deref(&self) -> &Response<ZB> {
+    fn deref(&self) -> &Response<Body> {
         &self.response
     }
 }
 
-impl<ZB> DerefMut for TestResponse<ZB> {
-    fn deref_mut(&mut self) -> &mut Response<ZB> {
+impl DerefMut for TestResponse {
+    fn deref_mut(&mut self) -> &mut Response<Body> {
         &mut self.response
     }
 }
 
-impl<ZB> TestResponse<ZB> {
+impl TestResponse {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
     pub fn read_body(self) -> hyper::Result<Vec<u8>> {

@@ -200,7 +200,7 @@ impl Router {
 mod tests {
     use super::*;
     use hyper::header::{HeaderMap, CONTENT_LENGTH};
-    use hyper::{Method, Uri};
+    use hyper::{Body, Method, Uri};
     use std::str::FromStr;
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
@@ -214,15 +214,15 @@ mod tests {
     use router::tree::TreeBuilder;
     use state::set_request_id;
 
-    fn handler(state: State) -> (State, Response<()>) {
-        (state, Response::new(()))
+    fn handler(state: State) -> (State, Response<Body>) {
+        (state, Response::new(Body::empty()))
     }
 
     fn send_request(
         r: Router,
         method: Method,
         uri: &str,
-    ) -> Result<(State, Response<()>), (State, HandlerError)> {
+    ) -> Result<(State, Response<Body>), (State, HandlerError)> {
         let uri = Uri::from_str(uri).unwrap();
 
         let mut state = State::new();
@@ -396,7 +396,8 @@ mod tests {
 
         let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
         let not_found_extender = |_s: &mut State, r: &mut Response<Body>| {
-            r.headers_mut().insert(CONTENT_LENGTH, 3u64);
+            r.headers_mut()
+                .insert(CONTENT_LENGTH, HeaderValue::from_bytes(b"3").unwrap());
         };
         response_finalizer_builder.add(StatusCode::NOT_FOUND, Box::new(not_found_extender));
         let response_finalizer = response_finalizer_builder.finalize();
@@ -404,7 +405,7 @@ mod tests {
 
         match send_request(router, Method::GET, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
-                assert_eq!(res.headers().get(CONTENT_LENGTH).unwrap(), 3u64);
+                assert_eq!(res.headers().get(CONTENT_LENGTH).unwrap(), "3");
             }
             Err(_) => panic!("Router should have correctly handled request"),
         };

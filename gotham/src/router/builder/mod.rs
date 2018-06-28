@@ -323,7 +323,8 @@ mod tests {
     use std::sync::Arc;
 
     use futures::{Future, Stream};
-    use hyper::{Method, Request, Response, StatusCode};
+    use hyper::service::Service;
+    use hyper::{Body, Method, Request, Response, StatusCode};
 
     use middleware::session::NewSessionMiddleware;
     use pipeline::new_pipeline;
@@ -356,87 +357,115 @@ mod tests {
 
     mod welcome {
         use super::*;
-        pub fn index(state: State) -> (State, Response<()>) {
-            (state, Response::new(()).with_status(StatusCode::OK))
+        pub fn index(state: State) -> (State, Response<Body>) {
+            (
+                state,
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
         }
 
-        pub fn literal(state: State) -> (State, Response<()>) {
-            (state, Response::new(()).with_status(StatusCode::CREATED))
+        pub fn literal(state: State) -> (State, Response<Body>) {
+            (
+                state,
+                Response::builder()
+                    .status(StatusCode::CREATED)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
         }
 
-        pub fn hello(mut state: State) -> (State, Response<()>) {
+        pub fn hello(mut state: State) -> (State, Response<Body>) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new(())
-                .with_status(StatusCode::OK)
-                .with_body(format!("Hello, {}!", params.name));
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("Hello, {}!", params.name).into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn globbed(state: State) -> (State, Response<()>) {
-            let response = Response::new(())
-                .with_status(StatusCode::OK)
-                .with_body("Globbed");
+        pub fn globbed(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body("Globbed".into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn delegated(state: State) -> (State, Response<()>) {
-            let response = Response::new(())
-                .with_status(StatusCode::OK)
-                .with_body("Delegated");
+        pub fn delegated(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body("Delegated".into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn goodbye(mut state: State) -> (State, Response<()>) {
+        pub fn goodbye(mut state: State) -> (State, Response<Body>) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new(())
-                .with_status(StatusCode::OK)
-                .with_body(format!("Goodbye, {}!", params.name));
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("Goodbye, {}!", params.name).into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn add(mut state: State) -> (State, Response<()>) {
+        pub fn add(mut state: State) -> (State, Response<Body>) {
             let params = state.take::<AddParams>();
-            let response = Response::new()
-                .with_status(StatusCode::OK)
-                .with_body(format!(
-                    "{} + {} = {}",
-                    params.x,
-                    params.y,
-                    params.x + params.y,
-                ));
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("{} + {} = {}", params.x, params.y, params.x + params.y,).into())
+                .unwrap();
             (state, response)
         }
     }
 
     mod resource {
         use super::*;
-        pub fn create(state: State) -> (State, Response<()>) {
-            let response = Response::new().with_status(StatusCode::CREATED);
+        pub fn create(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::CREATED)
+                .body(Body::empty())
+                .unwrap();
             (state, response)
         }
 
-        pub fn destroy(state: State) -> (State, Response<()>) {
-            let response = Response::new().with_status(StatusCode::ACCEPTED);
+        pub fn destroy(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::ACCEPTED)
+                .body(Body::empty())
+                .unwrap();
             (state, response)
         }
 
-        pub fn show(state: State) -> (State, Response<()>) {
-            let response = Response::new()
-                .with_status(StatusCode::OK)
-                .with_body("It's a resource.");
+        pub fn show(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body("It's a resource.".into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn update(state: State) -> (State, Response<()>) {
-            let response = Response::new().with_status(StatusCode::ACCEPTED);
+        pub fn update(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::ACCEPTED)
+                .body(Body::empty())
+                .unwrap();
             (state, response)
         }
     }
 
     mod api {
         use super::*;
-        pub fn submit(state: State) -> (State, Response<()>) {
-            (state, Response::new().with_status(StatusCode::ACCEPTED))
+        pub fn submit(state: State) -> (State, Response<Body>) {
+            (
+                state,
+                Response::builder()
+                    .status(StatusCode::ACCEPTED)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
         }
     }
 

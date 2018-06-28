@@ -957,7 +957,7 @@ mod tests {
     use std::io;
 
     use futures::future;
-    use hyper::{Response, StatusCode};
+    use hyper::{Body, Response, StatusCode};
 
     use handler::HandlerFuture;
     use helpers::http::response::create_response;
@@ -986,14 +986,17 @@ mod tests {
         {
             let f = future::ok((
                 state,
-                Response::new().with_status(StatusCode::INTERNAL_SERVER_ERROR),
+                Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Body::empty())
+                    .unwrap(),
             ));
 
             Box::new(f)
         }
     }
 
-    fn test_handler(state: State) -> (State, Response<()>) {
+    fn test_handler(state: State) -> (State, Response<Body>) {
         let response = create_response(&state, StatusCode::ACCEPTED, None);
         (state, response)
     }

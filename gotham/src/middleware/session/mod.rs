@@ -1212,10 +1212,7 @@ mod tests {
         let mut state = State::new();
         let mut headers = HeaderMap::new();
         let cookie = Cookie::build("_gotham_session", identifier.value.clone()).finish();
-        headers.insert(
-            COOKIE,
-            HeaderValue::from_str(cookie.to_str().unwrap()).unwrap(),
-        );
+        headers.insert(COOKIE, HeaderValue::from_str(&cookie.to_string()).unwrap());
         state.put(headers);
 
         let r: Box<HandlerFuture> = m.call(state, handler);
