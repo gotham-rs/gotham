@@ -277,20 +277,20 @@ mod tests {
     use super::*;
 
     use futures::future;
-    use hyper::{Response, StatusCode};
+    use hyper::{Body, Response, StatusCode};
 
     use handler::{Handler, IntoHandlerError};
     use middleware::Middleware;
     use state::StateData;
     use test::TestServer;
 
-    fn handler(state: State) -> (State, Response<String>) {
+    fn handler(state: State) -> (State, Response<Body>) {
         let number = state.borrow::<Number>().value;
         (
             state,
             Response::builder()
                 .status(StatusCode::OK)
-                .body(format!("{}", number))
+                .body(format!("{}", number).into())
                 .unwrap(),
         )
     }

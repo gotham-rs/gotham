@@ -131,7 +131,7 @@ where
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
-pub fn build_simple_router<F, B>(f: F) -> Router
+pub fn build_simple_router<F>(f: F) -> Router
 where
     F: FnOnce(&mut RouterBuilder<(), ()>),
 {
@@ -324,7 +324,7 @@ mod tests {
 
     use futures::{Future, Stream};
     use hyper::service::Service;
-    use hyper::{Body, Method, Request, Response, StatusCode};
+    use hyper::{Body, Request, Response, StatusCode};
 
     use middleware::session::NewSessionMiddleware;
     use pipeline::new_pipeline;
@@ -529,33 +529,32 @@ mod tests {
             service.call(req).wait().unwrap()
         };
 
-        let response = call(Request::new(Method::GET, "/".parse().unwrap()));
+        let response = call(Request::get("/").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
 
-        let response = call(Request::new(Method::POST, "/api/submit".parse().unwrap()));
+        let response = call(Request::post("/api/submit").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::ACCEPTED);
 
-        let response = call(Request::new(Method::GET, "/hello/world".parse().unwrap()));
+        let response = call(Request::get("/hello/world").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Hello, world!");
 
-        let response = call(Request::new(
-            Method::GET,
-            "/hello/world/more/path/here/handled/by/glob"
-                .parse()
+        let response = call(
+            Request::get("/hello/world/more/path/here/handled/by/glob")
+                .body(Body::empty())
                 .unwrap(),
-        ));
+        );
         assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Globbed");
 
-        let response = call(Request::new(Method::GET, "/delegated/b".parse().unwrap()));
+        let response = call(Request::get("/delegated/b").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
 
-        let response = call(Request::new(Method::GET, "/goodbye/world".parse().unwrap()));
+        let response = call(Request::get("/goodbye/world").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(
@@ -563,33 +562,34 @@ mod tests {
             "Goodbye, world!"
         );
 
-        let response = call(Request::new(Method::GET, "/goodbye/9875".parse().unwrap()));
+        let response = call(Request::get("/goodbye/9875").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
-        let response = call(Request::new(
-            Method::GET,
-            "/literal/:param/*".parse().unwrap(),
-        ));
+        let response = call(
+            Request::get("/literal/:param/*")
+                .body(Body::empty())
+                .unwrap(),
+        );
         assert_eq!(response.status(), StatusCode::CREATED);
 
-        let response = call(Request::new(Method::GET, "/literal/a/b".parse().unwrap()));
+        let response = call(Request::get("/literal/a/b").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
-        let response = call(Request::new(Method::GET, "/add?x=16&y=71".parse().unwrap()));
+        let response = call(Request::get("/add?x=16&y=71").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "16 + 71 = 87");
 
-        let response = call(Request::new(Method::POST, "/resource".parse().unwrap()));
+        let response = call(Request::post("/resource").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::CREATED);
 
-        let response = call(Request::new(Method::PATCH, "/resource".parse().unwrap()));
+        let response = call(Request::patch("/resource").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::ACCEPTED);
 
-        let response = call(Request::new(Method::DELETE, "/resource".parse().unwrap()));
+        let response = call(Request::delete("/resource").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::ACCEPTED);
 
-        let response = call(Request::new(Method::GET, "/resource".parse().unwrap()));
+        let response = call(Request::get("/resource").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.body().concat2().wait().unwrap().to_vec();
         assert_eq!(&response_bytes[..], b"It's a resource.");

@@ -60,6 +60,7 @@ pub fn request_id(state: &State) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hyper::header::HeaderValue;
 
     #[test]
     #[should_panic(expected = "RequestId must be populated before application code is invoked")]
@@ -73,7 +74,7 @@ mod tests {
         let mut state = State::new();
 
         let mut headers = HeaderMap::new();
-        headers.set_raw("X-Request-ID", "1-2-3-4");
+        headers.insert("X-Request-ID", HeaderValue::from_bytes(b"1-2-3-4").unwrap());
         state.put(headers);
 
         {

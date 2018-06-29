@@ -493,17 +493,19 @@ mod tests {
             let path = Uri::borrow_from(&state).path().to_owned();
             match path.as_str() {
                 "/" => {
-                    let response = Response::new()
-                        .with_status(StatusCode::OK)
-                        .with_body(self.response.clone());
+                    let response = Response::builder()
+                        .status(StatusCode::OK)
+                        .body(self.response.clone())
+                        .unwrap();
 
                     Box::new(future::ok((state, response)))
                 }
                 "/timeout" => Box::new(future::empty()),
                 "/myaddr" => {
-                    let response = Response::new()
-                        .with_status(StatusCode::OK)
-                        .with_body(format!("{}", client_addr(&state).unwrap()));
+                    let response = Response::builder()
+                        .status(StatusCode::OK)
+                        .body(format!("{}", client_addr(&state).unwrap()).into())
+                        .unwrap();
 
                     Box::new(future::ok((state, response)))
                 }
@@ -631,20 +633,20 @@ mod tests {
 
         {
             let content_type = res.headers().get(CONTENT_TYPE).expect("ContentType");
-            assert_eq!(content_type.0, mime::TEXT_PLAIN);
+            assert_eq!(content_type, mime::TEXT_PLAIN.as_ref());
         }
 
         let content_length = {
             let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
-            assert_eq!(content_length.0, data.as_bytes().len() as u64);
+            assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
 
-            content_length.0
+            content_length
         };
 
         let buf =
             String::from_utf8(res.read_body().expect("readable response")).expect("UTF8 response");
 
-        assert_eq!(content_length, buf.len() as u64);
+        assert_eq!(content_length, &format!("{}", buf.len()));
         assert_eq!(data, &buf);
     }
 }
