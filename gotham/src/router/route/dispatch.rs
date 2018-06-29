@@ -77,8 +77,7 @@ mod tests {
     use std::io;
     use std::sync::Arc;
 
-    use hyper::Response;
-    use hyper::StatusCode;
+    use hyper::{Body, Response, StatusCode};
 
     use middleware::{Middleware, NewMiddleware};
     use pipeline::new_pipeline;
@@ -90,9 +89,10 @@ mod tests {
         let number = state.borrow::<Number>().value;
         (
             state,
-            Response::new()
-                .with_status(StatusCode::OK)
-                .with_body(format!("{}", number)),
+            Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("{}", number).into())
+                .unwrap(),
         )
     }
 

@@ -103,13 +103,13 @@ where
 mod tests {
     use super::*;
 
-    use hyper::{Method, StatusCode};
+    use hyper::{Body, Method, StatusCode};
 
     use helpers::http::response::create_response;
     use router::builder::*;
     use state::State;
 
-    fn handler(state: State) -> (State, Response<()>) {
+    fn handler(state: State) -> (State, Response<Body>) {
         let res = create_response(&state, StatusCode::ACCEPTED, None);
         (state, res)
     }

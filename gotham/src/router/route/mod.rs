@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn external_route_tests() {
-        fn handler(state: State) -> (State, Response<()>) {
+        fn handler(state: State) -> (State, Response<Body>) {
             let res = create_response(&state, StatusCode::ACCEPTED, None);
             (state, res)
         }

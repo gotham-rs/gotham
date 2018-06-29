@@ -619,7 +619,7 @@ mod tests {
         let root = test_structure().finalize();
 
         let mut state = State::new();
-        state.put(Method::Options);
+        state.put(Method::OPTIONS);
         state.put(HeaderMap::new());
         set_request_id(&mut state);
 

@@ -116,7 +116,7 @@ fn finalize_panic_response<B: Default>(timer: Timer) -> FutureResult<Response<B>
     )
 }
 
-fn finalize_catch_unwind_response<B>(
+fn finalize_catch_unwind_response<B: Default>(
     result: Result<Result<Response<B>, hyper::Error>, Box<Any + Send>>,
 ) -> FutureResult<Response<B>, hyper::Error> {
     let response = result
@@ -132,7 +132,7 @@ fn finalize_catch_unwind_response<B>(
             error!("[PANIC][A panic occurred while polling the future]");
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(Body::empty())
+                .body(B::default())
                 .unwrap()
         });
 
