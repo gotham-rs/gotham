@@ -10,7 +10,7 @@ use failure;
 
 use futures::future::{self, Future, FutureResult, IntoFuture};
 use futures::Async;
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use service::timing::Timer;
@@ -27,7 +27,7 @@ type AnError = failure::Compat<failure::Error>;
 pub(super) fn call_handler<'a, B, T>(
     t: &T,
     state: AssertUnwindSafe<State>,
-) -> Box<Future<Item = Response<B>, Error = AnError> + Send + 'a>
+) -> Box<Future<Item = Response<Body>, Error = AnError> + Send + 'a>
 where
     T: NewHandler + 'a,
     B: Send + Default,
@@ -64,8 +64,8 @@ where
 fn finalize_success_response<B>(
     timer: Timer,
     state: State,
-    response: Response<B>,
-) -> FutureResult<Response<B>, AnError> {
+    response: Response<Body>,
+) -> FutureResult<Response<Body>, AnError> {
     let timing = timer.elapsed(&state);
 
     info!(
@@ -83,7 +83,7 @@ fn finalize_error_response<B>(
     timer: Timer,
     state: State,
     err: HandlerError,
-) -> FutureResult<Response<B>, AnError> {
+) -> FutureResult<Response<Body>, AnError> {
     let timing = timer.elapsed(&state);
 
     {
@@ -104,7 +104,7 @@ fn finalize_error_response<B>(
     future::ok(err.into_response(&state))
 }
 
-fn finalize_panic_response<B: Default>(timer: Timer) -> FutureResult<Response<B>, AnError> {
+fn finalize_panic_response(timer: Timer) -> FutureResult<Response<Body>, AnError> {
     let timing = timer.elapsed_no_logging();
 
     error!(
@@ -115,14 +115,14 @@ fn finalize_panic_response<B: Default>(timer: Timer) -> FutureResult<Response<B>
     future::ok(
         Response::builder()
             .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(B::default())
+            .body(Body::default())
             .unwrap(),
     )
 }
 
-fn finalize_catch_unwind_response<B: Default>(
-    result: Result<Result<Response<B>, AnError>, Box<Any + Send>>,
-) -> FutureResult<Response<B>, AnError> {
+fn finalize_catch_unwind_response(
+    result: Result<Result<Response<Body>, AnError>, Box<Any + Send>>,
+) -> FutureResult<Response<Body>, AnError> {
     let response = result
         .unwrap_or_else(|_| {
             let e = io::Error::new(
@@ -136,7 +136,7 @@ fn finalize_catch_unwind_response<B: Default>(
             error!("[PANIC][A panic occurred while polling the future]");
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .body(B::default())
+                .body(Body::default())
                 .unwrap()
         });
 

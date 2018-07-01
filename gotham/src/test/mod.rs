@@ -10,6 +10,8 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use std::{io, net};
 
+use failure;
+
 use futures::{future, sync::oneshot, Future, Stream};
 use futures_timer::Delay;
 use hyper::client::Client;
@@ -228,7 +230,7 @@ impl<NH> BodyReader for TestServer<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    fn read_body(&self, response: Response<Body>) -> hyper::Result<Vec<u8>> {
+    fn read_body(&self, response: Response<Body>) -> Result<Vec<u8>, failure::Error> {
         let mut buf = Vec::new();
 
         let r = {
@@ -238,7 +240,7 @@ where
             self.run_future(f)
         };
 
-        r.map(|_| buf)
+        Ok(r.map(|_| buf)?)
     }
 }
 
@@ -371,7 +373,7 @@ where
 trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
     /// response holds a buffer containing all bytes of the response body.
-    fn read_body(&self, response: Response<Body>) -> hyper::Result<Vec<u8>>;
+    fn read_body(&self, response: Response<Body>) -> Result<Vec<u8>, failure::Error>;
 }
 
 /// Wrapping struct for the `Response` returned by a `TestClient`. Provides access to the
@@ -431,14 +433,14 @@ impl DerefMut for TestResponse {
 impl TestResponse {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
-    pub fn read_body(self) -> hyper::Result<Vec<u8>> {
+    pub fn read_body(self) -> Result<Vec<u8>, failure::Error> {
         self.reader.read_body(self.response)
     }
 
     /// Awaits the UTF-8 encoded body of the underlying `Response`, and returns the `String`. This
     /// will cause the event loop to execute until the `Response` body has been fully read and the
     /// `String` created.
-    pub fn read_utf8_body(self) -> hyper::Result<String> {
+    pub fn read_utf8_body(self) -> Result<String, failure::Error> {
         let buf = self.read_body()?;
         let s = String::from_utf8(buf)?;
         Ok(s)
@@ -495,7 +497,7 @@ mod tests {
                 "/" => {
                     let response = Response::builder()
                         .status(StatusCode::OK)
-                        .body(self.response.clone())
+                        .body(self.response.clone().into())
                         .unwrap();
 
                     Box::new(future::ok((state, response)))
