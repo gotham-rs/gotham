@@ -6,13 +6,17 @@ use std::error::Error;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::{io, mem};
 
+use failure;
+
 use futures::future::{self, Future, FutureResult, IntoFuture};
 use futures::Async;
-use hyper::{self, Body, Response, StatusCode};
+use hyper::{Response, StatusCode};
 
 use handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use service::timing::Timer;
 use state::{request_id, State};
+
+type AnError = failure::Compat<failure::Error>;
 
 /// Instantiates a `Handler` from the given `NewHandler`, and invokes it with the request. If a
 /// panic occurs from `NewHandler::new_handler` or `Handler::handle`, it is trapped and will result
@@ -23,7 +27,7 @@ use state::{request_id, State};
 pub(super) fn call_handler<'a, B, T>(
     t: &T,
     state: AssertUnwindSafe<State>,
-) -> Box<Future<Item = Response<B>, Error = hyper::Error> + Send + 'a>
+) -> Box<Future<Item = Response<B>, Error = AnError> + Send + 'a>
 where
     T: NewHandler + 'a,
     B: Send + Default,
@@ -36,7 +40,7 @@ where
         // immediately consuming it.
         t.new_handler()
             .into_future()
-            .map_err(|e| e.into())
+            .map_err(|e| failure::Error::from(e).compat())
             .and_then(move |handler| {
                 let AssertUnwindSafe(state) = state;
 
@@ -61,7 +65,7 @@ fn finalize_success_response<B>(
     timer: Timer,
     state: State,
     response: Response<B>,
-) -> FutureResult<Response<B>, hyper::Error> {
+) -> FutureResult<Response<B>, AnError> {
     let timing = timer.elapsed(&state);
 
     info!(
@@ -75,11 +79,11 @@ fn finalize_success_response<B>(
     future::ok(timing.add_to_response(response))
 }
 
-fn finalize_error_response(
+fn finalize_error_response<B>(
     timer: Timer,
     state: State,
     err: HandlerError,
-) -> FutureResult<Response<Body>, hyper::Error> {
+) -> FutureResult<Response<B>, AnError> {
     let timing = timer.elapsed(&state);
 
     {
@@ -100,7 +104,7 @@ fn finalize_error_response(
     future::ok(err.into_response(&state))
 }
 
-fn finalize_panic_response<B: Default>(timer: Timer) -> FutureResult<Response<B>, hyper::Error> {
+fn finalize_panic_response<B: Default>(timer: Timer) -> FutureResult<Response<B>, AnError> {
     let timing = timer.elapsed_no_logging();
 
     error!(
@@ -117,8 +121,8 @@ fn finalize_panic_response<B: Default>(timer: Timer) -> FutureResult<Response<B>
 }
 
 fn finalize_catch_unwind_response<B: Default>(
-    result: Result<Result<Response<B>, hyper::Error>, Box<Any + Send>>,
-) -> FutureResult<Response<B>, hyper::Error> {
+    result: Result<Result<Response<B>, AnError>, Box<Any + Send>>,
+) -> FutureResult<Response<B>, AnError> {
     let response = result
         .unwrap_or_else(|_| {
             let e = io::Error::new(
@@ -126,7 +130,7 @@ fn finalize_catch_unwind_response<B: Default>(
                 "Attempting to poll the future caused a panic",
             );
 
-            Err(hyper::Error::Io(e))
+            Err(failure::Error::from(e).compat())
         })
         .unwrap_or_else(|_| {
             error!("[PANIC][A panic occurred while polling the future]");
@@ -142,7 +146,7 @@ fn finalize_catch_unwind_response<B: Default>(
 /// Wraps a future to ensure that a panic does not escape and terminate the event loop.
 enum UnwindSafeFuture<F>
 where
-    F: Future<Error = hyper::Error> + Send,
+    F: Future<Error = AnError> + Send,
 {
     /// The future is available for polling.
     Available(AssertUnwindSafe<F>),
@@ -153,12 +157,12 @@ where
 
 impl<F> Future for UnwindSafeFuture<F>
 where
-    F: Future<Error = hyper::Error> + Send,
+    F: Future<Error = AnError> + Send,
 {
     type Item = F::Item;
-    type Error = hyper::Error;
+    type Error = AnError;
 
-    fn poll(&mut self) -> Result<Async<Self::Item>, hyper::Error> {
+    fn poll(&mut self) -> Result<Async<Self::Item>, AnError> {
         // Mark as poisoned in case `f.poll()` panics below.
         match mem::replace(self, UnwindSafeFuture::Poisoned) {
             UnwindSafeFuture::Available(mut f) => {
@@ -174,7 +178,7 @@ where
                     "Poisoned future due to previous panic",
                 );
 
-                Err(hyper::Error::Io(e))
+                Err(failure::Error::from(e).compat())
             }
         }
     }
@@ -182,7 +186,7 @@ where
 
 impl<F> UnwindSafeFuture<F>
 where
-    F: Future<Error = hyper::Error> + Send,
+    F: Future<Error = AnError> + Send,
 {
     fn new(f: F) -> UnwindSafeFuture<F> {
         UnwindSafeFuture::Available(AssertUnwindSafe(f))

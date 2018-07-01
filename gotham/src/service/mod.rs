@@ -6,9 +6,10 @@ use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 use std::thread;
 
+use failure;
+
 use futures::Future;
 use http::request;
-use hyper;
 use hyper::service::Service;
 use hyper::{Body, Request, Response};
 
@@ -61,7 +62,7 @@ where
 {
     type ReqBody = Body; // required by hyper::server::conn::Http::serve_connection()
     type ResBody = Body; // has to impl Payload...
-    type Error = hyper::Error;
+    type Error = failure::Compat<failure::Error>; // :Into<Box<StdError + Send + Sync>>
     type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {

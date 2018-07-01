@@ -255,7 +255,7 @@ pub trait IntoHandlerFuture {
 
 impl<T> IntoHandlerFuture for (State, T)
 where
-    T: IntoResponse<ResBody = Body>,
+    T: IntoResponse<Body>,
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;
@@ -332,27 +332,23 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # }
 /// ```
 
-pub trait IntoResponse {
-    type ResBody;
+pub trait IntoResponse<B> {
     /// Converts this value into a `hyper::Response`
-    fn into_response(self, state: &State) -> Response<Self::ResBody>;
+    fn into_response(self, state: &State) -> Response<B>;
 }
 
-impl<B> IntoResponse for Response<B> {
-    type ResBody = B;
-    fn into_response(self, _state: &State) -> Response<Self::ResBody> {
+impl<B> IntoResponse<B> for Response<B> {
+    fn into_response(self, _state: &State) -> Response<B> {
         self
     }
 }
 
-impl<B, T, E> IntoResponse for ::std::result::Result<T, E>
+impl<B, T, E> IntoResponse<B> for ::std::result::Result<T, E>
 where
-    T: IntoResponse<ResBody = B>,
-    E: IntoResponse<ResBody = B>,
+    T: IntoResponse<B>,
+    E: IntoResponse<B>,
 {
-    type ResBody = B;
-
-    fn into_response(self, state: &State) -> Response<Self::ResBody> {
+    fn into_response(self, state: &State) -> Response<B> {
         match self {
             Ok(res) => res.into_response(state),
             Err(e) => e.into_response(state),

@@ -43,6 +43,8 @@ extern crate serde_derive;
 extern crate cookie;
 extern crate http;
 
+extern crate failure;
+
 pub mod extractor;
 pub mod handler;
 pub mod helpers;

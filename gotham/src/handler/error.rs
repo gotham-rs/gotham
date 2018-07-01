@@ -127,9 +127,8 @@ impl HandlerError {
     }
 }
 
-impl IntoResponse for HandlerError {
-    type ResBody = Body;
-    fn into_response(self, state: &State) -> Response<Self::ResBody> {
+impl IntoResponse<Body> for HandlerError {
+    fn into_response(self, state: &State) -> Response<Body> {
         debug!(
             "[{}] HandlerError generating {} {} response: {}",
             request_id(state),
