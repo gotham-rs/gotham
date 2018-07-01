@@ -25,11 +25,9 @@ use tokio::reactor::PollEvented2;
 use tokio::runtime::Runtime;
 use tokio_core::reactor::Core;
 
-use handler::{IntoHandlerFuture, NewHandler};
+use handler::NewHandler;
 use router::Router;
 use service::GothamService;
-
-use state;
 
 mod request;
 
@@ -253,11 +251,12 @@ where
     test_server: TestServer<NH>,
 }
 
-impl<NH, H, IHF> TestClient<NH>
+impl<NH> TestClient<NH>
 where
-    NH: NewHandler + Send + 'static + Fn() -> io::Result<H>,
-    H: Send + FnOnce(state::State) -> IHF,
-    IHF: IntoHandlerFuture + Sized,
+    NH: NewHandler + Send + 'static,
+    // + Fn() -> io::Result<H>,
+    //H: Send + FnOnce(state::State) -> IHF,
+    //IHF: IntoHandlerFuture + Sized,
 {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
     pub fn head(self, uri: &str) -> RequestBuilder<NH> {
