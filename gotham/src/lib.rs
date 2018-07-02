@@ -44,7 +44,10 @@ extern crate cookie;
 extern crate http;
 
 extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 
+pub mod error;
 pub mod extractor;
 pub mod handler;
 pub mod helpers;

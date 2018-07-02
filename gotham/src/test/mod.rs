@@ -2,32 +2,32 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use std::cell::RefCell;
-use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
+use std::error::Error as StdError;
+use std::io;
+use std::net::{self, IpAddr, SocketAddr};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
-use std::{io, net};
 
 use failure;
 
 use futures::{future, sync::oneshot, Future, Stream};
 use futures_timer::Delay;
-use hyper::client::Client;
+use hyper::client::{connect::{Connect, Connected, Destination},
+                    Client};
 use hyper::header::CONTENT_TYPE;
 use hyper::server::conn::Http;
-use hyper::service;
-use hyper::{self, Body, Method, Request, Response, Uri};
+use hyper::{body::Payload, Body, Method, Request, Response, Uri};
 use mime;
-use mio;
-use tokio::reactor::PollEvented2;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
-use tokio_core::reactor::Core;
 
 use handler::NewHandler;
 use router::Router;
 use service::GothamService;
+
+use error::*;
 
 mod request;
 
@@ -76,18 +76,6 @@ where
     gotham_service: GothamService<NH>,
 }
 
-/// The `TestRequestError` type represents all error states that can result from evaluating a
-/// response future. See `TestServer::run_request` for usage.
-#[derive(Debug)]
-pub enum TestRequestError {
-    /// The response was not received before the timeout duration elapsed.
-    TimedOut,
-    /// A `std::io::Error` occurred before a response was received.
-    IoError(io::Error),
-    /// A `hyper::Error` occurred before a response was received.
-    HyperError(hyper::Error),
-}
-
 impl<NH> Clone for TestServer<NH>
 where
     NH: NewHandler + Send + 'static,
@@ -108,12 +96,12 @@ where
     /// for each connection.
     ///
     /// Timeout will be set to 10 seconds.
-    pub fn new(new_handler: NH) -> Result<TestServer<NH>, io::Error> {
+    pub fn new(new_handler: NH) -> Result<TestServer<NH>> {
         TestServer::with_timeout(new_handler, 10)
     }
 
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
-    pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>, io::Error> {
+    pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>> {
         let data = TestServerData {
             http: Http::new(),
             timeout,
@@ -141,27 +129,22 @@ where
             .expect("TestServer: unable to spawn client")
     }
 
-    fn try_client_with_address(&self, client_addr: net::SocketAddr) -> io::Result<TestClient<NH>> {
+    fn try_client_with_address(&self, client_addr: net::SocketAddr) -> Result<TestClient<NH>> {
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
-            let listener = TcpListener::bind("localhost:0")?;
+            let listener = TcpListener::bind(&"localhost:0".parse()?)?;
             let listener_addr = listener.local_addr()?;
-            let client = TcpStream::connect(listener_addr)?;
-            let (server, _client_addr) = listener.accept()?;
+            let client = TcpStream::connect(&listener_addr);
+            let server = listener.incoming();
             (client, server)
         };
 
-        let cs = mio::net::TcpStream::from_stream(cs)?;
-        let cs = PollEvented2::new(cs);
-
-        let ss = mio::net::TcpStream::from_stream(ss)?;
-        let ss = PollEvented2::new(ss);
-
-        let service = self.data.gotham_service.connect(client_addr);
         let f = self.data
             .http
-            .serve_connection(ss, service)
+            //.serve_connection(ss, service)
+            .serve_incoming(ss, || future::ok(self.data.gotham_service.connect(client_addr)))
+            .into_future()
             .map(|_| ())
             .map_err(|_| ());
 
@@ -169,16 +152,16 @@ where
             self.data.runtime.read().unwrap().spawn(f);
         }
 
+        let connect = Box::new(cs.and_then(|stream| future::ok(TestConnect { stream })));
+
+        /*
         let client = Core::new()
-            .map(|core| {
-                Client::builder().build(TestConnect {
-                    stream: RefCell::new(Some(cs)),
-                })
-            })
+            .map(|core| Client::builder().build(TestConnect { stream: cs }))
             .unwrap();
+        */
 
         Ok(TestClient {
-            client,
+            connect,
             test_server: self.clone(),
         })
     }
@@ -187,9 +170,10 @@ where
     ///
     /// If the future came from a different instance of `TestServer`, the event loop will run until
     /// the timeout is triggered.
-    fn run_request<F>(&self, f: F) -> Result<F::Item, TestRequestError>
+    fn run_request<F>(&self, f: F) -> Result<F::Item>
     where
-        F: Future<Error = hyper::Error> + Send + 'static,
+        F: Future + Sync + Send + 'static,
+        F::Error: failure::Fail + Sized,
         F::Item: Send,
     {
         let timeout_duration = Duration::from_secs(self.data.timeout);
@@ -197,20 +181,20 @@ where
 
         match self.run_future(f.select2(timeout)) {
             Ok(future::Either::A((item, _))) => Ok(item),
-            Ok(future::Either::B(_)) => Err(TestRequestError::TimedOut),
-            Err(future::Either::A((e, _))) => Err(TestRequestError::HyperError(e)),
-            Err(future::Either::B((e, _))) => Err(TestRequestError::IoError(e)),
+            Ok(future::Either::B(_)) => Err(ErrorKind::TimedOut)?,
+            Err(future::Either::A((e, _))) => Err(e),
+            Err(future::Either::B((e, _))) => Err(e),
         }
     }
     /// Runs a future inside of the internal runtime.
     ///
     /// This blocks on the result of the future and behaves like a synchronous
     /// polling call of the future, even if it might be on another thread.
-    fn run_future<F, R, E>(&mut self, future: F) -> Result<R, E>
+    fn run_future<F, R, E>(&mut self, future: F) -> Result<R>
     where
         F: Send + 'static + Future<Item = R, Error = E>,
         R: Send + 'static,
-        E: Send + 'static,
+        E: StdError + Send + Sync + 'static,
     {
         let (tx, rx) = oneshot::channel();
         {
@@ -220,7 +204,7 @@ where
                 .unwrap()
                 .spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
         }
-        rx.wait().unwrap()
+        Ok(rx.wait().unwrap()?)
     }
 }
 
@@ -228,7 +212,7 @@ impl<NH> BodyReader for TestServer<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    fn read_body(&self, response: Response<Body>) -> Result<Vec<u8>, failure::Error> {
+    fn read_body(&self, response: Response<Body>) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
 
         let r = {
@@ -247,7 +231,7 @@ pub struct TestClient<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    client: Client<TestConnect>,
+    connect: Box<Future<Item = TestConnect, Error = io::Error>>,
     test_server: TestServer<NH>,
 }
 
@@ -359,9 +343,12 @@ where
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform<QB>(self, req: Request<QB>) -> Result<TestResponse, TestRequestError> {
+    pub fn perform<QB: Payload>(self, req: Request<QB>) -> Result<TestResponse> {
         self.test_server
-            .run_request(self.client.request(req))
+            .run_request(
+                self.connect
+                    .and_then(|c| Client::builder().build(c).request(req)),
+            )
             .map(|response| TestResponse {
                 response,
                 reader: Box::new(self.test_server.clone()),
@@ -372,7 +359,7 @@ where
 trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
     /// response holds a buffer containing all bytes of the response body.
-    fn read_body(&self, response: Response<Body>) -> Result<Vec<u8>, failure::Error>;
+    fn read_body(&self, response: Response<Body>) -> Result<Vec<u8>>;
 }
 
 /// Wrapping struct for the `Response` returned by a `TestClient`. Provides access to the
@@ -432,14 +419,14 @@ impl DerefMut for TestResponse {
 impl TestResponse {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
-    pub fn read_body(self) -> Result<Vec<u8>, failure::Error> {
+    pub fn read_body(self) -> Result<Vec<u8>> {
         self.reader.read_body(self.response)
     }
 
     /// Awaits the UTF-8 encoded body of the underlying `Response`, and returns the `String`. This
     /// will cause the event loop to execute until the `Response` body has been fully read and the
     /// `String` created.
-    pub fn read_utf8_body(self) -> Result<String, failure::Error> {
+    pub fn read_utf8_body(self) -> Result<String> {
         let buf = self.read_body()?;
         let s = String::from_utf8(buf)?;
         Ok(s)
@@ -449,9 +436,20 @@ impl TestResponse {
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
 struct TestConnect {
-    stream: RefCell<Option<PollEvented2<mio::net::TcpStream>>>,
+    stream: TcpStream,
 }
 
+impl Connect for TestConnect {
+    type Transport = TcpStream;
+    type Error = failure::Compat<failure::Error>;
+    type Future = Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send>;
+
+    fn connect(&self, dst: Destination) -> Self::Future {
+        Box::new(future::ok((self.stream, Connected::new())))
+    }
+}
+
+/*
 impl service::Service for TestConnect {
     type ReqBody = Body;
     type ResBody = Body;
@@ -469,6 +467,7 @@ impl service::Service for TestConnect {
         }
     }
 }
+*/
 
 #[cfg(test)]
 mod tests {
@@ -562,7 +561,7 @@ mod tests {
             .perform();
 
         match res {
-            Err(TestRequestError::TimedOut) => (),
+            Err(ErrorKind::TimedOut) => (),
             e @ Err(_) => {
                 e.unwrap();
             }
