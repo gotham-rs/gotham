@@ -2,7 +2,6 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use std::error::Error as StdError;
 use std::io;
 use std::net::{self, IpAddr, SocketAddr};
 use std::ops::{Deref, DerefMut};
@@ -179,30 +178,29 @@ where
         let timeout_duration = Duration::from_secs(self.data.timeout);
         let timeout = Delay::new(timeout_duration);
 
-        match self.run_future(f.select2(timeout)) {
-            Ok(future::Either::A((item, _))) => Ok(item),
-            Ok(future::Either::B(_)) => Err(ErrorKind::TimedOut)?,
-            Err(future::Either::A((e, _))) => Err(e),
-            Err(future::Either::B((e, _))) => Err(e),
+        match self.run_future(f.select2(timeout))? {
+            future::Either::A((item, _)) => Ok(item),
+            future::Either::B(_) => Err(ErrorKind::TimedOut)?,
         }
     }
     /// Runs a future inside of the internal runtime.
     ///
     /// This blocks on the result of the future and behaves like a synchronous
     /// polling call of the future, even if it might be on another thread.
-    fn run_future<F, R, E>(&mut self, future: F) -> Result<R>
+    fn run_future<F, R, E, L>(&mut self, future: F) -> Result<R>
     where
         F: Send + 'static + Future<Item = R, Error = E>,
         R: Send + 'static,
-        E: StdError + Send + Sync + 'static,
+        E: Into<L>,
+        L: failure::Fail,
     {
         let (tx, rx) = oneshot::channel();
         {
-            self.data
-                .runtime
-                .read()
-                .unwrap()
-                .spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
+            self.data.runtime.read().unwrap().spawn(
+                future
+                    .map_err(|e| e.into())
+                    .then(move |r| tx.send(r).map_err(|_| unreachable!())),
+            );
         }
         Ok(rx.wait().unwrap()?)
     }
