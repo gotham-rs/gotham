@@ -22,7 +22,7 @@ impl ConstrainedSegmentRegex {
     /// intended.
     pub fn new(regex: &str) -> Self {
         ConstrainedSegmentRegex {
-            regex: AssertUnwindSafe(Regex::new(&format!("^{pattern}$", pattern = regex)).unwrap()),
+            regex: AssertUnwindSafe(Regex::new(&format!("^{}$", regex)).unwrap()),
         }
     }
 

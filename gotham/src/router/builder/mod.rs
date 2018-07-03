@@ -18,7 +18,7 @@ use router::response::finalizer::ResponseFinalizerBuilder;
 use router::route::dispatch::DispatcherImpl;
 use router::route::matcher::{AnyRouteMatcher, RouteMatcher};
 use router::route::{Delegation, Extractors, RouteImpl};
-use router::tree::node::NodeBuilder;
+use router::tree::node::Node;
 use router::tree::TreeBuilder;
 use router::Router;
 
@@ -148,7 +148,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut Node,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
     response_finalizer_builder: ResponseFinalizerBuilder,
@@ -235,7 +235,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut Node,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
 }
@@ -247,7 +247,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut Node,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
 }
@@ -283,7 +283,7 @@ where
     PE: PathExtractor + Send + Sync + 'static,
     QSE: QueryStringExtractor + Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut Node,
     matcher: M,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,

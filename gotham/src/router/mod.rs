@@ -18,7 +18,8 @@ use helpers::http::request::path::RequestPathSegments;
 use helpers::http::response::create_response;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Delegation, Route};
-use router::tree::{SegmentMapping, Tree};
+use router::tree::segment::SegmentMapping;
+use router::tree::Tree;
 use state::{request_id, State};
 
 struct RouterData {
@@ -70,21 +71,18 @@ impl Handler for Router {
 
         let future = match state.try_take::<RequestPathSegments>() {
             Some(rps) => {
-                if let Some((leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
-                    match leaf.select_route(&state) {
+                if let Some((node, params, processed)) = self.data.tree.traverse(&rps.segments()) {
+                    match node.select_route(&state) {
                         Ok(route) => match route.delegation() {
                             Delegation::External => {
                                 trace!("[{}] delegating to secondary router", request_id(&state));
 
-                                let mut rps = rps.clone();
-                                rps.increase_offset(sp);
-                                state.put(rps);
-
+                                state.put(rps.into_subsegments(processed));
                                 route.dispatch(state)
                             }
                             Delegation::Internal => {
                                 trace!("[{}] dispatching to route", request_id(&state));
-                                self.dispatch(state, sm, route)
+                                self.dispatch(state, params, route)
                             }
                         },
                         Err(non_match) => {
@@ -132,13 +130,13 @@ impl Router {
         }
     }
 
-    fn dispatch(
-        &self,
+    fn dispatch<'a>(
+        &'a self,
         mut state: State,
-        sm: SegmentMapping,
-        route: &Box<Route + Send + Sync>,
+        params: SegmentMapping<'a>,
+        route: &'a Box<Route + Send + Sync>,
     ) -> Box<HandlerFuture> {
-        match route.extract_request_path(&mut state, sm) {
+        match route.extract_request_path(&mut state, params) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
                 match route.extract_query_string(&mut state) {
@@ -159,9 +157,9 @@ impl Router {
             }
             Err(_) => {
                 error!(
-                    "[{}] the server cannot or will not process the request due to a client error on the request path",
-                    request_id(&state)
-                );
+                "[{}] the server cannot or will not process the request due to a client error on the request path",
+                request_id(&state)
+            );
                 let mut res = Response::new();
                 route.extend_response_on_path_error(&mut state, &mut res);
                 Box::new(future::ok((state, res)))
@@ -205,7 +203,8 @@ mod tests {
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Extractors, RouteImpl};
-    use router::tree::node::{NodeBuilder, SegmentType};
+    use router::tree::node::Node;
+    use router::tree::segment::SegmentType;
     use router::tree::TreeBuilder;
     use state::set_request_id;
 
@@ -349,7 +348,7 @@ mod tests {
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut tree_builder = TreeBuilder::new();
-        let mut delegated_node = NodeBuilder::new("var", SegmentType::Dynamic);
+        let mut delegated_node = Node::new("var", SegmentType::Dynamic);
 
         let route = {
             let methods = vec![Method::Get];

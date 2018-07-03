@@ -1,20 +1,13 @@
 //! Defines a hierarchial `Tree` with subtrees of `Node`.
 
-use std::collections::HashMap;
-
 use helpers::http::PercentDecoded;
 use router::route::Route;
-use router::tree::node::{Node, NodeBuilder, SegmentType};
+use router::tree::node::Node;
+use router::tree::segment::{SegmentMapping, SegmentType};
 
 pub mod node;
 pub mod regex;
-
-/// Number of segments from a `Request` path that are considered to have been processed
-/// by an `Router` traversing its `Tree`.
-type SegmentsProcessed = usize;
-
-/// Mapping of segment names into the collection of values for that segment.
-pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;
+pub mod segment;
 
 /// A hierarchical structure that provides a root `Node` and subtrees of linked nodes
 /// that represent valid `Request` paths.
@@ -29,16 +22,16 @@ impl Tree {
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
     pub(crate) fn traverse<'r>(
         &'r self,
-        req_path_segments: &'r [&PercentDecoded],
-    ) -> Option<(&Node, SegmentsProcessed, SegmentMapping<'r>)> {
+        req_path_segments: &'r [PercentDecoded],
+    ) -> Option<(&Node, SegmentMapping<'r>, usize)> {
         trace!(" starting tree traversal");
-        self.root.traverse(req_path_segments)
+        self.root.match_node(req_path_segments)
     }
 }
 
 /// Constructs a `Tree` which is sorted and immutable.
 pub struct TreeBuilder {
-    root: NodeBuilder,
+    root: Node,
 }
 
 impl TreeBuilder {
@@ -46,12 +39,12 @@ impl TreeBuilder {
     pub fn new() -> Self {
         trace!(" creating new tree");
         TreeBuilder {
-            root: NodeBuilder::new("/", SegmentType::Static),
+            root: Node::new("/", SegmentType::Static),
         }
     }
 
     /// Adds a direct child to the root of the `TreeBuilder`.
-    pub fn add_child(&mut self, child: NodeBuilder) {
+    pub fn add_child(&mut self, child: Node) {
         self.root.add_child(child);
     }
 
@@ -64,7 +57,7 @@ impl TreeBuilder {
     }
 
     /// Borrow the root `NodeBuilder` as mutable.
-    pub fn borrow_root_mut(&mut self) -> &mut NodeBuilder {
+    pub fn borrow_root_mut(&mut self) -> &mut Node {
         &mut self.root
     }
 
@@ -75,9 +68,7 @@ impl TreeBuilder {
 
     /// Finalizes and sorts all internal data and creates a Tree for use with a `Router`.
     pub fn finalize(self) -> Tree {
-        Tree {
-            root: self.root.finalize(),
-        }
+        Tree { root: self.root }
     }
 }
 
@@ -106,9 +97,9 @@ mod tests {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut tree_builder: TreeBuilder = TreeBuilder::new();
 
-        let mut activate_node_builder = NodeBuilder::new("activate", SegmentType::Static);
+        let mut activate_node_builder = Node::new("activate", SegmentType::Static);
 
-        let mut thing_node_builder = NodeBuilder::new("thing", SegmentType::Dynamic);
+        let mut thing_node_builder = Node::new("thing", SegmentType::Dynamic);
         let thing_route = {
             let methods = vec![Method::Get];
             let matcher = MethodOnlyRouteMatcher::new(methods);
@@ -127,16 +118,11 @@ mod tests {
 
         let request_path_segments = RequestPathSegments::new("/%61ctiv%61te/workflow5");
         match tree.traverse(request_path_segments.segments().as_slice()) {
-            Some((leaf, segments_processed, segment_mapping)) => {
-                assert!(leaf.is_routable());
-                assert_eq!(segments_processed, 2);
+            Some((node, params, processed)) => {
+                assert!(node.is_routable());
+                assert_eq!(processed, 3);
                 assert_eq!(
-                    segment_mapping
-                        .get("thing")
-                        .unwrap()
-                        .last()
-                        .unwrap()
-                        .as_ref(),
+                    params.get("thing").unwrap().last().unwrap().as_ref(),
                     "workflow5"
                 );
             }
@@ -144,11 +130,11 @@ mod tests {
         }
 
         assert!(
-            tree.traverse(&[&PercentDecoded::new("/").unwrap()])
+            tree.traverse(&[PercentDecoded::new("/").unwrap()])
                 .is_none()
         );
         assert!(
-            tree.traverse(&[&PercentDecoded::new("/activate").unwrap()])
+            tree.traverse(&[PercentDecoded::new("/activate").unwrap()])
                 .is_none()
         );
     }
