@@ -120,7 +120,7 @@ mod tests {
         match tree.traverse(request_path_segments.segments().as_slice()) {
             Some((node, params, processed)) => {
                 assert!(node.is_routable());
-                assert_eq!(processed, 3);
+                assert_eq!(processed, 2);
                 assert_eq!(
                     params.get("thing").unwrap().last().unwrap().as_ref(),
                     "workflow5"

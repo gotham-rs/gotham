@@ -1,7 +1,5 @@
 //! Defines helper functions for processing the request path
 
-use std::iter::once;
-
 use helpers::http::PercentDecoded;
 
 const EXCLUDED_SEGMENTS: [&str; 1] = [""];
@@ -25,8 +23,8 @@ impl RequestPathSegments {
     /// ["/", "some", "path", "to", "my", "handler"]
     /// ```
     pub(crate) fn new<'r>(path: &'r str) -> Self {
-        let segments = once("/")
-            .chain(path.split('/').filter(|s| !EXCLUDED_SEGMENTS.contains(s)))
+        let segments = path.split('/')
+            .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
             .filter_map(PercentDecoded::new)
             .collect();
 
@@ -62,7 +60,7 @@ mod tests {
 
         assert_eq!(
             rps.segments.iter().map(|s| s.as_ref()).collect::<Vec<_>>(),
-            vec!["/", "some", "path", "to", "my", "handler"]
+            vec!["some", "path", "to", "my", "handler"]
         );
     }
 }

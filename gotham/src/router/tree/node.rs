@@ -12,7 +12,6 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 
 // TODO: SmallVec for routes
-// TODO: Remove leading "/" on paths
 // TODO: Remove has_child function
 // TODO: Shrink all vectors for memory
 
@@ -101,17 +100,9 @@ impl Node {
         &'a self,
         segments: &'a [PercentDecoded],
     ) -> Option<(&'a Node, SegmentMapping<'a>, usize)> {
+        // accumulators for recursion
         let mut params = HashMap::new();
         let mut processed = 0;
-
-        // compatibility with previous routing
-        let segments = match segments.first() {
-            Some(segment) if "/" == segment.as_ref().to_string() => {
-                processed += 1;
-                &segments[1..]
-            }
-            _ => segments,
-        };
 
         // process and map the results through to the required form
         self.inner_match_node(segments, &mut params, &mut processed)
@@ -445,7 +436,7 @@ mod tests {
         match root.match_node(&rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, "seg4");
-                assert_eq!(processed, 3);
+                assert_eq!(processed, 2);
             }
             None => panic!("traversal should have succeeded here"),
         }
@@ -459,7 +450,7 @@ mod tests {
         match root.match_node(&rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, "seg6");
-                assert_eq!(processed, 3);
+                assert_eq!(processed, 2);
             }
             None => panic!("traversal should have succeeded here"),
         }
@@ -469,7 +460,7 @@ mod tests {
         match root.match_node(&rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, "seg7");
-                assert_eq!(processed, 4);
+                assert_eq!(processed, 3);
             }
             None => panic!("traversal should have succeeded here"),
         }
@@ -479,7 +470,7 @@ mod tests {
         match root.match_node(&rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, "seg10");
-                assert_eq!(processed, 6);
+                assert_eq!(processed, 5);
             }
             None => panic!("traversal should have succeeded here"),
         }
@@ -489,7 +480,7 @@ mod tests {
         match root.match_node(&rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, expected_segment);
-                assert_eq!(processed, 3);
+                assert_eq!(processed, 2);
             }
             None => panic!("traversal should have succeeded here"),
         }
@@ -556,13 +547,12 @@ mod tests {
 
         let root_node = root_node_builder;
         match root_node.match_node(&[
-            PercentDecoded::new("/").unwrap(),
             PercentDecoded::new("activate").unwrap(),
             PercentDecoded::new("workflow").unwrap(),
         ]) {
             Some((node, _params, processed)) => {
                 assert!(node.is_routable());
-                assert_eq!(processed, 3)
+                assert_eq!(processed, 2)
             }
             None => panic!(),
         }
