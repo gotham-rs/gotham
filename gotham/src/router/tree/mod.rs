@@ -20,10 +20,10 @@ pub struct Tree {
 
 impl Tree {
     /// Attempt to acquire a path from the `Tree` which matches the `Request` path and is routable.
-    pub(crate) fn traverse<'r>(
-        &'r self,
-        req_path_segments: &'r [PercentDecoded],
-    ) -> Option<(&Node, SegmentMapping<'r>, usize)> {
+    pub(crate) fn traverse<'a>(
+        &'a self,
+        req_path_segments: &'a [PercentDecoded],
+    ) -> Option<(&Node, SegmentMapping<'a>, usize)> {
         trace!(" starting tree traversal");
         self.root.match_node(req_path_segments)
     }

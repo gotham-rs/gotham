@@ -22,7 +22,7 @@ impl RequestPathSegments {
     /// ```plain
     /// ["/", "some", "path", "to", "my", "handler"]
     /// ```
-    pub(crate) fn new<'r>(path: &'r str) -> Self {
+    pub(crate) fn new(path: &str) -> Self {
         let segments = path.split('/')
             .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
             .filter_map(PercentDecoded::new)
@@ -44,7 +44,7 @@ impl RequestPathSegments {
     ///
     /// The offset starts at 0 meaning all segments of the initial Request path will be provided
     /// until the offset is updated.
-    pub(crate) fn segments<'a>(&'a self) -> &Vec<PercentDecoded> {
+    pub(crate) fn segments(&self) -> &Vec<PercentDecoded> {
         &self.segments
     }
 }

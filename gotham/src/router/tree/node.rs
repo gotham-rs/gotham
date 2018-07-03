@@ -11,10 +11,6 @@ use state::{request_id, State};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-// TODO: SmallVec for routes
-// TODO: Remove has_child function
-// TODO: Shrink all vectors for memory
-
 /// A recursive member of `Tree`, representative of segment(s) in a request path.
 ///
 /// Each node includes `0..n` `Route` instances, which can be further evaluated by the `Router`
@@ -425,6 +421,16 @@ mod tests {
         root.add_child(seg8);
 
         root
+    }
+
+    #[test]
+    fn manages_children() {
+        let root = test_structure();
+
+        assert!(root.borrow_child("seg1", SegmentType::Static).is_some());
+        assert!(root.borrow_child("seg2", SegmentType::Static).is_some());
+        assert!(root.borrow_child("seg1", SegmentType::Dynamic).is_none());
+        assert!(root.borrow_child("seg0", SegmentType::Static).is_none());
     }
 
     #[test]

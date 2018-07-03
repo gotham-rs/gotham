@@ -131,10 +131,10 @@ impl Router {
     }
 
     fn dispatch<'a>(
-        &'a self,
+        &self,
         mut state: State,
         params: SegmentMapping<'a>,
-        route: &'a Box<Route + Send + Sync>,
+        route: &Box<Route + Send + Sync>,
     ) -> Box<HandlerFuture> {
         match route.extract_request_path(&mut state, params) {
             Ok(()) => {

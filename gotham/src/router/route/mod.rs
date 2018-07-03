@@ -57,8 +57,8 @@ pub trait Route: RefUnwindSafe {
 
     /// Extracts dynamic components of the `Request` path and stores the `PathExtractor` in `State`.
     fn extract_request_path<'a>(
-        &'a self,
-        state: &'a mut State,
+        &self,
+        state: &mut State,
         params: SegmentMapping<'a>,
     ) -> Result<(), ExtractorFailed>;
 
@@ -160,8 +160,8 @@ where
     }
 
     fn extract_request_path<'a>(
-        &'a self,
-        state: &'a mut State,
+        &self,
+        state: &mut State,
         params: SegmentMapping<'a>,
     ) -> Result<(), ExtractorFailed> {
         match extractor::internal::from_segment_mapping::<PE>(params) {
