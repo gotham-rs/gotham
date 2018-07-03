@@ -3,7 +3,6 @@
 //! A function can be used directly as a handler using one of the default implementations of
 //! `Handler`, but the traits can also be implemented directly for greater control. See the
 //! `Handler` trait for some examples of valid handlers.
-use std::io;
 use std::panic::RefUnwindSafe;
 
 use futures::{future, Future};
@@ -14,6 +13,7 @@ use state::State;
 mod error;
 
 pub use self::error::{HandlerError, IntoHandlerError};
+use error::*;
 
 /// A type alias for the trait objects returned by `HandlerService`.
 ///
@@ -126,7 +126,7 @@ pub type HandlerFuture =
 /// impl NewHandler for MyCustomHandler {
 ///     type Instance = Self;
 ///
-///     fn new_handler(&self) -> io::Result<Self::Instance> {
+///     fn new_handler(&self) -> Result<Self::Instance> {
 ///         Ok(*self)
 ///     }
 /// }
@@ -172,7 +172,7 @@ pub trait Handler: Send {
 /// impl NewHandler for MyCustomHandler {
 ///     type Instance = Self;
 ///
-///     fn new_handler(&self) -> io::Result<Self::Instance> {
+///     fn new_handler(&self) -> Result<Self::Instance> {
 ///         Ok(*self)
 ///     }
 /// }
@@ -206,7 +206,7 @@ pub trait Handler: Send {
 /// impl NewHandler for MyValueInstantiatingHandler {
 ///     type Instance = MyHandler;
 ///
-///     fn new_handler(&self) -> io::Result<Self::Instance> {
+///     fn new_handler(&self) -> Result<Self::Instance> {
 ///         Ok(MyHandler)
 ///     }
 /// }
@@ -229,17 +229,17 @@ pub trait NewHandler: Send + Sync + RefUnwindSafe {
     type Instance: Handler + Send;
 
     /// Create and return a new `Handler` value.
-    fn new_handler(&self) -> io::Result<Self::Instance>;
+    fn new_handler(&self) -> Result<Self::Instance>;
 }
 
 impl<F, H> NewHandler for F
 where
-    F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
+    F: Fn() -> Result<H> + Send + Sync + RefUnwindSafe,
     H: Handler + Send,
 {
     type Instance = H;
 
-    fn new_handler(&self) -> io::Result<H> {
+    fn new_handler(&self) -> Result<H> {
         self()
     }
 }

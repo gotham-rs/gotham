@@ -6,13 +6,13 @@ pub mod response;
 pub mod route;
 pub mod tree;
 
-use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
 use hyper::header::{HeaderValue, ALLOW};
 use hyper::{Body, Response, StatusCode};
 
+use error::*;
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use helpers::http::request::path::RequestPathSegments;
 use helpers::http::response::create_response;
@@ -56,7 +56,7 @@ impl NewHandler for Router {
     type Instance = Router;
 
     // Creates a new Router instance to route new HTTP requests
-    fn new_handler(&self) -> io::Result<Self::Instance> {
+    fn new_handler(&self) -> Result<Self::Instance> {
         trace!(" cloning instance");
         Ok((*self).clone())
     }

@@ -1,12 +1,17 @@
-use failure::{self, Backtrace, Context, Fail};
-use std::fmt::{self, Display};
+//use failure::{self, Backtrace, Context, Fail};
+//use std::fmt::{self, Display};
 
+pub use failure::Error;
+pub type Result<T> = ::std::result::Result<T, Error>;
+
+/*
+ * TODO: revive or delete this.
+ *
 #[derive(Debug)]
 pub struct Error {
     inner: Context<ErrorKind>,
 }
 
-pub type Result<T> = ::std::result::Result<T, failure::Error>;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Fail)]
 pub enum ErrorKind {
@@ -52,3 +57,4 @@ impl From<Context<ErrorKind>> for Error {
         Error { inner }
     }
 }
+*/

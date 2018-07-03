@@ -2,7 +2,6 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use std::io;
 use std::net::{self, IpAddr, SocketAddr};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
@@ -151,7 +150,10 @@ where
             self.data.runtime.read().unwrap().spawn(f);
         }
 
-        let connect = Box::new(cs.and_then(|stream| future::ok(TestConnect { stream })));
+        let connect = Box::new(
+            cs.map_err(|e| e.into())
+                .and_then(|stream| future::ok(TestConnect { stream })),
+        );
 
         /*
         let client = Core::new()
@@ -180,7 +182,7 @@ where
 
         match self.run_future(f.select2(timeout))? {
             future::Either::A((item, _)) => Ok(item),
-            future::Either::B(_) => Err(ErrorKind::TimedOut)?,
+            future::Either::B(_) => Err("timed out".into())?,
         }
     }
     /// Runs a future inside of the internal runtime.
@@ -229,7 +231,7 @@ pub struct TestClient<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    connect: Box<Future<Item = TestConnect, Error = io::Error>>,
+    connect: Box<Future<Item = TestConnect, Error = failure::Error>>,
     test_server: TestServer<NH>,
 }
 
@@ -343,10 +345,12 @@ where
     /// Send a constructed request using this `TestClient`, and await the response.
     pub fn perform<QB: Payload>(self, req: Request<QB>) -> Result<TestResponse> {
         self.test_server
-            .run_request(
-                self.connect
-                    .and_then(|c| Client::builder().build(c).request(req)),
-            )
+            .run_request(self.connect.map_err(|e| e.into()).and_then(|c| {
+                Client::builder()
+                    .build(c)
+                    .request(req)
+                    .map_err(|e| e.into())
+            }))
             .map(|response| TestResponse {
                 response,
                 reader: Box::new(self.test_server.clone()),
@@ -515,7 +519,7 @@ mod tests {
     impl NewHandler for TestHandler {
         type Instance = Self;
 
-        fn new_handler(&self) -> io::Result<Self> {
+        fn new_handler(&self) -> Result<Self> {
             Ok(self.clone())
         }
     }
@@ -559,7 +563,7 @@ mod tests {
             .perform();
 
         match res {
-            Err(ErrorKind::TimedOut) => (),
+            Err("timed out") => (),
             e @ Err(_) => {
                 e.unwrap();
             }
