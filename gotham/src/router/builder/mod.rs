@@ -19,7 +19,7 @@ use router::route::dispatch::DispatcherImpl;
 use router::route::matcher::{AnyRouteMatcher, RouteMatcher};
 use router::route::{Delegation, Extractors, RouteImpl};
 use router::tree::node::Node;
-use router::tree::TreeBuilder;
+use router::tree::Tree;
 use router::Router;
 
 pub use self::associated::{AssociatedRouteBuilder, AssociatedSingleRouteBuilder};
@@ -80,11 +80,11 @@ where
     P: Send + Sync + 'static,
     F: FnOnce(&mut RouterBuilder<C, P>),
 {
-    let mut tree_builder = TreeBuilder::new();
+    let mut tree = Tree::new();
 
     let response_finalizer = {
         let mut builder = RouterBuilder {
-            node_builder: tree_builder.borrow_root_mut(),
+            node_builder: tree.borrow_root_mut(),
             pipeline_chain,
             pipelines,
             response_finalizer_builder: ResponseFinalizerBuilder::internal_new(),
@@ -95,7 +95,7 @@ where
         builder.response_finalizer_builder.finalize()
     };
 
-    Router::internal_new(tree_builder.finalize(), response_finalizer)
+    Router::internal_new(tree, response_finalizer)
 }
 
 /// Builds a `Router` with **no** middleware using the provided closure. Routes are defined using

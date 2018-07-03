@@ -205,7 +205,7 @@ mod tests {
     use router::route::{Extractors, RouteImpl};
     use router::tree::node::Node;
     use router::tree::segment::SegmentType;
-    use router::tree::TreeBuilder;
+    use router::tree::Tree;
     use state::set_request_id;
 
     fn handler(state: State) -> (State, Response) {
@@ -232,8 +232,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     fn internal_server_error_if_no_request_path_segments() {
-        let tree_builder = TreeBuilder::new();
-        let tree = tree_builder.finalize();
+        let tree = Tree::new();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         let method = Method::Get;
@@ -256,8 +255,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     fn not_found_error_if_request_path_is_not_found() {
-        let tree_builder = TreeBuilder::new();
-        let tree = tree_builder.finalize();
+        let tree = Tree::new();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         match send_request(router, Method::Get, "https://test.gotham.rs") {
@@ -272,7 +270,7 @@ mod tests {
     #[allow(deprecated)]
     fn custom_error_if_leaf_found_but_matching_route_not_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let mut tree_builder = TreeBuilder::new();
+        let mut tree = Tree::new();
 
         let route = {
             let methods = vec![Method::Post];
@@ -283,8 +281,7 @@ mod tests {
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
         };
-        tree_builder.add_route(route);
-        let tree = tree_builder.finalize();
+        tree.add_route(route);
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         match send_request(router, Method::Get, "https://test.gotham.rs") {
@@ -299,7 +296,7 @@ mod tests {
     #[allow(deprecated)]
     fn success_if_leaf_and_route_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let mut tree_builder = TreeBuilder::new();
+        let mut tree = Tree::new();
 
         let route = {
             let methods = vec![Method::Get];
@@ -310,8 +307,7 @@ mod tests {
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
         };
-        tree_builder.add_route(route);
-        let tree = tree_builder.finalize();
+        tree.add_route(route);
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         match send_request(router, Method::Get, "https://test.gotham.rs") {
@@ -327,7 +323,7 @@ mod tests {
     fn delegates_to_secondary_router() {
         let delegated_router = {
             let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-            let mut tree_builder = TreeBuilder::new();
+            let mut tree = Tree::new();
 
             let route = {
                 let methods = vec![Method::Get];
@@ -340,14 +336,13 @@ mod tests {
                 let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
                 Box::new(route)
             };
-            tree_builder.add_route(route);
+            tree.add_route(route);
 
-            let tree = tree_builder.finalize();
             Router::new(tree, ResponseFinalizerBuilder::new().finalize())
         };
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let mut tree_builder = TreeBuilder::new();
+        let mut tree = Tree::new();
         let mut delegated_node = Node::new("var", SegmentType::Dynamic);
 
         let route = {
@@ -361,8 +356,7 @@ mod tests {
         };
 
         delegated_node.add_route(route);
-        tree_builder.add_child(delegated_node);
-        let tree = tree_builder.finalize();
+        tree.add_child(delegated_node);
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         // Ensure that top level tree has no route
@@ -385,8 +379,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     fn executes_response_finalizer_when_present() {
-        let tree_builder = TreeBuilder::new();
-        let tree = tree_builder.finalize();
+        let tree = Tree::new();
 
         let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
         let not_found_extender = |_s: &mut State, r: &mut Response| {
