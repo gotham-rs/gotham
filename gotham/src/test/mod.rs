@@ -4,7 +4,6 @@
 
 use std::net::{self, IpAddr, SocketAddr};
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
@@ -61,7 +60,7 @@ pub struct TestServer<NH = Router>
 where
     NH: NewHandler + Send + 'static,
 {
-    data: Rc<TestServerData<NH>>,
+    data: Arc<TestServerData<NH>>,
 }
 
 struct TestServerData<NH = Router>
@@ -108,7 +107,7 @@ where
         };
 
         Ok(TestServer {
-            data: Rc::new(data),
+            data: Arc::new(data),
         })
     }
 
@@ -145,13 +144,12 @@ where
             .into_future()
             .map(|_| ())
             .map_err(|_| ());
-
         {
             self.data.runtime.read().unwrap().spawn(f);
         }
 
         let connect = Box::new(
-            cs.map_err(|e| e.into())
+            cs.map_err(|e| unreachable!())
                 .and_then(|stream| future::ok(TestConnect { stream })),
         );
 
@@ -231,7 +229,7 @@ pub struct TestClient<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    connect: Box<Future<Item = TestConnect, Error = failure::Error>>,
+    connect: Box<Future<Item = TestConnect, Error = ()> + Send + Sync>,
     test_server: TestServer<NH>,
 }
 
@@ -344,17 +342,23 @@ where
 
     /// Send a constructed request using this `TestClient`, and await the response.
     pub fn perform<QB: Payload>(self, req: Request<QB>) -> Result<TestResponse> {
-        self.test_server
-            .run_request(self.connect.map_err(|e| e.into()).and_then(|c| {
-                Client::builder()
-                    .build(c)
-                    .request(req)
-                    .map_err(|e| e.into())
-            }))
-            .map(|response| TestResponse {
-                response,
-                reader: Box::new(self.test_server.clone()),
-            })
+        let timeout_duration = Duration::from_secs(self.test_server.data.timeout);
+        let timeout = Delay::new(timeout_duration);
+
+        let req_future = self.connect.map_err(|e| e.into()).and_then(|c| {
+            Client::builder()
+                .build(c)
+                .request(req)
+                .map_err(|e| e.into())
+        });
+
+        match self.test_server.run_future(req_future.select2(timeout))? {
+            future::Either::A((item, _)) => Ok(item),
+            future::Either::B(_) => Err("timed out".into())?,
+        }.map(|response| TestResponse {
+            response,
+            reader: Box::new(self.test_server.clone()),
+        })
     }
 }
 
@@ -563,7 +567,7 @@ mod tests {
             .perform();
 
         match res {
-            Err("timed out") => (),
+            //Err("timed out") => (),
             e @ Err(_) => {
                 e.unwrap();
             }

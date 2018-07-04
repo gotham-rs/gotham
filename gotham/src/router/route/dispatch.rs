@@ -65,7 +65,7 @@ where
             }
             Err(e) => {
                 trace!("[{}] error cloning handler", request_id(&state));
-                Box::new(future::err((state, e.into_handler_error())))
+                Box::new(future::err((state, e.compat().into_handler_error())))
             }
         }
     }

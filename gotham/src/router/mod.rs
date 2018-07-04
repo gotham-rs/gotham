@@ -222,7 +222,7 @@ mod tests {
         r: Router,
         method: Method,
         uri: &str,
-    ) -> Result<(State, Response<Body>), (State, HandlerError)> {
+    ) -> ::std::result::Result<(State, Response<Body>), (State, HandlerError)> {
         let uri = Uri::from_str(uri).unwrap();
 
         let mut state = State::new();
