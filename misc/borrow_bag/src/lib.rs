@@ -108,11 +108,10 @@ impl<V> BorrowBag<V> {
     /// let i: &u8 = bag.borrow(handle);
     /// assert_eq!(*i, 15);
     /// ```
-    pub fn borrow<T, N>(&self, handle: Handle<T, N>) -> &T
+    pub fn borrow<T, N>(&self, _handle: Handle<T, N>) -> &T
     where
         V: Lookup<T, N>,
     {
-        drop(handle); // Otherwise it's unused.
         Lookup::<T, N>::get_from(&self.v)
     }
 }

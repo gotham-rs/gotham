@@ -25,7 +25,6 @@ use router::Router;
 use service::GothamService;
 
 use error::*;
-
 mod request;
 
 pub use self::request::RequestBuilder;
@@ -71,6 +70,26 @@ where
     timeout: u64,
     runtime: RwLock<Runtime>,
     gotham_service: GothamService<NH>,
+}
+
+/// The `TestRequestError` type represents all error states that can result from evaluating a
+/// response future. See `TestServer::run_request` for usage.
+#[derive(Debug)]
+pub enum TestRequestError {
+    /// The response was not received before the timeout duration elapsed.
+    TimedOut,
+    /// A `std::io::Error` occurred before a response was received.
+    IoError(io::Error),
+    /// A `hyper::Error` occurred before a response was received.
+    HyperError(hyper::Error),
+    /// The URL could not be parsed when building the request.
+    UriError(UriError),
+}
+
+impl From<UriError> for TestRequestError {
+    fn from(error: UriError) -> TestRequestError {
+        TestRequestError::UriError(error)
+    }
 }
 
 impl<NH> Clone for TestServer<NH>
@@ -127,6 +146,7 @@ where
     }
 
     fn try_client_with_address(&self, client_addr: net::SocketAddr) -> Result<TestClient<NH>> {
+
         let (cs, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.

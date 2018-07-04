@@ -14,30 +14,29 @@ keywords = ["http", "async", "web", "framework", "blockchain"]
 [dependencies]
 log = "0.4"
 hyper = "0.12"
-serde = "1"
-serde_derive = "1"
-bincode = "1"
+serde = "1.0"
+serde_derive = "1.0"
+bincode = "1.0"
 mime = "0.3"
 futures = "0.1"
 futures-timer = "0.1"
 tokio = "0.1"
-tokio-core = "0.1.13"
+tokio-core = "0.1"
 mio = "0.6"
-borrow-bag = "1"
-url = "1"
+borrow-bag = "1.0"
+url = "1.7"
 uuid = { version = "0.6", features = ["v4"] }
 chrono = "0.4"
 base64 = "0.9"
-rand = "0.4"
+rand = "0.5"
 linked-hash-map = "0.5"
-num_cpus = "1.2"
+num_cpus = "1.8"
 crossbeam = "0.3"
 regex = "1.0"
 cookie = "0.10"
 http = "0.1.7"
 failure = "0.1.1"
 failure_derive = "0.1.1"
-
 
 [dev-dependencies]
 gotham_derive = { path = "../gotham_derive" }

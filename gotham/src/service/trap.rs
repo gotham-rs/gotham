@@ -7,7 +7,6 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::{io, mem};
 
 use failure;
-
 use futures::future::{self, Future, FutureResult, IntoFuture};
 use futures::Async;
 use hyper::{Body, Response, StatusCode};
@@ -17,7 +16,6 @@ use service::timing::Timer;
 use state::{request_id, State};
 
 type AnError = failure::Compat<failure::Error>;
-
 /// Instantiates a `Handler` from the given `NewHandler`, and invokes it with the request. If a
 /// panic occurs from `NewHandler::new_handler` or `Handler::handle`, it is trapped and will result
 /// in a `500 Internal Server Error` response.

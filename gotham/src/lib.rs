@@ -74,7 +74,6 @@ where
     A: ToSocketAddrs,
 {
     let (listener, addr) = tcp_listener(addr);
-    let new_handler = Arc::new(new_handler);
     let gotham_service = GothamService::new(new_handler);
     let protocol = Arc::new(Http::new());
 
@@ -88,7 +87,7 @@ where
         .incoming()
         .map_err(|e| panic!("error = {:?}", e))
         .for_each(move |socket| {
-            let service = gotham_service.connect(addr);
+            let service = gotham_service.connect(socket.peer_addr().unwrap());
             let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
             tokio::spawn(f);

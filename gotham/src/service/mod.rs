@@ -16,7 +16,7 @@ use hyper::{Body, Request, Response};
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
 use state::client_addr::put_client_addr;
-use state::{request_id, set_request_id, State};
+use state::{set_request_id, State};
 
 mod timing;
 mod trap;
@@ -27,21 +27,23 @@ pub(crate) struct GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    t: Arc<T>,
+    handler: Arc<T>,
 }
 
 impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    pub(crate) fn new(t: Arc<T>) -> GothamService<T> {
-        GothamService { t }
+    pub(crate) fn new(handler: T) -> GothamService<T> {
+        GothamService {
+            handler: Arc::new(handler),
+        }
     }
 
     pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
         ConnectedGothamService {
-            t: self.t.clone(),
             client_addr,
+            handler: self.handler.clone(),
         }
     }
 }
@@ -52,7 +54,7 @@ pub(crate) struct ConnectedGothamService<T>
 where
     T: NewHandler + 'static,
 {
-    t: Arc<T>,
+    handler: Arc<T>,
     client_addr: SocketAddr,
 }
 
@@ -88,15 +90,17 @@ where
         state.put(version);
         state.put(headers);
         state.put(body);
-        set_request_id(&mut state);
 
-        debug!(
-            "[DEBUG][{}][Thread][{:?}]",
-            request_id(&state),
-            thread::current().id(),
-        );
+        {
+            let request_id = set_request_id(&mut state);
+            debug!(
+                "[DEBUG][{}][Thread][{:?}]",
+                request_id,
+                thread::current().id(),
+            );
+        };
 
-        trap::call_handler(self.t.as_ref(), AssertUnwindSafe(state))
+        trap::call_handler(&*self.handler, AssertUnwindSafe(state))
     }
 }
 
@@ -117,7 +121,7 @@ mod tests {
 
     #[test]
     fn new_handler_closure() {
-        let service = GothamService::new(Arc::new(|| Ok(handler)));
+        let service = GothamService::new(|| Ok(handler));
 
         let req = Request::get("http://localhost/")
             .body(Body::empty())
@@ -135,7 +139,7 @@ mod tests {
             route.get("/").to(handler);
         });
 
-        let service = GothamService::new(Arc::new(router));
+        let service = GothamService::new(router);
 
         let req = Request::get("http://localhost/")
             .body(Body::empty())

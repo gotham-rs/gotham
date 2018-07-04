@@ -58,7 +58,7 @@ impl NewHandler for Router {
     // Creates a new Router instance to route new HTTP requests
     fn new_handler(&self) -> Result<Self::Instance> {
         trace!(" cloning instance");
-        Ok((*self).clone())
+        Ok(self.clone())
     }
 }
 

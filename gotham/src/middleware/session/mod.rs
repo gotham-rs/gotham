@@ -12,7 +12,7 @@ use cookie::{Cookie, CookieJar};
 use futures::{future, Future};
 use hyper::header::{HeaderMap, COOKIE, SET_COOKIE};
 use hyper::{Body, Response, StatusCode};
-use rand::Rng;
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 
 use super::{Middleware, NewMiddleware};
@@ -1189,6 +1189,7 @@ mod tests {
         m.backend
             .persist_session(identifier.clone(), &bytes)
             .unwrap();
+
 
         let received: Arc<Mutex<Option<u64>>> = Arc::new(Mutex::new(None));
         let r = received.clone();
