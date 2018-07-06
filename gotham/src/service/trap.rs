@@ -22,13 +22,12 @@ type AnError = failure::Compat<failure::Error>;
 ///
 /// Timing information is recorded and logged, except in the case of a panic where the timer is
 /// moved and cannot be recovered.
-pub(super) fn call_handler<'a, B, T>(
+pub(super) fn call_handler<'a, T>(
     t: &T,
     state: AssertUnwindSafe<State>,
 ) -> Box<Future<Item = Response<Body>, Error = AnError> + Send + 'a>
 where
     T: NewHandler + 'a,
-    B: Send + Default,
 {
     let timer = Timer::new();
 
@@ -59,7 +58,7 @@ where
     }
 }
 
-fn finalize_success_response<B>(
+fn finalize_success_response(
     timer: Timer,
     state: State,
     response: Response<Body>,
@@ -77,7 +76,7 @@ fn finalize_success_response<B>(
     future::ok(timing.add_to_response(response))
 }
 
-fn finalize_error_response<B>(
+fn finalize_error_response(
     timer: Timer,
     state: State,
     err: HandlerError,
