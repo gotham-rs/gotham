@@ -68,7 +68,7 @@ impl Node {
     pub(in router) fn select_route(
         &self,
         state: &State,
-    ) -> Result<&Box<Route + Send + Sync>, RouteNonMatch> {
+    ) -> Result<&Box<Route<ResBody = Body> + Send + Sync>, RouteNonMatch> {
         let mut err = Ok(());
 
         for r in self.routes.iter() {
@@ -213,7 +213,7 @@ impl Node {
 pub struct NodeBuilder {
     segment: String,
     segment_type: SegmentType,
-    routes: Vec<Box<Route + Send + Sync>>,
+    routes: Vec<Box<Route<ResBody = Body> + Send + Sync>>,
 
     delegating: bool,
     children: Vec<NodeBuilder>,
@@ -242,7 +242,7 @@ impl NodeBuilder {
 
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
-    pub(in router) fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+    pub(in router) fn add_route(&mut self, route: Box<Route<ResBody = Body> + Send + Sync>) {
         if route.delegation() == Delegation::External {
             if !self.routes.is_empty() {
                 panic!("Node which is externally delegating must have single Route");
