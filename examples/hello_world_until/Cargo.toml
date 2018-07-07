@@ -1,6 +1,6 @@
 [package]
-name = "gotham_examples_hello_world"
-description = "A Hello World example application for working with Gotham."
+name = "gotham_examples_hello_world_until"
+description = "A Hello World example application for working with Gotham. With graceful shutdown."
 version = "0.0.0"
 publish = false
 
@@ -9,3 +9,5 @@ gotham = { path = "../../gotham" }
 
 hyper = "0.11"
 mime = "0.3"
+tokio = "0.1"
+tokio-signal = "0.2"

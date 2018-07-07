@@ -11,6 +11,7 @@ members = [
 
     ## Examples (these crates are not published)
     "examples/hello_world",
+    "examples/hello_world_until",
 
     # Tera template
     "examples/templating/tera",
