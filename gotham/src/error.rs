@@ -1,8 +1,11 @@
 //use failure::{self, Backtrace, Context, Fail};
 //use std::fmt::{self, Display};
 
+use failure::Compat;
 pub use failure::Error;
 pub type Result<T> = ::std::result::Result<T, Error>;
+
+pub type CompatError = Compat<Error>;
 
 /*
  * TODO: revive or delete this.

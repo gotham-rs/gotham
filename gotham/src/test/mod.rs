@@ -9,7 +9,10 @@ use std::time::Duration;
 
 use failure;
 
-use futures::{future, sync::oneshot, Future, Stream};
+use futures::{future::{self, FutureResult},
+              sync::oneshot,
+              Future,
+              Stream};
 use futures_timer::Delay;
 use hyper::client::{connect::{Connect, Connected, Destination},
                     Client};
@@ -137,16 +140,40 @@ where
             (client, server)
         };
 
-        let f = self.data
-            .http
-            //.serve_connection(ss, service)
-            .serve_incoming(ss, || future::ok(self.data.gotham_service.connect(client_addr)))
-            .into_future()
-            .map(|_| ())
-            .map_err(|_| ());
         {
+            let f = self.data
+                .http
+                //.serve_connection(ss, service)
+                .serve_incoming(ss, || {
+                    let ok: FutureResult<_, CompatError> = future::ok(self.data.gotham_service.connect(client_addr));
+                    ok
+                })
+                .into_future()
+                .then(|_| future::ok(()));
             self.data.runtime.read().unwrap().spawn(f);
-        }
+
+            /*
+            fn(
+                std::result::Result<
+                (
+                    std::option::Option<
+                        hyper::server::conn::Connecting<
+                            tokio::net::TcpStream,
+                            futures::FutureResult<
+                                service::ConnectedGothamService<NH>,
+                                _
+                            >
+                        >
+                    >,
+                    hyper::server::conn::Serve<tokio::net::Incoming, [closure@gotham/src/test/mod.rs:144:37: 144:97 self:_, client_addr:_]>
+                ),
+                (
+                    hyper::Error,
+                    hyper::server::conn::Serve<tokio::net::Incoming, [closure@gotham/src/test/mod.rs:144:37: 144:97 self:_, client_addr:_]>
+                )
+                >
+                */
+        };
 
         let connect = Box::new(
             cs.map_err(|e| unreachable!())
