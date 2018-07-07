@@ -151,40 +151,12 @@ where
                 .into_future()
                 .then(|_| future::ok(()));
             self.data.runtime.read().unwrap().spawn(f);
-
-            /*
-            fn(
-                std::result::Result<
-                (
-                    std::option::Option<
-                        hyper::server::conn::Connecting<
-                            tokio::net::TcpStream,
-                            futures::FutureResult<
-                                service::ConnectedGothamService<NH>,
-                                _
-                            >
-                        >
-                    >,
-                    hyper::server::conn::Serve<tokio::net::Incoming, [closure@gotham/src/test/mod.rs:144:37: 144:97 self:_, client_addr:_]>
-                ),
-                (
-                    hyper::Error,
-                    hyper::server::conn::Serve<tokio::net::Incoming, [closure@gotham/src/test/mod.rs:144:37: 144:97 self:_, client_addr:_]>
-                )
-                >
-                */
         };
 
         let connect = Box::new(
             cs.map_err(|e| unreachable!())
                 .and_then(|stream| future::ok(TestConnect { stream })),
         );
-
-        /*
-        let client = Core::new()
-            .map(|core| Client::builder().build(TestConnect { stream: cs }))
-            .unwrap();
-        */
 
         Ok(TestClient {
             connect,
