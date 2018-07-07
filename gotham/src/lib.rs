@@ -65,7 +65,17 @@ use service::GothamService;
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs,
+    A: ToSocketAddrs + 'static,
+{
+    let server = create_server(addr, new_handler);
+    tokio::run(server);
+}
+
+/// Returns future which combines TCP listener with Gotham application.
+pub fn create_server<NH, A>(addr: A, new_handler: NH) -> impl Future<Item = (), Error = ()>
+    where
+        NH: NewHandler + 'static,
+        A: ToSocketAddrs,
 {
     let (listener, addr) = tcp_listener(addr);
     let gotham_service = GothamService::new(new_handler);
@@ -73,11 +83,11 @@ where
 
     info!(
         target: "gotham::start",
-        " Gotham listening on http://{}",
+        " Starting Gotham to listen on http://{}",
         addr
     );
 
-    let server = listener
+    listener
         .incoming()
         .map_err(|e| panic!("error = {:?}", e))
         .for_each(move |socket| {
@@ -86,9 +96,7 @@ where
 
             tokio::spawn(f);
             Ok(())
-        });
-
-    tokio::run(server);
+        })
 }
 
 fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
