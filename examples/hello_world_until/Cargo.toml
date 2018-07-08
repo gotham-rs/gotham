@@ -11,3 +11,7 @@ hyper = "0.11"
 mime = "0.3"
 tokio = "0.1"
 tokio-signal = "0.2"
+
+[target.'cfg(unix)'.dev-dependencies]
+nix = "0.11"
+tokio-core = "0.1"

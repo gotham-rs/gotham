@@ -7,6 +7,11 @@ extern crate mime;
 extern crate tokio;
 extern crate tokio_signal;
 
+#[cfg(all(test, unix))]
+extern crate nix;
+#[cfg(all(test, unix))]
+extern crate tokio_core;
+
 use hyper::{Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
@@ -64,6 +69,15 @@ mod tests {
     use super::*;
     use gotham::test::TestServer;
 
+    #[cfg(unix)]
+    use hyper::Client;
+    #[cfg(unix)]
+    use nix::sys::signal::{kill, Signal};
+    #[cfg(unix)]
+    use std::thread;
+    #[cfg(unix)]
+    use std::time::Duration;
+
     #[test]
     fn receive_hello_world_response() {
         let test_server = TestServer::new(|| Ok(say_hello)).unwrap();
@@ -77,5 +91,44 @@ mod tests {
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Hello World!");
+    }
+
+    #[cfg(unix)]
+    fn try_request() -> bool {
+        let mut core = tokio_core::reactor::Core::new().unwrap();
+        let client = Client::new(&core.handle());
+
+        let uri = "http://127.0.0.1:7878/";
+        let uri_parsed = uri.parse().unwrap();
+        let work = client.get(uri_parsed).map(|res| {
+            assert_eq!(res.status(), StatusCode::Ok);
+        });
+
+        match core.run(work) {
+            Ok(_) => true,
+
+            Err(error) => {
+                eprintln!("Unable to get \"{}\": {}", uri, error);
+                false
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn signal_self() {
+        let thread_handle = thread::spawn(|| main());
+
+        // Wait until server will be able to answer.
+        let mut max_retries = 25;
+        while (max_retries != 0) && !try_request() {
+            max_retries -= 1;
+            thread::sleep(Duration::from_millis(200));
+        }
+        assert_ne!(max_retries, 0);
+
+        // Send SIGINT to self.
+        kill(nix::unistd::getpid(), Signal::SIGINT).unwrap();
+        thread_handle.join().unwrap();
     }
 }
