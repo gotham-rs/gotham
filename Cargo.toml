@@ -12,6 +12,9 @@ members = [
     ## Examples (these crates are not published)
     "examples/hello_world",
 
+    # Tera template
+    "examples/templating/tera",
+
     # routing
     "examples/routing/introduction",
     "examples/routing/http_verbs",
