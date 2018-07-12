@@ -141,11 +141,12 @@ where
         };
 
         {
+            let service = self.data.gotham_service;
             let f = self.data
                 .http
                 //.serve_connection(ss, service)
-                .serve_incoming(ss, || {
-                    let ok: FutureResult<_, CompatError> = future::ok(self.data.gotham_service.connect(client_addr));
+                .serve_incoming(ss, move || {
+                    let ok: FutureResult<_, CompatError> = future::ok(service.connect(client_addr));
                     ok
                 })
                 .into_future()
@@ -177,21 +178,25 @@ where
         let timeout_duration = Duration::from_secs(self.data.timeout);
         let timeout = Delay::new(timeout_duration);
 
-        match self.run_future(f.select2(timeout))? {
+        match self.run_future::<_, _, CompatError>(f.select2(timeout).map_err(|either| {
+            match either {
+                future::Either::A((req_err, _)) => req_err.into(),
+                future::Either::B((times_up, _)) => times_up.into(),
+            }.compat()
+        }))? {
             future::Either::A((item, _)) => Ok(item),
-            future::Either::B(_) => Err("timed out".into())?,
+            future::Either::B(_) => Err(failure::err_msg("timed out")),
         }
     }
     /// Runs a future inside of the internal runtime.
     ///
     /// This blocks on the result of the future and behaves like a synchronous
     /// polling call of the future, even if it might be on another thread.
-    fn run_future<F, R, E, L>(&mut self, future: F) -> Result<R>
+    fn run_future<F, R, E>(&mut self, future: F) -> Result<R>
     where
         F: Send + 'static + Future<Item = R, Error = E>,
         R: Send + 'static,
-        E: Into<L>,
-        L: failure::Fail,
+        E: failure::Fail,
     {
         let (tx, rx) = oneshot::channel();
         {
