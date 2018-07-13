@@ -70,9 +70,11 @@ pub fn create_response(
     body: Option<DataMime>,
 ) -> Response<Body> {
     let mut builder = Response::builder();
-    extend_response(state, status, &mut builder, body.map(|(_, mime)| mime));
+    let mime = body.clone().map(|(_, mime)| mime);
+
+    extend_response(state, status, &mut builder, mime);
     match body {
-        Some((body, mime)) => match *Method::borrow_from(state) {
+        Some((body, _)) => match *Method::borrow_from(state) {
             Method::HEAD => builder.body(Body::empty()),
             _ => builder.body(body.into()),
         },

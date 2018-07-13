@@ -35,7 +35,7 @@ where
 pub struct NoopResponseExtender;
 
 impl StaticResponseExtender<Body> for NoopResponseExtender {
-    fn extend(state: &mut State, res: &mut Response<Body>) {
+    fn extend(state: &mut State, _res: &mut Response<Body>) {
         trace!(
             "[{}] NoopResponseExtender invoked, does not make any changes to Response",
             request_id(&state)
@@ -45,7 +45,7 @@ impl StaticResponseExtender<Body> for NoopResponseExtender {
 }
 
 impl ResponseExtender<Body> for NoopResponseExtender {
-    fn extend(&self, state: &mut State, res: &mut Response<Body>) {
+    fn extend(&self, state: &mut State, _res: &mut Response<Body>) {
         trace!(
             "[{}] NoopResponseExtender invoked on instance, does not make any changes to Response",
             request_id(&state)

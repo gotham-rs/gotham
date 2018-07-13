@@ -794,7 +794,7 @@ fn state_cookies(state: &State) -> CookieJar {
         .iter()
         .flat_map(|cv| cv.to_str())
         .flat_map(|cs| Cookie::parse(cs.to_owned()))
-        .fold(CookieJar::new(), |jar, cookie| {
+        .fold(CookieJar::new(), |mut jar, cookie| {
             jar.add_original(cookie);
             jar
         })
@@ -1189,7 +1189,6 @@ mod tests {
         m.backend
             .persist_session(identifier.clone(), &bytes)
             .unwrap();
-
 
         let received: Arc<Mutex<Option<u64>>> = Arc::new(Mutex::new(None));
         let r = received.clone();

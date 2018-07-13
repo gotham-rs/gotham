@@ -150,11 +150,11 @@ where
                 })
                 .into_future()
                 .then(|_| future::ok(()));
-            self.data.runtime.read().unwrap().spawn(f);
+            self.data.runtime.write().unwrap().spawn(f);
         };
 
         let connect = Box::new(
-            cs.map_err(|e| unreachable!())
+            cs.map_err(|_| unreachable!())
                 .and_then(|stream| future::ok(TestConnect { stream })),
         );
 
@@ -168,7 +168,7 @@ where
     ///
     /// If the future came from a different instance of `TestServer`, the event loop will run until
     /// the timeout is triggered.
-    fn run_request<F>(&self, f: F) -> Result<F::Item>
+    fn run_request<F>(&mut self, f: F) -> Result<F::Item>
     where
         F: Future + Send + 'static,
         F::Error: failure::Fail + Sized,
@@ -177,7 +177,7 @@ where
         let timeout_duration = Duration::from_secs(self.data.timeout);
         let timeout = Delay::new(timeout_duration);
 
-        match self.run_future::<_, _, CompatError>(f.select2(timeout).map_err(|either| {
+        match self.run_future(f.select2(timeout).map_err(|either| {
             let e: failure::Error = match either {
                 future::Either::A((req_err, _)) => req_err.into(),
                 future::Either::B((times_up, _)) => times_up.into(),
@@ -200,7 +200,7 @@ where
     {
         self.data
             .runtime
-            .read()
+            .write()
             .unwrap()
             .block_on(future)
             .map_err(|e| e.into())
@@ -211,7 +211,7 @@ impl<NH> BodyReader for TestServer<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    fn read_body(&self, response: Response<Body>) -> Result<Vec<u8>> {
+    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>> {
         let mut buf = Vec::new();
 
         let r = {
@@ -342,12 +342,12 @@ where
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform<QB: Payload>(self, req: Request<QB>) -> Result<TestResponse> {
+    pub fn perform<QB: Payload>(mut self, req: Request<QB>) -> Result<TestResponse> {
         let req_future = self.connect
             .and_then(|co| Ok(Client::builder().build(co)))
             .and_then(|cl| {
                 cl.request(req)
-                    .map_err(|e| failure::err_msg("request failed").compat())
+                    .map_err(|_| failure::err_msg("request failed").compat())
             });
 
         self.test_server
@@ -362,7 +362,7 @@ where
 trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
     /// response holds a buffer containing all bytes of the response body.
-    fn read_body(&self, response: Response<Body>) -> Result<Vec<u8>>;
+    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>>;
 }
 
 /// Wrapping struct for the `Response` returned by a `TestClient`. Provides access to the
@@ -422,7 +422,7 @@ impl DerefMut for TestResponse {
 impl TestResponse {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
-    pub fn read_body(self) -> Result<Vec<u8>> {
+    pub fn read_body(mut self) -> Result<Vec<u8>> {
         self.reader.read_body(self.response)
     }
 
@@ -447,7 +447,7 @@ impl Connect for TestConnect {
     type Error = failure::Compat<failure::Error>;
     type Future = Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send>;
 
-    fn connect(&self, dst: Destination) -> Self::Future {
+    fn connect(&self, _dst: Destination) -> Self::Future {
         Box::new(future::ok((self.stream, Connected::new())))
     }
 }
@@ -600,7 +600,7 @@ mod tests {
 
     #[test]
     fn async_echo() {
-        fn handler<B>(mut state: State) -> Box<HandlerFuture> {
+        fn handler(mut state: State) -> Box<HandlerFuture> {
             let f = Body::take_from(&mut state)
                 .concat2()
                 .then(move |full_body| match full_body {
