@@ -10,7 +10,6 @@ use std::time::Duration;
 use failure;
 
 use futures::{future::{self, FutureResult},
-              sync::oneshot,
               Future,
               Stream};
 use futures_timer::Delay;
@@ -179,10 +178,11 @@ where
         let timeout = Delay::new(timeout_duration);
 
         match self.run_future::<_, _, CompatError>(f.select2(timeout).map_err(|either| {
-            match either {
+            let e: failure::Error = match either {
                 future::Either::A((req_err, _)) => req_err.into(),
                 future::Either::B((times_up, _)) => times_up.into(),
-            }.compat()
+            };
+            e.compat()
         }))? {
             future::Either::A((item, _)) => Ok(item),
             future::Either::B(_) => Err(failure::err_msg("timed out")),
@@ -198,15 +198,12 @@ where
         R: Send + 'static,
         E: failure::Fail,
     {
-        let (tx, rx) = oneshot::channel();
-        {
-            self.data.runtime.read().unwrap().spawn(
-                future
-                    .map_err(|e| e.into())
-                    .then(move |r| tx.send(r).map_err(|_| unreachable!())),
-            );
-        }
-        Ok(rx.wait().unwrap()?)
+        self.data
+            .runtime
+            .read()
+            .unwrap()
+            .block_on(future)
+            .map_err(|e| e.into())
     }
 }
 
@@ -233,7 +230,7 @@ pub struct TestClient<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    connect: Box<Future<Item = TestConnect, Error = ()> + Send + Sync>,
+    connect: Box<Future<Item = TestConnect, Error = CompatError> + Send + Sync>,
     test_server: TestServer<NH>,
 }
 
@@ -346,23 +343,22 @@ where
 
     /// Send a constructed request using this `TestClient`, and await the response.
     pub fn perform<QB: Payload>(self, req: Request<QB>) -> Result<TestResponse> {
-        let timeout_duration = Duration::from_secs(self.test_server.data.timeout);
-        let timeout = Delay::new(timeout_duration);
+        let req_future = self.connect
+            .map_err(|e| e.into())
+            .and_then(|c| {
+                Client::builder()
+                    .build(c)
+                    .request(req)
+                    .map_err(|e| Error::from(e).compat())
+            })
+            .map_err(|e| Error::from(e).compat());
 
-        let req_future = self.connect.map_err(|e| e.into()).and_then(|c| {
-            Client::builder()
-                .build(c)
-                .request(req)
-                .map_err(|e| e.into())
-        });
-
-        match self.test_server.run_future(req_future.select2(timeout))? {
-            future::Either::A((item, _)) => Ok(item),
-            future::Either::B(_) => Err("timed out".into())?,
-        }.map(|response| TestResponse {
-            response,
-            reader: Box::new(self.test_server.clone()),
-        })
+        self.test_server
+            .run_request(req_future)
+            .map(|response| TestResponse {
+                response,
+                reader: Box::new(self.test_server.clone()),
+            })
     }
 }
 
