@@ -170,7 +170,7 @@ where
     /// the timeout is triggered.
     fn run_request<F>(&self, f: F) -> Result<F::Item>
     where
-        F: Future + Sync + Send + 'static,
+        F: Future + Send + 'static,
         F::Error: failure::Fail + Sized,
         F::Item: Send,
     {
@@ -344,14 +344,11 @@ where
     /// Send a constructed request using this `TestClient`, and await the response.
     pub fn perform<QB: Payload>(self, req: Request<QB>) -> Result<TestResponse> {
         let req_future = self.connect
-            .map_err(|e| e.into())
-            .and_then(|c| {
-                Client::builder()
-                    .build(c)
-                    .request(req)
-                    .map_err(|e| Error::from(e).compat())
-            })
-            .map_err(|e| Error::from(e).compat());
+            .and_then(|co| Ok(Client::builder().build(co)))
+            .and_then(|cl| {
+                cl.request(req)
+                    .map_err(|e| failure::err_msg("request failed").compat())
+            });
 
         self.test_server
             .run_request(req_future)
