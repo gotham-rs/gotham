@@ -1,5 +1,5 @@
 [package]
-name = "gotham_examples_tera_templates"
+name = "gotham_examples_templating_tera"
 description = "A Tera template engine usage example application for Gotham."
 version = "0.0.0"
 publish = false
@@ -9,5 +9,5 @@ gotham = { path = "../../../gotham" }
 
 hyper = "0.11"
 mime = "0.3"
-tera = "0.11.8"
+tera = "0.11"
 lazy_static = "1.0"

@@ -1,17 +1,17 @@
-# Tera Template
+# Templating using Tera
 
 An example usage of Tera template engine working with Gotham.
 
 ## Running
 
-From the `examples/tera_template` directory:
+From the `examples/templating/tera` directory:
 
 ```
 Terminal 1:
 $ cargo run
-   Compiling gotham_examples_tera_templates (file:///.../examples/templating/tera)
+   Compiling gotham_examples_templating_tera (file:///.../examples/templating/tera)
     Finished dev [unoptimized + debuginfo] target(s) in 4.26 secs
-     Running `../hello_world`
+     Running `../gotham_examples_templating_tera`
   Listening for requests at http://127.0.0.1:7878
 
 Terminal 2:
@@ -45,7 +45,6 @@ $ curl -v http://127.0.0.1:7878/
 </body>
 </html>
 * Connection #0 to host 127.0.0.1 left intact
-
 ```
 
 ## License
