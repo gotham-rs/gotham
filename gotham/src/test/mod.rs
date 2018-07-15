@@ -213,16 +213,10 @@ where
     NH: NewHandler + Send + 'static,
 {
     fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>> {
-        let mut buf = Vec::new();
+        let f = response.into_body();
+        let f = f.concat2();
 
-        let r = {
-            let f = response.body();
-            let f = f.for_each(|chunk| future::ok(buf.extend(chunk.into_iter())));
-
-            self.run_future(f)
-        };
-
-        Ok(r.map(|_| buf)?)
+        self.run_future(f).map(|chunk| chunk.into_iter().collect())
     }
 }
 
