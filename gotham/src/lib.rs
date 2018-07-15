@@ -78,8 +78,15 @@ where
     NH: NewHandler + 'static,
     A: ToSocketAddrs,
 {
-    let mut runtime = new_runtime(threads);
+    start_with_runtime(addr, new_handler, new_runtime(threads))
+}
 
+/// Starts a Gotham application with a designated backing `Runtime`.
+pub fn start_with_runtime<NH, A>(addr: A, new_handler: NH, mut runtime: Runtime)
+where
+    NH: NewHandler + 'static,
+    A: ToSocketAddrs,
+{
     let (listener, addr) = tcp_listener(addr);
     let gotham_service = GothamService::new(new_handler);
     let protocol = Arc::new(Http::<Chunk>::new());
