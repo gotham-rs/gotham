@@ -72,7 +72,7 @@ where
     http: Http,
     timeout: u64,
     runtime: RwLock<Runtime>,
-    gotham_service: GothamService<NH>,
+    gotham_service: Arc<GothamService<NH>>,
 }
 
 impl<NH> Clone for TestServer<NH>
@@ -105,7 +105,7 @@ where
             http: Http::new(),
             timeout,
             runtime: RwLock::new(Runtime::new().unwrap()),
-            gotham_service: GothamService::new(new_handler),
+            gotham_service: Arc::new(GothamService::new(new_handler)),
         };
 
         Ok(TestServer {
@@ -140,7 +140,8 @@ where
         };
 
         {
-            let service = self.data.gotham_service;
+            let data = self.data.clone();
+            let service = data.gotham_service.clone();
             let f = self.data
                 .http
                 //.serve_connection(ss, service)
