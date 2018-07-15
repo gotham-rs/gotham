@@ -16,7 +16,7 @@ matrix:
       env:
         # Give a useful display name in the job list.
         - SHARD=rustfmt
-        - PATH=$HOME/.cargo/bin/$PATH
+        - PATH=$HOME/.cargo/bin/:$PATH
       before_script:
         - rustup component add --toolchain stable rustfmt-preview
       script:
