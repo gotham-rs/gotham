@@ -56,17 +56,30 @@ use std::sync::Arc;
 use futures::{Future, Stream};
 use hyper::server::Http;
 use hyper::Chunk;
+use tokio::executor::{self, thread_pool};
 use tokio::net::TcpListener;
+use tokio::runtime::{self, Runtime};
 
 use handler::NewHandler;
 use service::GothamService;
 
-/// Starts a Gotham application.
+/// Starts a Gotham application with the default number of threads.
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs,
 {
+    start_with_num_threads(addr, new_handler, num_cpus::get())
+}
+
+/// Starts a Gotham application with a designated number of threads.
+pub fn start_with_num_threads<NH, A>(addr: A, new_handler: NH, threads: usize)
+where
+    NH: NewHandler + 'static,
+    A: ToSocketAddrs,
+{
+    let mut runtime = new_runtime(threads);
+
     let (listener, addr) = tcp_listener(addr);
     let gotham_service = GothamService::new(new_handler);
     let protocol = Arc::new(Http::<Chunk>::new());
@@ -84,11 +97,25 @@ where
             let service = gotham_service.connect(socket.peer_addr().unwrap());
             let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
-            tokio::spawn(f);
+            executor::spawn(f);
             Ok(())
         });
 
-    tokio::run(server);
+    runtime.spawn(server);
+    runtime.shutdown_on_idle().wait().unwrap();
+}
+
+fn new_runtime(threads: usize) -> Runtime {
+    let mut pool_builder = thread_pool::Builder::new();
+
+    pool_builder
+        .name_prefix("gotham-worker-")
+        .pool_size(threads);
+
+    runtime::Builder::new()
+        .threadpool_builder(pool_builder)
+        .build()
+        .unwrap()
 }
 
 fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
