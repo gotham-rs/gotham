@@ -879,11 +879,11 @@ mod tests {
                 out.write_str("string")
             }
 
-            fn visit_string<E>(self, v: String) -> Result<Vec<u8>, E>
+            fn visit_str<E>(self, v: &str) -> Result<Vec<u8>, E>
             where
                 E: Error,
             {
-                Ok(v.into_bytes())
+                Ok(v.as_bytes().to_vec())
             }
         }
     }
