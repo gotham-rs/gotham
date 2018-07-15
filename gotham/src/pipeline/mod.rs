@@ -168,6 +168,15 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
     PipelineBuilder { t: () }
 }
 
+/// Constructs a pipeline from a single middleware.
+pub fn single_middleware<M>(m: M) -> Pipeline<(M, ())>
+where
+    M: NewMiddleware,
+    M::Instance: Send + 'static,
+{
+    new_pipeline().add(m).build()
+}
+
 /// Allows a pipeline to be defined by adding `NewMiddleware` values, and building a `Pipeline`.
 ///
 /// # Examples

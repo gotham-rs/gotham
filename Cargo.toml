@@ -11,6 +11,7 @@ members = [
 
     ## Examples (these crates are not published)
     "examples/hello_world",
+    "examples/shared_state",
 
     # routing
     "examples/routing/introduction",
