@@ -56,7 +56,7 @@ use std::sync::Arc;
 use futures::{Future, Stream};
 use hyper::server::Http;
 use hyper::Chunk;
-use tokio::executor::thread_pool;
+use tokio::executor::{self, thread_pool};
 use tokio::net::TcpListener;
 use tokio::runtime::{self, Runtime, TaskExecutor};
 
@@ -67,7 +67,7 @@ use service::GothamService;
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs,
+    A: ToSocketAddrs + 'static,
 {
     start_with_num_threads(addr, new_handler, num_cpus::get())
 }
@@ -76,7 +76,7 @@ where
 pub fn start_with_num_threads<NH, A>(addr: A, new_handler: NH, threads: usize)
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs,
+    A: ToSocketAddrs + 'static,
 {
     let runtime = new_runtime(threads);
     start_on_executor(addr, new_handler, runtime.executor());
@@ -89,7 +89,20 @@ where
 pub fn start_on_executor<NH, A>(addr: A, new_handler: NH, executor: TaskExecutor)
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs,
+    A: ToSocketAddrs + 'static,
+{
+    executor.spawn(init_server(addr, new_handler));
+}
+
+/// Returns a `Future` used to spawn an Gotham application.
+///
+/// This is used internally, but exposed in case the developer intends on doing any
+/// manual wiring that isn't supported by the Gotham API. It's unlikely that this will
+/// be required in most use cases; it's mainly exposed for shutdown handling.
+pub fn init_server<NH, A>(addr: A, new_handler: NH) -> impl Future<Item = (), Error = ()>
+where
+    NH: NewHandler + 'static,
+    A: ToSocketAddrs + 'static,
 {
     let (listener, addr) = tcp_listener(addr);
     let gotham_service = GothamService::new(new_handler);
@@ -101,22 +114,17 @@ where
         addr
     );
 
-    let executor = Arc::new(executor);
-
-    let main = executor.clone();
-    let executor = executor.clone();
-
-    let server = listener
+    listener
         .incoming()
-        .map_err(|e| panic!("error = {:?}", e))
+        .map_err(|e| panic!("socket error = {:?}", e))
         .for_each(move |socket| {
             let service = gotham_service.connect(socket.peer_addr().unwrap());
             let handler = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
-            Ok(executor.spawn(handler))
-        });
+            executor::spawn(handler);
 
-    main.spawn(server);
+            Ok(())
+        })
 }
 
 fn new_runtime(threads: usize) -> Runtime {
@@ -134,7 +142,7 @@ fn new_runtime(threads: usize) -> Runtime {
 
 fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
 where
-    A: ToSocketAddrs,
+    A: ToSocketAddrs + 'static,
 {
     let addr = match addr.to_socket_addrs().map(|ref mut i| i.next()) {
         Ok(Some(a)) => a,
