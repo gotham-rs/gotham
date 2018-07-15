@@ -32,7 +32,7 @@ where
     T: Clone + RefUnwindSafe + StateData + Sync,
 {
     /// Creates a new middleware binding, taking ownership of the state data.
-    pub fn with(t: T) -> Self {
+    pub fn new(t: T) -> Self {
         Self { t }
     }
 }

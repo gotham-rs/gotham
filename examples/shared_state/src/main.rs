@@ -84,7 +84,7 @@ fn router() -> Router {
     let counter = RequestCounter::new();
 
     // create our state middleware to share the counter
-    let middleware = StateMiddleware::with(counter);
+    let middleware = StateMiddleware::new(counter);
 
     // create a middleware pipeline from our middleware
     let pipeline = single_middleware(middleware);
