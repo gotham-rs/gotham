@@ -56,9 +56,9 @@ use std::sync::Arc;
 use futures::{Future, Stream};
 use hyper::server::Http;
 use hyper::Chunk;
-use tokio::executor::{self, thread_pool};
+use tokio::executor::thread_pool;
 use tokio::net::TcpListener;
-use tokio::runtime::{self, Runtime};
+use tokio::runtime::{self, Runtime, TaskExecutor};
 
 use handler::NewHandler;
 use service::GothamService;
@@ -78,11 +78,15 @@ where
     NH: NewHandler + 'static,
     A: ToSocketAddrs,
 {
-    start_with_runtime(addr, new_handler, new_runtime(threads))
+    let runtime = new_runtime(threads);
+    start_on_executor(addr, new_handler, runtime.executor());
+    runtime.shutdown_on_idle().wait().unwrap();
 }
 
-/// Starts a Gotham application with a designated backing `Runtime`.
-pub fn start_with_runtime<NH, A>(addr: A, new_handler: NH, mut runtime: Runtime)
+/// Starts a Gotham application with a designated backing `TaskExecutor`.
+///
+/// This function can be used to spawn the server on an existing `Runtime`.
+pub fn start_on_executor<NH, A>(addr: A, new_handler: NH, executor: TaskExecutor)
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs,
@@ -97,19 +101,22 @@ where
         addr
     );
 
+    let executor = Arc::new(executor);
+
+    let main = executor.clone();
+    let executor = executor.clone();
+
     let server = listener
         .incoming()
         .map_err(|e| panic!("error = {:?}", e))
         .for_each(move |socket| {
             let service = gotham_service.connect(socket.peer_addr().unwrap());
-            let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
+            let handler = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
-            executor::spawn(f);
-            Ok(())
+            Ok(executor.spawn(handler))
         });
 
-    runtime.spawn(server);
-    runtime.shutdown_on_idle().wait().unwrap();
+    main.spawn(server);
 }
 
 fn new_runtime(threads: usize) -> Runtime {
