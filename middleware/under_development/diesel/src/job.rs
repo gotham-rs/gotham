@@ -14,7 +14,7 @@ use state_data::Diesel;
 pub fn run_with_diesel<F, C, T, E, R>(
     state: State,
     f: F,
-) -> Box<Future<Item = (State, T), Error = (State, E)>>
+) -> Box<Future<Item = (State, T), Error = (State, E)> + Send>
 where
     C: Connection + 'static,
     F: FnOnce(&C) -> R + Send + 'static,

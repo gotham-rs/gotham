@@ -50,7 +50,7 @@
 //! #
 //! #   pub fn run_with_worker(
 //! #       state: State,
-//! #   ) -> Box<Future<Item = (State, u64), Error = (State, Impossible)>> {
+//! #   ) -> Box<Future<Item = (State, u64), Error = (State, Impossible)> + Send> {
 //! #       gotham_middleware_workers::run_with_worker(state, |_state: &mut State| || Ok(1))
 //! #   }
 //! # }

@@ -37,7 +37,7 @@ pub trait PreparedJob {
 /// The type returned after executing a job of type `J`. As the worker takes ownership of the
 /// `State` it must return that ownership when the future completes.
 pub type WorkerFuture<J> =
-    Future<Item = (State, <J as Job>::Item), Error = (State, <J as Job>::Error)>;
+    Future<Item = (State, <J as Job>::Item), Error = (State, <J as Job>::Error)> + Send;
 
 /// Runs the given job on the worker pool.
 ///
