@@ -31,6 +31,7 @@ extern crate rand;
 extern crate regex;
 #[macro_use]
 extern crate serde;
+extern crate tokio;
 extern crate tokio_core;
 extern crate url;
 extern crate uuid;
@@ -48,25 +49,46 @@ pub mod router;
 mod service;
 pub mod state;
 pub mod test;
-mod os;
 
-pub use os::current::start_with_num_threads;
+use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::Arc;
 
-use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
+use futures::{Future, Stream};
+use hyper::server::Http;
+use hyper::Chunk;
+use tokio::net::TcpListener;
+
 use handler::NewHandler;
+use service::GothamService;
 
-/// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
-///
-/// ## Windows
-///
-/// An additional thread is used on Windows to accept connections.
+/// Starts a Gotham application.
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs,
 {
-    let threads = num_cpus::get();
-    start_with_num_threads(addr, threads, new_handler)
+    let (listener, addr) = tcp_listener(addr);
+    let gotham_service = GothamService::new(new_handler);
+    let protocol = Arc::new(Http::<Chunk>::new());
+
+    info!(
+        target: "gotham::start",
+        " Gotham listening on http://{}",
+        addr
+    );
+
+    let server = listener
+        .incoming()
+        .map_err(|e| panic!("error = {:?}", e))
+        .for_each(move |socket| {
+            let service = gotham_service.connect(socket.peer_addr().unwrap());
+            let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
+
+            tokio::spawn(f);
+            Ok(())
+        });
+
+    tokio::run(server);
 }
 
 fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
@@ -79,7 +101,7 @@ where
         Err(_) => panic!("unable to parse listener address"),
     };
 
-    let listener = TcpListener::bind(addr).expect("unable to open TCP listener");
+    let listener = TcpListener::bind(&addr).expect("unable to open TCP listener");
 
     (listener, addr)
 }

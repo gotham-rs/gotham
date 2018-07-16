@@ -1,9 +1,9 @@
 //! Helpers for HTTP response generation
 
-use std::borrow::Cow;
-use hyper::{Method, Response, StatusCode};
 use hyper::header::{ContentLength, ContentType, Location};
+use hyper::{Method, Response, StatusCode};
 use mime::Mime;
+use std::borrow::Cow;
 
 use helpers::http::header::{XContentTypeOptions, XFrameOptions, XRequestId, XXssProtection};
 use state::{request_id, FromState, State};
@@ -386,16 +386,11 @@ pub fn extend_response(state: &State, res: &mut Response, status: StatusCode, bo
 pub fn set_headers(state: &State, res: &mut Response, mime: Option<Mime>, length: Option<u64>) {
     let headers = res.headers_mut();
 
-    match length {
-        Some(length) => headers.set(ContentLength(length)),
-        None => headers.set(ContentLength(0)),
+    if let Some(mime_type) = mime {
+        headers.set(ContentType(mime_type));
     }
 
-    match mime {
-        Some(mime) => headers.set(ContentType(mime)),
-        None => (),
-    };
-
+    headers.set(ContentLength(length.unwrap_or(0)));
     headers.set(XRequestId(request_id(state).into()));
     headers.set(XFrameOptions::Deny);
     headers.set(XXssProtection::EnableBlock);

@@ -18,8 +18,8 @@ mod handle;
 mod lookup;
 
 pub use append::Append;
-pub use lookup::Lookup;
 pub use handle::Handle;
+pub use lookup::Lookup;
 
 /// `BorrowBag` allows the storage of any value using `add(T)`, and returns a `Handle` which can be
 /// used to borrow the value back later. As the `BorrowBag` is add-only, `Handle` values remain
@@ -108,11 +108,10 @@ impl<V> BorrowBag<V> {
     /// let i: &u8 = bag.borrow(handle);
     /// assert_eq!(*i, 15);
     /// ```
-    pub fn borrow<T, N>(&self, handle: Handle<T, N>) -> &T
+    pub fn borrow<T, N>(&self, _handle: Handle<T, N>) -> &T
     where
         V: Lookup<T, N>,
     {
-        drop(handle); // Otherwise it's unused.
         Lookup::<T, N>::get_from(&self.v)
     }
 }

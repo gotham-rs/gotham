@@ -1,5 +1,6 @@
 //! Defines helper functions for processing the request path
 
+use std::iter::once;
 use std::sync::Arc;
 
 use helpers::http::PercentDecoded;
@@ -26,18 +27,11 @@ impl RequestPathSegments {
     /// ["/", "some", "path", "to", "my", "handler"]
     /// ```
     pub(crate) fn new<'r>(path: &'r str) -> Self {
-        let mut segments = vec!["/"];
-        segments.extend(
-            path.split('/')
-                .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
-                .collect::<Vec<&'r str>>(),
-        );
-
         let segments = Arc::new(
-            segments
-                .iter()
-                .filter_map(|s| PercentDecoded::new(s))
-                .collect::<Vec<PercentDecoded>>(),
+            once("/")
+                .chain(path.split('/').filter(|s| !EXCLUDED_SEGMENTS.contains(s)))
+                .filter_map(PercentDecoded::new)
+                .collect(),
         );
 
         RequestPathSegments {
@@ -64,7 +58,7 @@ impl RequestPathSegments {
                     None
                 }
             })
-            .collect::<Vec<&PercentDecoded>>()
+            .collect()
     }
 
     /// Increases the current offset value.

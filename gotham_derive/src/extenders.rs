@@ -1,5 +1,5 @@
-use syn;
 use quote;
+use syn;
 
 pub(crate) fn bad_request_static_response_extender(ast: &syn::DeriveInput) -> quote::Tokens {
     let name = &ast.ident;

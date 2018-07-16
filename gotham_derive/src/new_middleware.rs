@@ -1,5 +1,5 @@
-use syn;
 use quote;
+use syn;
 
 pub(crate) fn new_middleware(ast: &syn::DeriveInput) -> quote::Tokens {
     let name = &ast.ident;

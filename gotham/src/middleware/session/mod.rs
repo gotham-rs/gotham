@@ -1,30 +1,30 @@
 //! Defines a session middleware with a pluggable backend.
 
 use std::io;
-use std::sync::{Arc, Mutex, PoisonError};
-use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
 use std::panic::RefUnwindSafe;
+use std::sync::{Arc, Mutex, PoisonError};
 
 use base64;
-use rand::Rng;
-use hyper::StatusCode;
-use hyper::server::Response;
-use hyper::header::{Cookie, Headers, SetCookie};
-use futures::{future, Future};
-use serde::{Deserialize, Serialize};
 use bincode;
+use futures::{future, Future};
+use hyper::header::{Cookie, Headers, SetCookie};
+use hyper::server::Response;
+use hyper::StatusCode;
+use rand::RngCore;
+use serde::{Deserialize, Serialize};
 
 use super::{Middleware, NewMiddleware};
 use handler::{HandlerError, HandlerFuture, IntoHandlerError};
-use state::{self, FromState, State, StateData};
 use helpers::http::response::create_response;
+use state::{self, FromState, State, StateData};
 
 mod backend;
 mod rng;
 
-pub use self::backend::{Backend, NewBackend};
 pub use self::backend::memory::MemoryBackend;
+pub use self::backend::{Backend, NewBackend};
 
 const SECURE_COOKIE_PREFIX: &'static str = "__Secure-";
 const HOST_COOKIE_PREFIX: &'static str = "__Host-";
@@ -190,7 +190,6 @@ impl SessionCookieConfig {
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// # extern crate bincode;
-/// # extern crate tokio_core;
 /// #
 /// # use std::time::Duration;
 /// # use futures::future;
@@ -265,13 +264,13 @@ impl SessionCookieConfig {
 /// ```
 pub struct SessionData<T>
 where
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     value: T,
     cookie_state: SessionCookieState,
     state: SessionDataState,
     identifier: SessionIdentifier,
-    backend: Box<Backend>,
+    backend: Box<Backend + Send>,
     cookie_config: Arc<SessionCookieConfig>,
 }
 
@@ -281,7 +280,7 @@ struct SessionDropData {
 
 impl<T> SessionData<T>
 where
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     /// Discards the session, invalidating it for future use and removing the data from the
     /// `Backend`.
@@ -296,7 +295,7 @@ where
     // Create a new, blank `SessionData<T>`
     fn new<B>(middleware: SessionMiddleware<B, T>) -> SessionData<T>
     where
-        B: Backend + 'static,
+        B: Backend + Send + 'static,
     {
         let state = SessionDataState::Dirty; // Always persist a new session
         let cookie_state = SessionCookieState::New;
@@ -327,7 +326,7 @@ where
         val: Option<Vec<u8>>,
     ) -> SessionData<T>
     where
-        B: Backend + 'static,
+        B: Backend + Send + 'static,
     {
         let cookie_state = SessionCookieState::Existing;
         let state = SessionDataState::Clean;
@@ -371,13 +370,13 @@ where
 
 impl<T> StateData for SessionData<T>
 where
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
 }
 
 impl<T> Deref for SessionData<T>
 where
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     type Target = T;
 
@@ -388,7 +387,7 @@ where
 
 impl<T> DerefMut for SessionData<T>
 where
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     fn deref_mut(&mut self) -> &mut T {
         self.state = SessionDataState::Dirty;
@@ -457,7 +456,7 @@ where
 pub struct NewSessionMiddleware<B, T>
 where
     B: NewBackend,
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     new_backend: B,
     identifier_rng: Arc<Mutex<rng::SessionIdentifierRng>>,
@@ -471,7 +470,7 @@ where
 pub struct SessionMiddleware<B, T>
 where
     B: Backend,
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     backend: B,
     identifier_rng: Arc<Mutex<rng::SessionIdentifierRng>>,
@@ -482,7 +481,7 @@ where
 impl<B, T> NewMiddleware for NewSessionMiddleware<B, T>
 where
     B: NewBackend,
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     type Instance = SessionMiddleware<B::Instance, T>;
 
@@ -501,7 +500,7 @@ where
 impl<B, T> Clone for NewSessionMiddleware<B, T>
 where
     B: NewBackend,
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     fn clone(&self) -> Self {
         NewSessionMiddleware {
@@ -538,7 +537,7 @@ where
 impl<B, T> NewSessionMiddleware<B, T>
 where
     B: NewBackend,
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     fn rebuild_new_session_middleware(
         self,
@@ -778,7 +777,7 @@ where
     /// ```
     pub fn with_session_type<U>(self) -> NewSessionMiddleware<B, U>
     where
-        U: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+        U: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
     {
         NewSessionMiddleware {
             new_backend: self.new_backend,
@@ -791,12 +790,12 @@ where
 
 impl<B, T> Middleware for SessionMiddleware<B, T>
 where
-    B: Backend + 'static,
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    B: Backend + Send + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
         Self: Sized,
     {
         let session_identifier = Headers::borrow_from(&state)
@@ -841,7 +840,7 @@ where
 impl<B, T> SessionMiddleware<B, T>
 where
     B: Backend + 'static,
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     fn random_identifier(&self) -> SessionIdentifier {
         let mut bytes = [0u8; 64];
@@ -861,7 +860,7 @@ fn persist_session<T>(
     (mut state, mut response): (State, Response),
 ) -> future::FutureResult<(State, Response), (State, HandlerError)>
 where
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     match state.try_take::<SessionDropData>() {
         Some(ref session_drop_data) => {
@@ -898,7 +897,7 @@ where
 
 fn send_cookie<T>(response: &mut Response, session_data: &SessionData<T>)
 where
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     let cookie_string = session_data
         .cookie_config
@@ -933,7 +932,7 @@ fn write_session<T>(
     session_data: SessionData<T>,
 ) -> future::FutureResult<(State, Response), (State, HandlerError)>
 where
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     let bytes = match bincode::serialize(&session_data.value) {
         Ok(bytes) => bytes,
@@ -976,7 +975,7 @@ where
 impl<B, T> SessionMiddleware<B, T>
 where
     B: Backend + 'static,
-    T: Default + Serialize + for<'de> Deserialize<'de> + 'static,
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     fn load_session_into_state(
         self,
@@ -1034,11 +1033,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hyper::header::Headers;
+    use hyper::{Response, StatusCode};
+    use rand;
     use std::sync::Mutex;
     use std::time::Duration;
-    use rand;
-    use hyper::{Response, StatusCode};
-    use hyper::header::Headers;
 
     #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
     struct TestSession {

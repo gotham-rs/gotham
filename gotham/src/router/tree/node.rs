@@ -1,14 +1,14 @@
 //! Defines `Node` and `SegmentType` for `Tree`
 
-use std::cmp::Ordering;
-use std::borrow::Borrow;
 use hyper::StatusCode;
+use std::borrow::Borrow;
+use std::cmp::Ordering;
 
 use helpers::http::PercentDecoded;
 use router::non_match::RouteNonMatch;
 use router::route::{Delegation, Route};
-use router::tree::{Path, SegmentMapping, SegmentsProcessed};
 use router::tree::regex::ConstrainedSegmentRegex;
+use router::tree::{Path, SegmentMapping, SegmentsProcessed};
 use state::{request_id, State};
 
 /// Indicates the type of segment which is being represented by this Node.
@@ -50,7 +50,7 @@ pub struct Node {
 
 impl Node {
     /// Provides the segment this `Node` represents.
-    pub(crate) fn segment(&self) -> &str {
+    pub(super) fn segment(&self) -> &str {
         &self.segment
     }
 
@@ -65,11 +65,11 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub(crate) fn select_route<'a>(
-        &'a self,
+    pub(in router) fn select_route(
+        &self,
         state: &State,
-    ) -> Result<&'a Box<Route + Send + Sync>, RouteNonMatch> {
-        let mut err: Result<(), RouteNonMatch> = Ok(());
+    ) -> Result<&Box<Route + Send + Sync>, RouteNonMatch> {
+        let mut err = Ok(());
 
         for r in self.routes.iter() {
             match r.is_match(state) {
@@ -105,7 +105,7 @@ impl Node {
 
     /// True is there is a least one `Route` represented by this `Node`, that is it can act as a
     /// leaf in a single path through the tree.
-    pub(crate) fn is_routable(&self) -> bool {
+    pub(super) fn is_routable(&self) -> bool {
         !self.routes.is_empty()
     }
 
@@ -122,7 +122,7 @@ impl Node {
     /// 2. Constrained
     /// 3. Dynamic
     /// 4. Glob
-    pub(crate) fn traverse<'r>(
+    pub(super) fn traverse<'r>(
         &'r self,
         req_path_segments: &'r [&PercentDecoded],
     ) -> Option<(Path<'r>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
@@ -142,20 +142,8 @@ impl Node {
         mut consumed_segments: Vec<&'r PercentDecoded>,
     ) -> Option<(Vec<&Node>, &Node, SegmentsProcessed, SegmentMapping<'r>)> {
         match req_path_segments.split_first() {
-            Some((x, _)) if self.is_delegating(x) => {
-                // A delegated node terminates processing, start building result
-                trace!(" found delegator node `{}`", self.segment);
-
-                let mut sm = SegmentMapping::new();
-                if self.segment_type != SegmentType::Static {
-                    consumed_segments.push(x);
-                    sm.insert(self.segment(), consumed_segments);
-                };
-
-                Some((vec![self], self, 0, sm))
-            }
-            Some((x, xs)) if self.is_leaf(x, xs) => {
-                trace!(" found leaf node `{}`", self.segment);
+            Some((x, xs)) if self.is_delegating(x) || self.is_leaf(x, xs) => {
+                trace!(" found delegating/leaf node `{}`", self.segment);
 
                 let mut sm = SegmentMapping::new();
                 if self.segment_type != SegmentType::Static {
@@ -187,7 +175,11 @@ impl Node {
                     // If we're in a Glob consume segment and continue
                     // otherwise we've failed to find a suitable way
                     // forward.
-                    None if self.segment_type == SegmentType::Glob => {
+                    None => {
+                        if self.segment_type != SegmentType::Glob {
+                            return None;
+                        }
+
                         trace!(" continuing with glob match for segment `{}`", self.segment);
                         consumed_segments.push(x);
                         match self.inner_traverse(xs, consumed_segments) {
@@ -195,16 +187,14 @@ impl Node {
                             None => None,
                         }
                     }
-                    None => None,
                 }
             }
-            Some(_) => None,
-            None => None,
+            _ => None,
         }
     }
 
     fn is_delegating(&self, req_path_segment: &PercentDecoded) -> bool {
-        self.is_match(req_path_segment) && self.delegating
+        self.delegating && self.is_match(req_path_segment)
     }
 
     fn is_match(&self, req_path_segment: &PercentDecoded) -> bool {
@@ -216,7 +206,7 @@ impl Node {
     }
 
     fn is_leaf(&self, s: &PercentDecoded, rs: &[&PercentDecoded]) -> bool {
-        rs.is_empty() && self.is_match(s) && self.is_routable()
+        rs.is_empty() && self.is_routable() && self.is_match(s)
     }
 }
 
@@ -253,7 +243,7 @@ impl NodeBuilder {
 
     /// Adds a `Route` be evaluated by the `Router` when the built `Node` is acting as a leaf in a
     /// single path through the `Tree`.
-    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+    pub(in router) fn add_route(&mut self, route: Box<Route + Send + Sync>) {
         if route.delegation() == Delegation::External {
             if !self.routes.is_empty() {
                 panic!("Node which is externally delegating must have single Route");
@@ -271,7 +261,7 @@ impl NodeBuilder {
     }
 
     /// Adds a new child to this sub-tree structure
-    pub fn add_child(&mut self, child: NodeBuilder) {
+    pub(in router) fn add_child(&mut self, child: NodeBuilder) {
         if self.delegating {
             panic!("Node which is externally delegating must not have existing children")
         }
@@ -285,22 +275,23 @@ impl NodeBuilder {
     }
 
     /// Determines if a child representing the exact segment provided exists.
-    pub fn has_child(&self, segment: &str, segment_type: SegmentType) -> bool {
-        self.children
-            .iter()
-            .find(|n| n.segment_type == segment_type && n.segment == segment)
-            .is_some()
+    pub(in router) fn has_child(&self, segment: &str, segment_type: SegmentType) -> bool {
+        self.borrow_child(segment, segment_type).is_some()
     }
 
     /// Borrow a child that represents the exact segment provided here.
-    pub fn borrow_child(&self, segment: &str, segment_type: SegmentType) -> Option<&NodeBuilder> {
+    pub(in router) fn borrow_child(
+        &self,
+        segment: &str,
+        segment_type: SegmentType,
+    ) -> Option<&NodeBuilder> {
         self.children
             .iter()
             .find(|n| n.segment_type == segment_type && n.segment == segment)
     }
 
     /// Mutably borrow a child that represents the exact segment provided here.
-    pub fn borrow_mut_child(
+    pub(in router) fn borrow_mut_child(
         &mut self,
         segment: &str,
         segment_type: SegmentType,
@@ -311,8 +302,8 @@ impl NodeBuilder {
     }
 
     /// Finalizes and sorts all internal data, including all children.
-    pub fn finalize(mut self) -> Node {
-        self.sort();
+    pub(in router) fn finalize(mut self) -> Node {
+        self.children.sort();
 
         let mut children = self.children
             .drain(..)
@@ -328,22 +319,6 @@ impl NodeBuilder {
             routes: self.routes,
             delegating: self.delegating,
             children,
-        }
-    }
-
-    // Sorts all children per `PartialEq` and `PartialOrd` implementations.
-    //
-    // Final ordering of Children is based on most to least specific SegmentType as follows:
-    //
-    // 1. Static
-    // 2. Constrained
-    // 3. Dynamic
-    // 4. Glob
-    fn sort(&mut self) {
-        self.children.sort();
-
-        for child in &mut self.children {
-            child.sort();
         }
     }
 }
@@ -377,11 +352,11 @@ mod tests {
     use hyper::{Headers, Method, Response};
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use helpers::http::request::path::RequestPathSegments;
+    use pipeline::set::*;
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Extractors, Route, RouteImpl};
-    use pipeline::set::*;
-    use helpers::http::request::path::RequestPathSegments;
     use state::{set_request_id, State};
 
     fn handler(state: State) -> (State, Response) {
@@ -651,7 +626,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Node which is externally delegating must not have existing children")]
+    #[should_panic(
+        expected = "Node which is externally delegating must not have existing children"
+    )]
     fn panics_when_delegated_node_adds_children() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);
@@ -662,7 +639,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Node which is externally delegating must not have existing children")]
+    #[should_panic(
+        expected = "Node which is externally delegating must not have existing children"
+    )]
     fn panics_when_node_with_children_is_provided_delegated_route() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut seg1 = NodeBuilder::new("seg1", SegmentType::Static);

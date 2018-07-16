@@ -1,7 +1,7 @@
 //! Defines the route `Dispatcher` and supporting types.
 
-use std::panic::RefUnwindSafe;
 use futures::future;
+use std::panic::RefUnwindSafe;
 
 use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
 use pipeline::chain::PipelineHandleChain;
@@ -52,7 +52,7 @@ where
 impl<H, C, P> Dispatcher for DispatcherImpl<H, C, P>
 where
     H: NewHandler,
-    H::Instance: 'static,
+    H::Instance: Send + 'static,
     C: PipelineHandleChain<P>,
     P: RefUnwindSafe,
 {
@@ -112,7 +112,7 @@ mod tests {
     impl Middleware for Number {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -137,7 +137,7 @@ mod tests {
     impl Middleware for Addition {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
@@ -160,7 +160,7 @@ mod tests {
     impl Middleware for Multiplication {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value *= self.value;

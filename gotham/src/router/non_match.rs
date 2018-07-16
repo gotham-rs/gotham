@@ -203,15 +203,7 @@ impl<'a> From<&'a [Method]> for MethodSet {
             mut put,
             mut trace,
         ) = (
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
-            false,
+            false, false, false, false, false, false, false, false, false,
         );
 
         let mut other = HashSet::new();

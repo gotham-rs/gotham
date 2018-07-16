@@ -40,6 +40,7 @@ information on functionality and ordering.
 | [Handlers](handlers) | Developing application logic that responds to web requests. | 4 |
 | [Middleware](middleware) | Developing custom middleware for your application. | 1 |
 | [Into Response](into_response) | Implementing the Gotham web framework's `IntoResponse` trait. | 1 |
+| [Templating](templating) | An example using various templating engines. | 1 |
 
 ^ Gotham web framework examples are under active development.
 

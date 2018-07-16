@@ -2,30 +2,30 @@
 
 mod associated;
 mod draw;
-mod single;
 mod modify;
+mod single;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
 use hyper::StatusCode;
 
+use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
-use router::Router;
-use router::tree::TreeBuilder;
 use router::response::extender::ResponseExtender;
 use router::response::finalizer::ResponseFinalizerBuilder;
-use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::matcher::{AnyRouteMatcher, RouteMatcher};
 use router::route::dispatch::DispatcherImpl;
-use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
+use router::route::matcher::{AnyRouteMatcher, RouteMatcher};
+use router::route::{Delegation, Extractors, RouteImpl};
 use router::tree::node::NodeBuilder;
+use router::tree::TreeBuilder;
+use router::Router;
 
 pub use self::associated::{AssociatedRouteBuilder, AssociatedSingleRouteBuilder};
-pub use self::single::DefineSingleRoute;
 pub use self::draw::DrawRoutes;
 pub use self::modify::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor};
+pub use self::single::DefineSingleRoute;
 
 /// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
 /// value passed to the closure, and the `Router` is constructed before returning.
@@ -320,18 +320,15 @@ where
 mod tests {
     use super::*;
 
-    use std::sync::Arc;
-
-    use hyper::{Method, Request, Response, StatusCode};
-    use hyper::server::Service;
     use futures::{Future, Stream};
-    use tokio_core::reactor::Core;
+    use hyper::server::Service;
+    use hyper::{Method, Request, Response, StatusCode};
 
-    use pipeline::new_pipeline;
     use middleware::session::NewSessionMiddleware;
-    use state::{State, StateData};
-    use service::GothamService;
+    use pipeline::new_pipeline;
     use router::response::extender::StaticResponseExtender;
+    use service::GothamService;
+    use state::{State, StateData};
 
     #[derive(Deserialize)]
     struct SalutationParams {
@@ -495,12 +492,11 @@ mod tests {
             route.delegate("/delegated").to_router(delegated_router);
         });
 
-        let mut core = Core::new().unwrap();
-        let new_service = GothamService::new(Arc::new(router), core.handle());
+        let new_service = GothamService::new(router);
 
-        let mut call = move |req| {
+        let call = move |req| {
             let service = new_service.connect("127.0.0.1:10000".parse().unwrap());
-            core.run(service.call(req)).unwrap()
+            service.call(req).wait().unwrap()
         };
 
         let response = call(Request::new(Method::Get, "/".parse().unwrap()));

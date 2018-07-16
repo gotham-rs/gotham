@@ -1,7 +1,6 @@
 language: rust
 sudo: required
 dist: trusty
-cache: cargo
 env:
   - PATH=$HOME/.cargo/bin:$PATH
 script:
@@ -17,12 +16,22 @@ matrix:
       env:
         # Give a useful display name in the job list.
         - SHARD=rustfmt
-        - PATH=$HOME/.cargo/bin/$PATH
+        - PATH=$HOME/.cargo/bin/:$PATH
       before_script:
         - rustup component add --toolchain stable rustfmt-preview
       script:
         - echo "Checking Gotham codebase with rustfmt release `cargo fmt --version`."
         - cargo fmt --all -- --write-mode=diff
+    # Run Clippy in its own shard.
+    - rust: nightly-2018-06-29
+      env:
+        - SHARD=clippy
+        - PATH=$HOME/.cargo/bin/:$PATH
+      before_script:
+        - cargo install clippy --version 0.0.211
+      script:
+        - echo "Checking Gotham codebase with Clippy release `cargo clippy --version`."
+        - cargo clippy --all --profile test
   allow_failures:
     - rust: nightly
 addons:

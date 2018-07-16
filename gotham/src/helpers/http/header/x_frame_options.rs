@@ -2,13 +2,10 @@
 
 use std::fmt;
 use std::str::FromStr;
-// TODO: Remove when this import isn't required in stable anymore.
-#[allow(unused_imports)]
-use std::ascii::AsciiExt;
 
 use hyper;
-use hyper::Uri;
 use hyper::header::{Formatter, Header, Raw};
+use hyper::Uri;
 
 use helpers::http::header::from_one_rws_delimited_raw_str;
 
