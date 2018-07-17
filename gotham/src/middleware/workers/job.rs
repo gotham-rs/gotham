@@ -9,11 +9,17 @@ use state::State;
 /// Since the `State` cannot be sent between threads, it is available in preparing a job for
 /// execution, and is returned when the job completes.
 pub trait Job {
+    /// The type of value which is returned from the job upon success.
     type Item: Send + 'static;
+
+    /// The type of value which is returned from the job upon error.
     type Error: Send + 'static;
 
+    /// The type of `PreparedJob` which is created when preparing this job for execution.
     type Prepared: PreparedJob<Item = Self::Item, Error = Self::Error> + Send + 'static;
 
+    /// Prepares this `Job` using necessary data from `State`, and returns a `PreparedJob` which is
+    /// ready to be run.
     fn prepare(self, &mut State) -> Self::Prepared;
 }
 
@@ -24,12 +30,21 @@ pub trait Job {
 /// As this is run on a workers pool and not in the event loop, it is appropriate for synchronous
 /// I/O and other blocking actions to be performed.
 pub trait PreparedJob {
+    /// The type of value which is returned from the job upon success.
     type Item: Send + 'static;
+
+    /// The type of value which is returned from the job upon error.
     type Error: Send + 'static;
+
+    /// The type of future which is returned when this job is run.
     type Future: Future<Item = Self::Item, Error = Self::Error> + Send + 'static;
 
+    /// The output of the `run` function which can be used to construct a future of type
+    /// `Self::Future`.
     type Output: IntoFuture<Future = Self::Future, Item = Self::Item, Error = Self::Error>;
 
+    /// Runs this job on the workers pool, and returns the asynchronous result which will complete
+    /// when the job is finished.
     fn run(self) -> Self::Output;
 }
 
@@ -93,10 +108,9 @@ mod tests {
     use futures_cpupool::CpuPool;
     use hyper::StatusCode;
     use mime;
-    use std::io;
     use std::sync::{Arc, Mutex};
 
-    use handler::{HandlerFuture, IntoHandlerError};
+    use handler::HandlerFuture;
     use helpers::http::response::create_response;
     use middleware::workers::pool::WorkersPool;
     use state::StateData;

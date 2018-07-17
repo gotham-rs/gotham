@@ -60,7 +60,6 @@ mod tests {
 
     use helpers::http::response::create_response;
     use middleware::workers::job::*;
-    use middleware::workers::pool::*;
     use pipeline::single::*;
     use pipeline::*;
     use router::Router;
