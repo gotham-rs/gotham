@@ -9,6 +9,7 @@ use state::State;
 
 pub mod chain;
 pub mod session;
+pub mod workers;
 
 /// `Middleware` has the opportunity to provide additional behaviour to the `Request` / `Response`
 /// interaction. For example:

@@ -1,13 +1,15 @@
-use futures_cpupool::{Builder, CpuPool};
-use gotham::handler::HandlerFuture;
-use gotham::middleware::Middleware;
-use gotham::state::State;
+use std::io;
 
-use pool::WorkersPool;
+use futures_cpupool::{Builder, CpuPool};
+
+use handler::HandlerFuture;
+use middleware::workers::pool::WorkersPool;
+use middleware::{Middleware, NewMiddleware};
+use state::State;
 
 /// A middleware which manages a pool of background threads, and allows work to be executed outside
 /// of the event loop by passing `Job` types.
-#[derive(Clone, NewMiddleware)]
+#[derive(Clone)]
 pub struct WorkersMiddleware {
     pool: CpuPool,
 }
@@ -29,6 +31,14 @@ impl WorkersMiddleware {
     }
 }
 
+impl NewMiddleware for WorkersMiddleware {
+    type Instance = Self;
+
+    fn new_middleware(&self) -> io::Result<Self::Instance> {
+        Ok(self.clone())
+    }
+}
+
 impl Middleware for WorkersMiddleware {
     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
     where
@@ -45,17 +55,17 @@ mod tests {
     use super::*;
 
     use futures::Future;
-    use gotham::helpers::http::response::create_response;
-    use gotham::pipeline::single::*;
-    use gotham::pipeline::*;
-    use gotham::router::Router;
-    use gotham::router::builder::*;
-    use gotham::test::TestServer;
     use hyper::StatusCode;
     use mime;
 
-    use job::*;
-    use pool::*;
+    use helpers::http::response::create_response;
+    use middleware::workers::job::*;
+    use middleware::workers::pool::*;
+    use pipeline::single::*;
+    use pipeline::*;
+    use router::Router;
+    use router::builder::*;
+    use test::TestServer;
 
     fn router() -> Router {
         let (chain, pipelines) =
@@ -66,7 +76,7 @@ mod tests {
         })
     }
 
-    fn handler(mut state: State) -> Box<HandlerFuture> {
+    fn handler(state: State) -> Box<HandlerFuture> {
         let f = run_with_worker(state, |_state: &mut State| {
             let x = 41;
             move || Ok(x + 1)

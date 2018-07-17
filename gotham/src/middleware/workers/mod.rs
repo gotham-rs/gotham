@@ -20,7 +20,6 @@
 //!
 //! ```rust
 //! # extern crate gotham;
-//! # extern crate gotham_middleware_workers;
 //! # extern crate hyper;
 //! # extern crate futures;
 //! # extern crate mime;
@@ -34,7 +33,7 @@
 //! # use gotham::router::builder::*;
 //! # use gotham::pipeline::*;
 //! # use gotham::pipeline::single::*;
-//! # use gotham_middleware_workers::WorkersMiddleware;
+//! # use gotham::middleware::workers::WorkersMiddleware;
 //! # use gotham::test::TestServer;
 //! #
 //! # mod some_library {
@@ -51,7 +50,7 @@
 //! #   pub fn run_with_worker(
 //! #       state: State,
 //! #   ) -> Box<Future<Item = (State, u64), Error = (State, Impossible)> + Send> {
-//! #       gotham_middleware_workers::run_with_worker(state, |_state: &mut State| || Ok(1))
+//! #       gotham::middleware::workers::run_with_worker(state, |_state: &mut State| || Ok(1))
 //! #   }
 //! # }
 //! #
@@ -111,5 +110,5 @@ mod job;
 mod middleware;
 mod pool;
 
-pub use job::{run_with_worker, Job, PreparedJob};
-pub use middleware::WorkersMiddleware;
+pub use self::job::{run_with_worker, Job, PreparedJob};
+pub use self::middleware::WorkersMiddleware;

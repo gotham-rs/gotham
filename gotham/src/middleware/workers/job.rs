@@ -1,8 +1,7 @@
 use futures::{Future, IntoFuture};
 
-use gotham::state::State;
-
-use pool;
+use middleware::workers::pool;
+use state::State;
 
 /// A job which can be executed on a thread pool after being prepared.
 ///
@@ -92,20 +91,23 @@ mod tests {
 
     use futures::future::FutureResult;
     use futures_cpupool::CpuPool;
-    use gotham::handler::{HandlerFuture, IntoHandlerError};
-    use gotham::helpers::http::response::create_response;
-    use gotham::test::TestServer;
     use hyper::StatusCode;
     use mime;
     use std::io;
     use std::sync::{Arc, Mutex};
 
-    use pool::WorkersPool;
+    use handler::{HandlerFuture, IntoHandlerError};
+    use helpers::http::response::create_response;
+    use middleware::workers::pool::WorkersPool;
+    use state::StateData;
+    use test::TestServer;
 
-    #[derive(StateData, Clone)]
+    #[derive(Clone)]
     struct ThreadSafeValue {
         n: Arc<Mutex<usize>>,
     }
+
+    impl StateData for ThreadSafeValue {}
 
     struct TestJob;
 
@@ -149,7 +151,7 @@ mod tests {
             });
 
             let f = run_with_worker(state, TestJob).then(|r| {
-                let (state, t) = r.unwrap_or_else(|_| panic!("not ok"));
+                let (state, _t) = r.unwrap_or_else(|_| panic!("not ok"));
                 let response = create_response(
                     &state,
                     StatusCode::Ok,

@@ -1,12 +1,13 @@
 use futures::{Async, Future, IntoFuture, Poll};
 use futures_cpupool::{CpuFuture, CpuPool};
 
-use gotham::state::{request_id, FromState, State};
+use state::{request_id, FromState, State, StateData};
 
-#[derive(StateData)]
 pub(crate) struct WorkersPool {
     pub pool: CpuPool,
 }
+
+impl StateData for WorkersPool {}
 
 // TODO: This can be removed when we can return `impl Future<..>` from `run_in_pool`.
 pub(crate) struct CpuFutureWithState<T, E> {
@@ -69,11 +70,11 @@ where
 mod tests {
     use super::*;
 
-    use gotham::handler::{HandlerFuture, IntoHandlerError};
-    use gotham::helpers::http::response::create_response;
-    use gotham::test::TestServer;
+    use handler::{HandlerFuture, IntoHandlerError};
+    use helpers::http::response::create_response;
     use hyper::StatusCode;
     use std::io;
+    use test::TestServer;
 
     #[test]
     fn run_in_thread_pool_tests() {

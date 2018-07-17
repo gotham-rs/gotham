@@ -7,7 +7,6 @@
 //!
 //! ```rust
 //! # extern crate gotham;
-//! # extern crate gotham_middleware_workers;
 //! # extern crate gotham_middleware_diesel;
 //! # extern crate diesel;
 //! #
@@ -15,14 +14,14 @@
 //! # use gotham::router::builder::*;
 //! # use gotham::pipeline::single::*;
 //! # use gotham::pipeline::*;
-//! # use gotham_middleware_workers::*;
+//! # use gotham::middleware::workers::*;
 //! # use gotham_middleware_diesel::*;
 //! # use diesel::SqliteConnection;
 //! #
 //! fn router() -> Router {
 //!     let (chain, pipelines) = single_pipeline(
 //!         new_pipeline()
-//!             // The middleware from `gotham_middleware_workers`, to manage
+//!             // The middleware from `gotham::middleware::workers`, to manage
 //!             // the thread pool which `DieselMiddleware` requires.
 //!             .add(WorkersMiddleware::new(20))
 //!             // Initialize `DieselMiddleware` with a connection string / URL.
@@ -47,7 +46,6 @@
 //!
 //! ```rust
 //! # extern crate gotham;
-//! # extern crate gotham_middleware_workers;
 //! # extern crate gotham_middleware_diesel;
 //! # extern crate diesel;
 //! # extern crate futures;
@@ -62,7 +60,7 @@
 //! # use gotham::pipeline::*;
 //! # use gotham::state::*;
 //! # use gotham::test::*;
-//! # use gotham_middleware_workers::*;
+//! # use gotham::middleware::workers::*;
 //! # use gotham_middleware_diesel::*;
 //! # use futures::*;
 //! # use hyper::StatusCode;
@@ -146,7 +144,6 @@ extern crate futures;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate gotham_middleware_workers;
 #[macro_use]
 extern crate log;
 extern crate r2d2;
