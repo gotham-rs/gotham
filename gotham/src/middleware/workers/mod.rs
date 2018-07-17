@@ -10,9 +10,9 @@
 //! # Caveats
 //!
 //! This is not a replacement for asynchronous logic, but rather a workaround which allows
-//! synchronous APIs to be used without impacting the event loop. Before using this crate, consider
-//! whether an asynchronous API is available, as it may have superior performance or scaling
-//! characteristics.
+//! synchronous APIs to be used without impacting the event loop. Before using this middleware,
+//! consider whether an asynchronous API is available, as it may have superior performance or
+//! scaling characteristics.
 //!
 //! # Examples
 //!
