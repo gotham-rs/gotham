@@ -17,7 +17,7 @@ use hyper::client::{connect::{Connect, Connected, Destination},
                     Client};
 use hyper::header::CONTENT_TYPE;
 use hyper::server::conn::Http;
-use hyper::{body::Payload, Body, Method, Request, Response, Uri};
+use hyper::{Body, Method, Request, Response, Uri};
 use mime;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
@@ -155,9 +155,10 @@ where
         };
 
         let connect = Box::new(
-            cs.map_err(|_| unreachable!())
-                .and_then(|stream| future::ok(TestConnect { stream })),
-        );
+            cs.and_then(|stream| future::ok(TestConnect { stream }))
+                .and_then(|co| Ok(Client::builder().build(co)))
+                .map_err(|e| Error::from(e).compat()),
+        ).shared();
 
         Ok(TestClient {
             connect,
@@ -225,7 +226,13 @@ pub struct TestClient<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    connect: Box<Future<Item = TestConnect, Error = CompatError> + Send + Sync>,
+    connect: future::Shared<
+        Box<
+            Future<Item = Client<TestConnect, Body>, Error = future::SharedError<CompatError>>
+                + Send
+                + Sync,
+        >,
+    >,
     test_server: TestServer<NH>,
 }
 
@@ -337,9 +344,10 @@ where
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform<QB: Payload>(mut self, req: Request<QB>) -> Result<TestResponse> {
+    pub fn perform(mut self, req: Request<Body>) -> Result<TestResponse> {
         let req_future = self.connect
-            .and_then(|co| Ok(Client::builder().build(co)))
+            .clone()
+            .map_err(|e| Error::from(e.into()).compat())
             .and_then(|cl| {
                 cl.request(req)
                     .map_err(|_| failure::err_msg("request failed").compat())
@@ -347,7 +355,7 @@ where
 
         self.test_server
             .run_request(req_future)
-            .map(|response| TestResponse {
+            .map(move |response| TestResponse {
                 response,
                 reader: Box::new(self.test_server.clone()),
             })
