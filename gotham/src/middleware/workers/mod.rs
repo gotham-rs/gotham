@@ -107,24 +107,6 @@
 //! # }
 //! ```
 
-#![warn(missing_docs, deprecated)]
-#![doc(test(no_crate_inject, attr(deny(warnings))))]
-// TODO: Remove this when it's a hard error by default (error E0446).
-// See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
-#![deny(private_in_public)]
-
-extern crate futures;
-extern crate futures_cpupool;
-extern crate gotham;
-#[macro_use]
-extern crate gotham_derive;
-extern crate hyper;
-#[macro_use]
-extern crate log;
-
-#[cfg(test)]
-extern crate mime;
-
 mod job;
 mod middleware;
 mod pool;

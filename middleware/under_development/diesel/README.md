@@ -11,7 +11,7 @@ As Diesel [only provides support for synchronous][async-diesel] database access,
 we use the [`WorkersMiddleware`][workers] to execute queries in the "background"
 and prevent applications from blocking the event loop.
 
-[workers]: https://github.com/gotham-rs/gotham/tree/master/middleware/under_development/workers
+[workers]: https://github.com/gotham-rs/gotham/tree/master/gotham/src/middleware/workers/
 [async-diesel]: https://github.com/diesel-rs/diesel/issues/399
 
 **This middleware is under active development**
