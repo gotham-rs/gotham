@@ -28,7 +28,7 @@ matrix:
         - SHARD=clippy
         - PATH=$HOME/.cargo/bin/:$PATH
       before_script:
-        - cargo install clippy --version 0.0.211
+        - cargo install clippy --version 0.0.211 --force
       script:
         - echo "Checking Gotham codebase with Clippy release `cargo clippy --version`."
         - cargo clippy --all --profile test
