@@ -154,14 +154,45 @@ where
             self.data.runtime.write().unwrap().spawn(f);
         };
 
-        let connect = Box::new(
-            cs.and_then(|stream| future::ok(TestConnect { stream }))
-                .and_then(|co| Ok(Client::builder().build(co)))
-                .map_err(|e| Error::from(e).compat()),
-        ).shared();
+        let connect: Box<Future<Item = _, Error = _>> = Box::new(
+            cs.and_then(|stream| {
+                future::ok(TestConnect {
+                    stream: Arc::new(stream),
+                })
+            }).and_then(|co| Ok(Client::builder().build(co)))
+                .map_err(|e| {
+                    let f: CompatError = Error::from(e).compat();
+                    f
+                }),
+        );
+
+        /*
+         futures::future::Shared<
+             std::boxed::Box<
+                 futures::MapErr<
+                     futures::AndThen<
+                         futures::AndThen<
+                             tokio::net::ConnectFuture,
+                             futures::FutureResult<
+                                 test::TestConnect,
+                                 std::io::Error
+                             >,
+                             [closure@gotham/src/test/mod.rs:158:25: 158:68]
+                         >,
+                         std::result::Result<
+                             hyper::Client< test::TestConnect, _ >,
+                             std::io::Error
+                         >,
+                         [closure@gotham/src/test/mod.rs:159:27: 159:63]
+                     >,
+                     [closure@gotham/src/test/mod.rs:160:26: 160:53]
+                 >
+             >
+         >
+         */
 
         Ok(TestClient {
-            connect,
+            connect: connect.shared(),
             test_server: self.clone(),
         })
     }
@@ -226,13 +257,7 @@ pub struct TestClient<NH>
 where
     NH: NewHandler + Send + 'static,
 {
-    connect: future::Shared<
-        Box<
-            Future<Item = Client<TestConnect, Body>, Error = future::SharedError<CompatError>>
-                + Send
-                + Sync,
-        >,
-    >,
+    connect: future::Shared<Box<Future<Item = Client<TestConnect, Body>, Error = CompatError>>>,
     test_server: TestServer<NH>,
 }
 
@@ -347,7 +372,10 @@ where
     pub fn perform(mut self, req: Request<Body>) -> Result<TestResponse> {
         let req_future = self.connect
             .clone()
-            .map_err(|e| Error::from(e.into()).compat())
+            .map_err(|e| {
+                let f: CompatError = Error::from(e).compat();
+                f
+            })
             .and_then(|cl| {
                 cl.request(req)
                     .map_err(|_| failure::err_msg("request failed").compat())
@@ -442,11 +470,11 @@ impl TestResponse {
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
 struct TestConnect {
-    stream: TcpStream,
+    stream: Arc<TcpStream>,
 }
 
 impl Connect for TestConnect {
-    type Transport = TcpStream;
+    type Transport = Arc<TcpStream>;
     type Error = failure::Compat<failure::Error>;
     type Future = Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send>;
 
