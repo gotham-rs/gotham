@@ -49,6 +49,8 @@ pub enum Delegation {
 /// `Route` exists as a trait to allow abstraction over the generic types in `RouteImpl`. This
 /// trait should not be implemented outside of Gotham.
 pub trait Route: RefUnwindSafe {
+    /// The type of the response body. The requirements of Hyper are that this implements `Payload`.
+    /// Almost always, it will want to be `hyper::Body`.
     type ResBody;
     /// Determines if this `Route` should be invoked, based on the request data in `State.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;

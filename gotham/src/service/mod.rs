@@ -74,10 +74,10 @@ where
 
         let (
             request::Parts {
-                method: method,
-                uri: uri,
-                version: version,
-                headers: headers,
+                method,
+                uri,
+                version,
+                headers,
                 //extensions?
                 ..
             },

@@ -523,7 +523,7 @@ mod tests {
         let new_service = GothamService::new(router);
 
         let call = move |req| {
-            let service = new_service.connect("127.0.0.1:10000".parse().unwrap());
+            let mut service = new_service.connect("127.0.0.1:10000".parse().unwrap());
             service.call(req).wait().unwrap()
         };
 

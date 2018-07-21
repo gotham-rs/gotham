@@ -1,63 +1,10 @@
-//use failure::{self, Backtrace, Context, Fail};
-//use std::fmt::{self, Display};
-
+//! The error module is nascent. At present, it re-exports types from the `failure` crate and adds an alias for compatible errors.
+//! Future directions for Gotham error types are an ongoing discussion. Feel free to chip in.
 use failure::Compat;
 pub use failure::Error;
+
+/// An implementation of the single-parameter Result pattern, using our `pub use failure::Error`
 pub type Result<T> = ::std::result::Result<T, Error>;
 
+/// An alias for `failure::Error.compat()`, which exists to fulfill the std::error::Error trait.
 pub type CompatError = Compat<Error>;
-
-/*
- * TODO: revive or delete this.
- *
-#[derive(Debug)]
-pub struct Error {
-    inner: Context<ErrorKind>,
-}
-
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Fail)]
-pub enum ErrorKind {
-    #[fail(display = "The Gotham devs haven't gotten around to characterizing this error yet.")]
-    LazyDevelopers,
-
-    #[fail(display = "The response was not received before the timeout duration elapsed.")]
-    TimedOut,
-}
-
-impl Fail for Error {
-    fn cause(&self) -> Option<&Fail> {
-        self.inner.cause()
-    }
-
-    fn backtrace(&self) -> Option<&Backtrace> {
-        self.inner.backtrace()
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        Display::fmt(&self.inner, f)
-    }
-}
-
-impl Error {
-    pub fn kind(&self) -> ErrorKind {
-        *self.inner.get_context()
-    }
-}
-
-impl From<ErrorKind> for Error {
-    fn from(kind: ErrorKind) -> Error {
-        Error {
-            inner: Context::new(kind),
-        }
-    }
-}
-
-impl From<Context<ErrorKind>> for Error {
-    fn from(inner: Context<ErrorKind>) -> Error {
-        Error { inner }
-    }
-}
-*/
