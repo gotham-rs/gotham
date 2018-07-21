@@ -5,7 +5,7 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
@@ -19,7 +19,7 @@ use gotham::state::{FromState, State};
 ///
 /// Each request made will increment a counter of requests which have been made,
 /// and tell you how many times you've visited the page.
-fn get_handler(mut state: State) -> (State, Response) {
+fn get_handler(mut state: State) -> (State, Response<Body>) {
     // Define a narrow scope so that state can be borrowed/moved later in the function.
     let visits = {
         // Borrow a reference to the usize stored for the session (keyed by a cookie) from state.
@@ -78,8 +78,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cookies::Cookie;
     use gotham::test::TestServer;
-    use hyper::header::{Cookie, SetCookie};
     use std::borrow::Cow;
 
     #[test]

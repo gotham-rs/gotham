@@ -9,6 +9,7 @@ extern crate mime;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate cookie;
 extern crate time;
 
 use hyper::{Response, StatusCode};
@@ -31,7 +32,7 @@ struct VisitData {
 /// Handler function for `GET` requests directed to `/`
 ///
 /// Each request made will update state about your recent visits, and report it back.
-fn get_handler(mut state: State) -> (State, Response) {
+fn get_handler(mut state: State) -> (State, Response<Body>) {
     let maybe_visit_data = {
         let visit_data: &Option<VisitData> = SessionData::<Option<VisitData>>::borrow_from(&state);
         visit_data.clone()
@@ -87,8 +88,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cookie::Cookie;
     use gotham::test::TestServer;
-    use hyper::header::{Cookie, SetCookie};
     use std::borrow::Cow;
 
     #[test]

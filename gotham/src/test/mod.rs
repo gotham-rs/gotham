@@ -616,7 +616,7 @@ mod tests {
             let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
             assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
 
-            content_length
+            content_length.clone()
         };
 
         let buf =

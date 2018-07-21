@@ -8,7 +8,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::handler::IntoResponse;
 use gotham::helpers::http::response::create_response;
@@ -30,8 +30,8 @@ struct Product {
 /// This trait implementation uses the Serde project when generating responses. You don't need to
 /// know about Serde in order to understand the response that is being created here but if you're
 /// interested you can learn more at `http://serde.rs`.
-impl IntoResponse for Product {
-    fn into_response(self, state: &State) -> Response {
+impl IntoResponse<Body> for Product {
+    fn into_response(self, state: &State) -> Response<Body> {
         create_response(
             state,
             StatusCode::Ok,

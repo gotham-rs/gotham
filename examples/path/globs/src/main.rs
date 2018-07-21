@@ -9,7 +9,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
@@ -24,7 +24,7 @@ struct PathExtractor {
     parts: Vec<String>,
 }
 
-fn parts_handler(state: State) -> (State, Response) {
+fn parts_handler(state: State) -> (State, Response<Body>) {
     let res = {
         let path = PathExtractor::borrow_from(&state);
 

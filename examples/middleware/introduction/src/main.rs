@@ -16,8 +16,8 @@ use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use hyper::header::{Headers, UserAgent};
-use hyper::{Response, StatusCode};
+use hyper::header::HeaderMap;
+use hyper::{Body, Response, StatusCode};
 
 /// A simple struct which holds an identifier for the user agent which made the request.
 ///
@@ -54,8 +54,8 @@ impl Middleware for ExampleMiddleware {
         Chain: FnOnce(State) -> Box<HandlerFuture>,
     {
         let user_agent = {
-            let headers = Headers::borrow_from(&state);
-            match headers.get::<UserAgent>() {
+            let headers = HeaderMap::borrow_from(&state);
+            match headers.get(USER_AGENT) {
                 Some(ua) => ua.to_string(),
                 None => String::from("None"),
             }
@@ -107,7 +107,7 @@ impl Middleware for ExampleMiddleware {
 /// This handler expects that `ExampleMiddleware` has already been executed by Gotham before
 /// it is invoked. As a result of that middleware being run our handler trusts that it must
 /// have placed data into state that we can perform operations on.
-pub fn middleware_reliant_handler(mut state: State) -> (State, Response) {
+pub fn middleware_reliant_handler(mut state: State) -> (State, Response<Body>) {
     {
         let data = ExampleMiddlewareData::borrow_mut_from(&mut state);
 
@@ -168,7 +168,7 @@ mod tests {
         let response = test_server
             .client()
             .get("http://localhost")
-            .with_header(UserAgent::new("TestServer/0.0.0"))
+            .with_header("UserAgent", "TestServer/0.0.0")
             .perform()
             .unwrap();
 
