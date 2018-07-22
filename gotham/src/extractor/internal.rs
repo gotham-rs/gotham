@@ -701,6 +701,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 mod tests {
     use super::*;
     use helpers::http::{FormUrlDecoded, PercentDecoded};
+    use std;
 
     #[derive(Deserialize)]
     struct SimpleValues {
@@ -765,8 +766,8 @@ mod tests {
         assert_eq!(p.u16_val, 40511);
         assert_eq!(p.u32_val, 4000000000);
         assert_eq!(p.u64_val, 9000000000);
-        assert_eq!(p.f32_val, 1.4);
-        assert_eq!(p.f64_val, 2.6);
+        assert!((p.f32_val - 1.4).abs() < std::f32::EPSILON);
+        assert!((p.f64_val - 2.6).abs() < std::f64::EPSILON);
         assert_eq!(p.string_val, "this is an owned string");
         assert_eq!(p.char_val, 'a');
         assert_eq!(p.optional_val, Some("this is optional".to_owned()));
@@ -844,8 +845,8 @@ mod tests {
         assert_eq!(p.u16_val, 40511);
         assert_eq!(p.u32_val, 4000000000);
         assert_eq!(p.u64_val, 9000000000);
-        assert_eq!(p.f32_val, 1.4);
-        assert_eq!(p.f64_val, 2.6);
+        assert!((p.f32_val - 1.4).abs() < std::f32::EPSILON);
+        assert!((p.f64_val - 2.6).abs() < std::f64::EPSILON);
         assert_eq!(p.string_val, "this is an owned string");
         assert_eq!(p.char_val, 'a');
         assert_eq!(p.optional_val, Some("this is optional".to_owned()));
@@ -878,11 +879,11 @@ mod tests {
                 out.write_str("string")
             }
 
-            fn visit_string<E>(self, v: String) -> Result<Vec<u8>, E>
+            fn visit_str<E>(self, v: &str) -> Result<Vec<u8>, E>
             where
                 E: Error,
             {
-                Ok(v.into_bytes())
+                Ok(v.as_bytes().to_vec())
             }
         }
     }

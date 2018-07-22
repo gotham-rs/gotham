@@ -1,17 +1,17 @@
-# Hello World
+# Templating using Tera
 
-A simple introduction to working with Gotham.
+An example usage of Tera template engine working with Gotham.
 
 ## Running
 
-From the `examples/hello_world` directory:
+From the `examples/templating/tera` directory:
 
 ```
 Terminal 1:
 $ cargo run
-   Compiling gotham_examples_hello_world (file:///.../examples/hello_world)
+   Compiling gotham_examples_templating_tera (file:///.../examples/templating/tera)
     Finished dev [unoptimized + debuginfo] target(s) in 4.26 secs
-     Running `../gotham_examples_hello_world`
+     Running `../gotham_examples_templating_tera`
   Listening for requests at http://127.0.0.1:7878
 
 Terminal 2:
@@ -25,17 +25,26 @@ $ curl -v http://127.0.0.1:7878/
 > Accept: */*
 >
 < HTTP/1.1 200 OK
-< Content-Length: 12
-< Content-Type: text/plain
-< X-Request-ID: 88ec311c-fc77-4d2e-b302-b1ba38718d96
+< Content-Length: 150
+< Content-Type: text/html
+< X-Request-ID: 181d26c4-ee9d-44ed-aa52-803b10560d71
 < X-Frame-Options: DENY
 < X-XSS-Protection: 1; mode=block
 < X-Content-Type-Options: nosniff
-< X-Runtime-Microseconds: 51
-< Date: Fri, 05 Jan 2018 06:25:00 GMT
+< X-Runtime-Microseconds: 5437
+< Date: Tue, 10 Jul 2018 15:37:58 GMT
 <
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Gotham Tera example</title>
+</head>
+<body>
+  <h1>Hello Gotham!</h1>
+</body>
+</html>
 * Connection #0 to host 127.0.0.1 left intact
-Hello World!%
 ```
 
 ## License
