@@ -9,9 +9,9 @@ From the `examples/hello_world` directory:
 ```
 Terminal 1:
 $ cargo run
-   Compiling hello_world (file:///.../examples/hello_world)
+   Compiling gotham_examples_hello_world (file:///.../examples/hello_world)
     Finished dev [unoptimized + debuginfo] target(s) in 4.26 secs
-     Running `../hello_world`
+     Running `../gotham_examples_hello_world`
   Listening for requests at http://127.0.0.1:7878
 
 Terminal 2:
