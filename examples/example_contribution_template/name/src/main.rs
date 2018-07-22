@@ -60,7 +60,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .get("http://localhost")
+            .get("http://localhost/")
             .perform()
             .unwrap();
 

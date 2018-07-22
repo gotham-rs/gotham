@@ -58,7 +58,7 @@ fn get_product_handler(state: State) -> (State, Response<Body>) {
         let product = PathExtractor::borrow_from(&state);
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((
                 format!("Product: {}", product.name).into_bytes(),
                 mime::TEXT_PLAIN,
@@ -106,7 +106,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Product: t-shirt");

@@ -29,7 +29,7 @@ pub fn greet_user(state: State) -> (State, Response<Body>) {
 
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((response_string.into_bytes(), mime::TEXT_PLAIN)),
         )
     };
@@ -78,7 +78,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Hello, User 123!");
@@ -93,6 +93,6 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }

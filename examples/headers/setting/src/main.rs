@@ -1,7 +1,6 @@
 //! Setting a header value for a Gotham web framework response
 
 extern crate gotham;
-#[macro_use]
 extern crate hyper;
 extern crate mime;
 
@@ -9,17 +8,14 @@ use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::State;
-use hyper::{Response, StatusCode};
-
-// Define a custom header -- just a &'static str
-const GothamHeader = "X-Gotham";
+use hyper::{Body, Response, StatusCode};
 
 /// Create a `Handler` that adds a custom header.
-pub fn handler(state: State) -> (State, Response) {
-    let mut res = create_response(&state, StatusCode::Ok, None);
+pub fn handler(state: State) -> (State, Response<Body>) {
+    let mut res = create_response(&state, StatusCode::OK, None);
     {
         let headers = res.headers_mut();
-        headers.set(GothamHeader,"Hello World!".to_owned());
+        headers.insert("x-gotham", "Hello world!".parse().unwrap());
     };
 
     (state, res)
@@ -53,10 +49,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
-        assert_eq!(
-            response.headers().get(GothamHeader).unwrap(),
-            &GothamHeader("Hello World!".to_string())
-        );
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers().get("x-gotham").unwrap(), "Hello World!");
     }
 }

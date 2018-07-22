@@ -13,7 +13,7 @@ macro_rules! generic_handler {
         pub fn $t(state: State) -> (State, Response<Body>) {
             let res = create_response(
                 &state,
-                StatusCode::Ok,
+                StatusCode::OK,
                 Some((String::from(stringify!($t)).into_bytes(), mime::TEXT_PLAIN)),
             );
 
