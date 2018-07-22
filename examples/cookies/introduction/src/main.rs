@@ -7,7 +7,7 @@ extern crate hyper;
 extern crate mime;
 
 use cookie::Cookie;
-use hyper::header::HeaderMap;
+use hyper::header::{HeaderMap, COOKIE, SET_COOKIE};
 use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
@@ -20,7 +20,7 @@ fn handler(state: State) -> (State, Response<Body>) {
         // Get the request headers.
         let headers = HeaderMap::borrow_from(&state);
         // Get the Cookie header from the request.
-        let maybe_cookie = headers.get(Cookie);
+        let maybe_cookie = headers.get(COOKIE);
         // Get the value of the "adjective" cookie, if set.
         maybe_cookie.and_then(|cookie| cookie.get("adjective").map(|s| s.to_owned()))
     };
@@ -48,7 +48,7 @@ fn handler(state: State) -> (State, Response<Body>) {
 fn set_cookie(cookie: String, response: &mut Response<Body>) {
     // Get the response headers.
     let headers = response.headers_mut();
-    if let Some(existing_cookies) = headers.get_mut::<SetCookie>() {
+    if let Some(existing_cookies) = headers.get_mut(SET_COOKIE) {
         // If some cookies are already being set (e.g. by some middleware), append to that list.
         existing_cookies.push(cookie);
         return;
@@ -79,7 +79,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let set_cookie: Vec<String> = {
             let cookie_header = response.headers().get(SET_COOKIE);
@@ -105,7 +105,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], "Hello repeat visitor\n".as_bytes());
     }

@@ -16,7 +16,7 @@ use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use hyper::header::{self, HeaderMap};
+use hyper::header::{HeaderMap, USER_AGENT};
 use hyper::{Body, Response, StatusCode};
 
 /// A simple struct which holds an identifier for the user agent which made the request.
@@ -56,8 +56,8 @@ impl Middleware for ExampleMiddleware {
         let user_agent = {
             let headers = HeaderMap::borrow_from(&state);
             match headers.get(USER_AGENT) {
-                Some(ua) => ua.to_string(),
-                None => String::from("None"),
+                Some(ua) => ua.to_str().unwrap(),
+                None => "None",
             }
         };
 

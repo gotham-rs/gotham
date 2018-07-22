@@ -337,8 +337,9 @@ mod tests {
 
     impl StateData for SalutationParams {}
 
-    impl<B> StaticResponseExtender<B> for SalutationParams {
-        fn extend(_: &mut State, _: &mut Response<B>) {}
+    impl StaticResponseExtender for SalutationParams {
+        type ResBody = Body;
+        fn extend(_: &mut State, _: &mut Response<Body>) {}
     }
 
     #[derive(Deserialize)]
@@ -349,8 +350,9 @@ mod tests {
 
     impl StateData for AddParams {}
 
-    impl<B> StaticResponseExtender<B> for AddParams {
-        fn extend(_: &mut State, _: &mut Response<B>) {}
+    impl StaticResponseExtender for AddParams {
+        type ResBody = Body;
+        fn extend(_: &mut State, _: &mut Response<Body>) {}
     }
 
     mod welcome {

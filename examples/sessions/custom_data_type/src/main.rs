@@ -48,7 +48,7 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
     let res = {
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((body.as_bytes().to_vec(), mime::TEXT_PLAIN)),
         )
     };
@@ -90,6 +90,7 @@ mod tests {
     use super::*;
     use cookie::Cookie;
     use gotham::test::TestServer;
+    use hyper::header::SET_COOKIE;
     use std::borrow::Cow;
 
     #[test]
@@ -101,12 +102,12 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let set_cookie: Vec<String> = {
-            let cookie_header = response.headers().get(SetCookie);
+            let cookie_header = response.headers().get(SET_COOKIE);
             assert!(cookie_header.is_some());
-            cookie_header.unwrap().0.clone()
+            Cookie::parse(cookie_header).unwrap()
         };
         assert!(set_cookie.len() == 1);
 
@@ -136,7 +137,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let body = response.read_body().unwrap();
         let body_string = String::from_utf8(body).unwrap();
         assert!(

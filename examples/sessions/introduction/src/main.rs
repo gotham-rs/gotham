@@ -31,7 +31,7 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
     let res = {
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((
                 format!("You have visited this page {} time(s) before\n", visits)
                     .as_bytes()
@@ -91,7 +91,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let set_cookie: Vec<String> = {
             let cookie_header = response.headers().get::<SetCookie>();
@@ -126,7 +126,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let body = response.read_body().unwrap();
         assert_eq!(
             &body[..],

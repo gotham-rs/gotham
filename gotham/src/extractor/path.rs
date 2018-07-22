@@ -1,4 +1,4 @@
-use hyper::Response;
+use hyper::{body::Payload, Body, Response};
 use serde::{Deserialize, Deserializer};
 
 use router::response::extender::StaticResponseExtender;
@@ -75,13 +75,16 @@ use state::{State, StateData};
 /// #   assert_eq!(body, "id = 1551, slug = ten-reasons-serde-is-amazing");
 /// # }
 pub trait PathExtractor<B>:
-    for<'de> Deserialize<'de> + StaticResponseExtender<B> + StateData
+    for<'de> Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData
+where
+    B: Payload,
 {
 }
 
 impl<T, B> PathExtractor<B> for T
 where
-    for<'de> T: Deserialize<'de> + StaticResponseExtender<B> + StateData,
+    B: Payload,
+    for<'de> T: Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData,
 {
 }
 
@@ -105,6 +108,7 @@ impl<'de> Deserialize<'de> for NoopPathExtractor {
 
 impl StateData for NoopPathExtractor {}
 
-impl<B> StaticResponseExtender<B> for NoopPathExtractor {
-    fn extend(_state: &mut State, _res: &mut Response<B>) {}
+impl StaticResponseExtender for NoopPathExtractor {
+    type ResBody = Body;
+    fn extend(_state: &mut State, _res: &mut Response<Body>) {}
 }

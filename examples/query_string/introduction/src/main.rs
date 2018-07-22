@@ -76,7 +76,7 @@ fn get_product_handler(mut state: State) -> (State, Response<Body>) {
         };
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((
                 serde_json::to_vec(&product).expect("serialized product"),
                 mime::APPLICATION_JSON,
@@ -121,7 +121,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         let expected_product = Product {

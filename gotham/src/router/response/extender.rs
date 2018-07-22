@@ -1,13 +1,16 @@
 //! Defines functionality for extending a Response.
 
-use hyper::{Body, Response};
+use hyper::{body::Payload, Body, Response};
 use state::{request_id, State};
 use std::panic::RefUnwindSafe;
 
 /// Extend the `Response` based on current `State` and `Response` data.
-pub trait StaticResponseExtender<B>: RefUnwindSafe {
+pub trait StaticResponseExtender: RefUnwindSafe {
+    /// The type of the response body. Almost always `hyper::Body`.
+    type ResBody: Payload;
+
     /// Extend the response.
-    fn extend(&mut State, &mut Response<B>);
+    fn extend(&mut State, &mut Response<Self::ResBody>);
 }
 
 /// Allow complex types to extend the `Response` based on current `State` and `Response` data.
@@ -34,7 +37,9 @@ where
 /// This is likely to only be useful in documentation or example code.
 pub struct NoopResponseExtender;
 
-impl StaticResponseExtender<Body> for NoopResponseExtender {
+impl StaticResponseExtender for NoopResponseExtender {
+    type ResBody = Body;
+
     fn extend(state: &mut State, _res: &mut Response<Body>) {
         trace!(
             "[{}] NoopResponseExtender invoked, does not make any changes to Response",

@@ -50,7 +50,7 @@ type DataMime = (Vec<u8>, Mime);
 /// #         .perform()
 /// #         .unwrap();
 /// #
-/// #     assert_eq!(response.status(), StatusCode::Ok);
+/// #     assert_eq!(response.status(), StatusCode::OK);
 /// #     assert!(response.headers().get::<XRequestId>().is_some());
 /// #
 /// #     assert_eq!(
@@ -216,7 +216,7 @@ pub fn create_temporary_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// #         .perform()
 /// #         .unwrap();
 /// #
-/// #     assert_eq!(response.status(), StatusCode::Ok);
+/// #     assert_eq!(response.status(), StatusCode::OK);
 /// #     assert!(response.headers().get::<XRequestId>().is_some());
 /// #
 /// #     assert_eq!(
@@ -342,7 +342,7 @@ pub fn extend_response(
 /// static BODY: &'static [u8] = b"Hello, world!";
 ///
 /// fn handler(state: State) -> (State, Response) {
-///     let mut response = Response::new().with_status(StatusCode::Ok).with_body(BODY.to_vec());
+///     let mut response = Response::new().with_status(StatusCode::OK).with_body(BODY.to_vec());
 ///
 ///     set_headers(
 ///         &state,
@@ -363,7 +363,7 @@ pub fn extend_response(
 ///     .perform()
 ///     .unwrap();
 ///
-/// assert_eq!(response.status(), StatusCode::Ok);
+/// assert_eq!(response.status(), StatusCode::OK);
 ///
 /// assert_eq!(
 ///     *response.headers().get::<ContentType>().unwrap(),

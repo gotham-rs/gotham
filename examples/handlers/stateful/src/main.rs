@@ -59,7 +59,7 @@ impl Handler for CountingHandler {
         let res = {
             create_response(
                 &state,
-                StatusCode::Ok,
+                StatusCode::OK,
                 Some((response_text.into_bytes(), mime::TEXT_PLAIN)),
             )
         };
@@ -101,7 +101,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_utf8_body().unwrap();
         assert!(
@@ -116,7 +116,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_utf8_body().unwrap();
         assert!(
