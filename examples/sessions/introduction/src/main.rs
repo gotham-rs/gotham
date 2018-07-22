@@ -78,7 +78,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cookies::Cookie;
+    use cookie::Cookie;
     use gotham::test::TestServer;
     use std::borrow::Cow;
 
