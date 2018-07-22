@@ -69,7 +69,6 @@ use tokio::runtime::{self, Runtime, TaskExecutor};
 
 use handler::NewHandler;
 use service::GothamService;
-use tokio::net::TcpListener;
 
 /// Starts a Gotham application with the default number of threads.
 pub fn start<NH, A>(addr: A, new_handler: NH)
