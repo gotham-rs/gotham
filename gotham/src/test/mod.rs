@@ -9,12 +9,13 @@ use std::time::Duration;
 
 use failure;
 
-use futures::{future::{self, FutureResult},
-              Future,
-              Stream};
+use futures::{
+    future::{self, FutureResult}, Future, Stream,
+};
 use futures_timer::Delay;
-use hyper::client::{connect::{Connect, Connected, Destination},
-                    Client};
+use hyper::client::{
+    connect::{Connect, Connected, Destination}, Client,
+};
 use hyper::header::CONTENT_TYPE;
 use hyper::server::conn::Http;
 use hyper::{Body, Method, Request, Response, Uri};
@@ -263,7 +264,7 @@ where
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post_uri<T, QB>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -283,7 +284,7 @@ where
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put_uri<T, QB>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn put_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -293,7 +294,7 @@ where
     }
 
     /// Parse the URI and begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<T, QB>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn patch<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {
@@ -303,7 +304,7 @@ where
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch_uri<T, QB>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn patch_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
     where
         T: Into<Body>,
     {

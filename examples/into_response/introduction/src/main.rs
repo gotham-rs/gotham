@@ -34,7 +34,7 @@ impl IntoResponse<Body> for Product {
     fn into_response(self, state: &State) -> Response<Body> {
         create_response(
             state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((
                 serde_json::to_string(&self)
                     .expect("serialized product")
@@ -88,7 +88,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         let expected_product = Product {

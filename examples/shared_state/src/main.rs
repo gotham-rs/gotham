@@ -9,7 +9,7 @@ extern crate gotham_derive;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::middleware::state::StateMiddleware;
@@ -57,7 +57,7 @@ impl RequestCounter {
 /// The request counter is shared via the state, so we can safely
 /// borrow one from the provided state. As the counter uses locks
 /// internally, we don't have to borrow a mutable reference either!
-fn say_hello(state: State) -> (State, Response) {
+fn say_hello(state: State) -> (State, Response<Body>) {
     let message = {
         // borrow a reference of the counter from the state
         let counter = RequestCounter::borrow_from(&state);
@@ -69,7 +69,7 @@ fn say_hello(state: State) -> (State, Response) {
     // create the response
     let res = create_response(
         &state,
-        StatusCode::Ok,
+        StatusCode::OK,
         Some((message.into_bytes(), mime::TEXT_PLAIN)),
     );
 
@@ -122,7 +122,7 @@ mod tests {
                 .perform()
                 .unwrap();
 
-            assert_eq!(response.status(), StatusCode::Ok);
+            assert_eq!(response.status(), StatusCode::OK);
 
             let body = response.read_body().unwrap();
             let expc = format!("Hello from request #{}!\n", i);
