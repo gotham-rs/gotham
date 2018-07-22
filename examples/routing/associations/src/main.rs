@@ -7,7 +7,7 @@ extern crate mime;
 
 use gotham::router::builder::*;
 use gotham::router::Router;
-use hyper::{Get, Head};
+use hyper::Method;
 
 mod handlers;
 use self::handlers::*;
@@ -34,7 +34,9 @@ use self::handlers::*;
 /// matching on.
 fn router() -> Router {
     build_simple_router(|route| {
-        route.request(vec![Get, Head], "/").to(index);
+        route
+            .request(vec![Method::GET, Method::HEAD], "/")
+            .to(index);
         route.get_or_head("/products").to(products::index);
         route.get("/bag").to(bag::index);
 

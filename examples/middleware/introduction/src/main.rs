@@ -16,7 +16,7 @@ use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use hyper::header::HeaderMap;
+use hyper::header::{HeaderMap, USER_AGENT};
 use hyper::{Body, Response, StatusCode};
 
 /// A simple struct which holds an identifier for the user agent which made the request.
@@ -117,7 +117,7 @@ pub fn middleware_reliant_handler(mut state: State) -> (State, Response<Body>) {
     };
 
     // Finally we create a basic Response to complete our handling of the Request.
-    let res = create_response(&state, StatusCode::Ok, None);
+    let res = create_response(&state, StatusCode::OK, None);
     (state, res)
 }
 
@@ -168,11 +168,11 @@ mod tests {
         let response = test_server
             .client()
             .get("http://localhost")
-            .with_header("UserAgent", "TestServer/0.0.0")
+            .with_header(USER_AGENT, "TestServer/0.0.0".into())
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         // Ensure Middleware has set a header after our handler generated the Response.
         assert_eq!(

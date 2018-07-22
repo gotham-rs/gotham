@@ -15,7 +15,7 @@ use gotham::state::State;
 pub fn say_hello(state: State) -> (State, Response<Body>) {
     let res = create_response(
         &state,
-        StatusCode::Ok,
+        StatusCode::OK,
         Some((String::from("Hello Router!").into_bytes(), mime::TEXT_PLAIN)),
     );
 
@@ -60,7 +60,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Hello Router!");

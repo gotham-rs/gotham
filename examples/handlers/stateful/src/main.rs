@@ -10,6 +10,7 @@ use hyper::StatusCode;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
+use gotham::error::Result;
 use gotham::handler::{Handler, HandlerFuture, NewHandler};
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
@@ -69,7 +70,7 @@ impl Handler for CountingHandler {
 impl NewHandler for CountingHandler {
     type Instance = Self;
 
-    fn new_handler(&self) -> std::io::Result<Self::Instance> {
+    fn new_handler(&self) -> Result<Self::Instance> {
         Ok(self.clone())
     }
 }

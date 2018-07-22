@@ -6,7 +6,7 @@ extern crate hyper;
 extern crate mime;
 
 use futures::{future, Future, Stream};
-use hyper::{Body, Headers, HttpVersion, Method, Response, StatusCode, Uri};
+use hyper::{Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
@@ -18,8 +18,8 @@ use gotham::state::{FromState, State};
 fn print_request_elements(state: &State) {
     let method = Method::borrow_from(state);
     let uri = Uri::borrow_from(state);
-    let http_version = HttpVersion::borrow_from(state);
-    let headers = Headers::borrow_from(state);
+    let http_version = Version::borrow_from(state);
+    let headers = HeaderMap::borrow_from(state);
     println!("Method: {:?}", method);
     println!("URI: {:?}", uri);
     println!("HTTP Version: {:?}", http_version);
@@ -35,7 +35,7 @@ fn post_handler(mut state: State) -> Box<HandlerFuture> {
             Ok(valid_body) => {
                 let body_content = String::from_utf8(valid_body.to_vec()).unwrap();
                 println!("Body: {}", body_content);
-                let res = create_response(&state, StatusCode::Ok, None);
+                let res = create_response(&state, StatusCode::OK, None);
                 future::ok((state, res))
             }
             Err(e) => return future::err((state, e.into_handler_error())),
@@ -45,9 +45,9 @@ fn post_handler(mut state: State) -> Box<HandlerFuture> {
 }
 
 /// Show the GET request components by printing them.
-fn get_handler(state: State) -> (State, Response) {
+fn get_handler(state: State) -> (State, Response<Body>) {
     print_request_elements(&state);
-    let res = create_response(&state, StatusCode::Ok, None);
+    let res = create_response(&state, StatusCode::OK, None);
 
     (state, res)
 }
@@ -83,7 +83,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     #[test]
@@ -95,6 +95,6 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }

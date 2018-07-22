@@ -11,15 +11,15 @@ use gotham::router::Router;
 use gotham::state::State;
 use hyper::{Response, StatusCode};
 
-// Define a custom header via the standard Hyper provided macro
-header! { (GothamHeader, "X-Gotham") => [String] }
+// Define a custom header -- just a &'static str
+const GothamHeader = "X-Gotham";
 
 /// Create a `Handler` that adds a custom header.
 pub fn handler(state: State) -> (State, Response) {
     let mut res = create_response(&state, StatusCode::Ok, None);
     {
         let headers = res.headers_mut();
-        headers.set(GothamHeader("Hello World!".to_owned()));
+        headers.set(GothamHeader,"Hello World!".to_owned());
     };
 
     (state, res)
@@ -55,7 +55,7 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::Ok);
         assert_eq!(
-            response.headers().get::<GothamHeader>().unwrap(),
+            response.headers().get(GothamHeader).unwrap(),
             &GothamHeader("Hello World!".to_string())
         );
     }

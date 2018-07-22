@@ -1,24 +1,26 @@
 //! An introduction to storing and retrieving cookie data, with the Gotham
 //! web framework.
 
+extern crate cookie;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::header::{Cookie, Headers, SetCookie};
-use hyper::{Response, StatusCode};
+use cookie::Cookie;
+use hyper::header::HeaderMap;
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
-use gotham::state::{FromState, State};
+use gotham::state::State;
 
 /// The first request will set a cookie, and subsequent requests will echo it back.
-fn handler(state: State) -> (State, Response) {
+fn handler(state: State) -> (State, Response<Body>) {
     // Define a narrow scope so that state can be borrowed/moved later in the function.
     let adjective_from_cookie = {
         // Get the request headers.
-        let headers: &Headers = Headers::borrow_from(&state);
+        let headers = HeaderMap::borrow_from(&state);
         // Get the Cookie header from the request.
-        let maybe_cookie = headers.get::<Cookie>();
+        let maybe_cookie = headers.get(Cookie);
         // Get the value of the "adjective" cookie, if set.
         maybe_cookie.and_then(|cookie| cookie.get("adjective").map(|s| s.to_owned()))
     };
@@ -28,7 +30,7 @@ fn handler(state: State) -> (State, Response) {
     let mut response = {
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((
                 format!("Hello {} visitor\n", adjective).as_bytes().to_vec(),
                 mime::TEXT_PLAIN,
@@ -43,7 +45,7 @@ fn handler(state: State) -> (State, Response) {
     (state, response)
 }
 
-fn set_cookie(cookie: String, response: &mut Response) {
+fn set_cookie(cookie: String, response: &mut Response<Body>) {
     // Get the response headers.
     let headers = response.headers_mut();
     if let Some(existing_cookies) = headers.get_mut::<SetCookie>() {
@@ -52,7 +54,7 @@ fn set_cookie(cookie: String, response: &mut Response) {
         return;
     }
     // Else create a new SetCookie header.
-    headers.set::<SetCookie>(SetCookie(vec![cookie]));
+    headers.set(SET_COOKIE, vec![cookie]);
 }
 
 /// Start a server and use a `Router` to dispatch requests
@@ -65,8 +67,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cookie::Cookie;
     use gotham::test::TestServer;
-    use hyper::header::{Cookie, SetCookie};
 
     #[test]
     fn cookie_is_set_and_counter_increments() {
@@ -80,7 +82,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::Ok);
 
         let set_cookie: Vec<String> = {
-            let cookie_header = response.headers().get::<SetCookie>();
+            let cookie_header = response.headers().get(SET_COOKIE);
             assert!(cookie_header.is_some());
             cookie_header.unwrap().0.clone()
         };

@@ -10,7 +10,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
@@ -47,7 +47,7 @@ struct PathExtractor {
 }
 
 /// Handler function for `GET` requests directed to `/products/:name`
-fn get_product_handler(state: State) -> (State, Response) {
+fn get_product_handler(state: State) -> (State, Response<Body>) {
     let res = {
         // Access the `PathExtractor` instance from `state` which was put there for us by the
         // `Router` during request evaluation.

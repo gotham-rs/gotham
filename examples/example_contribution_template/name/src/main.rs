@@ -32,7 +32,7 @@ use hyper::{Body, Response, StatusCode};
 
 /// Create a `Handler` that ...
 pub fn well_named_function(state: State) -> (State, Response<Body>) {
-    let res = create_response(&state, StatusCode::Ok, None);
+    let res = create_response(&state, StatusCode::OK, None);
     (state, res)
 }
 
@@ -64,6 +64,6 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }

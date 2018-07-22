@@ -12,7 +12,7 @@ extern crate serde_derive;
 extern crate cookie;
 extern crate time;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
@@ -104,7 +104,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::Ok);
 
         let set_cookie: Vec<String> = {
-            let cookie_header = response.headers().get::<SetCookie>();
+            let cookie_header = response.headers().get(SetCookie);
             assert!(cookie_header.is_some());
             cookie_header.unwrap().0.clone()
         };
