@@ -18,7 +18,8 @@ use helpers::http::request::path::RequestPathSegments;
 use helpers::http::response::create_response;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Delegation, Route};
-use router::tree::{SegmentMapping, Tree};
+use router::tree::segment::SegmentMapping;
+use router::tree::Tree;
 use state::{request_id, State};
 
 struct RouterData {
@@ -70,21 +71,18 @@ impl Handler for Router {
 
         let future = match state.try_take::<RequestPathSegments>() {
             Some(rps) => {
-                if let Some((_, leaf, sp, sm)) = self.data.tree.traverse(&rps.segments()) {
-                    match leaf.select_route(&state) {
+                if let Some((node, params, processed)) = self.data.tree.traverse(&rps.segments()) {
+                    match node.select_route(&state) {
                         Ok(route) => match route.delegation() {
                             Delegation::External => {
                                 trace!("[{}] delegating to secondary router", request_id(&state));
 
-                                let mut rps = rps.clone();
-                                rps.increase_offset(sp);
-                                state.put(rps);
-
+                                state.put(rps.into_subsegments(processed));
                                 route.dispatch(state)
                             }
                             Delegation::Internal => {
                                 trace!("[{}] dispatching to route", request_id(&state));
-                                self.dispatch(state, sm, route)
+                                self.dispatch(state, params, route)
                             }
                         },
                         Err(non_match) => {
@@ -132,13 +130,13 @@ impl Router {
         }
     }
 
-    fn dispatch(
+    fn dispatch<'a>(
         &self,
         mut state: State,
-        sm: SegmentMapping,
+        params: SegmentMapping<'a>,
         route: &Box<Route + Send + Sync>,
     ) -> Box<HandlerFuture> {
-        match route.extract_request_path(&mut state, sm) {
+        match route.extract_request_path(&mut state, params) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
                 match route.extract_query_string(&mut state) {
@@ -159,9 +157,9 @@ impl Router {
             }
             Err(_) => {
                 error!(
-                    "[{}] the server cannot or will not process the request due to a client error on the request path",
-                    request_id(&state)
-                );
+                "[{}] the server cannot or will not process the request due to a client error on the request path",
+                request_id(&state)
+            );
                 let mut res = Response::new();
                 route.extend_response_on_path_error(&mut state, &mut res);
                 Box::new(future::ok((state, res)))
@@ -205,8 +203,9 @@ mod tests {
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
     use router::route::{Extractors, RouteImpl};
-    use router::tree::node::{NodeBuilder, SegmentType};
-    use router::tree::TreeBuilder;
+    use router::tree::node::Node;
+    use router::tree::segment::SegmentType;
+    use router::tree::Tree;
     use state::set_request_id;
 
     fn handler(state: State) -> (State, Response) {
@@ -233,8 +232,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     fn internal_server_error_if_no_request_path_segments() {
-        let tree_builder = TreeBuilder::new();
-        let tree = tree_builder.finalize();
+        let tree = Tree::new();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         let method = Method::Get;
@@ -257,8 +255,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     fn not_found_error_if_request_path_is_not_found() {
-        let tree_builder = TreeBuilder::new();
-        let tree = tree_builder.finalize();
+        let tree = Tree::new();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         match send_request(router, Method::Get, "https://test.gotham.rs") {
@@ -273,7 +270,7 @@ mod tests {
     #[allow(deprecated)]
     fn custom_error_if_leaf_found_but_matching_route_not_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let mut tree_builder = TreeBuilder::new();
+        let mut tree = Tree::new();
 
         let route = {
             let methods = vec![Method::Post];
@@ -284,8 +281,7 @@ mod tests {
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
         };
-        tree_builder.add_route(route);
-        let tree = tree_builder.finalize();
+        tree.add_route(route);
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         match send_request(router, Method::Get, "https://test.gotham.rs") {
@@ -300,7 +296,7 @@ mod tests {
     #[allow(deprecated)]
     fn success_if_leaf_and_route_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let mut tree_builder = TreeBuilder::new();
+        let mut tree = Tree::new();
 
         let route = {
             let methods = vec![Method::Get];
@@ -311,8 +307,7 @@ mod tests {
             let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
             Box::new(route)
         };
-        tree_builder.add_route(route);
-        let tree = tree_builder.finalize();
+        tree.add_route(route);
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         match send_request(router, Method::Get, "https://test.gotham.rs") {
@@ -328,7 +323,7 @@ mod tests {
     fn delegates_to_secondary_router() {
         let delegated_router = {
             let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-            let mut tree_builder = TreeBuilder::new();
+            let mut tree = Tree::new();
 
             let route = {
                 let methods = vec![Method::Get];
@@ -341,15 +336,14 @@ mod tests {
                 let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
                 Box::new(route)
             };
-            tree_builder.add_route(route);
+            tree.add_route(route);
 
-            let tree = tree_builder.finalize();
             Router::new(tree, ResponseFinalizerBuilder::new().finalize())
         };
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let mut tree_builder = TreeBuilder::new();
-        let mut delegated_node = NodeBuilder::new("var", SegmentType::Dynamic);
+        let mut tree = Tree::new();
+        let mut delegated_node = Node::new("var", SegmentType::Dynamic);
 
         let route = {
             let methods = vec![Method::Get];
@@ -362,8 +356,7 @@ mod tests {
         };
 
         delegated_node.add_route(route);
-        tree_builder.add_child(delegated_node);
-        let tree = tree_builder.finalize();
+        tree.add_child(delegated_node);
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         // Ensure that top level tree has no route
@@ -386,8 +379,7 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     fn executes_response_finalizer_when_present() {
-        let tree_builder = TreeBuilder::new();
-        let tree = tree_builder.finalize();
+        let tree = Tree::new();
 
         let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
         let not_found_extender = |_s: &mut State, r: &mut Response| {
