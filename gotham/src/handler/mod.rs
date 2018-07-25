@@ -285,7 +285,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::pipeline::set::*;
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::tree::TreeBuilder;
+/// # use gotham::router::tree::Tree;
 /// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
 /// # use gotham::router::route::dispatch::DispatcherImpl;
 /// # use gotham::handler::IntoResponse;
@@ -319,15 +319,14 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// }
 ///
 /// # fn main() {
-/// #   let mut tree_builder = TreeBuilder::new();
+/// #   let mut tree = Tree::new();
 /// #   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 /// #   let finalizer = ResponseFinalizerBuilder::new().finalize();
 /// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::GET]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
 /// #   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
-///     tree_builder.add_route(Box::new(route));
-///     let tree = tree_builder.finalize();
+///     tree.add_route(Box::new(route));
 ///     Router::new(tree, finalizer);
 /// # }
 /// ```

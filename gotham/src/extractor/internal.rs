@@ -7,11 +7,13 @@ use std::fmt::{self, Display};
 use std::marker::PhantomData;
 use std::str::FromStr;
 
-use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess,
-                SeqAccess, VariantAccess, Visitor};
+use serde::de::{
+    self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess, SeqAccess,
+    VariantAccess, Visitor,
+};
 
 use helpers::http::request::query_string::QueryStringMapping;
-use router::tree::SegmentMapping;
+use router::tree::segment::SegmentMapping;
 
 /// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
 /// `PathExtractor` provided by the application.
