@@ -7,9 +7,10 @@ use extractor::{PathExtractor, QueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
 use router::builder::SingleRouteBuilder;
-use router::route::matcher::{AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher,
-                             RouteMatcher};
-use router::tree::node::NodeBuilder;
+use router::route::matcher::{
+    AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,
+};
+use router::tree::node::Node;
 
 pub type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;
 pub type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;
@@ -29,7 +30,7 @@ where
     PE: PathExtractor<Body> + Send + Sync + 'static,
     QSE: QueryStringExtractor<Body> + Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut Node,
     matcher: M,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
@@ -44,11 +45,7 @@ where
     QSE: QueryStringExtractor<Body> + Send + Sync + 'static,
 {
     /// Create an instance of AssociatedRouteBuilder
-    pub fn new(
-        node_builder: &'a mut NodeBuilder,
-        pipeline_chain: C,
-        pipelines: PipelineSet<P>,
-    ) -> Self {
+    pub fn new(node_builder: &'a mut Node, pipeline_chain: C, pipelines: PipelineSet<P>) -> Self {
         AssociatedRouteBuilder {
             node_builder,
             matcher: AnyRouteMatcher::new(),

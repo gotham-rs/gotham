@@ -6,12 +6,15 @@ use hyper::Method;
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
-                      SingleRouteBuilder};
-use router::route::matcher::{AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher,
-                             RouteMatcher};
-use router::tree::node::{NodeBuilder, SegmentType};
+use router::builder::{
+    AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder,
+};
+use router::route::matcher::{
+    AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,
+};
+use router::tree::node::Node;
 use router::tree::regex::ConstrainedSegmentRegex;
+use router::tree::segment::SegmentType;
 
 /// The type returned when building a route that only considers path and http verb(s) when
 /// determining if it matches a request.
@@ -865,10 +868,10 @@ where
 
     /// Return the components that comprise this builder. For internal use only.
     #[doc(hidden)]
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>);
+    fn component_refs(&mut self) -> (&mut Node, &mut C, &PipelineSet<P>);
 }
 
-fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBuilder {
+fn descend<'n>(node_builder: &'n mut Node, path: &str) -> &'n mut Node {
     trace!("[walking to: {}]", path);
 
     let path = if path.starts_with("/") {
@@ -884,7 +887,7 @@ fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBui
     }
 }
 
-fn build_subtree<'n, 's, I>(node: &'n mut NodeBuilder, mut i: I) -> &'n mut NodeBuilder
+fn build_subtree<'n, 's, I>(node: &'n mut Node, mut i: I) -> &'n mut Node
 where
     I: Iterator<Item = &'s str>,
 {
@@ -910,11 +913,10 @@ where
             };
 
             if !node.has_child(segment, segment_type.clone()) {
-                let node_builder = NodeBuilder::new(segment, segment_type.clone());
-                node.add_child(node_builder);
+                node.add_child(Node::new(segment, segment_type.clone()));
             }
 
-            let child = node.borrow_mut_child(segment, segment_type).unwrap();
+            let child = node.borrow_child_mut(segment, segment_type).unwrap();
             build_subtree(child, i)
         }
         None => {
@@ -929,7 +931,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+    fn component_refs(&mut self) -> (&mut Node, &mut C, &PipelineSet<P>) {
         (
             &mut self.node_builder,
             &mut self.pipeline_chain,
@@ -943,7 +945,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+    fn component_refs(&mut self) -> (&mut Node, &mut C, &PipelineSet<P>) {
         (
             &mut self.node_builder,
             &mut self.pipeline_chain,
