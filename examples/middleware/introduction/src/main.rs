@@ -59,7 +59,7 @@ impl Middleware for ExampleMiddleware {
                 Some(ua) => ua.to_str().unwrap(),
                 None => "None",
             }
-        };
+        }.to_string();
 
         // Prior to letting Request handling proceed our middleware creates some new data and adds
         // it to `state`.

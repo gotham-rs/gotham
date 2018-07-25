@@ -14,7 +14,7 @@ extern crate tokio;
 use futures::{stream, Future, Stream};
 use std::time::{Duration, Instant};
 
-use hyper::{Body, StatusCode};
+use hyper::StatusCode;
 
 use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
