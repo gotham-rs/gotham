@@ -107,7 +107,7 @@ mod tests {
         let set_cookie: Vec<String> = {
             let cookie_header = response.headers().get(SET_COOKIE);
             assert!(cookie_header.is_some());
-            Cookie::parse(cookie_header).unwrap()
+            Cookie::parse(cookie_header.unwrap()).unwrap()
         };
         assert!(set_cookie.len() == 1);
 

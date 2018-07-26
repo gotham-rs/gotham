@@ -6,26 +6,35 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use cookie::Cookie;
 use hyper::header::{HeaderMap, COOKIE, SET_COOKIE};
 use hyper::{Body, Response, StatusCode};
 
+use cookie::Cookie;
+
+use gotham::errors::*;
 use gotham::helpers::http::response::create_response;
-use gotham::state::State;
+use gotham::state::{FromState, State};
 
 /// The first request will set a cookie, and subsequent requests will echo it back.
 fn handler(state: State) -> (State, Response<Body>) {
     // Define a narrow scope so that state can be borrowed/moved later in the function.
-    let adjective_from_cookie = {
+    let adjective = {
         // Get the request headers.
         let headers = HeaderMap::borrow_from(&state);
         // Get the Cookie header from the request.
-        let maybe_cookie = headers.get(COOKIE);
-        // Get the value of the "adjective" cookie, if set.
-        maybe_cookie.and_then(|cookie| cookie.get("adjective").map(|s| s.to_owned()))
+        headers
+            .get_all(COOKIE)
+            .iter()
+            .filter_map(|hv| {
+                hv.to_str()
+                    .map_err(|to_str_err| Error::from(to_str_err))
+                    .and_then(|v| Cookie::parse(v).into())
+                    .ok()
+            })
+            .find(|cookie| cookie.name() == "adjective")
+            .and_then(|adj_cookie| adj_cookie.value())
+            .unwrap_or("first time".to_owned());
     };
-
-    let adjective = adjective_from_cookie.unwrap_or("first time".to_owned());
 
     let mut response = {
         create_response(

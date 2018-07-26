@@ -1,6 +1,7 @@
 //! An introduction to storing and retrieving session data, in a type safe way, with the Gotham
 //! web framework.
 
+extern crate cookie;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
@@ -94,7 +95,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let set_cookie: Vec<String> = {
-            let cookie_header = response.headers().get::<SetCookie>();
+            let cookie_header = response.headers().get(SET_COOKIE);
             assert!(cookie_header.is_some());
             cookie_header.unwrap().0.clone()
         };
@@ -122,7 +123,7 @@ mod tests {
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(cookie)
+            .with_header(COOKIE, cookie)
             .perform()
             .unwrap();
 

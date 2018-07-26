@@ -12,7 +12,8 @@ pub(crate) fn bad_request_static_response_extender(ast: &syn::DeriveInput) -> qu
             type ResBody = ::hyper::body::Body;
 
             fn extend(state: &mut ::gotham::state::State, res: &mut ::hyper::Response<Self::ResBody>) {
-                res.headers_mut().insert("x-request-id", ::gotham::state::request_id(state));
+                res.headers_mut().insert("x-request-id",
+                                         ::hyper::header::HeaderValue::from_str(::gotham::state::request_id(state)).unwrap());
                 *res.status_mut() = ::hyper::StatusCode::BAD_REQUEST;
             }
         }

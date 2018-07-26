@@ -91,7 +91,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .post("http://localhost", None, mime::TEXT_PLAIN)
+            .post("http://localhost", "", mime::TEXT_PLAIN)
             .perform()
             .unwrap();
 
