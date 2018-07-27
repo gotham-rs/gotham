@@ -1,14 +1,15 @@
-use http::response::{create_response, extend_response};
-use router::response::extender::StaticResponseExtender;
-use state::{FromState, State, StateData};
-use hyper;
+use error::Result;
+use helpers::http::response::{create_response, extend_response};
+use hyper::{body::Payload, Body, Response, StatusCode};
 use mime::{self, Mime};
 use mime_guess::guess_mime_type_opt;
+use router::response::extender::StaticResponseExtender;
+use state::{FromState, State, StateData};
+use std::convert::From;
 use std::fs;
 use std::io::{self, Read};
-use std::path::{Component, Path, PathBuf};
 use std::iter::FromIterator;
-use std::convert::From;
+use std::path::{Component, Path, PathBuf};
 
 use futures::future;
 use handler::{Handler, HandlerFuture, NewHandler};
@@ -52,7 +53,7 @@ impl FileSystemHandler {
 impl NewHandler for FileHandler {
     type Instance = Self;
 
-    fn new_handler(&self) -> io::Result<Self::Instance> {
+    fn new_handler(&self) -> Result<Self::Instance> {
         Ok(self.clone())
     }
 }
@@ -60,7 +61,7 @@ impl NewHandler for FileHandler {
 impl NewHandler for FileSystemHandler {
     type Instance = Self;
 
-    fn new_handler(&self) -> io::Result<Self::Instance> {
+    fn new_handler(&self) -> Result<Self::Instance> {
         Ok(self.clone())
     }
 }
@@ -85,7 +86,7 @@ impl Handler for FileHandler {
     }
 }
 
-fn create_file_response(path: PathBuf, state: &State) -> hyper::Response {
+fn create_file_response(path: PathBuf, state: &State) -> Response<Body> {
     path.metadata()
         .and_then(|meta| {
             let mut contents = Vec::with_capacity(meta.len() as usize);
@@ -94,7 +95,7 @@ fn create_file_response(path: PathBuf, state: &State) -> hyper::Response {
         })
         .map(|contents| {
             let mime_type = mime_for_path(&path);
-            create_response(state, hyper::StatusCode::Ok, Some((contents, mime_type)))
+            create_response(state, StatusCode::OK, Some((contents, mime_type)))
         })
         .unwrap_or_else(|err| error_response(state, err))
 }
@@ -118,11 +119,11 @@ fn normalize_path(path: &Path) -> PathBuf {
         })
 }
 
-fn error_response(state: &State, e: io::Error) -> hyper::Response {
+fn error_response(state: &State, e: io::Error) -> Response<Body> {
     let status = match e.kind() {
-        io::ErrorKind::NotFound => hyper::StatusCode::NotFound,
-        io::ErrorKind::PermissionDenied => hyper::StatusCode::Forbidden,
-        _ => hyper::StatusCode::InternalServerError,
+        io::ErrorKind::NotFound => StatusCode::NOT_FOUND,
+        io::ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
     };
     create_response(
         &state,
@@ -141,20 +142,20 @@ pub struct FilePathExtractor {
 impl StateData for FilePathExtractor {}
 
 impl StaticResponseExtender for FilePathExtractor {
-    fn extend(state: &mut State, res: &mut hyper::Response) {
-        extend_response(state, res, ::hyper::StatusCode::BadRequest, None);
-    }
+    type ResBody = Body;
+    fn extend(_state: &mut State, _res: &mut Response<Self::ResBody>) {}
 }
 
 #[cfg(test)]
 mod tests {
-    use test::TestServer;
+    // use helpers::http::header::*;
+    use hyper::header::CONTENT_TYPE;
+    use hyper::StatusCode;
+    use mime;
     use router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use router::Router;
-    use hyper::StatusCode;
-    use hyper::header::ContentType;
-    use mime;
     use std::str;
+    use test::TestServer;
 
     #[test]
     fn static_files_guesses_content_type() {
@@ -180,11 +181,8 @@ mod tests {
                 .perform()
                 .unwrap();
 
-            assert_eq!(response.status(), StatusCode::Ok);
-            assert_eq!(
-                response.headers().get::<ContentType>().unwrap(),
-                &ContentType(doc.1)
-            );
+            assert_eq!(response.status(), StatusCode::OK);
+            assert_eq!(response.headers().get(CONTENT_TYPE).unwrap(), doc.1);
 
             let body = response.read_body().unwrap();
             assert_eq!(&body[..], doc.2.as_bytes());
@@ -215,7 +213,7 @@ mod tests {
                 .perform()
                 .unwrap();
 
-            assert_eq!(response.status(), StatusCode::NotFound);
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
         }
     }
 
@@ -233,11 +231,8 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
-        assert_eq!(
-            response.headers().get::<ContentType>().unwrap(),
-            &ContentType::html()
-        );
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers().get(CONTENT_TYPE).unwrap(), "text/html");
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"<html>I am a doc.</html>");
