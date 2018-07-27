@@ -96,9 +96,11 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let set_cookie: Vec<String> = {
-            let cookie_header = response.headers().get(SET_COOKIE);
-            assert!(cookie_header.is_some());
-            cookie_header.unwrap().0.clone()
+            let cookie_headers = response
+                .headers()
+                .get_all(SET_COOKIE)
+                .flat_map(|hv| hv.to_str())
+                .collect();
         };
         assert!(set_cookie.len() == 1);
 
