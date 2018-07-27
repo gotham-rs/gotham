@@ -11,7 +11,6 @@ use hyper::{Body, Response, StatusCode};
 
 use cookie::Cookie;
 
-use gotham::errors::*;
 use gotham::helpers::http::response::create_response;
 use gotham::state::{FromState, State};
 
@@ -25,14 +24,10 @@ fn handler(state: State) -> (State, Response<Body>) {
         headers
             .get_all(COOKIE)
             .iter()
-            .filter_map(|hv| {
-                hv.to_str()
-                    .map_err(|to_str_err| Error::from(to_str_err))
-                    .and_then(|v| Cookie::parse(v).into())
-                    .ok()
-            })
+            .flat_map(|hv| hv.to_str())
+            .flat_map(|cv| Cookie::parse(cv.to_owned()))
             .find(|cookie| cookie.name() == "adjective")
-            .and_then(|adj_cookie| adj_cookie.value())
+            .map(|adj_cookie| adj_cookie.value())
             .unwrap_or("first time".to_owned());
     };
 

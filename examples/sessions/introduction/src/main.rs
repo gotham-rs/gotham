@@ -81,6 +81,7 @@ mod tests {
     use super::*;
     use cookie::Cookie;
     use gotham::test::TestServer;
+    use hyper::header::{COOKIE, SET_COOKIE};
     use std::borrow::Cow;
 
     #[test]
