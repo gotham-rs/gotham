@@ -88,10 +88,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cookie::Cookie;
     use gotham::test::TestServer;
-    use hyper::header::SET_COOKIE;
-    use std::borrow::Cow;
+    use hyper::header::{COOKIE, SET_COOKIE};
 
     #[test]
     fn cookie_is_set_and_updates_response() {
@@ -104,12 +102,10 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let set_cookie: Vec<String> = {
-            let cookie_header = response.headers().get(SET_COOKIE);
-            assert!(cookie_header.is_some());
-            Cookie::parse(cookie_header.unwrap()).unwrap()
-        };
-        assert!(set_cookie.len() == 1);
+        assert_eq!(response.headers().get_all(SET_COOKIE).iter().count(), 1);
+
+        let headers = response.headers().clone();
+        let cookie = headers.get(SET_COOKIE).unwrap();
 
         let body = response.read_body().unwrap();
         assert_eq!(
@@ -117,23 +113,10 @@ mod tests {
             "You have never visited this page before.\n".as_bytes()
         );
 
-        let cookie = {
-            let mut cookie = Cookie::new();
-
-            let only_cookie: String = set_cookie.get(0).unwrap().clone();
-            let cookie_components: Vec<_> = only_cookie.split(";").collect();
-            let cookie_str_parts: Vec<_> = cookie_components.get(0).unwrap().split("=").collect();
-            cookie.append(
-                Cow::Owned(cookie_str_parts.get(0).unwrap().to_string()),
-                Cow::Owned(cookie_str_parts.get(1).unwrap().to_string()),
-            );
-            cookie
-        };
-
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(cookie)
+            .with_header(COOKIE, cookie.to_owned())
             .perform()
             .unwrap();
 

@@ -82,7 +82,6 @@ mod tests {
     use cookie::Cookie;
     use gotham::test::TestServer;
     use hyper::header::{COOKIE, SET_COOKIE};
-    use std::borrow::Cow;
 
     #[test]
     fn cookie_is_set_and_counter_increments() {
@@ -95,13 +94,13 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let set_cookie: Vec<String> = {
-            let cookie_headers = response
-                .headers()
-                .get_all(SET_COOKIE)
-                .flat_map(|hv| hv.to_str())
-                .collect();
-        };
+        let headers = response.headers().clone();
+
+        let set_cookie: Vec<_> = headers
+            .get_all(SET_COOKIE)
+            .iter()
+            .flat_map(|hv| hv.to_str())
+            .collect();
         assert!(set_cookie.len() == 1);
 
         let body = response.read_body().unwrap();
@@ -110,23 +109,13 @@ mod tests {
             "You have visited this page 0 time(s) before\n".as_bytes()
         );
 
-        let cookie = {
-            let mut cookie = Cookie::new();
-
-            let only_cookie: String = set_cookie.get(0).unwrap().clone();
-            let cookie_components: Vec<_> = only_cookie.split(";").collect();
-            let cookie_str_parts: Vec<_> = cookie_components.get(0).unwrap().split("=").collect();
-            cookie.append(
-                Cow::Owned(cookie_str_parts.get(0).unwrap().to_string()),
-                Cow::Owned(cookie_str_parts.get(1).unwrap().to_string()),
-            );
-            cookie
-        };
+        let only_cookie: String = set_cookie.get(0).unwrap().clone().to_string();
+        let cookie: Cookie = only_cookie.parse().unwrap();
 
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(COOKIE, cookie)
+            .with_header(COOKIE, (&cookie.to_string()).parse().unwrap())
             .perform()
             .unwrap();
 
