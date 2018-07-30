@@ -9,13 +9,12 @@ use std::time::Duration;
 
 use failure;
 
-use futures::{
-    future::{self, FutureResult}, Future, Stream,
-};
+use futures::{future::{self, FutureResult},
+              Future,
+              Stream};
 use futures_timer::Delay;
-use hyper::client::{
-    connect::{Connect, Connected, Destination}, Client,
-};
+use hyper::client::{connect::{Connect, Connected, Destination},
+                    Client};
 use hyper::header::CONTENT_TYPE;
 use hyper::server::conn::Http;
 use hyper::{Body, Method, Request, Response, Uri};
@@ -133,8 +132,9 @@ where
         let (addr, ss) = {
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
-            let listener = TcpListener::bind(&"localhost:0".parse()?)?;
+            let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
             let listener_addr = listener.local_addr()?;
+            print!("{:?}", listener_addr);
             let server = listener.incoming();
             (listener_addr, server)
         };
@@ -335,9 +335,10 @@ where
 
     /// Send a constructed request using this `TestClient`, and await the response.
     pub fn perform(mut self, req: Request<Body>) -> Result<TestResponse> {
-        let req_future = self.client
-            .request(req)
-            .map_err(|_| failure::err_msg("request failed").compat());
+        let req_future = self.client.request(req).map_err(|e| {
+            print!("{:?}", e);
+            failure::err_msg("request failed").compat()
+        });
 
         self.test_server
             .run_request(req_future)
