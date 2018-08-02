@@ -47,6 +47,8 @@ extern crate failure;
 //#[macro_use]
 //extern crate failure_derive;
 
+extern crate pretty_env_logger;
+
 pub mod error;
 pub mod extractor;
 pub mod handler;

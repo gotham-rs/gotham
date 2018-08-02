@@ -133,8 +133,9 @@ where
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
             let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
+            print!("listener {:?}\n", listener);
             let listener_addr = listener.local_addr()?;
-            print!("{:?}", listener_addr);
+            print!("local_addr {:?}\n", listener_addr);
             let server = listener.incoming();
             (listener_addr, server)
         };
@@ -176,6 +177,7 @@ where
         let timeout = Delay::new(timeout_duration);
 
         match self.run_future(f.select2(timeout).map_err(|either| {
+            warn!("run_request either-error: {:?}", either);
             let e: failure::Error = match either {
                 future::Either::A((req_err, _)) => req_err.into(),
                 future::Either::B((times_up, _)) => times_up.into(),
@@ -201,7 +203,10 @@ where
             .write()
             .unwrap()
             .block_on(future)
-            .map_err(|e| e.into())
+            .map_err(|e| {
+                warn!("Error in test server: {:?}", e);
+                e.into()
+            })
     }
 }
 
@@ -336,7 +341,7 @@ where
     /// Send a constructed request using this `TestClient`, and await the response.
     pub fn perform(mut self, req: Request<Body>) -> Result<TestResponse> {
         let req_future = self.client.request(req).map_err(|e| {
-            print!("{:?}", e);
+            warn!("Error from test client request {:?}", e);
             failure::err_msg("request failed").compat()
         });
 
@@ -441,6 +446,7 @@ impl Connect for TestConnect {
     fn connect(&self, _dst: Destination) -> Self::Future {
         Box::new(
             TcpStream::connect(&self.addr)
+                .inspect(|s| print!("{:?}\n", s))
                 .map(|s| (s, Connected::new()))
                 .map_err(|e| Error::from(e).compat()),
         )
@@ -502,6 +508,10 @@ mod tests {
 
     #[test]
     fn serves_requests() {
+        ::pretty_env_logger::init();
+        print!("warn follows\n");
+        warn!("LOGGIN' NOW!");
+        print!("warn precedes\n");
         let ticks = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
