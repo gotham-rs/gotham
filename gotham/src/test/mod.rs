@@ -133,9 +133,9 @@ where
             // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
             // it and then immediately discard the listener.
             let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
-            print!("listener {:?}\n", listener);
+            info!("Test server listener {:?}", listener);
             let listener_addr = listener.local_addr()?;
-            print!("local_addr {:?}\n", listener_addr);
+            info!("Test server listening on {:?}", listener_addr);
             let server = listener.incoming();
             (listener_addr, server)
         };
@@ -147,9 +147,12 @@ where
                 .http
                 //.serve_connection(ss, service)
                 .serve_incoming(ss, move || {
+                    debug!("Connecting to service");
                     let ok: FutureResult<_, CompatError> = future::ok(service.connect(client_addr));
                     ok
                 })
+                .inspect(|_| debug!("Request received"))
+                .inspect_err(|re| debug!("HTTP error: {:?}", re))
                 .into_future()
                 .then(|_| future::ok(()));
             self.data.runtime.write().unwrap().spawn(f);
@@ -177,10 +180,15 @@ where
         let timeout = Delay::new(timeout_duration);
 
         match self.run_future(f.select2(timeout).map_err(|either| {
-            warn!("run_request either-error: {:?}", either);
             let e: failure::Error = match either {
-                future::Either::A((req_err, _)) => req_err.into(),
-                future::Either::B((times_up, _)) => times_up.into(),
+                future::Either::A((req_err, _)) => {
+                    warn!("run_request request error: {:?}", req_err);
+                    req_err.into()
+                },
+                future::Either::B((times_up, _)) => {
+                    warn!("run_request timed out");
+                    times_up.into()
+                },
             };
             e.compat()
         }))? {
@@ -446,7 +454,7 @@ impl Connect for TestConnect {
     fn connect(&self, _dst: Destination) -> Self::Future {
         Box::new(
             TcpStream::connect(&self.addr)
-                .inspect(|s| print!("{:?}\n", s))
+                .inspect(|s| info!("Client TcpStream connected: {:?}", s))
                 .map(|s| (s, Connected::new()))
                 .map_err(|e| Error::from(e).compat()),
         )
@@ -508,10 +516,8 @@ mod tests {
 
     #[test]
     fn serves_requests() {
-        ::pretty_env_logger::init();
-        print!("warn follows\n");
+        ::pretty_env_logger::init_custom_env("GOTHAM_TEST_LOG");
         warn!("LOGGIN' NOW!");
-        print!("warn precedes\n");
         let ticks = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
