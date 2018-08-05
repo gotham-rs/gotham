@@ -471,7 +471,7 @@ mod tests {
 
     #[test]
     fn serves_requests() {
-        ::pretty_env_logger::init_custom_env("GOTHAM_TEST_LOG");
+        let _ = ::pretty_env_logger::try_init_custom_env("GOTHAM_TEST_LOG");
         let ticks = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -502,6 +502,7 @@ mod tests {
 
     #[test]
     fn times_out() {
+        let _ = ::pretty_env_logger::try_init_custom_env("GOTHAM_TEST_LOG");
         let new_service = || {
             Ok(TestHandler {
                 response: "".to_owned(),
@@ -524,6 +525,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // We trade using the mainline server setup code for this behavior.
     fn sets_client_addr() {
         info!("{}:{}", file!(), line!());
         let ticks = SystemTime::now()
@@ -561,6 +563,7 @@ mod tests {
 
     #[test]
     fn async_echo() {
+        let _ = ::pretty_env_logger::try_init_custom_env("GOTHAM_TEST_LOG");
         fn handler(mut state: State) -> Box<HandlerFuture> {
             let f = Body::take_from(&mut state)
                 .concat2()

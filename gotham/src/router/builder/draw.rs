@@ -6,12 +6,10 @@ use hyper::Method;
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::builder::{
-    AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder,
-};
-use router::route::matcher::{
-    AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,
-};
+use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
+                      SingleRouteBuilder};
+use router::route::matcher::{AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher,
+                             RouteMatcher};
 use router::tree::node::Node;
 use router::tree::regex::ConstrainedSegmentRegex;
 use router::tree::segment::SegmentType;
@@ -1026,24 +1024,32 @@ mod tests {
 
     #[test]
     fn delegate_without_pipelines_skips_pipelines() {
+        let _ = ::pretty_env_logger::try_init_custom_env("GOTHAM_TEST_LOG");
+        info!("{}:{}", file!(), line!());
         let (chain, pipelines) = single_pipeline(new_pipeline().add(QuickExitMiddleware).build());
 
+        info!("{}:{}", file!(), line!());
         let test_router = build_simple_router(|route| {
             route.get("/").to(test_handler);
         });
 
+        info!("{}:{}", file!(), line!());
         let router = build_router(chain, pipelines, |route| {
             route
                 .delegate_without_pipelines("/test")
                 .to_router(test_router);
         });
 
+        info!("{}:{}", file!(), line!());
         let test_server = TestServer::new(router).unwrap();
+        info!("{}:{}", file!(), line!());
         let response = test_server
             .client()
             .get("http://localhost/test/")
             .perform()
             .unwrap();
+        info!("{}:{}", file!(), line!());
         assert_eq!(response.status(), StatusCode::ACCEPTED);
+        info!("{}:{}", file!(), line!());
     }
 }
