@@ -1,7 +1,6 @@
 use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
 
-use handler::NewHandler;
 use test::{TestClient, TestResponse};
 
 use error::*;
@@ -9,19 +8,13 @@ use error::*;
 /// Builder API for constructing `TestServer` requests. When the request is built,
 /// `RequestBuilder::perform` will issue the request and provide access to the response.
 #[must_use]
-pub struct RequestBuilder<NH>
-where
-    NH: NewHandler + 'static,
-{
-    client: TestClient<NH>,
+pub struct RequestBuilder {
+    client: TestClient,
     request: Result<Request<Body>>,
 }
 
-impl<NH> RequestBuilder<NH>
-where
-    NH: NewHandler + 'static,
-{
-    pub(super) fn new(client: TestClient<NH>, method: Method, uri: Uri) -> RequestBuilder<NH> {
+impl RequestBuilder {
+    pub(super) fn new(client: TestClient, method: Method, uri: Uri) -> RequestBuilder {
         let request = Ok(Request::builder()
             .method(method)
             .uri(uri)
@@ -33,7 +26,7 @@ where
 
     /// Adds the given header into the underlying `Request`, replacing any existing header of the
     /// same type.
-    pub fn with_header<N>(self, name: N, value: HeaderValue) -> RequestBuilder<NH>
+    pub fn with_header<N>(self, name: N, value: HeaderValue) -> RequestBuilder
     where
         N: IntoHeaderName,
     {
@@ -47,7 +40,7 @@ where
     }
 
     /// Adds the given body into the underlying `Request`, replacing any existing body.
-    pub fn with_body<T>(self, body: T) -> RequestBuilder<NH>
+    pub fn with_body<T>(self, body: T) -> RequestBuilder
     where
         T: Into<Body>,
     {

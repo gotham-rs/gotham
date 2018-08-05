@@ -9,28 +9,29 @@ use std::time::Duration;
 
 use failure;
 
-use futures::{future::{self, FutureResult},
-              Future,
-              Stream};
+use futures::{future, Future, Stream};
 use futures_timer::Delay;
 use hyper::client::{connect::{Connect, Connected, Destination},
                     Client};
 use hyper::header::CONTENT_TYPE;
-use hyper::server::conn::Http;
 use hyper::{Body, Method, Request, Response, Uri};
 use mime;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
 
 use handler::NewHandler;
-use router::Router;
-use service::GothamService;
 
 use error::*;
 
 mod request;
 
 pub use self::request::RequestBuilder;
+
+struct TestServerData {
+    addr: SocketAddr,
+    timeout: u64,
+    runtime: RwLock<Runtime>,
+}
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
 /// (which Gotham's `Router` is). An instance of `TestServer` is run asynchronously within the
@@ -58,54 +59,44 @@ pub use self::request::RequestBuilder;
 /// assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
-pub struct TestServer<NH = Router>
-where
-    NH: NewHandler + Send + 'static,
-{
-    data: Arc<TestServerData<NH>>,
+pub struct TestServer {
+    data: Arc<TestServerData>,
 }
 
-struct TestServerData<NH = Router>
-where
-    NH: NewHandler + Send + 'static,
-{
-    http: Http,
-    timeout: u64,
-    runtime: RwLock<Runtime>,
-    gotham_service: Arc<GothamService<NH>>,
-}
-
-impl<NH> Clone for TestServer<NH>
-where
-    NH: NewHandler + Send + 'static,
-{
-    fn clone(&self) -> TestServer<NH> {
+impl Clone for TestServer {
+    fn clone(&self) -> TestServer {
         TestServer {
             data: self.data.clone(),
         }
     }
 }
 
-impl<NH> TestServer<NH>
-where
-    NH: NewHandler + Send + 'static,
-{
+impl TestServer {
     /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
     /// for each connection.
     ///
     /// Timeout will be set to 10 seconds.
-    pub fn new(new_handler: NH) -> Result<TestServer<NH>> {
+    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> Result<TestServer> {
         TestServer::with_timeout(new_handler, 10)
     }
 
     /// Sets the request timeout to `timeout` seconds and returns a new `TestServer`.
-    pub fn with_timeout(new_handler: NH, timeout: u64) -> Result<TestServer<NH>> {
+    pub fn with_timeout<NH: NewHandler + 'static>(
+        new_handler: NH,
+        timeout: u64,
+    ) -> Result<TestServer> {
+        let mut runtime = Runtime::new()?;
+        let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
+        let addr = listener.local_addr()?;
+
+        let service_stream = super::bind_server(listener, new_handler);
+        runtime.spawn(service_stream);
+
         let data = TestServerData {
-            http: Http::new(),
+            addr,
             timeout,
-            runtime: RwLock::new(Runtime::new().unwrap()),
-            gotham_service: Arc::new(GothamService::new(new_handler)),
+            runtime: RwLock::new(runtime),
         };
 
         Ok(TestServer {
@@ -116,49 +107,25 @@ where
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see a default socket address of `127.0.0.1:10000` as the source address for
     /// the connection.
-    pub fn client(&self) -> TestClient<NH> {
+    pub fn client(&self) -> TestClient {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
-    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<NH> {
+    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient {
         self.try_client_with_address(client_addr)
             .expect("TestServer: unable to spawn client")
     }
 
-    fn try_client_with_address(&self, client_addr: net::SocketAddr) -> Result<TestClient<NH>> {
-        let (addr, ss) = {
-            // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
-            // it and then immediately discard the listener.
-            let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
-            info!("Test server listener {:?}", listener);
-            let listener_addr = listener.local_addr()?;
-            info!("Test server listening on {:?}", listener_addr);
-            let server = listener.incoming();
-            (listener_addr, server)
-        };
+    fn try_client_with_address(&self, _client_addr: net::SocketAddr) -> Result<TestClient> {
+        // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
+        // it and then immediately discard the listener.
 
-        {
-            let data = self.data.clone();
-            let service = data.gotham_service.clone();
-            let f = self.data
-                .http
-                //.serve_connection(ss, service)
-                .serve_incoming(ss, move || {
-                    debug!("Connecting to service");
-                    let ok: FutureResult<_, CompatError> = future::ok(service.connect(client_addr));
-                    ok
-                })
-                .inspect(|_| debug!("Request received"))
-                .inspect_err(|re| debug!("HTTP error: {:?}", re))
-                .into_future()
-                .then(|_| future::ok(()));
-            self.data.runtime.write().unwrap().spawn(f);
-        };
-
-        let client = Client::builder().build(TestConnect { addr });
+        let client = Client::builder().build(TestConnect {
+            addr: self.data.addr,
+        });
 
         Ok(TestClient {
             client,
@@ -184,11 +151,11 @@ where
                 future::Either::A((req_err, _)) => {
                     warn!("run_request request error: {:?}", req_err);
                     req_err.into()
-                },
+                }
                 future::Either::B((times_up, _)) => {
                     warn!("run_request timed out");
                     times_up.into()
-                },
+                }
             };
             e.compat()
         }))? {
@@ -218,10 +185,7 @@ where
     }
 }
 
-impl<NH> BodyReader for TestServer<NH>
-where
-    NH: NewHandler + Send + 'static,
-{
+impl BodyReader for TestServer {
     fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>> {
         let f = response.into_body();
         let f = f.concat2();
@@ -231,43 +195,34 @@ where
 }
 
 /// Client interface for issuing requests to a `TestServer`.
-pub struct TestClient<NH>
-where
-    NH: NewHandler + Send + 'static,
-{
+pub struct TestClient {
     client: Client<TestConnect, Body>,
-    test_server: TestServer<NH>,
+    test_server: TestServer,
 }
 
-impl<NH> TestClient<NH>
-where
-    NH: NewHandler + Send + 'static,
-    // + Fn() -> io::Result<H>,
-    //H: Send + FnOnce(state::State) -> IHF,
-    //IHF: IntoHandlerFuture + Sized,
-{
+impl TestClient {
     /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
-    pub fn head(self, uri: &str) -> RequestBuilder<NH> {
+    pub fn head(self, uri: &str) -> RequestBuilder {
         self.build_request(Method::HEAD, uri)
     }
 
     /// Begin constructing a HEAD request using this `TestClient`.
-    pub fn head_uri(self, uri: Uri) -> RequestBuilder<NH> {
+    pub fn head_uri(self, uri: Uri) -> RequestBuilder {
         self.build_request_uri(Method::HEAD, uri)
     }
 
     /// Parse the URI and begin constructing a GET request using this `TestClient`.
-    pub fn get(self, uri: &str) -> RequestBuilder<NH> {
+    pub fn get(self, uri: &str) -> RequestBuilder {
         self.build_request(Method::GET, uri)
     }
 
     /// Begin constructing a GET request using this `TestClient`.
-    pub fn get_uri(self, uri: Uri) -> RequestBuilder<NH> {
+    pub fn get_uri(self, uri: Uri) -> RequestBuilder {
         self.build_request_uri(Method::GET, uri)
     }
 
     /// Parse the URI and begin constructing a POST request using this `TestClient`.
-    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder
     where
         T: Into<Body>,
     {
@@ -277,7 +232,7 @@ where
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder
     where
         T: Into<Body>,
     {
@@ -287,7 +242,7 @@ where
     }
 
     /// Parse the URI and begin constructing a PUT request using this `TestClient`.
-    pub fn put<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn put<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder
     where
         T: Into<Body>,
     {
@@ -297,7 +252,7 @@ where
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn put_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder
     where
         T: Into<Body>,
     {
@@ -307,7 +262,7 @@ where
     }
 
     /// Parse the URI and begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn patch<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder
     where
         T: Into<Body>,
     {
@@ -317,7 +272,7 @@ where
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder<NH>
+    pub fn patch_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder
     where
         T: Into<Body>,
     {
@@ -327,22 +282,22 @@ where
     }
 
     /// Parse the URI and begin constructing a DELETE request using this `TestClient`.
-    pub fn delete(self, uri: &str) -> RequestBuilder<NH> {
+    pub fn delete(self, uri: &str) -> RequestBuilder {
         self.build_request(Method::DELETE, uri)
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
-    pub fn delete_uri(self, uri: Uri) -> RequestBuilder<NH> {
+    pub fn delete_uri(self, uri: Uri) -> RequestBuilder {
         self.build_request_uri(Method::DELETE, uri)
     }
 
     /// Parse the URI and begin constructing a request with the given HTTP method.
-    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder<NH> {
+    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder {
         RequestBuilder::new(self, method, uri.parse().unwrap())
     }
 
     /// Begin constructing a request with the given HTTP method and Uri.
-    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder<NH> {
+    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder {
         RequestBuilder::new(self, method, uri)
     }
 
@@ -517,26 +472,31 @@ mod tests {
     #[test]
     fn serves_requests() {
         ::pretty_env_logger::init_custom_env("GOTHAM_TEST_LOG");
-        warn!("LOGGIN' NOW!");
         let ticks = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
         let new_service = move || {
+            info!("Recieved request; contents ignored");
             Ok(TestHandler {
                 response: format!("time: {}", ticks),
             })
         };
 
+        info!("{}:{}", file!(), line!());
         let test_server = TestServer::new(new_service).unwrap();
+        info!("{}:{}", file!(), line!());
         let response = test_server
             .client()
             .get("http://localhost/")
             .perform()
             .unwrap();
 
+        info!("{}:{}", file!(), line!());
         assert_eq!(response.status(), StatusCode::OK);
+        info!("{}:{}", file!(), line!());
         let buf = response.read_utf8_body().unwrap();
+        info!("{}:{}", file!(), line!());
         assert_eq!(buf, format!("time: {}", ticks));
     }
 
@@ -565,28 +525,38 @@ mod tests {
 
     #[test]
     fn sets_client_addr() {
+        info!("{}:{}", file!(), line!());
         let ticks = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
+        info!("{}:{}", file!(), line!());
         let new_service = move || {
             Ok(TestHandler {
                 response: format!("time: {}", ticks),
             })
         };
+        info!("{}:{}", file!(), line!());
         let client_addr = "9.8.7.6:58901".parse().unwrap();
 
+        info!("{}:{}", file!(), line!());
         let test_server = TestServer::new(new_service).unwrap();
+        info!("{}:{}", file!(), line!());
         let response = test_server
             .client_with_address(client_addr)
             .get("http://localhost/myaddr")
             .perform()
             .unwrap();
 
+        info!("{}:{}", file!(), line!());
         assert_eq!(response.status(), StatusCode::OK);
+        info!("{}:{}", file!(), line!());
         let buf = response.read_body().unwrap();
+        info!("{}:{}", file!(), line!());
         let received_addr: net::SocketAddr = String::from_utf8(buf).unwrap().parse().unwrap();
+        info!("{}:{}", file!(), line!());
         assert_eq!(received_addr, client_addr);
+        info!("{}:{}", file!(), line!());
     }
 
     #[test]

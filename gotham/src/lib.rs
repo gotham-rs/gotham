@@ -40,14 +40,18 @@ extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
 
+#[cfg(test)]
+extern crate timebomb;
+
+#[cfg(test)]
+extern crate pretty_env_logger;
+
 extern crate cookie;
 extern crate http;
 
 extern crate failure;
 //#[macro_use]
 //extern crate failure_derive;
-
-extern crate pretty_env_logger;
 
 pub mod error;
 pub mod extractor;
@@ -114,14 +118,22 @@ where
     A: ToSocketAddrs + 'static,
 {
     let (listener, addr) = tcp_listener(addr);
-    let gotham_service = GothamService::new(new_handler);
-    let protocol = Arc::new(Http::new());
 
     info!(
         target: "gotham::start",
         " Gotham listening on http://{}",
         addr
     );
+
+    bind_server(listener, new_handler)
+}
+
+fn bind_server<'a, NH>(listener: TcpListener, new_handler: NH) -> impl Future<Item = (), Error = ()>
+where
+    NH: NewHandler + 'static,
+{
+    let protocol = Arc::new(Http::new());
+    let gotham_service = GothamService::new(new_handler);
 
     listener
         .incoming()
