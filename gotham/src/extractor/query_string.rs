@@ -28,7 +28,7 @@ use state::{State, StateData};
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::{FromState, State};
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::router::Router;
@@ -49,7 +49,7 @@ use state::{State, StateData};
 ///     C,
 /// }
 ///
-/// fn handler(state: State) -> (State, Response) {
+/// fn handler(state: State) -> (State, Response<Body>) {
 ///     let &MyQueryParams { x, y } = MyQueryParams::borrow_from(&state);
 ///     let body = format!("x = {}, y = {:?}", x, y);
 ///

@@ -28,7 +28,7 @@ use state::{State, StateData};
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::{FromState, State};
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::router::Router;
@@ -41,7 +41,7 @@ use state::{State, StateData};
 ///     slug: String,
 /// }
 ///
-/// fn handler(mut state: State) -> (State, Response) {
+/// fn handler(mut state: State) -> (State, Response<Body>) {
 ///     let MyPathParams { id, slug } = MyPathParams::take_from(&mut state);
 ///     let body = format!("id = {}, slug = {}", id, slug);
 ///
