@@ -402,6 +402,9 @@ where
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
     /// # use gotham::test::TestServer;
+    /// # extern crate timebomb;
+    /// #
+    /// # use timebomb::timeout_ms;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -418,6 +421,7 @@ where
     /// # }
     /// #
     /// # fn main() {
+    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #
     /// #   let response = test_server.client()
@@ -431,6 +435,7 @@ where
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+    /// #   }, 3000);
     /// # }
     /// ```
     pub fn get_or_head<'b>(

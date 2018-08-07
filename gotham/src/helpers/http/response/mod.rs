@@ -9,8 +9,6 @@ use std::borrow::Cow;
 
 use state::{request_id, FromState, State};
 
-type DataMime = (Vec<u8>, Mime);
-
 /// Creates a `Response` object and populates it with a set of default headers that help to improve
 /// security and conformance to best practice.
 ///
@@ -67,7 +65,7 @@ type DataMime = (Vec<u8>, Mime);
 pub fn create_response(
     state: &State,
     status: StatusCode,
-    body: Option<DataMime>,
+    body: Option<(Vec<u8>, Mime)>,
 ) -> Response<Body> {
     let mut builder = Response::builder();
     let mime = body.clone().map(|(_, mime)| mime);
@@ -112,7 +110,7 @@ pub fn create_response(
 /// #     assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
 /// #     assert_eq!(
 /// #         response.headers().get(LOCATION),
-/// #         Some("/over-there"))
+/// #         Some("/over-there")
 /// #     );
 /// # }
 /// ```
@@ -302,24 +300,24 @@ pub fn extend_response(
 ///
 /// // e.g.:
 /// // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
-/// assert!(response.headers().get::<XRequestId>().is_some());
+/// assert!(response.headers().get(X_REQUEST_ID).is_some());
 ///
 /// // X-Frame-Options: DENY
 /// assert_eq!(
-///     *response.headers().get::<XFrameOptions>().unwrap(),
-///     XFrameOptions::Deny,
+///     *response.headers().get(X_FRAME_OPTIONS).unwrap(),
+///     "DENY"
 /// );
 ///
 /// // X-XSS-Protection: 1; mode=block
 /// assert_eq!(
-///     *response.headers().get::<XXssProtection>().unwrap(),
-///     XXssProtection::EnableBlock,
+///     *response.headers().get(X_XSS_PROTECTION).unwrap(),
+///     "1; mode=block"
 /// );
 ///
 /// // X-Content-Type-Options: nosniff
 /// assert_eq!(
-///     *response.headers().get::<XContentTypeOptions>().unwrap(),
-///     XContentTypeOptions::NoSniff,
+///     *response.headers().get(X_CONTENT_TYPE_OPTIONS).unwrap(),
+///     "nosniff"
 /// );
 /// # }
 /// ```
@@ -381,20 +379,20 @@ pub fn extend_response(
 /// #
 /// # // X-Frame-Options: DENY
 /// # assert_eq!(
-/// #     *response.headers().get::<XFrameOptions>().unwrap(),
-/// #     XFrameOptions::Deny,
+/// #     *response.headers().get(X_FRAME_OPTIONS).unwrap(),
+/// #     "DENY"
 /// # );
 /// #
 /// # // X-XSS-Protection: 1; mode=block
 /// # assert_eq!(
-/// #     *response.headers().get::<XXssProtection>().unwrap(),
-/// #     XXssProtection::EnableBlock,
+/// #     *response.headers().get(X_XSS_PROTECTION).unwrap(),
+/// #     "1; mode=block"
 /// # );
 /// #
 /// # // X-Content-Type-Options: nosniff
 /// # assert_eq!(
-/// #     *response.headers().get::<XContentTypeOptions>().unwrap(),
-/// #     XContentTypeOptions::NoSniff,
+/// #     *response.headers().get(X_CONTENT_TYPE_OPTIONS).unwrap(),
+/// #     "nosniff"
 /// # );
 /// # }
 /// ```
