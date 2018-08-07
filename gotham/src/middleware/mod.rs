@@ -214,7 +214,9 @@ pub mod state;
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// # extern crate futures;
+/// # extern crate timebomb;
 /// #
+/// # use timebomb::timeout_ms;
 /// # use hyper::{Body, Response, Method, StatusCode};
 /// # use futures::future;
 /// # use gotham::helpers::http::response::create_response;
@@ -243,6 +245,7 @@ pub mod state;
 /// }
 /// #
 /// # fn main() {
+/// #   timeout_ms(||{
 /// #   let (chain, pipelines) = single_pipeline(
 /// #       new_pipeline()
 /// #           .add(ConditionalMiddleware)
@@ -264,6 +267,7 @@ pub mod state;
 /// #
 /// #   let response = test_server.client().head("https://example.com/").perform().unwrap();
 /// #   assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+/// #   }, 3000);
 /// # }
 /// ```
 ///

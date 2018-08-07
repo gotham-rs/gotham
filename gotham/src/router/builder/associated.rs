@@ -80,7 +80,7 @@ where
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #

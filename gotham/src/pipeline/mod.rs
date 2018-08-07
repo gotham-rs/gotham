@@ -26,6 +26,9 @@ use state::{request_id, State};
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// # extern crate mime;
+/// # extern crate timebomb;
+/// #
+/// # use timebomb::timeout_ms;
 /// #
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::state::State;
@@ -98,6 +101,7 @@ use state::{request_id, State};
 /// }
 ///
 /// fn main() {
+/// #   timeout_ms(|| {
 ///     let (chain, pipelines) = single_pipeline(
 ///         new_pipeline()
 ///             .add(MiddlewareOne)
@@ -114,6 +118,7 @@ use state::{request_id, State};
 ///     let response = test_server.client().get("http://example.com/").perform().unwrap();
 ///     assert_eq!(response.status(), StatusCode::OK);
 ///     assert_eq!(response.read_utf8_body().unwrap(), "[1, 2, 3]");
+/// #   }, 3000);
 /// }
 /// ```
 pub struct Pipeline<T>

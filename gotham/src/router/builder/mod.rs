@@ -180,7 +180,7 @@ where
     /// struct MyExtender;
     ///
     /// impl ResponseExtender for MyExtender {
-    ///     fn extend(&self, state: &mut State, response: &mut Response) {
+    ///     fn extend(&self, state: &mut State, response: &mut Response<Body>) {
     ///         // Extender implementation omitted.
     /// #       let _ = state;
     /// #       response.headers_mut().set(

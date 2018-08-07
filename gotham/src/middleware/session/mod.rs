@@ -201,8 +201,8 @@ impl SessionCookieConfig {
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::test::TestServer;
 /// # use hyper::header::Cookie;
-/// # use hyper::server::Response;
-/// # use hyper::{mime, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
+/// # use mime;
 /// #
 /// #[derive(Default, Serialize, Deserialize)]
 /// struct MySessionType {

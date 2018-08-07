@@ -158,7 +158,7 @@ pub fn create_permanent_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// #     assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
 /// #     assert_eq!(
 /// #         response.headers().get(LOCATION),
-/// #         Some("/quick-detour"))
+/// #         Some("/quick-detour")
 /// #     );
 /// # }
 /// ```
@@ -298,7 +298,7 @@ pub fn extend_response(
 ///     .perform()
 ///     .unwrap();
 ///
-/// assert_eq!(response.status(), StatusCode::Accepted);
+/// assert_eq!(response.status(), StatusCode::ACCEPTED);
 ///
 /// // e.g.:
 /// // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
@@ -332,7 +332,7 @@ pub fn extend_response(
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Response<Body>, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_headers;
@@ -429,7 +429,7 @@ pub fn set_headers<B>(
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Response<Body>, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::LOCATION;
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_redirect_headers;

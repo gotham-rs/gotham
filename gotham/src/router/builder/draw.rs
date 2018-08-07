@@ -323,7 +323,7 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Method, Request, Response, StatusCode};
+    /// # use hyper::{Body, Method, Request, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -487,7 +487,10 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
+    /// # extern crate timebomb;
     /// #
+    /// # use timebomb::timeout_ms;
+    ///
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -511,12 +514,14 @@ where
     /// # }
     /// #
     /// # fn main() {
+    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/api/list")
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+    /// #   }, 3000);
     /// # }
     /// ```
     fn scope<F>(&mut self, path: &str, f: F)
@@ -544,6 +549,9 @@ where
     /// # extern crate hyper;
     /// # #[macro_use]
     /// # extern crate serde_derive;
+    ///
+    /// # extern crate timebomb;
+    /// # use timebomb::timeout_ms;
     /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
@@ -621,6 +629,7 @@ where
     /// # }
     /// #
     /// # fn main() {
+    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #
     /// #   let response = test_server.client()
@@ -634,6 +643,7 @@ where
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+    /// #   }, 3000);
     /// # }
     /// ```
     fn with_pipeline_chain<F, NC>(&mut self, pipeline_chain: NC, f: F)
