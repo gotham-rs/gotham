@@ -36,7 +36,7 @@ pub use self::single::DefineSingleRoute;
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
@@ -48,9 +48,9 @@ pub use self::single::DefineSingleRoute;
 /// # #[derive(Serialize, Deserialize, Default)]
 /// # struct Session;
 /// #
-/// # fn my_handler(state: State) -> (State, Response) {
+/// # fn my_handler(state: State) -> (State, Response<Body>) {
 /// #   assert!(state.has::<SessionData<Session>>());
-/// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
 /// # }
 /// #
 /// fn router() -> Router {
@@ -106,14 +106,14 @@ where
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
 /// #
-/// # fn my_handler(state: State) -> (State, Response) {
-/// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+/// # fn my_handler(state: State) -> (State, Response<Body>) {
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
 /// # }
 /// #
 /// fn router() -> Router {
@@ -165,7 +165,7 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use hyper::header::Warning;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -173,8 +173,8 @@ where
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::INTERNAL_SERVER_ERROR))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::INTERNAL_SERVER_ERROR).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// struct MyExtender;

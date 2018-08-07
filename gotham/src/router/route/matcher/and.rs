@@ -14,7 +14,7 @@ use state::State;
 /// # extern crate mime;
 /// # fn main() {
 /// #   use hyper::Method;
-/// #   use hyper::header::{HeaderMap, Accept};
+/// #   use hyper::header::{HeaderMap, ACCEPT};
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher,
 ///                                          AndRouteMatcher, AcceptHeaderRouteMatcher};
@@ -31,7 +31,7 @@ use state::State;
 ///
 ///   // Request that matches both requirements
 ///   let mut headers = HeaderMap::new();
-///   headers.set(Accept::json());
+///   headers.insert(ACCEPT, mime::APPLICATION_JSON);
 ///   state.put(headers);
 ///   assert!(matcher.is_match(&state).is_ok());
 ///
@@ -42,7 +42,7 @@ use state::State;
 ///   // Request that fails accept header
 ///   state.put(Method::GET);
 ///   let mut headers = HeaderMap::new();
-///   headers.set(Accept::text());
+///   headers.insert(ACCEPT, mime::TEXT);
 ///   state.put(headers);
 ///   assert!(matcher.is_match(&state).is_err());
 /// #

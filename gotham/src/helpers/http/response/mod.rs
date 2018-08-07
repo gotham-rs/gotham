@@ -24,7 +24,7 @@ type DataMime = (Vec<u8>, Mime);
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_response;
@@ -32,7 +32,7 @@ type DataMime = (Vec<u8>, Mime);
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
 ///
-/// fn handler(state: State) -> (State, Response) {
+/// fn handler(state: State) -> (State, Response<Body>) {
 ///     let response = create_response(
 ///         &state,
 ///         StatusCode::OK,
@@ -91,12 +91,12 @@ pub fn create_response(
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_permanent_redirect;
 /// # use gotham::test::TestServer;
 /// # use hyper::header::Location;
-/// fn handler(state: State) -> (State, Response) {
+/// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_permanent_redirect(&state, "/over-there");
 ///
 ///     (state, resp)
@@ -137,12 +137,12 @@ pub fn create_permanent_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_temporary_redirect;
 /// # use gotham::test::TestServer;
 /// # use hyper::header::Location;
-/// fn handler(state: State) -> (State, Response) {
+/// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_temporary_redirect(&state, "/quick-detour");
 ///
 ///     (state, resp)
@@ -174,7 +174,7 @@ pub fn create_temporary_redirect<B: Default, L: Into<Cow<'static, str>>>(
     res
 }
 
-/// Extends a `Response` object with an optional body and set of default headers that help to
+/// Extends a `response::Builder` struct with an optional body and set of default headers that help to
 /// improve security and conformance to best practice.
 ///
 /// `extend_response` delegates to `set_headers` for setting security headers. See `set_headers`
@@ -187,7 +187,7 @@ pub fn create_temporary_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::extend_response;
@@ -195,8 +195,8 @@ pub fn create_temporary_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
 ///
-/// fn handler(state: State) -> (State, Response) {
-///     let mut response = Response::new();
+/// fn handler(state: State) -> (State, Response<Body>) {
+///     let mut response = Response::builder();
 ///
 ///     extend_response(
 ///         &state,
@@ -270,14 +270,14 @@ pub fn extend_response(
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_headers;
 /// # use gotham::helpers::http::header::*;
 /// # use gotham::test::TestServer;
 /// #
-/// fn handler(state: State) -> (State, Response) {
-///     let mut response = Response::new().with_status(StatusCode::ACCEPTED);
+/// fn handler(state: State) -> (State, Response<Body>) {
+///     let mut response = Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap();
 ///
 ///     set_headers(
 ///         &state,
@@ -332,7 +332,7 @@ pub fn extend_response(
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Response<Body>, StatusCode};
 /// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_headers;
@@ -341,8 +341,8 @@ pub fn extend_response(
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
 ///
-/// fn handler(state: State) -> (State, Response) {
-///     let mut response = Response::new().with_status(StatusCode::OK).with_body(BODY.to_vec());
+/// fn handler(state: State) -> (State, Response<Body>) {
+///     let mut response = Response::builder().status(StatusCode::OK).body(Body::empty()).unwrap().with_body(BODY.to_vec());
 ///
 ///     set_headers(
 ///         &state,
@@ -429,14 +429,14 @@ pub fn set_headers<B>(
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Response<Body>, StatusCode};
 /// # use hyper::header::Location;
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_redirect_headers;
 /// # use gotham::helpers::http::header::*;
 /// # use gotham::test::TestServer;
-/// fn handler(state: State) -> (State, Response) {
-///     let mut response = Response::new().with_status(StatusCode::PermanentRedirect);
+/// fn handler(state: State) -> (State, Response<Body>) {
+///     let mut response = Response::builder().status(StatusCode::PermanentRedirect).body(Body::empty()).unwrap();
 ///
 ///     set_redirect_headers(
 ///         &state,

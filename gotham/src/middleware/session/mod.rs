@@ -209,7 +209,7 @@ impl SessionCookieConfig {
 ///     items: Vec<String>,
 /// }
 ///
-/// fn my_handler(state: State) -> (State, Response) {
+/// fn my_handler(state: State) -> (State, Response<Body>) {
 ///     // The `Router` has a `NewSessionMiddleware<_, MySessionType>` in a pipeline which is
 ///     // active for this handler.
 ///     let body = {

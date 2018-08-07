@@ -30,7 +30,7 @@ pub mod state;
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -61,7 +61,7 @@ pub mod state;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::ACCEPTED)))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
 /// #           });
 /// #   });
 /// #
@@ -79,7 +79,7 @@ pub mod state;
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -119,7 +119,7 @@ pub mod state;
 /// #               Ok(|mut state: State| {
 /// #                   let data = state.take::<MiddlewareStateData>();
 /// #                   let body = format!("{}", data.i).into_bytes();
-/// #                   (state, Response::new().with_status(StatusCode::OK).with_body(body))
+/// #                   (state, Response::builder().status(StatusCode::OK).body(Body::empty()).unwrap().with_body(body))
 /// #               })
 /// #           });
 /// #   });
@@ -142,7 +142,7 @@ pub mod state;
 /// # extern crate futures;
 /// #
 /// # use futures::Future;
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::Warning;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
@@ -188,7 +188,7 @@ pub mod state;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::ACCEPTED)))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
 /// #           });
 /// #   });
 /// #
@@ -215,7 +215,7 @@ pub mod state;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
-/// # use hyper::{Response, Method, StatusCode};
+/// # use hyper::{Body, Response, Method, StatusCode};
 /// # use futures::future;
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::handler::HandlerFuture;
@@ -253,7 +253,7 @@ pub mod state;
 /// #       route
 /// #           .get_or_head("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::ACCEPTED)))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
 /// #           });
 /// #   });
 /// #
@@ -277,7 +277,7 @@ pub mod state;
 /// # extern crate futures;
 /// #
 /// # use futures::{future, Future};
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -311,7 +311,7 @@ pub mod state;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::ACCEPTED)))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
 /// #           });
 /// #   });
 /// #

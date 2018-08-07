@@ -42,12 +42,12 @@ pub type HandlerFuture =
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::Response;
+/// # use hyper::{Body, Response};
 /// # use gotham::handler::Handler;
 /// # use gotham::state::State;
 /// #
 /// # fn main() {
-/// fn my_handler(_state: State) -> (State, Response) {
+/// fn my_handler(_state: State) -> (State, Response<Body>) {
 ///     // Implementation elided.
 /// #   unimplemented!()
 /// }
@@ -293,7 +293,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
-/// # use hyper::Response;
+/// # use hyper::{Body, Response};
 /// #
 /// struct MyStruct {
 ///     value: String
@@ -307,10 +307,11 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// }
 ///
 /// impl IntoResponse for MyStruct {
-///     fn into_response(self, _state: &State) -> Response {
-///         Response::new()
-///             .with_status(StatusCode::OK)
-///             .with_body(self.value)
+///     fn into_response(self, _state: &State) -> Response<Body> {
+///         Response::builder()
+///             .status(StatusCode::OK)
+///             .body(self.value)
+///             .unwrap()
 ///     }
 /// }
 ///

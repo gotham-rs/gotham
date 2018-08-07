@@ -45,10 +45,10 @@ struct TestServerData {
 /// # extern crate gotham;
 /// #
 /// # use gotham::state::State;
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// #
-/// # fn my_handler(state: State) -> (State, Response) {
-/// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+/// # fn my_handler(state: State) -> (State, Response<Body>) {
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
 /// # }
 /// #
 /// # fn main() {
@@ -337,9 +337,9 @@ trait BodyReader {
 /// #
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_response;
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// #
-/// # fn my_handler(state: State) -> (State, Response) {
+/// # fn my_handler(state: State) -> (State, Response<Body>) {
 /// #   let body = "This is the body content.".to_string().into_bytes();;
 /// #   let response = create_response(&state,
 /// #                                  StatusCode::OK,
@@ -437,6 +437,7 @@ mod tests {
     use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
     use helpers::http::response::create_response;
     use state::{client_addr, FromState, State};
+    use timebomb::timeout_ms;
 
     #[derive(Clone)]
     struct TestHandler {
@@ -606,35 +607,41 @@ mod tests {
             Box::new(f)
         }
 
-        let server = TestServer::new(|| Ok(handler)).unwrap();
+        timeout_ms(
+            || {
+                let server = TestServer::new(|| Ok(handler)).unwrap();
 
-        let client = server.client();
-        let data = "This text should get reflected back to us. Even this fancy piece of unicode: \
-                    \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
+                let client = server.client();
+                let data =
+                    "This text should get reflected back to us. Even this fancy piece of unicode: \
+                     \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
 
-        let res = client
-            .post("http://host/echo", data, mime::TEXT_PLAIN)
-            .perform()
-            .expect("request successful");
+                let res = client
+                    .post("http://host/echo", data, mime::TEXT_PLAIN)
+                    .perform()
+                    .expect("request successful");
 
-        assert_eq!(res.status(), StatusCode::OK);
+                assert_eq!(res.status(), StatusCode::OK);
 
-        {
-            let content_type = res.headers().get(CONTENT_TYPE).expect("ContentType");
-            assert_eq!(content_type, mime::TEXT_PLAIN.as_ref());
-        }
+                {
+                    let content_type = res.headers().get(CONTENT_TYPE).expect("ContentType");
+                    assert_eq!(content_type, mime::TEXT_PLAIN.as_ref());
+                }
 
-        let content_length = {
-            let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
-            assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
+                let content_length = {
+                    let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
+                    assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
 
-            content_length.clone()
-        };
+                    content_length.clone()
+                };
 
-        let buf =
-            String::from_utf8(res.read_body().expect("readable response")).expect("UTF8 response");
+                let buf = String::from_utf8(res.read_body().expect("readable response"))
+                    .expect("UTF8 response");
 
-        assert_eq!(content_length, &format!("{}", buf.len()));
-        assert_eq!(data, &buf);
+                assert_eq!(content_length, &format!("{}", buf.len()));
+                assert_eq!(data, &buf);
+            },
+            3000,
+        );
     }
 }

@@ -35,7 +35,7 @@ use state::{request_id, State};
 /// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// #
 /// #[derive(StateData)]
 /// struct MiddlewareData {
@@ -84,7 +84,7 @@ use state::{request_id, State};
 /// #     }
 /// }
 ///
-/// fn handler(state: State) -> (State, Response) {
+/// fn handler(state: State) -> (State, Response<Body>) {
 ///     let body = {
 ///        let data = state.borrow::<MiddlewareData>();
 ///        format!("{:?}", data.vec)

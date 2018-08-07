@@ -53,14 +53,14 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -98,14 +98,14 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -135,14 +135,14 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -173,14 +173,14 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -211,14 +211,14 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -249,14 +249,14 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -286,14 +286,14 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -329,8 +329,8 @@ where
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -365,15 +365,15 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use hyper::Method;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -404,7 +404,7 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use hyper::header::{Accept, qitem};
     /// # use gotham::state::State;
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
@@ -412,8 +412,8 @@ where
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -488,7 +488,7 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -496,8 +496,8 @@ where
     /// #
     /// # mod api {
     /// #   use super::*;
-    /// #   pub fn list(state: State) -> (State, Response) {
-    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #   pub fn list(state: State) -> (State, Response<Body>) {
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// #   }
     /// # }
     /// #
@@ -545,7 +545,7 @@ where
     /// # #[macro_use]
     /// # extern crate serde_derive;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
     /// # use gotham::router::Router;
@@ -562,26 +562,26 @@ where
     /// #
     /// # mod resource {
     /// #   use super::*;
-    /// #   pub fn list(state: State) -> (State, Response) {
+    /// #   pub fn list(state: State) -> (State, Response<Body>) {
     /// #       assert!(state.has::<SessionData<Session>>());
     /// #       assert!(!state.has::<SessionData<AdminSession>>());
-    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// #   }
     /// # }
     /// #
     /// # mod admin {
     /// #   use super::*;
-    /// #   pub fn handler(state: State) -> (State, Response) {
+    /// #   pub fn handler(state: State) -> (State, Response<Body>) {
     /// #       assert!(state.has::<SessionData<Session>>());
     /// #       assert!(state.has::<SessionData<AdminSession>>());
-    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// #   }
     /// # }
     /// #
-    /// # fn handler(state: State) -> (State, Response) {
+    /// # fn handler(state: State) -> (State, Response<Body>) {
     /// #   assert!(!state.has::<SessionData<Session>>());
     /// #   assert!(!state.has::<SessionData<AdminSession>>());
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -660,7 +660,7 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -668,8 +668,8 @@ where
     /// #
     /// fn admin_router() -> Router {
     ///     // Implementation elided
-    /// #   fn handler(state: State) -> (State, Response) {
-    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #   fn handler(state: State) -> (State, Response<Body>) {
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// #   }
     /// #
     /// #   build_simple_router(|route| {
@@ -714,7 +714,7 @@ where
     /// # #[macro_use]
     /// # extern crate serde_derive;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
@@ -729,18 +729,18 @@ where
     /// // API routes which don't require sessions.
     /// fn api_router() -> Router {
     ///     // Implementation elided
-    /// #   fn handler(state: State) -> (State, Response) {
+    /// #   fn handler(state: State) -> (State, Response<Body>) {
     /// #       assert!(!state.has::<SessionData<Session>>());
-    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// #   }
     /// #
     /// #   build_simple_router(|route| {
     /// #       route.get("/").to(handler);
     /// #   })
     /// }
-    /// # fn handler(state: State) -> (State, Response) {
+    /// # fn handler(state: State) -> (State, Response<Body>) {
     /// #   assert!(state.has::<SessionData<Session>>());
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     ///
     /// # fn router() -> Router {
@@ -795,7 +795,7 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -803,19 +803,19 @@ where
     /// #
     /// mod resource {
     /// #   use super::*;
-    ///     pub fn show(state: State) -> (State, Response) {
+    ///     pub fn show(state: State) -> (State, Response<Body>) {
     ///         // Implementation elided.
-    /// #       (state, Response::new().with_status(StatusCode::NO_CONTENT))
+    /// #       (state, Response::builder().status(StatusCode::NO_CONTENT).body(Body::empty()).unwrap())
     ///     }
     ///
-    ///     pub fn update(state: State) -> (State, Response) {
+    ///     pub fn update(state: State) -> (State, Response<Body>) {
     ///         // Implementation elided.
-    /// #       (state, Response::new().with_status(StatusCode::CREATED))
+    /// #       (state, Response::builder().status(StatusCode::CREATED).body(Body::empty()).unwrap())
     ///     }
     ///
-    ///     pub fn delete(state: State) -> (State, Response) {
+    ///     pub fn delete(state: State) -> (State, Response<Body>) {
     ///         // Implementation elided.
-    /// #       (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     ///     }
     /// }
     ///
@@ -968,6 +968,8 @@ mod tests {
     use state::State;
     use test::TestServer;
 
+    use timebomb::timeout_ms;
+
     #[derive(Clone, Copy)]
     struct QuickExitMiddleware;
 
@@ -1003,23 +1005,29 @@ mod tests {
 
     #[test]
     fn delegate_includes_pipelines() {
-        let (chain, pipelines) = single_pipeline(new_pipeline().add(QuickExitMiddleware).build());
+        timeout_ms(
+            || {
+                let (chain, pipelines) =
+                    single_pipeline(new_pipeline().add(QuickExitMiddleware).build());
 
-        let test_router = build_simple_router(|route| {
-            route.get("/").to(test_handler);
-        });
+                let test_router = build_simple_router(|route| {
+                    route.get("/").to(test_handler);
+                });
 
-        let router = build_router(chain, pipelines, |route| {
-            route.delegate("/test").to_router(test_router);
-        });
+                let router = build_router(chain, pipelines, |route| {
+                    route.delegate("/test").to_router(test_router);
+                });
 
-        let test_server = TestServer::new(router).unwrap();
-        let response = test_server
-            .client()
-            .get("http://localhost/test/")
-            .perform()
-            .unwrap();
-        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+                let test_server = TestServer::new(router).unwrap();
+                let response = test_server
+                    .client()
+                    .get("http://localhost/test/")
+                    .perform()
+                    .unwrap();
+                assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+            },
+            3000,
+        );
     }
 
     #[test]

@@ -20,7 +20,7 @@ use router::route::{Delegation, Extractors, RouteImpl};
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
@@ -29,9 +29,9 @@ use router::route::{Delegation, Extractors, RouteImpl};
 /// # use gotham::middleware::session::NewSessionMiddleware;
 /// # use gotham::test::TestServer;
 /// #
-/// fn my_handler(state: State) -> (State, Response) {
+/// fn my_handler(state: State) -> (State, Response<Body>) {
 ///     // Handler implementation elided.
-/// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
 /// }
 /// #
 /// # fn router() -> Router {
@@ -65,7 +65,7 @@ pub trait DefineSingleRoute {
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -74,9 +74,9 @@ pub trait DefineSingleRoute {
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
-    /// fn my_handler(state: State) -> (State, Response) {
+    /// fn my_handler(state: State) -> (State, Response<Body>) {
     ///     // Handler implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// }
     /// #
     /// # fn router() -> Router {
@@ -114,7 +114,7 @@ pub trait DefineSingleRoute {
     /// # extern crate futures;
     /// #
     /// # use std::io;
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use futures::future;
     /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
     /// # use gotham::state::State;
@@ -139,7 +139,7 @@ pub trait DefineSingleRoute {
     /// impl Handler for MyHandler {
     ///     fn handle(self, state: State) -> Box<HandlerFuture> {
     ///         // Handler implementation elided.
-    /// #       let response = Response::new().with_status(StatusCode::ACCEPTED);
+    /// #       let response = Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap();
     /// #       Box::new(future::ok((state, response)))
     ///     }
     /// }
@@ -180,7 +180,7 @@ pub trait DefineSingleRoute {
     /// # extern crate serde_derive;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -195,14 +195,14 @@ pub trait DefineSingleRoute {
     ///     name: String,
     /// }
     ///
-    /// fn my_handler(state: State) -> (State, Response) {
+    /// fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   {
     ///     let params = MyPathParams::borrow_from(&state);
     ///
     ///     // Handler implementation elided.
     /// #   assert_eq!(params.name, "world");
     /// #   }
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// }
     /// #
     /// # fn router() -> Router {
@@ -250,7 +250,7 @@ pub trait DefineSingleRoute {
     /// # #[macro_use]
     /// # extern crate serde_derive;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -265,12 +265,12 @@ pub trait DefineSingleRoute {
     ///     id: u64,
     /// }
     ///
-    /// fn my_handler(state: State) -> (State, Response) {
+    /// fn my_handler(state: State) -> (State, Response<Body>) {
     ///     let id = MyQueryParams::borrow_from(&state).id;
     ///
     ///     // Handler implementation elided.
     /// #   assert_eq!(id, 42);
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// }
     /// #
     /// # fn router() -> Router {
@@ -313,7 +313,7 @@ pub trait DefineSingleRoute {
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use hyper::header::{Accept, qitem};
     /// # use gotham::state::State;
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
@@ -321,8 +321,8 @@ pub trait DefineSingleRoute {
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::ACCEPTED))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
