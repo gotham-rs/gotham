@@ -95,7 +95,7 @@ pub fn create_response(
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_permanent_redirect;
 /// # use gotham::test::TestServer;
-/// # use hyper::header::Location;
+/// # use hyper::header::LOCATION;
 /// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_permanent_redirect(&state, "/over-there");
 ///
@@ -111,8 +111,8 @@ pub fn create_response(
 /// #
 /// #     assert_eq!(response.status(), StatusCode::PERMANENT_REDIRECT);
 /// #     assert_eq!(
-/// #         response.headers().get::<Location>(),
-/// #         Some(&Location::new("/over-there"))
+/// #         response.headers().get(LOCATION),
+/// #         Some("/over-there"))
 /// #     );
 /// # }
 /// ```
@@ -141,7 +141,7 @@ pub fn create_permanent_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_temporary_redirect;
 /// # use gotham::test::TestServer;
-/// # use hyper::header::Location;
+/// # use hyper::header::LOCATION;
 /// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_temporary_redirect(&state, "/quick-detour");
 ///
@@ -157,8 +157,8 @@ pub fn create_permanent_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// #
 /// #     assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
 /// #     assert_eq!(
-/// #         response.headers().get::<Location>(),
-/// #         Some(&Location::new("/quick-detour"))
+/// #         response.headers().get(LOCATION),
+/// #         Some("/quick-detour"))
 /// #     );
 /// # }
 /// ```
@@ -430,7 +430,7 @@ pub fn set_headers<B>(
 /// # extern crate mime;
 /// #
 /// # use hyper::{Response<Body>, StatusCode};
-/// # use hyper::header::Location;
+/// # use hyper::header::LOCATION;
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::set_redirect_headers;
 /// # use gotham::helpers::http::header::*;
@@ -459,8 +459,8 @@ pub fn set_headers<B>(
 /// assert_eq!(response.status(), StatusCode::PermanentRedirect);
 ///
 /// assert_eq!(
-///     *response.headers().get::<Location>().unwrap(),
-///     Location::new("http://example.com/somewhere-else")
+///     *response.headers().get(LOCATION).unwrap(),
+///     "http://example.com/somewhere-else"
 /// );
 /// # assert!(response.headers().get::<XRequestId>().is_some());
 /// # }

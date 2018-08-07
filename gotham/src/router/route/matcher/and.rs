@@ -31,7 +31,7 @@ use state::State;
 ///
 ///   // Request that matches both requirements
 ///   let mut headers = HeaderMap::new();
-///   headers.insert(ACCEPT, mime::APPLICATION_JSON);
+///   headers.insert(ACCEPT, mime::APPLICATION_JSON.to_string().parse().unwrap());
 ///   state.put(headers);
 ///   assert!(matcher.is_match(&state).is_ok());
 ///
@@ -42,7 +42,7 @@ use state::State;
 ///   // Request that fails accept header
 ///   state.put(Method::GET);
 ///   let mut headers = HeaderMap::new();
-///   headers.insert(ACCEPT, mime::TEXT);
+///   headers.insert(ACCEPT, mime::TEXT.to_string().parse().unwrap());
 ///   state.put(headers);
 ///   assert!(matcher.is_match(&state).is_err());
 /// #
