@@ -73,7 +73,7 @@ where
     /// # extern crate mime;
     /// #
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use hyper::header::{Accept, qitem};
+    /// # use hyper::header::ACCEPT;
     /// # use gotham::state::State;
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
     /// # use gotham::router::Router;
@@ -99,24 +99,16 @@ where
     /// # fn main() {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #
-    /// #   let accept_header = Accept(vec![
-    /// #     qitem(mime::APPLICATION_JSON),
-    /// #   ]);
-    /// #
-    /// #   let text_accept_header = Accept(vec![
-    /// #     qitem(mime::TEXT_PLAIN),
-    /// #   ]);
-    /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/resource/path")
-    /// #       .with_header(accept_header)
+    /// #       .with_header(ACCEPT, mime::APPLICATION_JSON.to_string().parse().unwrap())
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/resource/path")
-    /// #       .with_header(text_accept_header)
+    /// #       .with_header(ACCEPT, mime::TEXT_PLAIN.to_string().parse().unwrap())
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
@@ -670,7 +662,7 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Method, Request, Response, StatusCode};
+    /// # use hyper::{Body, Method, Request, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -692,10 +684,10 @@ where
     /// #
     /// # fn main() {
     /// #   let test_server = TestServer::new(router()).unwrap();
-    /// #   let request = Request::new(
-    /// #       Method::OPTIONS,
-    /// #       "https://example.com/resource".parse().unwrap()
-    /// #   );
+    /// #   let request = Request::builder()
+    /// #      .method(Method::OPTIONS)
+    /// #      .uri("https://example.com/resource")
+    /// #      .body(Body::empty()).unwrap();
     /// #   let response = test_server.client().perform(request).unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }

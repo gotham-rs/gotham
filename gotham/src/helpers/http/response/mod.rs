@@ -267,7 +267,9 @@ pub fn extend_response(
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate mime;
+/// # extern crate timebomb;
 /// #
+/// # use timebomb::timeout_ms;
 /// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::{X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
 /// # use gotham::state::State;
@@ -288,6 +290,7 @@ pub fn extend_response(
 /// }
 ///
 /// # fn main() {
+/// # timeout_ms(|| {
 /// // Demonstrate the returned headers by making a request to the handler.
 /// let test_server = TestServer::new(|| Ok(handler)).unwrap();
 /// let response = test_server
@@ -319,6 +322,7 @@ pub fn extend_response(
 ///     *response.headers().get(X_CONTENT_TYPE_OPTIONS).unwrap(),
 ///     "nosniff"
 /// );
+/// # }, 3000);
 /// # }
 /// ```
 ///
