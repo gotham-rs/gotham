@@ -115,9 +115,9 @@ pub type HandlerFuture =
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use std::io;
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
+/// # use gotham::error::*;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -161,9 +161,9 @@ pub trait Handler: Send {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use std::io;
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
+/// # use gotham::error::*;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -195,9 +195,9 @@ pub trait Handler: Send {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use std::io;
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
+/// # use gotham::error::*;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -306,11 +306,11 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 ///     }
 /// }
 ///
-/// impl IntoResponse for MyStruct {
+/// impl IntoResponse<Body> for MyStruct {
 ///     fn into_response(self, _state: &State) -> Response<Body> {
 ///         Response::builder()
 ///             .status(StatusCode::OK)
-///             .body(self.value)
+///             .body(self.value.into())
 ///             .unwrap()
 ///     }
 /// }

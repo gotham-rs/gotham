@@ -113,7 +113,6 @@ pub trait DefineSingleRoute {
     /// # extern crate hyper;
     /// # extern crate futures;
     /// #
-    /// # use std::io;
     /// # use hyper::{Body, Response, StatusCode};
     /// # use futures::future;
     /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
@@ -124,6 +123,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::single::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
+    /// # use gotham::error::*;
     /// #
     /// struct MyNewHandler;
     /// struct MyHandler;
@@ -131,7 +131,7 @@ pub trait DefineSingleRoute {
     /// impl NewHandler for MyNewHandler {
     ///     type Instance = MyHandler;
     ///
-    ///     fn new_handler(&self) -> io::Result<Self::Instance> {
+    ///     fn new_handler(&self) -> Result<Self::Instance> {
     ///         Ok(MyHandler)
     ///     }
     /// }
