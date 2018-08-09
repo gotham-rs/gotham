@@ -169,7 +169,7 @@ mod tests {
         let response = test_server
             .client()
             .get("http://localhost")
-            .with_header("UserAgent", "TestServer/0.0.0".parse().unwrap())
+            .with_header(USER_AGENT, "TestServer/0.0.0".parse().unwrap())
             .perform()
             .unwrap();
 

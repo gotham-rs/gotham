@@ -15,7 +15,7 @@ pub fn handler(state: State) -> (State, Response<Body>) {
     let mut res = create_response(&state, StatusCode::OK, None);
     {
         let headers = res.headers_mut();
-        headers.insert("x-gotham", "Hello world!".parse().unwrap());
+        headers.insert("x-gotham", "Hello World!".parse().unwrap());
     };
 
     (state, res)
