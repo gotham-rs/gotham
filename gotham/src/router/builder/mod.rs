@@ -106,6 +106,9 @@ where
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// # extern crate timebomb;
+/// #
+/// # use timebomb::timeout_ms;
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
@@ -123,12 +126,14 @@ where
 /// }
 /// #
 /// # fn main() {
+/// #   timeout_ms(|| {
 /// #   let test_server = TestServer::new(router()).unwrap();
 /// #   let response = test_server.client()
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+/// #   }, 3000);
 /// # }
 /// ```
 pub fn build_simple_router<F>(f: F) -> Router
@@ -166,7 +171,7 @@ where
     /// # extern crate hyper;
     /// #
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use hyper::header::Warning;
+    /// # use hyper::header::WARNING;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::response::extender::ResponseExtender;
@@ -179,18 +184,11 @@ where
     /// #
     /// struct MyExtender;
     ///
-    /// impl ResponseExtender for MyExtender {
+    /// impl ResponseExtender<Body> for MyExtender {
     ///     fn extend(&self, state: &mut State, response: &mut Response<Body>) {
     ///         // Extender implementation omitted.
     /// #       let _ = state;
-    /// #       response.headers_mut().set(
-    /// #           Warning {
-    /// #               code: 299,
-    /// #               agent: "example.com".to_owned(),
-    /// #               text: "Deprecated".to_owned(),
-    /// #               date: None,
-    /// #           }
-    /// #       );
+    /// #       response.headers_mut().insert(WARNING, "299 example.com Deprecated".parse().unwrap());
     ///     }
     /// }
     ///
@@ -211,11 +209,8 @@ where
     /// #   assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     /// #
     /// #   {
-    /// #       let warning = response.headers().get::<Warning>().unwrap();
-    /// #       assert_eq!(warning.code, 299);
-    /// #       assert_eq!(warning.agent, "example.com");
-    /// #       assert_eq!(warning.text, "Deprecated");
-    /// #       assert!(warning.date.is_none());
+    /// #       let warning = response.headers().get(WARNING).unwrap();
+    /// #       assert_eq!(warning, "299 example.com Deprecated");
     /// #   }
     /// # }
     /// ```

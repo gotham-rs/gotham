@@ -190,7 +190,10 @@ impl SessionCookieConfig {
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// # extern crate bincode;
+/// # extern crate mime;
+/// # extern crate timebomb;
 /// #
+/// # use timebomb::timeout_ms;
 /// # use std::time::Duration;
 /// # use futures::future;
 /// # use gotham::handler::HandlerFuture;
@@ -200,9 +203,8 @@ impl SessionCookieConfig {
 /// #                                   SessionIdentifier};
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::test::TestServer;
-/// # use hyper::header::Cookie;
 /// # use hyper::{Body, Response, StatusCode};
-/// # use mime;
+/// # use hyper::header::COOKIE;
 /// #
 /// #[derive(Default, Serialize, Deserialize)]
 /// struct MySessionType {
@@ -225,6 +227,7 @@ impl SessionCookieConfig {
 /// }
 /// #
 /// # fn main() {
+/// #   timeout_ms(|| {
 /// #   let backend = MemoryBackend::new(Duration::from_secs(1));
 /// #   let identifier = SessionIdentifier { value: "u0G6KdfckQgkV0qLANZjjNkEHBU".to_owned() };
 /// #   let session = MySessionType {
@@ -233,9 +236,6 @@ impl SessionCookieConfig {
 /// #
 /// #   let bytes = bincode::serialize(&session).unwrap();
 /// #   backend.persist_session(identifier.clone(), &bytes[..]).unwrap();
-/// #
-/// #   let mut cookies = Cookie::new();
-/// #   cookies.set("_gotham_session", identifier.value.clone());
 /// #
 /// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
 /// #
@@ -254,12 +254,13 @@ impl SessionCookieConfig {
 /// #   let response = test_server
 /// #       .client()
 /// #       .get("http://localhost/")
-/// #       .with_header(cookies)
+/// #       .with_header(COOKIE, format!("_gotham_session={}", identifier.value.clone()).parse().unwrap())
 /// #       .perform()
 /// #       .unwrap();
 /// #   let response_bytes = response.read_body().unwrap();
 /// #   assert_eq!(String::from_utf8(response_bytes).unwrap(),
 /// #              r#"["a", "b", "c"]"#);
+/// #   }, 3000);
 /// # }
 /// ```
 pub struct SessionData<T>

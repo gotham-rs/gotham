@@ -619,6 +619,9 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
+    /// # extern crate timebomb;
+    /// #
+    /// # use timebomb::timeout_ms;
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -640,12 +643,14 @@ where
     /// # }
     /// #
     /// # fn main() {
+    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #   let response = test_server.client()
     /// #       .delete("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+    /// #   }, 3000);
     /// # }
     /// ```
     pub fn delete<'b>(

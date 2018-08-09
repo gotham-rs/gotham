@@ -19,6 +19,9 @@ use router::route::{Delegation, Extractors, RouteImpl};
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
+/// # extern crate timebomb;
+/// #
+/// # use timebomb::timeout_ms;
 /// #
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
@@ -46,12 +49,14 @@ use router::route::{Delegation, Extractors, RouteImpl};
 /// # }
 /// #
 /// # fn main() {
+/// #   timeout_ms(|| {
 /// #   let test_server = TestServer::new(router()).unwrap();
 /// #   let response = test_server.client()
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+/// #   }, 3000);
 /// # }
 /// ```
 pub trait DefineSingleRoute {
@@ -313,8 +318,11 @@ pub trait DefineSingleRoute {
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
+    /// # extern crate timebomb;
+    /// #
+    /// # use timebomb::timeout_ms;
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use hyper::header::{Accept, qitem};
+    /// # use hyper::header::ACCEPT;
     /// # use gotham::state::State;
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
     /// # use gotham::router::Router;
@@ -335,29 +343,23 @@ pub trait DefineSingleRoute {
     /// # }
     /// #
     /// # fn main() {
+    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
-    /// #
-    /// #   let accept_header = Accept(vec![
-    /// #     qitem(mime::APPLICATION_JSON),
-    /// #   ]);
-    /// #
-    /// #   let text_accept_header = Accept(vec![
-    /// #     qitem(mime::TEXT_PLAIN),
-    /// #   ]);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/request/path")
-    /// #       .with_header(accept_header)
+    /// #       .with_header(ACCEPT, mime::APPLICATION_JSON.to_string().parse().unwrap())
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/request/path")
-    /// #       .with_header(text_accept_header)
+    /// #       .with_header(ACCEPT, mime::TEXT_PLAIN.to_string().parse().unwrap())
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
+    /// #   }, 3000);
     /// # }
     /// ```
     fn add_route_matcher<NRM>(self, matcher: NRM) -> <Self as ExtendRouteMatcher<NRM>>::Output

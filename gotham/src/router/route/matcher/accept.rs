@@ -93,26 +93,34 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
         // Request method is valid, ensure valid Accept header
         let headers = HeaderMap::borrow_from(state);
         match headers.get(ACCEPT) {
-            Some(accept) => {
-                if accept == "*/*"
-                    || self.supported_media_types.contains(&accept
-                        .to_str()
-                        .unwrap()
-                        .parse()
-                        .unwrap())
-                {
-                    return Ok(());
+            Some(mime_header) =>
+                if mime_header == "*/*" {
+                    Ok(())
+                } else {
+                    parse_mime_type(mime_header)
+                        .map_err(|_| RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
+                        .and_then(|mime_type| {
+                        if self.supported_media_types.contains(&mime_type) {
+                            Ok(())
+                        } else {
+                            trace!(
+                                "[{}] did not provide an Accept with media types supported by this Route",
+                                request_id(&state)
+                                );
+                            Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
+                        }
+                    })
                 }
-
-                trace!(
-                    "[{}] did not provide an Accept with media types supported by this Route",
-                    request_id(&state)
-                );
-                Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
-            }
+            ,
             // The client has not specified an `Accept` header, as we can now respond with any type
             // this is valid.
             None => Ok(()),
         }
     }
+}
+
+use error;
+use hyper::header::HeaderValue;
+fn parse_mime_type(hv: &HeaderValue) -> error::Result<mime::Mime> {
+    Ok(hv.to_str()?.parse()?)
 }

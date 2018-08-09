@@ -79,7 +79,7 @@ pub mod state;
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Body, Response, StatusCode};
+/// # use hyper::{Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -119,7 +119,7 @@ pub mod state;
 /// #               Ok(|mut state: State| {
 /// #                   let data = state.take::<MiddlewareStateData>();
 /// #                   let body = format!("{}", data.i).into_bytes();
-/// #                   (state, Response::builder().status(StatusCode::OK).body(Body::empty()).unwrap().with_body(body))
+/// #                   (state, Response::builder().status(StatusCode::OK).body(body.into()).unwrap())
 /// #               })
 /// #           });
 /// #   });
@@ -143,7 +143,7 @@ pub mod state;
 /// #
 /// # use futures::Future;
 /// # use hyper::{Body, Response, StatusCode};
-/// # use hyper::header::Warning;
+/// # use hyper::header::WARNING;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -161,15 +161,7 @@ pub mod state;
 ///     {
 ///         let f = chain(state)
 ///             .map(|(state, mut response)| {
-///                 response.headers_mut().set(
-///                     Warning {
-///                         code: 299,
-///                         agent: "example.com".to_owned(),
-///                         text: "Deprecated".to_owned(),
-///                         date: None,
-///                     }
-///                 );
-///
+///                 response.headers_mut().insert(WARNING, "299 example.com Deprecated".parse().unwrap());
 ///                 (state, response)
 ///             });
 ///
@@ -197,11 +189,8 @@ pub mod state;
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// #
 /// #   {
-/// #       let warning = response.headers().get::<Warning>().unwrap();
-/// #       assert_eq!(warning.code, 299);
-/// #       assert_eq!(warning.agent, "example.com");
-/// #       assert_eq!(warning.text, "Deprecated");
-/// #       assert!(warning.date.is_none());
+/// #       let warning = response.headers().get(WARNING).unwrap();
+/// #       assert_eq!(warning, "299 example.com Deprecated");
 /// #   }
 /// # }
 /// ```
