@@ -146,8 +146,7 @@ impl TestServer {
     {
         let timeout_duration = Duration::from_secs(self.data.timeout);
         let timeout = Delay::new(timeout_duration);
-
-        match self.run_future(f.select2(timeout).map_err(|either| {
+        let might_expire = self.run_future(f.select2(timeout).map_err(|either| {
             let e: failure::Error = match either {
                 future::Either::A((req_err, _)) => {
                     warn!("run_request request error: {:?}", req_err);
@@ -159,7 +158,9 @@ impl TestServer {
                 }
             };
             e.compat()
-        }))? {
+        }))?;
+
+        match might_expire {
             future::Either::A((item, _)) => Ok(item),
             future::Either::B(_) => Err(failure::err_msg("timed out")),
         }

@@ -1,6 +1,5 @@
 //! Helpers for HTTP request handling and response generation
 
-//pub mod header;
 pub mod request;
 pub mod response;
 

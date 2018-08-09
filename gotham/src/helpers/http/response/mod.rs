@@ -77,7 +77,7 @@ pub fn create_response(
             _ => builder.body(body.into()),
         },
         None => builder.body(Body::empty()),
-    }.unwrap()
+    }.expect("Response built from a compatible byte vector (Vec<u8>)")
 }
 
 /// Produces a simple empty `Response` with a `Location` header and a 301
@@ -121,7 +121,7 @@ pub fn create_permanent_redirect<B: Default, L: Into<Cow<'static, str>>>(
     let mut res = Response::builder()
         .status(StatusCode::PERMANENT_REDIRECT)
         .body(B::default())
-        .unwrap();
+        .expect("A Response built from constant values.");
     set_redirect_headers(state, &mut res, location);
     res
 }
@@ -167,7 +167,7 @@ pub fn create_temporary_redirect<B: Default, L: Into<Cow<'static, str>>>(
     let mut res = Response::builder()
         .status(StatusCode::TEMPORARY_REDIRECT)
         .body(B::default())
-        .unwrap();
+        .expect("Response built from constant values");
     set_redirect_headers(state, &mut res, location);
     res
 }
@@ -249,7 +249,8 @@ pub fn extend_response(
         Some(mime) => builder.header(CONTENT_TYPE, mime.as_ref()),
         None => builder,
     }.header(
-        HeaderName::from_lowercase(b"x-request-id").unwrap(),
+        HeaderName::from_lowercase(b"x-request-id")
+            .expect("Header name built from a constant string"),
         request_id(state),
     )
         .status(status);

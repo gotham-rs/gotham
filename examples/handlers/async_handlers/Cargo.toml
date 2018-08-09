@@ -1,4 +1,3 @@
-
 [package]
 name = "gotham_examples_handlers_async_handlers"
 description = "An example that does asynchronous work before responding"
