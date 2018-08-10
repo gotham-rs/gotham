@@ -18,7 +18,7 @@ use helpers::http::request::query_string;
 use router::non_match::RouteNonMatch;
 use router::route::dispatch::Dispatcher;
 use router::route::matcher::RouteMatcher;
-use router::tree::SegmentMapping;
+use router::tree::segment::SegmentMapping;
 use state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]
@@ -56,10 +56,10 @@ pub trait Route: RefUnwindSafe {
     fn delegation(&self) -> Delegation;
 
     /// Extracts dynamic components of the `Request` path and stores the `PathExtractor` in `State`.
-    fn extract_request_path(
+    fn extract_request_path<'a>(
         &self,
         state: &mut State,
-        segment_mapping: SegmentMapping,
+        params: SegmentMapping<'a>,
     ) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when the `PathExtractor` fails.
@@ -159,12 +159,12 @@ where
         self.dispatcher.dispatch(state)
     }
 
-    fn extract_request_path(
+    fn extract_request_path<'a>(
         &self,
         state: &mut State,
-        segment_mapping: SegmentMapping,
+        params: SegmentMapping<'a>,
     ) -> Result<(), ExtractorFailed> {
-        match extractor::internal::from_segment_mapping::<PE>(segment_mapping) {
+        match extractor::internal::from_segment_mapping::<PE>(params) {
             Ok(val) => Ok(state.put(val)),
             Err(e) => {
                 debug!("[{}] path extractor failed: {}", request_id(&state), e);

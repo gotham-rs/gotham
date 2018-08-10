@@ -1,8 +1,5 @@
 //! Defines helper functions for processing the request path
 
-use std::iter::once;
-use std::sync::Arc;
-
 use helpers::http::PercentDecoded;
 
 const EXCLUDED_SEGMENTS: [&str; 1] = [""];
@@ -10,10 +7,9 @@ const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 /// Holder for `Request` URI path segments that have been split into individual segments.
 ///
 /// Used internally by the `Router` when traversing its internal `Tree`.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RequestPathSegments {
-    offset: usize,
-    segments: Arc<Vec<PercentDecoded>>,
+    segments: Vec<PercentDecoded>,
 }
 
 impl RequestPathSegments {
@@ -26,17 +22,18 @@ impl RequestPathSegments {
     /// ```plain
     /// ["/", "some", "path", "to", "my", "handler"]
     /// ```
-    pub(crate) fn new<'r>(path: &'r str) -> Self {
-        let segments = Arc::new(
-            once("/")
-                .chain(path.split('/').filter(|s| !EXCLUDED_SEGMENTS.contains(s)))
-                .filter_map(PercentDecoded::new)
-                .collect(),
-        );
+    pub(crate) fn new(path: &str) -> Self {
+        let segments = path.split('/')
+            .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
+            .filter_map(PercentDecoded::new)
+            .collect();
 
+        RequestPathSegments { segments }
+    }
+
+    pub(crate) fn into_subsegments(&self, offset: usize) -> Self {
         RequestPathSegments {
-            offset: 0,
-            segments,
+            segments: self.segments.split_at(offset).1.to_vec(),
         }
     }
 
@@ -47,25 +44,8 @@ impl RequestPathSegments {
     ///
     /// The offset starts at 0 meaning all segments of the initial Request path will be provided
     /// until the offset is updated.
-    pub(crate) fn segments<'a>(&'a self) -> Vec<&PercentDecoded> {
-        self.segments
-            .iter()
-            .enumerate()
-            .filter_map(|(i, v)| {
-                if i == 0 || i > self.offset {
-                    Some(v)
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    /// Increases the current offset value.
-    ///
-    /// * add: Indicates how much the offset should be increased by
-    pub(crate) fn increase_offset(&mut self, add: usize) {
-        self.offset += add;
+    pub(crate) fn segments(&self) -> &Vec<PercentDecoded> {
+        &self.segments
     }
 }
 
@@ -80,7 +60,7 @@ mod tests {
 
         assert_eq!(
             rps.segments.iter().map(|s| s.as_ref()).collect::<Vec<_>>(),
-            vec!["/", "some", "path", "to", "my", "handler"]
+            vec!["some", "path", "to", "my", "handler"]
         );
     }
 }

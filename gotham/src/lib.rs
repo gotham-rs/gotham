@@ -57,16 +57,53 @@ use std::sync::Arc;
 use futures::{Future, Stream};
 use hyper::server::Http;
 use hyper::Chunk;
+use tokio::executor::{self, thread_pool};
 use tokio::net::TcpListener;
+use tokio::runtime::{self, Runtime, TaskExecutor};
 
 use handler::NewHandler;
 use service::GothamService;
 
-/// Starts a Gotham application.
+/// Starts a Gotham application with the default number of threads.
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs,
+    A: ToSocketAddrs + 'static,
+{
+    start_with_num_threads(addr, new_handler, num_cpus::get())
+}
+
+/// Starts a Gotham application with a designated number of threads.
+pub fn start_with_num_threads<NH, A>(addr: A, new_handler: NH, threads: usize)
+where
+    NH: NewHandler + 'static,
+    A: ToSocketAddrs + 'static,
+{
+    let runtime = new_runtime(threads);
+    start_on_executor(addr, new_handler, runtime.executor());
+    runtime.shutdown_on_idle().wait().unwrap();
+}
+
+/// Starts a Gotham application with a designated backing `TaskExecutor`.
+///
+/// This function can be used to spawn the server on an existing `Runtime`.
+pub fn start_on_executor<NH, A>(addr: A, new_handler: NH, executor: TaskExecutor)
+where
+    NH: NewHandler + 'static,
+    A: ToSocketAddrs + 'static,
+{
+    executor.spawn(init_server(addr, new_handler));
+}
+
+/// Returns a `Future` used to spawn an Gotham application.
+///
+/// This is used internally, but exposed in case the developer intends on doing any
+/// manual wiring that isn't supported by the Gotham API. It's unlikely that this will
+/// be required in most use cases; it's mainly exposed for shutdown handling.
+pub fn init_server<NH, A>(addr: A, new_handler: NH) -> impl Future<Item = (), Error = ()>
+where
+    NH: NewHandler + 'static,
+    A: ToSocketAddrs + 'static,
 {
     let (listener, addr) = tcp_listener(addr);
     let gotham_service = GothamService::new(new_handler);
@@ -78,23 +115,35 @@ where
         addr
     );
 
-    let server = listener
+    listener
         .incoming()
-        .map_err(|e| panic!("error = {:?}", e))
+        .map_err(|e| panic!("socket error = {:?}", e))
         .for_each(move |socket| {
             let service = gotham_service.connect(socket.peer_addr().unwrap());
-            let f = protocol.serve_connection(socket, service).then(|_| Ok(()));
+            let handler = protocol.serve_connection(socket, service).then(|_| Ok(()));
 
-            tokio::spawn(f);
+            executor::spawn(handler);
+
             Ok(())
-        });
+        })
+}
 
-    tokio::run(server);
+fn new_runtime(threads: usize) -> Runtime {
+    let mut pool_builder = thread_pool::Builder::new();
+
+    pool_builder
+        .name_prefix("gotham-worker-")
+        .pool_size(threads);
+
+    runtime::Builder::new()
+        .threadpool_builder(pool_builder)
+        .build()
+        .unwrap()
 }
 
 fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
 where
-    A: ToSocketAddrs,
+    A: ToSocketAddrs + 'static,
 {
     let addr = match addr.to_socket_addrs().map(|ref mut i| i.next()) {
         Ok(Some(a)) => a,
