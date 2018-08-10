@@ -26,8 +26,8 @@ mod rng;
 pub use self::backend::memory::MemoryBackend;
 pub use self::backend::{Backend, NewBackend};
 
-const SECURE_COOKIE_PREFIX: &'static str = "__Secure-";
-const HOST_COOKIE_PREFIX: &'static str = "__Host-";
+const SECURE_COOKIE_PREFIX: &str = "__Secure-";
+const HOST_COOKIE_PREFIX: &str = "__Host-";
 
 /// Represents the session identifier which is held in the user agent's session cookie.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -992,7 +992,7 @@ where
                 None,
             );
 
-            return future::ok((state, builder.body(B::default()).unwrap()));
+            future::ok((state, builder.body(B::default()).unwrap()))
         }
     }
 }

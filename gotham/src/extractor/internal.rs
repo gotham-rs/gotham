@@ -7,10 +7,8 @@ use std::fmt::{self, Display};
 use std::marker::PhantomData;
 use std::str::FromStr;
 
-use serde::de::{
-    self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess, SeqAccess,
-    VariantAccess, Visitor,
-};
+use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess,
+                SeqAccess, VariantAccess, Visitor};
 
 use helpers::http::request::query_string::QueryStringMapping;
 use router::tree::segment::SegmentMapping;
@@ -374,7 +372,7 @@ where
     phantom: PhantomData<&'a str>,
 }
 
-fn convert_to_string_ref<'a, T>(t: &'a T) -> &'a str
+fn convert_to_string_ref<T>(t: &T) -> &str
 where
     T: AsRef<str> + ?Sized,
 {
