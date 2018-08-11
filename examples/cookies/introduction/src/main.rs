@@ -16,7 +16,6 @@ use gotham::state::{FromState, State};
 
 /// The first request will set a cookie, and subsequent requests will echo it back.
 fn handler(state: State) -> (State, Response<Body>) {
-    let first_time = "first time".to_string();
     // Define a narrow scope so that state can be borrowed/moved later in the function.
     let adjective = {
         // Get the request headers.
@@ -28,11 +27,8 @@ fn handler(state: State) -> (State, Response<Body>) {
             .flat_map(|hv| hv.to_str())
             .flat_map(|cv| Cookie::parse(cv.to_owned()))
             .find(|cookie| cookie.name() == "adjective")
-            .map(|adj_cookie| {
-                let v = adj_cookie.value().to_owned();
-                v
-            })
-            .unwrap_or(first_time)
+            .map(|adj_cookie| adj_cookie.value().to_owned())
+            .unwrap_or_else(|| "first time".to_string())
     };
 
     let mut response = {
@@ -51,7 +47,7 @@ fn handler(state: State) -> (State, Response<Body>) {
             .finish();
         response
             .headers_mut()
-            .append(SET_COOKIE, (&cookie.to_string()).parse().unwrap());
+            .append(SET_COOKIE, cookie.to_string().parse().unwrap());
     }
     (state, response)
 }
@@ -98,7 +94,7 @@ mod tests {
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(COOKIE, (&cookie.to_string()).parse().unwrap())
+            .with_header(COOKIE, cookie.to_string().parse().unwrap())
             .perform()
             .unwrap();
 
