@@ -38,7 +38,6 @@ http = "0.1"
 failure = "0.1"
 failure_derive = "0.1"
 
-
 [dev-dependencies]
 gotham_derive = { path = "../gotham_derive" }
 pretty_env_logger = "0.2"

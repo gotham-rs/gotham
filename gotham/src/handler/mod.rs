@@ -11,9 +11,9 @@ use hyper::{Body, Response};
 use state::State;
 
 mod error;
+use error::*;
 
 pub use self::error::{HandlerError, IntoHandlerError};
-use error::*;
 
 /// A type alias for the trait objects returned by `HandlerService`.
 ///

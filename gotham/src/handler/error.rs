@@ -60,14 +60,6 @@ where
     }
 }
 
-/*
-impl IntoHandlerError for failure::Error {
-    fn into_handler_error(self) -> HandlerError {
-        return self.compat().into_handler_error();
-    }
-}
-*/
-
 impl Display for HandlerError {
     fn fmt(&self, out: &mut Formatter) -> fmt::Result {
         out.write_str("handler failed to process request")
