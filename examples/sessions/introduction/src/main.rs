@@ -94,23 +94,22 @@ mod tests {
 
         assert_eq!(response.status(), StatusCode::OK);
 
-        let headers = response.headers().clone();
-
-        let set_cookie: Vec<_> = headers
-            .get_all(SET_COOKIE)
-            .iter()
-            .flat_map(|hv| hv.to_str())
-            .collect();
-        assert!(set_cookie.len() == 1);
+        let cookie: Cookie = {
+            let set_cookie: Vec<_> = response
+                .headers()
+                .get_all(SET_COOKIE)
+                .iter()
+                .flat_map(|hv| hv.to_str())
+                .collect();
+            assert!(set_cookie.len() == 1);
+            set_cookie.get(0).unwrap().to_string().parse().unwrap()
+        };
 
         let body = response.read_body().unwrap();
         assert_eq!(
             &body[..],
             "You have visited this page 0 time(s) before\n".as_bytes()
         );
-
-        let only_cookie: String = set_cookie.get(0).unwrap().clone().to_string();
-        let cookie: Cookie = only_cookie.parse().unwrap();
 
         let response = test_server
             .client()

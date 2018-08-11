@@ -53,13 +53,10 @@ impl Middleware for ExampleMiddleware {
     where
         Chain: FnOnce(State) -> Box<HandlerFuture>,
     {
-        let user_agent = {
-            let headers = HeaderMap::borrow_from(&state);
-            match headers.get(USER_AGENT) {
-                Some(ua) => ua.to_str().unwrap(),
-                None => "None",
-            }
-        }.to_string();
+        let user_agent = match HeaderMap::borrow_from(&state).get(USER_AGENT) {
+            Some(ua) => ua.to_str().unwrap().to_string(),
+            None => "None".to_string(),
+        };
 
         // Prior to letting Request handling proceed our middleware creates some new data and adds
         // it to `state`.

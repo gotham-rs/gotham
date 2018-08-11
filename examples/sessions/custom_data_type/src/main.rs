@@ -101,7 +101,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
-
         assert_eq!(response.headers().get_all(SET_COOKIE).iter().count(), 1);
 
         let headers = response.headers().clone();
@@ -121,11 +120,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
+
         let body = response.read_body().unwrap();
         let body_string = String::from_utf8(body).unwrap();
+        let expected = "You have visited this page 1 time(s) before. Your last visit was ";
+
         assert!(
-            body_string
-                .starts_with("You have visited this page 1 time(s) before. Your last visit was ",),
+            body_string.starts_with(expected),
             "Wrong body: {}",
             body_string
         );

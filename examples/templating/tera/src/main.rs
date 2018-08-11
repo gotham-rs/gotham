@@ -18,7 +18,7 @@ use tera::{Context, Tera};
 /// we can get a Tera instance that way:
 lazy_static! {
     pub static ref TERA: Tera =
-        { compile_templates!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")) };
+        compile_templates!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*"));
 }
 
 /// Create a `Handler` which calls the Tera static reference, renders
