@@ -19,7 +19,6 @@ extern crate chrono;
 #[cfg(windows)]
 extern crate crossbeam;
 extern crate futures;
-extern crate futures_timer;
 extern crate hyper;
 extern crate linked_hash_map;
 #[macro_use]

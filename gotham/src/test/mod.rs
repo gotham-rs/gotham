@@ -6,12 +6,11 @@ use std::fmt;
 use std::net::{self, IpAddr, SocketAddr};
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use failure;
 
 use futures::{future, Future, Stream};
-use futures_timer::Delay;
 use hyper::client::{
     connect::{Connect, Connected, Destination},
     Client,
@@ -21,6 +20,7 @@ use hyper::{Body, Method, Request, Response, Uri};
 use mime;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
+use tokio::timer::Delay;
 
 use handler::NewHandler;
 
@@ -146,8 +146,7 @@ impl TestServer {
         F::Error: failure::Fail + Sized,
         F::Item: Send,
     {
-        let timeout_duration = Duration::from_secs(self.data.timeout);
-        let timeout = Delay::new(timeout_duration);
+        let timeout = Delay::new(Instant::now() + Duration::from_secs(self.data.timeout));
         let might_expire = self.run_future(f.select2(timeout).map_err(|either| {
             let e: failure::Error = match either {
                 future::Either::A((req_err, _)) => {
