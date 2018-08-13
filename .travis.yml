@@ -21,7 +21,7 @@ matrix:
         - rustup component add --toolchain stable rustfmt-preview
       script:
         - echo "Checking Gotham codebase with rustfmt release `cargo fmt --version`."
-        - cargo fmt --all -- --write-mode=diff
+        - cargo fmt --all -- --check
     # Run Clippy in its own shard.
     - rust: nightly-2018-06-29
       env:

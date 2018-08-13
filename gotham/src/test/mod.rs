@@ -129,7 +129,7 @@ impl TestServer {
         let client = Client::builder().build(TestConnect {
             addr: self.data.addr,
         });
-
+      
         Ok(TestClient {
             client,
             test_server: self.clone(),
