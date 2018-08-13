@@ -1,9 +1,10 @@
 //! Defines the `AcceptHeaderRouterMatcher`.
 
-use hyper::header::{HeaderMap, ACCEPT};
+use hyper::header::{HeaderMap, HeaderValue, ACCEPT};
 use hyper::StatusCode;
 use mime;
 
+use error;
 use router::non_match::RouteNonMatch;
 use router::route::RouteMatcher;
 use state::{request_id, FromState, State};
@@ -91,36 +92,30 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         // Request method is valid, ensure valid Accept header
-        let headers = HeaderMap::borrow_from(state);
-        match headers.get(ACCEPT) {
-            Some(mime_header) =>
-                if mime_header == "*/*" {
-                    Ok(())
-                } else {
-                    parse_mime_type(mime_header)
-                        .map_err(|_| RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
-                        .and_then(|mime_type| {
-                        if self.supported_media_types.contains(&mime_type) {
-                            Ok(())
-                        } else {
-                            trace!(
-                                "[{}] did not provide an Accept with media types supported by this Route",
-                                request_id(&state)
-                                );
-                            Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
-                        }
-                    })
-                }
-            ,
-            // The client has not specified an `Accept` header, as we can now respond with any type
-            // this is valid.
+        match HeaderMap::borrow_from(state).get(ACCEPT) {
+            // The client has not specified an `Accept` header.
             None => Ok(()),
+
+            // Or the header is any type, so it's fine.
+            Some(header) if header == "*/*" => Ok(()),
+
+            // Otherwise we have to validate the header is a match.
+            Some(mime_header) => parse_mime_type(mime_header)
+                .map_err(|_| RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
+                .and_then(|mime_type| {
+                    if self.supported_media_types.contains(&mime_type) {
+                        return Ok(());
+                    }
+                    trace!(
+                        "[{}] did not provide an Accept with media types supported by this Route",
+                        request_id(&state)
+                    );
+                    Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
+                }),
         }
     }
 }
 
-use error;
-use hyper::header::HeaderValue;
 fn parse_mime_type(hv: &HeaderValue) -> error::Result<mime::Mime> {
     Ok(hv.to_str()?.parse()?)
 }

@@ -9,7 +9,7 @@ pub mod tree;
 use std::sync::Arc;
 
 use futures::{future, Future};
-use hyper::header::{HeaderValue, ALLOW};
+use hyper::header::ALLOW;
 use hyper::{Body, Response, StatusCode};
 
 use error::*;
@@ -94,7 +94,7 @@ impl Handler for Router {
                                 for allowed in allow {
                                     res.headers_mut().append(
                                         ALLOW,
-                                        HeaderValue::from_str(allowed.as_str()).unwrap(),
+                                        allowed.as_str().to_string().parse().unwrap(),
                                     );
                                 }
                             }
@@ -389,7 +389,7 @@ mod tests {
         let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
         let not_found_extender = |_s: &mut State, r: &mut Response<Body>| {
             r.headers_mut()
-                .insert(CONTENT_LENGTH, HeaderValue::from_bytes(b"3").unwrap());
+                .insert(CONTENT_LENGTH, "3".to_owned().parse().unwrap());
         };
         response_finalizer_builder.add(StatusCode::NOT_FOUND, Box::new(not_found_extender));
         let response_finalizer = response_finalizer_builder.finalize();

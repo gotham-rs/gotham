@@ -9,7 +9,10 @@ use std::sync::{Arc, Mutex, PoisonError};
 use base64;
 use bincode;
 use cookie::{Cookie, CookieJar};
-use futures::{future, Future};
+use futures::{
+    future::{self, FutureResult},
+    Future,
+};
 use hyper::header::{HeaderMap, COOKIE, SET_COOKIE};
 use hyper::{Body, Response, StatusCode};
 use rand::RngCore;
@@ -369,11 +372,9 @@ where
     }
 }
 
-impl<T> StateData for SessionData<T>
-where
-    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
-{
-}
+impl<T> StateData for SessionData<T> where
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{}
 
 impl<T> Deref for SessionData<T>
 where
@@ -789,18 +790,6 @@ where
     }
 }
 
-fn state_cookies(state: &State) -> CookieJar {
-    HeaderMap::borrow_from(&state)
-        .get_all(COOKIE)
-        .iter()
-        .flat_map(|cv| cv.to_str())
-        .flat_map(|cs| Cookie::parse(cs.to_owned()))
-        .fold(CookieJar::new(), |mut jar, cookie| {
-            jar.add_original(cookie);
-            jar
-        })
-}
-
 impl<B, T> Middleware for SessionMiddleware<B, T>
 where
     B: Backend + Send + 'static,
@@ -811,7 +800,19 @@ where
         Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
         Self: Sized,
     {
-        let session_identifier = state_cookies(&state)
+        let state_cookies = {
+            HeaderMap::borrow_from(&state)
+                .get_all(COOKIE)
+                .iter()
+                .flat_map(|cv| cv.to_str())
+                .flat_map(|cs| Cookie::parse(cs.to_owned()))
+                .fold(CookieJar::new(), |mut jar, cookie| {
+                    jar.add_original(cookie);
+                    jar
+                })
+        };
+
+        let session_identifier = state_cookies
             .get(&self.cookie_config.name)
             .map(|cookie| cookie.value())
             .map(|value| SessionIdentifier {
@@ -826,7 +827,8 @@ where
                     id.value
                 );
 
-                let f = self.backend
+                let f = self
+                    .backend
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
                     .and_then(|state| chain(state))
@@ -840,7 +842,8 @@ where
                     state::request_id(&state),
                 );
 
-                let f = self.new_session(state)
+                let f = self
+                    .new_session(state)
                     .and_then(|state| chain(state))
                     .and_then(persist_session::<Body, T>);
 
@@ -871,7 +874,7 @@ where
 
 fn persist_session<B, T>(
     (mut state, mut response): (State, Response<B>),
-) -> future::FutureResult<(State, Response<B>), (State, HandlerError)>
+) -> FutureResult<(State, Response<B>), (State, HandlerError)>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
     B: Default,
@@ -1058,7 +1061,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use http::header::HeaderValue;
     use hyper::header::{HeaderMap, COOKIE};
     use hyper::{Response, StatusCode};
     use rand;
@@ -1213,7 +1215,7 @@ mod tests {
         let mut state = State::new();
         let mut headers = HeaderMap::new();
         let cookie = Cookie::build("_gotham_session", identifier.value.clone()).finish();
-        headers.insert(COOKIE, HeaderValue::from_str(&cookie.to_string()).unwrap());
+        headers.insert(COOKIE, cookie.to_string().parse().unwrap());
         state.put(headers);
 
         let r: Box<HandlerFuture> = m.call(state, handler);
