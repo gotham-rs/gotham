@@ -20,9 +20,6 @@ use router::route::{Delegation, Extractors, RouteImpl};
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
-/// # extern crate timebomb;
-/// #
-/// # use timebomb::timeout_ms;
 /// #
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
@@ -50,14 +47,12 @@ use router::route::{Delegation, Extractors, RouteImpl};
 /// # }
 /// #
 /// # fn main() {
-/// #   timeout_ms(|| {
 /// #   let test_server = TestServer::new(router()).unwrap();
 /// #   let response = test_server.client()
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
-/// #   }, 3000);
 /// # }
 /// ```
 pub trait DefineSingleRoute {
@@ -319,9 +314,6 @@ pub trait DefineSingleRoute {
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # extern crate timebomb;
-    /// #
-    /// # use timebomb::timeout_ms;
     /// # use hyper::{Body, Response, StatusCode};
     /// # use hyper::header::ACCEPT;
     /// # use gotham::state::State;
@@ -344,7 +336,6 @@ pub trait DefineSingleRoute {
     /// # }
     /// #
     /// # fn main() {
-    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #
     /// #   let response = test_server.client()
@@ -360,7 +351,6 @@ pub trait DefineSingleRoute {
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
-    /// #   }, 3000);
     /// # }
     /// ```
     fn add_route_matcher<NRM>(self, matcher: NRM) -> <Self as ExtendRouteMatcher<NRM>>::Output

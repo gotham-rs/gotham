@@ -43,8 +43,6 @@ extern crate pretty_env_logger;
 #[cfg(test)]
 #[macro_use]
 extern crate serde_derive;
-#[cfg(test)]
-extern crate timebomb;
 
 pub mod error;
 pub mod extractor;

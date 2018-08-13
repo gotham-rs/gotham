@@ -406,9 +406,6 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # extern crate timebomb;
-    /// #
-    /// # use timebomb::timeout_ms;
     /// # use hyper::{Body, Response, StatusCode};
     /// # use hyper::header::ACCEPT;
     /// # use gotham::state::State;
@@ -430,7 +427,6 @@ where
     /// # }
     /// #
     /// # fn main() {
-    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #
     /// #   let response = test_server.client()
@@ -454,7 +450,6 @@ where
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
-    /// #   }, 3000);
     /// # }
     /// ```
     fn request<'b, IRM, M>(
@@ -486,9 +481,6 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # extern crate timebomb;
-    /// #
-    /// # use timebomb::timeout_ms;
     ///
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
@@ -513,14 +505,12 @@ where
     /// # }
     /// #
     /// # fn main() {
-    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/api/list")
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
-    /// #   }, 3000);
     /// # }
     /// ```
     fn scope<F>(&mut self, path: &str, f: F)
@@ -548,9 +538,6 @@ where
     /// # extern crate hyper;
     /// # #[macro_use]
     /// # extern crate serde_derive;
-    ///
-    /// # extern crate timebomb;
-    /// # use timebomb::timeout_ms;
     /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
@@ -628,7 +615,6 @@ where
     /// # }
     /// #
     /// # fn main() {
-    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #
     /// #   let response = test_server.client()
@@ -642,7 +628,6 @@ where
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
-    /// #   }, 3000);
     /// # }
     /// ```
     fn with_pipeline_chain<F, NC>(&mut self, pipeline_chain: NC, f: F)
@@ -977,8 +962,6 @@ mod tests {
     use state::State;
     use test::TestServer;
 
-    use timebomb::timeout_ms;
-
     #[derive(Clone, Copy)]
     struct QuickExitMiddleware;
 
@@ -1014,29 +997,23 @@ mod tests {
 
     #[test]
     fn delegate_includes_pipelines() {
-        timeout_ms(
-            || {
-                let (chain, pipelines) =
-                    single_pipeline(new_pipeline().add(QuickExitMiddleware).build());
+        let (chain, pipelines) = single_pipeline(new_pipeline().add(QuickExitMiddleware).build());
 
-                let test_router = build_simple_router(|route| {
-                    route.get("/").to(test_handler);
-                });
+        let test_router = build_simple_router(|route| {
+            route.get("/").to(test_handler);
+        });
 
-                let router = build_router(chain, pipelines, |route| {
-                    route.delegate("/test").to_router(test_router);
-                });
+        let router = build_router(chain, pipelines, |route| {
+            route.delegate("/test").to_router(test_router);
+        });
 
-                let test_server = TestServer::new(router).unwrap();
-                let response = test_server
-                    .client()
-                    .get("http://localhost/test/")
-                    .perform()
-                    .unwrap();
-                assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
-            },
-            3000,
-        );
+        let test_server = TestServer::new(router).unwrap();
+        let response = test_server
+            .client()
+            .get("http://localhost/test/")
+            .perform()
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[test]

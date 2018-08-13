@@ -194,9 +194,7 @@ impl SessionCookieConfig {
 /// # extern crate serde_derive;
 /// # extern crate bincode;
 /// # extern crate mime;
-/// # extern crate timebomb;
 /// #
-/// # use timebomb::timeout_ms;
 /// # use std::time::Duration;
 /// # use futures::future;
 /// # use gotham::handler::HandlerFuture;
@@ -230,7 +228,6 @@ impl SessionCookieConfig {
 /// }
 /// #
 /// # fn main() {
-/// #   timeout_ms(|| {
 /// #   let backend = MemoryBackend::new(Duration::from_secs(1));
 /// #   let identifier = SessionIdentifier { value: "u0G6KdfckQgkV0qLANZjjNkEHBU".to_owned() };
 /// #   let session = MySessionType {
@@ -263,7 +260,6 @@ impl SessionCookieConfig {
 /// #   let response_bytes = response.read_body().unwrap();
 /// #   assert_eq!(String::from_utf8(response_bytes).unwrap(),
 /// #              r#"["a", "b", "c"]"#);
-/// #   }, 3000);
 /// # }
 /// ```
 pub struct SessionData<T>

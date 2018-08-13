@@ -106,9 +106,6 @@ where
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # extern crate timebomb;
-/// #
-/// # use timebomb::timeout_ms;
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
@@ -126,14 +123,12 @@ where
 /// }
 /// #
 /// # fn main() {
-/// #   timeout_ms(|| {
 /// #   let test_server = TestServer::new(router()).unwrap();
 /// #   let response = test_server.client()
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
 /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
-/// #   }, 3000);
 /// # }
 /// ```
 pub fn build_simple_router<F>(f: F) -> Router

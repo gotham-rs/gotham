@@ -208,9 +208,6 @@ where
     /// # extern crate serde;
     /// # #[macro_use]
     /// # extern crate serde_derive;
-    ///
-    /// # extern crate timebomb;
-    /// # use timebomb::timeout_ms;
     /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
@@ -241,14 +238,12 @@ where
     /// # }
     /// #
     /// # fn main() {
-    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/resource?val=test_val")
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
-    /// #   }, 3000);
     /// # }
     /// ```
     pub fn with_query_string_extractor<'b, NQSE>(
@@ -395,9 +390,6 @@ where
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
     /// # use gotham::test::TestServer;
-    /// # extern crate timebomb;
-    /// #
-    /// # use timebomb::timeout_ms;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -414,7 +406,6 @@ where
     /// # }
     /// #
     /// # fn main() {
-    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #
     /// #   let response = test_server.client()
@@ -428,7 +419,6 @@ where
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
-    /// #   }, 3000);
     /// # }
     /// ```
     pub fn get_or_head<'b>(
@@ -620,9 +610,6 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # extern crate timebomb;
-    /// #
-    /// # use timebomb::timeout_ms;
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -644,14 +631,12 @@ where
     /// # }
     /// #
     /// # fn main() {
-    /// #   timeout_ms(|| {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #   let response = test_server.client()
     /// #       .delete("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
-    /// #   }, 3000);
     /// # }
     /// ```
     pub fn delete<'b>(

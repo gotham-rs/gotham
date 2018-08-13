@@ -101,14 +101,12 @@ impl HandlerError {
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// # extern crate futures;
-    /// # extern crate timebomb;
     /// #
     /// # use futures::future;
     /// # use hyper::StatusCode;
     /// # use gotham::state::State;
     /// # use gotham::handler::{IntoHandlerError, HandlerFuture};
     /// # use gotham::test::TestServer;
-    /// # use timebomb::timeout_ms;
     /// #
     /// fn handler(state: State) -> Box<HandlerFuture> {
     ///     // It's OK if this is bogus, we just need something to convert into a `HandlerError`.
@@ -123,11 +121,9 @@ impl HandlerError {
     ///
     /// # fn main() {
     /// #
-    /// # timeout_ms( || {
     /// let test_server = TestServer::new(|| Ok(handler)).unwrap();
     /// let response = test_server.client().get("http://example.com/").perform().unwrap();
     /// assert_eq!(response.status(), StatusCode::IM_A_TEAPOT);
-    /// # }, 3000);
     /// #
     /// # }
     /// ```

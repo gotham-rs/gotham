@@ -440,7 +440,6 @@ mod tests {
     use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
     use helpers::http::response::create_response;
     use state::{client_addr, FromState, State};
-    use timebomb::timeout_ms;
 
     #[derive(Clone)]
     struct TestHandler {
@@ -609,41 +608,35 @@ mod tests {
             Box::new(f)
         }
 
-        timeout_ms(
-            || {
-                let server = TestServer::new(|| Ok(handler)).unwrap();
+        let server = TestServer::new(|| Ok(handler)).unwrap();
 
-                let client = server.client();
-                let data =
-                    "This text should get reflected back to us. Even this fancy piece of unicode: \
-                     \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
+        let client = server.client();
+        let data = "This text should get reflected back to us. Even this fancy piece of unicode: \
+                    \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
 
-                let res = client
-                    .post("http://host/echo", data, mime::TEXT_PLAIN)
-                    .perform()
-                    .expect("request successful");
+        let res = client
+            .post("http://host/echo", data, mime::TEXT_PLAIN)
+            .perform()
+            .expect("request successful");
 
-                assert_eq!(res.status(), StatusCode::OK);
+        assert_eq!(res.status(), StatusCode::OK);
 
-                {
-                    let content_type = res.headers().get(CONTENT_TYPE).expect("ContentType");
-                    assert_eq!(content_type, mime::TEXT_PLAIN.as_ref());
-                }
+        {
+            let content_type = res.headers().get(CONTENT_TYPE).expect("ContentType");
+            assert_eq!(content_type, mime::TEXT_PLAIN.as_ref());
+        }
 
-                let content_length = {
-                    let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
-                    assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
+        let content_length = {
+            let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
+            assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
 
-                    content_length.clone()
-                };
+            content_length.clone()
+        };
 
-                let buf = String::from_utf8(res.read_body().expect("readable response"))
-                    .expect("UTF8 response");
+        let buf =
+            String::from_utf8(res.read_body().expect("readable response")).expect("UTF8 response");
 
-                assert_eq!(content_length, &format!("{}", buf.len()));
-                assert_eq!(data, &buf);
-            },
-            3000,
-        );
+        assert_eq!(content_length, &format!("{}", buf.len()));
+        assert_eq!(data, &buf);
     }
 }
