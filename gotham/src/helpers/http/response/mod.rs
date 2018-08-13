@@ -1,10 +1,8 @@
 //! Helpers for HTTP response generation
 
 use http::response;
-use hyper::header::{
-    HeaderMap, HeaderName, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, X_CONTENT_TYPE_OPTIONS,
-    X_FRAME_OPTIONS, X_XSS_PROTECTION,
-};
+use hyper::header::{HeaderMap, HeaderName, CONTENT_LENGTH, CONTENT_TYPE, LOCATION,
+                    X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
 use hyper::{Body, Method, Response, StatusCode};
 use mime::Mime;
 use std::borrow::Cow;
@@ -70,21 +68,16 @@ pub fn create_response(
     body: Option<(Vec<u8>, Mime)>,
 ) -> Response<Body> {
     let mut builder = Response::builder();
-
-    let (data, mime) = body
-        .map(|(data, mime)| (Some(data), Some(mime)))
-        .unwrap_or_else(|| (None, None));
+    let mime = body.clone().map(|(_, mime)| mime);
 
     extend_response(state, status, &mut builder, mime);
-
-    let method = Method::borrow_from(state);
-    let built = if data.is_some() && *method != Method::HEAD {
-        builder.body(data.unwrap().into())
-    } else {
-        builder.body(Body::empty())
-    };
-
-    built.expect("Response built from a compatible byte vector (Vec<u8>)")
+    match body {
+        Some((body, _)) => match *Method::borrow_from(state) {
+            Method::HEAD => builder.body(Body::empty()),
+            _ => builder.body(body.into()),
+        },
+        None => builder.body(Body::empty()),
+    }.expect("Response built from a compatible byte vector (Vec<u8>)")
 }
 
 /// Produces a simple empty `Response` with a `Location` header and a 301
@@ -252,16 +245,15 @@ pub fn extend_response(
         );
     }
 
-    let builder = if let Some(mime) = mime {
-        builder.header(CONTENT_TYPE, mime.as_ref())
-    } else {
-        builder
-    };
-
-    let id_header = HeaderName::from_lowercase(b"x-request-id")
-        .expect("Header name built from a constant string");
-
-    builder.header(id_header, request_id(state)).status(status);
+    match mime {
+        Some(mime) => builder.header(CONTENT_TYPE, mime.as_ref()),
+        None => builder,
+    }.header(
+        HeaderName::from_lowercase(b"x-request-id")
+            .expect("Header name built from a constant string"),
+        request_id(state),
+    )
+        .status(status);
 }
 
 /// Sets a number of default headers in a `Response` that ensure security and conformance to

@@ -16,13 +16,10 @@ extern crate base64;
 extern crate bincode;
 extern crate borrow_bag;
 extern crate chrono;
-extern crate cookie;
 #[cfg(windows)]
 extern crate crossbeam;
-extern crate failure;
 extern crate futures;
 extern crate futures_timer;
-extern crate http;
 extern crate hyper;
 extern crate linked_hash_map;
 #[macro_use]
@@ -40,12 +37,19 @@ extern crate url;
 extern crate uuid;
 
 #[cfg(test)]
-extern crate pretty_env_logger;
-#[cfg(test)]
 #[macro_use]
 extern crate serde_derive;
+
 #[cfg(test)]
 extern crate timebomb;
+
+#[cfg(test)]
+extern crate pretty_env_logger;
+
+extern crate cookie;
+extern crate http;
+
+extern crate failure;
 
 pub mod error;
 pub mod extractor;
@@ -122,7 +126,7 @@ where
     bind_server(listener, new_handler)
 }
 
-fn bind_server<NH>(listener: TcpListener, new_handler: NH) -> impl Future<Item = (), Error = ()>
+fn bind_server<'a, NH>(listener: TcpListener, new_handler: NH) -> impl Future<Item = (), Error = ()>
 where
     NH: NewHandler + 'static,
 {

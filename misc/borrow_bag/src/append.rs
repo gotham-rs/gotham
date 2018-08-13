@@ -69,7 +69,11 @@ where
 {
 }
 
-impl<U, V0, V1> PrefixedWith<(U, V0)> for (U, V1) where V1: PrefixedWith<V0> {}
+impl<U, V0, V1> PrefixedWith<(U, V0)> for (U, V1)
+where
+    V1: PrefixedWith<V0>,
+{
+}
 impl<U> PrefixedWith<()> for (U, ()) {}
 
 #[cfg(test)]
