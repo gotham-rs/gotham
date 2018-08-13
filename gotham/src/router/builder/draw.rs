@@ -6,10 +6,12 @@ use hyper::Method;
 use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
-use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
-                      SingleRouteBuilder};
-use router::route::matcher::{AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher,
-                             RouteMatcher};
+use router::builder::{
+    AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder,
+};
+use router::route::matcher::{
+    AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,
+};
 use router::tree::node::Node;
 use router::tree::regex::ConstrainedSegmentRegex;
 use router::tree::segment::SegmentType;

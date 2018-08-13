@@ -23,7 +23,8 @@ impl RequestPathSegments {
     /// ["/", "some", "path", "to", "my", "handler"]
     /// ```
     pub(crate) fn new(path: &str) -> Self {
-        let segments = path.split('/')
+        let segments = path
+            .split('/')
             .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
             .filter_map(PercentDecoded::new)
             .collect();

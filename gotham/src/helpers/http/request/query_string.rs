@@ -44,7 +44,8 @@ mod tests {
     use super::*;
 
     fn to_pairs<'a>(qsm: &'a QueryStringMapping) -> Vec<(&'a str, Vec<&'a str>)> {
-        let mut pairs: Vec<(&str, Vec<&str>)> = qsm.iter()
+        let mut pairs: Vec<(&str, Vec<&str>)> = qsm
+            .iter()
             .map(|(k, v)| {
                 let mut values: Vec<&str> = v.iter().map(|s| s.as_ref()).collect();
                 values.sort();

@@ -7,8 +7,9 @@ use extractor::{PathExtractor, QueryStringExtractor};
 use pipeline::chain::PipelineHandleChain;
 use pipeline::set::PipelineSet;
 use router::builder::SingleRouteBuilder;
-use router::route::matcher::{AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher,
-                             RouteMatcher};
+use router::route::matcher::{
+    AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,
+};
 use router::tree::node::Node;
 
 pub type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;

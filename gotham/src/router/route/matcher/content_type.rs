@@ -75,11 +75,9 @@ impl RouteMatcher for ContentTypeHeaderRouteMatcher {
         let headers = HeaderMap::borrow_from(state);
         match headers.get(CONTENT_TYPE) {
             Some(content_type) => {
-                if self.supported_media_types.contains(&content_type
-                    .to_str()
-                    .unwrap()
-                    .parse()
-                    .unwrap())
+                if self
+                    .supported_media_types
+                    .contains(&content_type.to_str().unwrap().parse().unwrap())
                 {
                     return Ok(());
                 }

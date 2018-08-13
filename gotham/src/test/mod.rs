@@ -12,8 +12,10 @@ use failure;
 
 use futures::{future, Future, Stream};
 use futures_timer::Delay;
-use hyper::client::{connect::{Connect, Connected, Destination},
-                    Client};
+use hyper::client::{
+    connect::{Connect, Connected, Destination},
+    Client,
+};
 use hyper::header::CONTENT_TYPE;
 use hyper::{Body, Method, Request, Response, Uri};
 use mime;

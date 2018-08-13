@@ -1,8 +1,10 @@
 //! Helpers for HTTP response generation
 
 use http::response;
-use hyper::header::{HeaderMap, HeaderName, CONTENT_LENGTH, CONTENT_TYPE, LOCATION,
-                    X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
+use hyper::header::{
+    HeaderMap, HeaderName, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, X_CONTENT_TYPE_OPTIONS,
+    X_FRAME_OPTIONS, X_XSS_PROTECTION,
+};
 use hyper::{Body, Method, Response, StatusCode};
 use mime::Mime;
 use std::borrow::Cow;

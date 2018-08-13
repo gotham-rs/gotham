@@ -93,8 +93,7 @@ impl<T, B> QueryStringExtractor<B> for T
 where
     B: Payload,
     for<'de> T: Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData,
-{
-}
+{}
 
 /// A `QueryStringExtractor` that does not extract/store any data.
 ///
