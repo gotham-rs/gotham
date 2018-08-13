@@ -248,6 +248,7 @@ mod tests {
 
         let mut state = State::new();
         state.put(HeaderMap::new());
+        state.put(Method::GET);
         set_request_id(&mut state);
 
         match route.dispatch(state).poll() {
