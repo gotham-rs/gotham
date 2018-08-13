@@ -72,13 +72,15 @@ impl RouteMatcher for ContentTypeHeaderRouteMatcher {
     /// Determines if the `Request` was made using a `Content-Type` header that includes a
     /// supported media type. A missing `Content-Type` header will not match.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
-        let headers = HeaderMap::borrow_from(state);
-        match headers.get(CONTENT_TYPE) {
+        match HeaderMap::borrow_from(state).get(CONTENT_TYPE) {
+            // The client has not specified a `Content-Type` header.
+            None => Err(RouteNonMatch::new(StatusCode::UNSUPPORTED_MEDIA_TYPE)),
+
+            // Header was provided.
             Some(content_type) => {
-                if self
-                    .supported_media_types
-                    .contains(&content_type.to_str().unwrap().parse().unwrap())
-                {
+                let mime = content_type.to_str().unwrap().parse().unwrap();
+
+                if self.supported_media_types.contains(&mime) {
                     return Ok(());
                 }
 
@@ -86,10 +88,9 @@ impl RouteMatcher for ContentTypeHeaderRouteMatcher {
                     "[{}] did not specify a Content-Type with a media type supported by this Route",
                     request_id(&state)
                 );
+
                 Err(RouteNonMatch::new(StatusCode::UNSUPPORTED_MEDIA_TYPE))
             }
-            // The client has not specified a `Content-Type` header.
-            None => Err(RouteNonMatch::new(StatusCode::UNSUPPORTED_MEDIA_TYPE)),
         }
     }
 }

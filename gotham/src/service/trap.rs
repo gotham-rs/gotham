@@ -15,7 +15,8 @@ use handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use service::timing::Timer;
 use state::{request_id, State};
 
-type AnError = failure::Compat<failure::Error>;
+type CompatError = failure::Compat<failure::Error>;
+
 /// Instantiates a `Handler` from the given `NewHandler`, and invokes it with the request. If a
 /// panic occurs from `NewHandler::new_handler` or `Handler::handle`, it is trapped and will result
 /// in a `500 Internal Server Error` response.
@@ -25,7 +26,7 @@ type AnError = failure::Compat<failure::Error>;
 pub(super) fn call_handler<'a, T>(
     t: &T,
     state: AssertUnwindSafe<State>,
-) -> Box<Future<Item = Response<Body>, Error = AnError> + Send + 'a>
+) -> Box<Future<Item = Response<Body>, Error = CompatError> + Send + 'a>
 where
     T: NewHandler + 'a,
 {
@@ -48,21 +49,22 @@ where
             })
     });
 
-    match res {
-        Ok(f) => Box::new(
+    if let Ok(f) = res {
+        return Box::new(
             UnwindSafeFuture::new(f)
                 .catch_unwind()
                 .then(finalize_catch_unwind_response), // must be Future<Item = impl Payload>
-        ),
-        Err(_) => Box::new(finalize_panic_response(timer)),
+        );
     }
+
+    Box::new(finalize_panic_response(timer))
 }
 
 fn finalize_success_response(
     timer: Timer,
     state: State,
     response: Response<Body>,
-) -> FutureResult<Response<Body>, AnError> {
+) -> FutureResult<Response<Body>, CompatError> {
     let timing = timer.elapsed(&state);
 
     info!(
@@ -80,7 +82,7 @@ fn finalize_error_response(
     timer: Timer,
     state: State,
     err: HandlerError,
-) -> FutureResult<Response<Body>, AnError> {
+) -> FutureResult<Response<Body>, CompatError> {
     let timing = timer.elapsed(&state);
 
     {
@@ -102,7 +104,7 @@ fn finalize_error_response(
     future::ok(err.into_response(&state))
 }
 
-fn finalize_panic_response(timer: Timer) -> FutureResult<Response<Body>, AnError> {
+fn finalize_panic_response(timer: Timer) -> FutureResult<Response<Body>, CompatError> {
     let timing = timer.elapsed_no_logging();
 
     error!(
@@ -119,8 +121,8 @@ fn finalize_panic_response(timer: Timer) -> FutureResult<Response<Body>, AnError
 }
 
 fn finalize_catch_unwind_response(
-    result: Result<Result<Response<Body>, AnError>, Box<Any + Send>>,
-) -> FutureResult<Response<Body>, AnError> {
+    result: Result<Result<Response<Body>, CompatError>, Box<Any + Send>>,
+) -> FutureResult<Response<Body>, CompatError> {
     let response = result
         .unwrap_or_else(|_| {
             let e = io::Error::new(
@@ -144,7 +146,7 @@ fn finalize_catch_unwind_response(
 /// Wraps a future to ensure that a panic does not escape and terminate the event loop.
 enum UnwindSafeFuture<F>
 where
-    F: Future<Error = AnError> + Send,
+    F: Future<Error = CompatError> + Send,
 {
     /// The future is available for polling.
     Available(AssertUnwindSafe<F>),
@@ -155,12 +157,12 @@ where
 
 impl<F> Future for UnwindSafeFuture<F>
 where
-    F: Future<Error = AnError> + Send,
+    F: Future<Error = CompatError> + Send,
 {
     type Item = F::Item;
-    type Error = AnError;
+    type Error = CompatError;
 
-    fn poll(&mut self) -> Result<Async<Self::Item>, AnError> {
+    fn poll(&mut self) -> Result<Async<Self::Item>, CompatError> {
         // Mark as poisoned in case `f.poll()` panics below.
         match mem::replace(self, UnwindSafeFuture::Poisoned) {
             UnwindSafeFuture::Available(mut f) => {
@@ -184,7 +186,7 @@ where
 
 impl<F> UnwindSafeFuture<F>
 where
-    F: Future<Error = AnError> + Send,
+    F: Future<Error = CompatError> + Send,
 {
     fn new(f: F) -> UnwindSafeFuture<F> {
         UnwindSafeFuture::Available(AssertUnwindSafe(f))
@@ -197,7 +199,7 @@ mod tests {
 
     use std::io;
 
-    use hyper::{HeaderMap, StatusCode};
+    use hyper::{HeaderMap, Method, StatusCode};
 
     use handler::{HandlerFuture, IntoHandlerError};
     use helpers::http::response::create_response;

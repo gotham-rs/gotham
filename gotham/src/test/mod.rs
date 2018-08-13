@@ -129,7 +129,7 @@ impl TestServer {
         let client = Client::builder().build(TestConnect {
             addr: self.data.addr,
         });
-      
+
         Ok(TestClient {
             client,
             test_server: self.clone(),
@@ -191,10 +191,11 @@ impl TestServer {
 
 impl BodyReader for TestServer {
     fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>> {
-        let f = response.into_body();
-        let f = f.concat2();
-
-        self.run_future(f).map(|chunk| chunk.into_iter().collect())
+        let f = response
+            .into_body()
+            .concat2()
+            .map(|chunk| chunk.into_iter().collect());
+        self.run_future(f)
     }
 }
 
@@ -314,7 +315,7 @@ impl TestClient {
 
         self.test_server
             .run_request(req_future)
-            .map(move |response| TestResponse {
+            .map(|response| TestResponse {
                 response,
                 reader: Box::new(self.test_server.clone()),
             })
@@ -539,7 +540,6 @@ mod tests {
 
         info!("{}:{}", file!(), line!());
         match res {
-            //Err("timed out") => (),
             e @ Err(_) => {
                 info!("{:?} {}:{}", e, file!(), line!());
                 e.unwrap();
