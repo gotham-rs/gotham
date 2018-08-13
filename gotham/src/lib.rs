@@ -119,7 +119,7 @@ where
     bind_server(listener, new_handler)
 }
 
-fn bind_server<'a, NH>(listener: TcpListener, new_handler: NH) -> impl Future<Item = (), Error = ()>
+fn bind_server<NH>(listener: TcpListener, new_handler: NH) -> impl Future<Item = (), Error = ()>
 where
     NH: NewHandler + 'static,
 {

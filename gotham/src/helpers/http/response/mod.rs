@@ -70,16 +70,21 @@ pub fn create_response(
     body: Option<(Vec<u8>, Mime)>,
 ) -> Response<Body> {
     let mut builder = Response::builder();
-    let mime = body.clone().map(|(_, mime)| mime);
+
+    let (data, mime) = body
+        .map(|(data, mime)| (Some(data), Some(mime)))
+        .unwrap_or_else(|| (None, None));
 
     extend_response(state, status, &mut builder, mime);
-    match body {
-        Some((body, _)) => match *Method::borrow_from(state) {
-            Method::HEAD => builder.body(Body::empty()),
-            _ => builder.body(body.into()),
-        },
-        None => builder.body(Body::empty()),
-    }.expect("Response built from a compatible byte vector (Vec<u8>)")
+
+    let method = Method::borrow_from(state);
+    let built = if data.is_some() && *method != Method::HEAD {
+        builder.body(data.unwrap().into())
+    } else {
+        builder.body(Body::empty())
+    };
+
+    built.expect("Response built from a compatible byte vector (Vec<u8>)")
 }
 
 /// Produces a simple empty `Response` with a `Location` header and a 301
@@ -247,15 +252,16 @@ pub fn extend_response(
         );
     }
 
-    match mime {
-        Some(mime) => builder.header(CONTENT_TYPE, mime.as_ref()),
-        None => builder,
-    }.header(
-        HeaderName::from_lowercase(b"x-request-id")
-            .expect("Header name built from a constant string"),
-        request_id(state),
-    )
-        .status(status);
+    let builder = if let Some(mime) = mime {
+        builder.header(CONTENT_TYPE, mime.as_ref())
+    } else {
+        builder
+    };
+
+    let id_header = HeaderName::from_lowercase(b"x-request-id")
+        .expect("Header name built from a constant string");
+
+    builder.header(id_header, request_id(state)).status(status);
 }
 
 /// Sets a number of default headers in a `Response` that ensure security and conformance to
