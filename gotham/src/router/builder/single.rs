@@ -3,8 +3,9 @@ use std::panic::RefUnwindSafe;
 use extractor::{PathExtractor, QueryStringExtractor};
 use handler::{Handler, NewHandler};
 use pipeline::chain::PipelineHandleChain;
-use router::builder::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor,
-                      SingleRouteBuilder};
+use router::builder::{
+    ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
+};
 use router::route::dispatch::DispatcherImpl;
 use router::route::matcher::RouteMatcher;
 use router::route::{Delegation, Extractors, RouteImpl};

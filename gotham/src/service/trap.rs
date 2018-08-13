@@ -85,7 +85,8 @@ fn finalize_error_response(
     {
         // HandlerError::cause() is far more interesting for logging, but the
         // API doesn't guarantee its presence (even though it always is).
-        let err_description = err.cause()
+        let err_description = err
+            .cause()
             .map(Error::description)
             .unwrap_or(err.description());
 

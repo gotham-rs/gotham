@@ -76,11 +76,7 @@ use state::{State, StateData};
 /// # }
 pub trait PathExtractor: for<'de> Deserialize<'de> + StaticResponseExtender + StateData {}
 
-impl<T> PathExtractor for T
-where
-    for<'de> T: Deserialize<'de> + StaticResponseExtender + StateData,
-{
-}
+impl<T> PathExtractor for T where for<'de> T: Deserialize<'de> + StaticResponseExtender + StateData {}
 
 /// A `PathExtractor` that does not extract/store any data from the `Request` path.
 ///

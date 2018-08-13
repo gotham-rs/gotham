@@ -87,11 +87,9 @@ pub trait QueryStringExtractor:
 {
 }
 
-impl<T> QueryStringExtractor for T
-where
-    for<'de> T: Deserialize<'de> + StaticResponseExtender + StateData,
-{
-}
+impl<T> QueryStringExtractor for T where
+    for<'de> T: Deserialize<'de> + StaticResponseExtender + StateData
+{}
 
 /// A `QueryStringExtractor` that does not extract/store any data.
 ///

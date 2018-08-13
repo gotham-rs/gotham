@@ -368,11 +368,9 @@ where
     }
 }
 
-impl<T> StateData for SessionData<T>
-where
-    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
-{
-}
+impl<T> StateData for SessionData<T> where
+    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
+{}
 
 impl<T> Deref for SessionData<T>
 where
@@ -813,7 +811,8 @@ where
                     id.value
                 );
 
-                let f = self.backend
+                let f = self
+                    .backend
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
                     .and_then(|state| chain(state))
@@ -827,7 +826,8 @@ where
                     state::request_id(&state),
                 );
 
-                let f = self.new_session(state)
+                let f = self
+                    .new_session(state)
                     .and_then(|state| chain(state))
                     .and_then(persist_session::<T>);
 

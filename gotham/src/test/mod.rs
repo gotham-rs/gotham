@@ -165,7 +165,8 @@ where
         let ss = PollEvented::new(ss, &handle)?;
 
         let service = self.data.gotham_service.connect(client_addr);
-        let f = self.data
+        let f = self
+            .data
             .http
             .serve_connection(ss, service)
             .map(|_| ())
