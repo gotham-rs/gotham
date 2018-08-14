@@ -34,7 +34,6 @@ extern crate regex;
 #[macro_use]
 extern crate serde;
 extern crate tokio;
-extern crate tokio_core;
 extern crate url;
 extern crate uuid;
 
