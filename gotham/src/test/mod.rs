@@ -487,32 +487,25 @@ mod tests {
 
     #[test]
     fn serves_requests() {
-        let _ = ::pretty_env_logger::try_init_custom_env("GOTHAM_TEST_LOG");
         let ticks = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
         let new_service = move || {
-            info!("Recieved request; contents ignored");
             Ok(TestHandler {
                 response: format!("time: {}", ticks),
             })
         };
 
-        info!("{}:{}", file!(), line!());
         let test_server = TestServer::new(new_service).unwrap();
-        info!("{}:{}", file!(), line!());
         let response = test_server
             .client()
             .get("http://localhost/")
             .perform()
             .unwrap();
 
-        info!("{}:{}", file!(), line!());
         assert_eq!(response.status(), StatusCode::OK);
-        info!("{}:{}", file!(), line!());
         let buf = response.read_utf8_body().unwrap();
-        info!("{}:{}", file!(), line!());
         assert_eq!(buf, format!("time: {}", ticks));
     }
 
@@ -520,79 +513,64 @@ mod tests {
     #[ignore] // XXX I don't understand why this doesn't work.
               // It seems like Hyper is treating the future::empty() as an empty body...
     fn times_out() {
-        let _ = ::pretty_env_logger::try_init_custom_env("GOTHAM_TEST_LOG");
-        info!("{}:{}", file!(), line!());
         let new_service = || {
             Ok(TestHandler {
                 response: "".to_owned(),
             })
         };
-        info!("{}:{}", file!(), line!());
+
         let test_server = TestServer::with_timeout(new_service, 1).unwrap();
 
-        info!("{}:{}", file!(), line!());
         let res = test_server
             .client()
             .get("http://localhost/timeout")
             .perform();
 
-        info!("{}:{}", file!(), line!());
         match res {
             e @ Err(_) => {
-                info!("{:?} {}:{}", e, file!(), line!());
                 e.unwrap();
             }
             Ok(_) => panic!("expected timeout, but was Ok(_)"),
         }
-        info!("{}:{}", file!(), line!());
     }
 
     #[test]
     #[ignore] // We trade using the mainline server setup code for this behavior.
     fn sets_client_addr() {
-        info!("{}:{}", file!(), line!());
         let ticks = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        info!("{}:{}", file!(), line!());
+
         let new_service = move || {
             Ok(TestHandler {
                 response: format!("time: {}", ticks),
             })
         };
-        info!("{}:{}", file!(), line!());
-        let client_addr = "9.8.7.6:58901".parse().unwrap();
 
-        info!("{}:{}", file!(), line!());
+        let client_addr = "9.8.7.6:58901".parse().unwrap();
         let test_server = TestServer::new(new_service).unwrap();
-        info!("{}:{}", file!(), line!());
+
         let response = test_server
             .client_with_address(client_addr)
             .get("http://localhost/myaddr")
             .perform()
             .unwrap();
 
-        info!("{}:{}", file!(), line!());
         assert_eq!(response.status(), StatusCode::OK);
-        info!("{}:{}", file!(), line!());
+
         let buf = response.read_body().unwrap();
-        info!("{}:{}", file!(), line!());
         let received_addr: net::SocketAddr = String::from_utf8(buf).unwrap().parse().unwrap();
-        info!("{}:{}", file!(), line!());
         assert_eq!(received_addr, client_addr);
-        info!("{}:{}", file!(), line!());
     }
 
     #[test]
     fn async_echo() {
-        let _ = ::pretty_env_logger::try_init_custom_env("GOTHAM_TEST_LOG");
         fn handler(mut state: State) -> Box<HandlerFuture> {
             let f = Body::take_from(&mut state)
                 .concat2()
                 .then(move |full_body| match full_body {
                     Ok(body) => {
-                        debug!("test");
                         let resp_data = body.to_vec();
                         let res = create_response(
                             &state,
@@ -629,7 +607,6 @@ mod tests {
         let content_length = {
             let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
             assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
-
             content_length.clone()
         };
 

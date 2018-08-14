@@ -70,11 +70,8 @@ mod tests {
 
     #[test]
     fn test_pipeline_construction() {
-        let _ = ::pretty_env_logger::try_init_custom_env("GOTHAM_TEST_LOG");
-        info!("{}:{}", file!(), line!());
         let (chain, pipelines) = single_pipeline(new_pipeline().build());
 
-        info!("{}:{}", file!(), line!());
         build_router(chain, pipelines, |_route| {});
     }
 }

@@ -39,7 +39,6 @@ failure_derive = "0.1"
 
 [dev-dependencies]
 gotham_derive = { path = "../gotham_derive" }
-pretty_env_logger = "0.2"
 
 [badges]
 travis-ci = { repository = "gotham-rs/gotham", branch = "master" }

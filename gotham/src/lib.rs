@@ -39,8 +39,6 @@ extern crate url;
 extern crate uuid;
 
 #[cfg(test)]
-extern crate pretty_env_logger;
-#[cfg(test)]
 #[macro_use]
 extern crate serde_derive;
 
