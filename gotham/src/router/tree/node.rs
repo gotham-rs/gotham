@@ -1,6 +1,6 @@
 //! Defines `Node` for `Tree`.
 
-use hyper::StatusCode;
+use hyper::{Body, StatusCode};
 
 use helpers::http::PercentDecoded;
 use router::non_match::RouteNonMatch;
@@ -19,7 +19,7 @@ use std::collections::HashMap;
 pub struct Node {
     segment: String,
     segment_type: SegmentType,
-    routes: Vec<Box<Route + Send + Sync>>,
+    routes: Vec<Box<Route<ResBody = Body> + Send + Sync>>,
     children: Vec<Node>,
 }
 
@@ -42,7 +42,7 @@ impl Node {
     }
 
     /// Adds a `Route` to this `Node`, to be potentially evaluated by the `Router`.
-    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) -> &mut Self {
+    pub fn add_route(&mut self, route: Box<Route<ResBody = Body> + Send + Sync>) -> &mut Self {
         self.routes.push(route);
         self
     }
@@ -123,7 +123,10 @@ impl Node {
     ///
     /// In the situation where all these avenues are exhausted an InternalServerError will be
     /// provided.
-    pub fn select_route(&self, state: &State) -> Result<&Box<Route + Send + Sync>, RouteNonMatch> {
+    pub fn select_route(
+        &self,
+        state: &State,
+    ) -> Result<&Box<Route<ResBody = Body> + Send + Sync>, RouteNonMatch> {
         let mut err = Ok(());
 
         // check for matching routes
@@ -158,7 +161,7 @@ impl Node {
         );
 
         // error because we shouldn't arrive here due to match_node/1
-        Err(RouteNonMatch::new(StatusCode::InternalServerError))
+        Err(RouteNonMatch::new(StatusCode::INTERNAL_SERVER_ERROR))
     }
 
     /// Recursive implementation of `match_route` to populate parameters and keep
@@ -286,7 +289,7 @@ mod tests {
 
     use std::panic::RefUnwindSafe;
 
-    use hyper::{Headers, Method, Response};
+    use hyper::{HeaderMap, Method, Response};
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use helpers::http::request::path::RequestPathSegments;
@@ -298,15 +301,15 @@ mod tests {
     use router::tree::regex::ConstrainedSegmentRegex;
     use state::{set_request_id, State};
 
-    fn handler(state: State) -> (State, Response) {
-        (state, Response::new())
+    fn handler(state: State) -> (State, Response<Body>) {
+        (state, Response::new(Body::empty()))
     }
 
-    fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route + Send + Sync>
+    fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route<ResBody = Body> + Send + Sync>
     where
         P: Send + Sync + RefUnwindSafe + 'static,
     {
-        let methods = vec![Method::Get];
+        let methods = vec![Method::GET];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
@@ -326,7 +329,7 @@ mod tests {
         // Two methods, same path, same handler
         // [Get|Head]: /seg1
         let mut seg1 = Node::new("seg1", SegmentType::Static);
-        let methods = vec![Method::Get, Method::Head];
+        let methods = vec![Method::GET, Method::HEAD];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
@@ -342,7 +345,7 @@ mod tests {
         // Two methods, same path, different handlers
         // Post: /seg2
         let mut seg2 = Node::new("seg2", SegmentType::Static);
-        let methods = vec![Method::Post];
+        let methods = vec![Method::POST];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
@@ -355,7 +358,7 @@ mod tests {
         seg2.add_route(Box::new(route));
 
         // Patch: /seg2
-        let methods = vec![Method::Patch];
+        let methods = vec![Method::PATCH];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set.clone());
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
@@ -497,8 +500,8 @@ mod tests {
         let root = test_structure();
 
         let mut state = State::new();
-        state.put(Method::Options);
-        state.put(Headers::new());
+        state.put(Method::OPTIONS);
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         let rs = RequestPathSegments::new("/seg2");
@@ -506,9 +509,9 @@ mod tests {
             Some((node, _params, _processed)) => match node.select_route(&state) {
                 Err(e) => {
                     let (status, mut allow_list) = e.deconstruct();
-                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
                     allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
-                    assert_eq!(allow_list, vec![Method::Patch, Method::Post]);
+                    assert_eq!(allow_list, vec![Method::PATCH, Method::POST]);
                 }
                 Ok(_) => panic!("expected mismatched route to test allow header"),
             },
@@ -520,9 +523,9 @@ mod tests {
             Some((node, _params, _processed)) => match node.select_route(&state) {
                 Err(e) => {
                     let (status, mut allow_list) = e.deconstruct();
-                    assert_eq!(status, StatusCode::MethodNotAllowed);
+                    assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
                     allow_list.sort_by(|a, b| a.as_ref().cmp(b.as_ref()));
-                    assert_eq!(allow_list, vec![Method::Get]);
+                    assert_eq!(allow_list, vec![Method::GET]);
                 }
                 Ok(_) => panic!("expected mismatched route to test allow header"),
             },
@@ -538,7 +541,7 @@ mod tests {
 
         let mut workflow_node = Node::new("workflow", SegmentType::Static);
         let route = {
-            let methods = vec![Method::Get];
+            let methods = vec![Method::GET];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =

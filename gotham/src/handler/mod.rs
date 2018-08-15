@@ -3,15 +3,15 @@
 //! A function can be used directly as a handler using one of the default implementations of
 //! `Handler`, but the traits can also be implemented directly for greater control. See the
 //! `Handler` trait for some examples of valid handlers.
-use std::io;
 use std::panic::RefUnwindSafe;
 
 use futures::{future, Future};
-use hyper::Response;
+use hyper::{Body, Response};
 
 use state::State;
 
 mod error;
+use error::*;
 
 pub use self::error::{HandlerError, IntoHandlerError};
 
@@ -19,7 +19,8 @@ pub use self::error::{HandlerError, IntoHandlerError};
 ///
 /// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate
 /// an appropriate HTTP error response.
-pub type HandlerFuture = Future<Item = (State, Response), Error = (State, HandlerError)> + Send;
+pub type HandlerFuture =
+    Future<Item = (State, Response<Body>), Error = (State, HandlerError)> + Send;
 
 /// A `Handler` is an asynchronous function, taking a `State` value which represents the request
 /// and related runtime state, and returns a future which resolves to a response.
@@ -41,12 +42,12 @@ pub type HandlerFuture = Future<Item = (State, Response), Error = (State, Handle
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::Response;
+/// # use hyper::{Body, Response};
 /// # use gotham::handler::Handler;
 /// # use gotham::state::State;
 /// #
 /// # fn main() {
-/// fn my_handler(_state: State) -> (State, Response) {
+/// fn my_handler(_state: State) -> (State, Response<Body>) {
 ///     // Implementation elided.
 /// #   unimplemented!()
 /// }
@@ -114,9 +115,9 @@ pub type HandlerFuture = Future<Item = (State, Response), Error = (State, Handle
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use std::io;
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
+/// # use gotham::error::*;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -125,7 +126,7 @@ pub type HandlerFuture = Future<Item = (State, Response), Error = (State, Handle
 /// impl NewHandler for MyCustomHandler {
 ///     type Instance = Self;
 ///
-///     fn new_handler(&self) -> io::Result<Self::Instance> {
+///     fn new_handler(&self) -> Result<Self::Instance> {
 ///         Ok(*self)
 ///     }
 /// }
@@ -160,9 +161,9 @@ pub trait Handler: Send {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use std::io;
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
+/// # use gotham::error::*;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -171,7 +172,7 @@ pub trait Handler: Send {
 /// impl NewHandler for MyCustomHandler {
 ///     type Instance = Self;
 ///
-///     fn new_handler(&self) -> io::Result<Self::Instance> {
+///     fn new_handler(&self) -> Result<Self::Instance> {
 ///         Ok(*self)
 ///     }
 /// }
@@ -194,9 +195,9 @@ pub trait Handler: Send {
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use std::io;
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
+/// # use gotham::error::*;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -205,7 +206,7 @@ pub trait Handler: Send {
 /// impl NewHandler for MyValueInstantiatingHandler {
 ///     type Instance = MyHandler;
 ///
-///     fn new_handler(&self) -> io::Result<Self::Instance> {
+///     fn new_handler(&self) -> Result<Self::Instance> {
 ///         Ok(MyHandler)
 ///     }
 /// }
@@ -228,17 +229,17 @@ pub trait NewHandler: Send + Sync + RefUnwindSafe {
     type Instance: Handler + Send;
 
     /// Create and return a new `Handler` value.
-    fn new_handler(&self) -> io::Result<Self::Instance>;
+    fn new_handler(&self) -> Result<Self::Instance>;
 }
 
 impl<F, H> NewHandler for F
 where
-    F: Fn() -> io::Result<H> + Send + Sync + RefUnwindSafe,
+    F: Fn() -> Result<H> + Send + Sync + RefUnwindSafe,
     H: Handler + Send,
 {
     type Instance = H;
 
-    fn new_handler(&self) -> io::Result<H> {
+    fn new_handler(&self) -> Result<H> {
         self()
     }
 }
@@ -254,7 +255,7 @@ pub trait IntoHandlerFuture {
 
 impl<T> IntoHandlerFuture for (State, T)
 where
-    T: IntoResponse,
+    T: IntoResponse<Body>,
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;
@@ -292,7 +293,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
-/// # use hyper::Response;
+/// # use hyper::{Body, Response};
 /// #
 /// struct MyStruct {
 ///     value: String
@@ -305,11 +306,12 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 ///     }
 /// }
 ///
-/// impl IntoResponse for MyStruct {
-///     fn into_response(self, _state: &State) -> Response {
-///         Response::new()
-///             .with_status(StatusCode::Ok)
-///             .with_body(self.value)
+/// impl IntoResponse<Body> for MyStruct {
+///     fn into_response(self, _state: &State) -> Response<Body> {
+///         Response::builder()
+///             .status(StatusCode::OK)
+///             .body(self.value.into())
+///             .unwrap()
 ///     }
 /// }
 ///
@@ -321,7 +323,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// #   let mut tree = Tree::new();
 /// #   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
 /// #   let finalizer = ResponseFinalizerBuilder::new().finalize();
-/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::Get]);
+/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::GET]);
 /// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
 /// #   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
 /// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
@@ -330,23 +332,23 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # }
 /// ```
 
-pub trait IntoResponse {
+pub trait IntoResponse<B> {
     /// Converts this value into a `hyper::Response`
-    fn into_response(self, state: &State) -> Response;
+    fn into_response(self, state: &State) -> Response<B>;
 }
 
-impl IntoResponse for Response {
-    fn into_response(self, _state: &State) -> Response {
+impl<B> IntoResponse<B> for Response<B> {
+    fn into_response(self, _state: &State) -> Response<B> {
         self
     }
 }
 
-impl<T, E> IntoResponse for ::std::result::Result<T, E>
+impl<B, T, E> IntoResponse<B> for ::std::result::Result<T, E>
 where
-    T: IntoResponse,
-    E: IntoResponse,
+    T: IntoResponse<B>,
+    E: IntoResponse<B>,
 {
-    fn into_response(self, state: &State) -> Response {
+    fn into_response(self, state: &State) -> Response<B> {
         match self {
             Ok(res) => res.into_response(state),
             Err(e) => e.into_response(state),

@@ -6,10 +6,12 @@ use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 use std::thread;
 
+use failure;
+
 use futures::Future;
-use hyper;
-use hyper::server::Service;
-use hyper::{Request, Response};
+use http::request;
+use hyper::service::Service;
+use hyper::{Body, Request, Response};
 
 use handler::NewHandler;
 use helpers::http::request::path::RequestPathSegments;
@@ -60,17 +62,27 @@ impl<T> Service for ConnectedGothamService<T>
 where
     T: NewHandler,
 {
-    type Request = Request;
-    type Response = Response;
-    type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error> + Send>;
+    type ReqBody = Body; // required by hyper::server::conn::Http::serve_connection()
+    type ResBody = Body; // has to impl Payload...
+    type Error = failure::Compat<failure::Error>; // :Into<Box<StdError + Send + Sync>>
+    type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send>;
 
-    fn call(&self, req: Self::Request) -> Self::Future {
+    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
         let mut state = State::new();
 
         put_client_addr(&mut state, self.client_addr);
 
-        let (method, uri, version, headers, body) = req.deconstruct();
+        let (
+            request::Parts {
+                method,
+                uri,
+                version,
+                headers,
+                //extensions?
+                ..
+            },
+            body,
+        ) = req.into_parts();
 
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
@@ -96,14 +108,14 @@ where
 mod tests {
     use super::*;
 
-    use hyper::{Method, StatusCode};
+    use hyper::{Body, StatusCode};
 
     use helpers::http::response::create_response;
     use router::builder::*;
     use state::State;
 
-    fn handler(state: State) -> (State, Response) {
-        let res = create_response(&state, StatusCode::Accepted, None);
+    fn handler(state: State) -> (State, Response<Body>) {
+        let res = create_response(&state, StatusCode::ACCEPTED, None);
         (state, res)
     }
 
@@ -111,12 +123,14 @@ mod tests {
     fn new_handler_closure() {
         let service = GothamService::new(|| Ok(handler));
 
-        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let req = Request::get("http://localhost/")
+            .body(Body::empty())
+            .unwrap();
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
         let response = f.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
     #[test]
@@ -127,11 +141,13 @@ mod tests {
 
         let service = GothamService::new(router);
 
-        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let req = Request::get("http://localhost/")
+            .body(Body::empty())
+            .unwrap();
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
         let response = f.wait().unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 }

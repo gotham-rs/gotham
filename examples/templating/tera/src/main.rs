@@ -8,7 +8,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate tera;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::state::State;
@@ -18,20 +18,20 @@ use tera::{Context, Tera};
 /// we can get a Tera instance that way:
 lazy_static! {
     pub static ref TERA: Tera =
-        { compile_templates!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*")) };
+        compile_templates!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*"));
 }
 
 /// Create a `Handler` which calls the Tera static reference, renders
 /// a template with a given Context, and returns the result as a String
 /// to be used as Response Body
-pub fn say_hello(state: State) -> (State, Response) {
+pub fn say_hello(state: State) -> (State, Response<Body>) {
     let mut context = Context::new();
     context.add("user", "Gotham");
     let rendered = TERA.render("example.html.tera", &context).unwrap();
 
     let res = create_response(
         &state,
-        StatusCode::Ok,
+        StatusCode::OK,
         Some((rendered.into_bytes(), mime::TEXT_HTML)),
     );
 
@@ -60,7 +60,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         let expected_body = concat!(

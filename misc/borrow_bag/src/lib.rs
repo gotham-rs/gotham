@@ -59,6 +59,7 @@ pub use lookup::Lookup;
 /// assert_eq!(x, &X);
 /// ```
 
+#[derive(Default)]
 pub struct BorrowBag<V> {
     v: V,
 }
@@ -89,6 +90,9 @@ impl<V> BorrowBag<V> {
     /// #
     /// # let _ = (bag, handle);
     /// ```
+    // This isn't add like +..
+    // Consider renaming this method?
+    #[cfg_attr(feature = "cargo-clippy", allow(should_implement_trait))]
     pub fn add<T>(self, t: T) -> (BorrowBag<V::Output>, Handle<T, V::Navigator>)
     where
         V: Append<T>,

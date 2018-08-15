@@ -4,7 +4,7 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
@@ -12,10 +12,10 @@ use gotham::router::Router;
 use gotham::state::State;
 
 /// Create a `Handler` that is invoked for requests to the path "/"
-pub fn say_hello(state: State) -> (State, Response) {
+pub fn say_hello(state: State) -> (State, Response<Body>) {
     let res = create_response(
         &state,
-        StatusCode::Ok,
+        StatusCode::OK,
         Some((String::from("Hello Router!").into_bytes(), mime::TEXT_PLAIN)),
     );
 
@@ -60,7 +60,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Hello Router!");

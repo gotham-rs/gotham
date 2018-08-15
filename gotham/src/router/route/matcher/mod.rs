@@ -66,13 +66,13 @@ where
 /// #
 /// #   State::with_new(|state| {
 /// #
-///   let methods = vec![Method::Get, Method::Head];
+///   let methods = vec![Method::GET, Method::HEAD];
 ///   let matcher = MethodOnlyRouteMatcher::new(methods);
 ///
-///   state.put(Method::Get);
+///   state.put(Method::GET);
 ///   assert!(matcher.is_match(&state).is_ok());
 ///
-///   state.put(Method::Post);
+///   state.put(Method::POST);
 ///   assert!(matcher.is_match(&state).is_err());
 /// #   });
 /// # }
@@ -106,7 +106,7 @@ impl RouteMatcher for MethodOnlyRouteMatcher {
                 request_id(&state),
                 method
             );
-            Err(RouteNonMatch::new(StatusCode::MethodNotAllowed)
+            Err(RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED)
                 .with_allow_list(self.methods.as_slice()))
         }
     }

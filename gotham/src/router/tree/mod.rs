@@ -1,6 +1,7 @@
 //! Defines a hierarchial `Tree` with subtrees of `Node`.
 
 use helpers::http::PercentDecoded;
+use hyper::Body;
 use router::route::Route;
 use router::tree::node::Node;
 use router::tree::segment::{SegmentMapping, SegmentType};
@@ -33,7 +34,7 @@ impl Tree {
     }
 
     /// Adds a `Route` be evaluated by the `Router` when the root of the `Tree` is requested.
-    pub fn add_route(&mut self, route: Box<Route + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<Route<ResBody = Body> + Send + Sync>) {
         self.root.add_route(route);
     }
 
@@ -75,8 +76,8 @@ mod tests {
 
     use super::*;
 
-    fn handler(state: State) -> (State, Response) {
-        let res = create_response(&state, StatusCode::Ok, None);
+    fn handler(state: State) -> (State, Response<Body>) {
+        let res = create_response(&state, StatusCode::OK, None);
         (state, res)
     }
 
@@ -89,7 +90,7 @@ mod tests {
 
         let mut thing_node_builder = Node::new("thing", SegmentType::Dynamic);
         let thing_route = {
-            let methods = vec![Method::Get];
+            let methods = vec![Method::GET];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =

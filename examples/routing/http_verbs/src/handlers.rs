@@ -5,15 +5,15 @@
 
 use gotham::helpers::http::response::create_response;
 use gotham::state::State;
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 use mime;
 
 macro_rules! generic_handler {
     ($($t:ident),*) => { $(
-        pub fn $t(state: State) -> (State, Response) {
+        pub fn $t(state: State) -> (State, Response<Body>) {
             let res = create_response(
                 &state,
-                StatusCode::Ok,
+                StatusCode::OK,
                 Some((String::from(stringify!($t)).into_bytes(), mime::TEXT_PLAIN)),
             );
 
