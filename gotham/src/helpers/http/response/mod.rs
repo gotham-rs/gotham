@@ -2,14 +2,20 @@
 
 use http::response;
 use hyper::header::{
-    HeaderMap, HeaderName, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, X_CONTENT_TYPE_OPTIONS,
+    HeaderMap, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, X_CONTENT_TYPE_OPTIONS,
     X_FRAME_OPTIONS, X_XSS_PROTECTION,
 };
 use hyper::{Body, Method, Response, StatusCode};
 use mime::Mime;
 use std::borrow::Cow;
 
+use helpers::http::header::X_REQUEST_ID;
 use state::{request_id, FromState, State};
+
+// constant strings to be used as header values
+const XFO_VALUE: &'static str = "DENY";
+const XXP_VALUE: &'static str = "1; mode=block";
+const XCTO_VALUE: &'static str = "nosniff";
 
 /// Creates a `Response` object and populates it with a set of default headers that help to improve
 /// security and conformance to best practice.
@@ -27,6 +33,7 @@ use state::{request_id, FromState, State};
 /// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
+/// # use gotham::helpers::http::header::X_REQUEST_ID;
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::test::TestServer;
 /// #
@@ -51,7 +58,7 @@ use state::{request_id, FromState, State};
 /// #         .unwrap();
 /// #
 /// #     assert_eq!(response.status(), StatusCode::OK);
-/// #     assert!(response.headers().get("x-request-id").is_some());
+/// #     assert!(response.headers().get(X_REQUEST_ID).is_some());
 /// #
 /// #     assert_eq!(
 /// #         *response.headers().get(CONTENT_TYPE).unwrap(),
@@ -195,6 +202,7 @@ pub fn create_temporary_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
+/// # use gotham::helpers::http::header::X_REQUEST_ID;
 /// # use gotham::helpers::http::response::extend_response;
 /// # use gotham::test::TestServer;
 /// #
@@ -222,7 +230,7 @@ pub fn create_temporary_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// #         .unwrap();
 /// #
 /// #     assert_eq!(response.status(), StatusCode::OK);
-/// #     assert!(response.headers().get("x-request-id").is_some());
+/// #     assert!(response.headers().get(X_REQUEST_ID).is_some());
 /// #
 /// #     assert_eq!(
 /// #         *response.headers().get(CONTENT_TYPE).unwrap(),
@@ -258,10 +266,9 @@ pub fn extend_response(
         builder
     };
 
-    let id_header = HeaderName::from_lowercase(b"x-request-id")
-        .expect("Header name built from a constant string");
-
-    builder.header(id_header, request_id(state)).status(status);
+    builder
+        .header(X_REQUEST_ID, request_id(state))
+        .status(status);
 }
 
 /// Sets a number of default headers in a `Response` that ensure security and conformance to
@@ -280,6 +287,7 @@ pub fn extend_response(
 /// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::{X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
 /// # use gotham::state::State;
+/// # use gotham::helpers::http::header::X_REQUEST_ID;
 /// # use gotham::helpers::http::response::set_headers;
 /// # use gotham::test::TestServer;
 /// #
@@ -309,7 +317,7 @@ pub fn extend_response(
 ///
 /// // e.g.:
 /// // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
-/// # assert!(response.headers().get( "x-request-id" ).is_some());
+/// # assert!(response.headers().get(X_REQUEST_ID).is_some());
 ///
 /// // X-Frame-Options: DENY
 /// assert_eq!(
@@ -342,6 +350,7 @@ pub fn extend_response(
 /// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::{X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION, CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
+/// # use gotham::helpers::http::header::X_REQUEST_ID;
 /// # use gotham::helpers::http::response::set_headers;
 /// # use gotham::test::TestServer;
 /// #
@@ -383,7 +392,7 @@ pub fn extend_response(
 /// #
 /// # // e.g.:
 /// # // X-Request-Id: 848c651a-fdd8-4859-b671-3f221895675e
-/// # assert!(response.headers().get("x-request-id").is_some());
+/// # assert!(response.headers().get(X_REQUEST_ID).is_some());
 /// #
 /// # // X-Frame-Options: DENY
 /// # assert_eq!(
@@ -421,9 +430,9 @@ pub fn set_headers<B>(
 
     set_request_id(state, headers);
 
-    headers.insert(X_FRAME_OPTIONS, "DENY".parse().unwrap());
-    headers.insert(X_XSS_PROTECTION, "1; mode=block".parse().unwrap());
-    headers.insert(X_CONTENT_TYPE_OPTIONS, "nosniff".parse().unwrap());
+    headers.insert(X_FRAME_OPTIONS, HeaderValue::from_static(XFO_VALUE));
+    headers.insert(X_XSS_PROTECTION, HeaderValue::from_static(XXP_VALUE));
+    headers.insert(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static(XCTO_VALUE));
 }
 
 /// Sets redirect headers on a given `Response`.
@@ -438,6 +447,7 @@ pub fn set_headers<B>(
 /// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::LOCATION;
 /// # use gotham::state::State;
+/// # use gotham::helpers::http::header::X_REQUEST_ID;
 /// # use gotham::helpers::http::response::set_redirect_headers;
 /// # use gotham::test::TestServer;
 /// fn handler(state: State) -> (State, Response<Body>) {
@@ -467,7 +477,7 @@ pub fn set_headers<B>(
 ///     *response.headers().get(LOCATION).unwrap(),
 ///     "http://example.com/somewhere-else"
 /// );
-/// # assert!(response.headers().get("x-request-id").is_some());
+/// # assert!(response.headers().get(X_REQUEST_ID).is_some());
 /// # }
 /// ```
 pub fn set_redirect_headers<B, L: Into<Cow<'static, str>>>(
@@ -482,8 +492,5 @@ pub fn set_redirect_headers<B, L: Into<Cow<'static, str>>>(
 
 /// Sets the request id inside a given `HeaderMap`.
 fn set_request_id(state: &State, headers: &mut HeaderMap) {
-    headers.insert(
-        HeaderName::from_lowercase(b"x-request-id").unwrap(),
-        request_id(state).parse().unwrap(),
-    );
+    headers.insert(X_REQUEST_ID, request_id(state).parse().unwrap());
 }
