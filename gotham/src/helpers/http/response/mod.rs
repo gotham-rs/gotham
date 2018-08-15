@@ -2,7 +2,7 @@
 
 use http::response;
 use hyper::header::{
-    HeaderMap, HeaderName, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, X_CONTENT_TYPE_OPTIONS,
+    HeaderMap, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, X_CONTENT_TYPE_OPTIONS,
     X_FRAME_OPTIONS, X_XSS_PROTECTION,
 };
 use hyper::{Body, Method, Response, StatusCode};
@@ -11,6 +11,11 @@ use std::borrow::Cow;
 
 use helpers::http::header::X_REQUEST_ID;
 use state::{request_id, FromState, State};
+
+// constant strings to be used as header values
+const XFO_VALUE: &'static str = "DENY";
+const XXP_VALUE: &'static str = "1; mode=block";
+const XCTO_VALUE: &'static str = "nosniff";
 
 /// Creates a `Response` object and populates it with a set of default headers that help to improve
 /// security and conformance to best practice.
@@ -425,9 +430,9 @@ pub fn set_headers<B>(
 
     set_request_id(state, headers);
 
-    headers.insert(X_FRAME_OPTIONS, "DENY".parse().unwrap());
-    headers.insert(X_XSS_PROTECTION, "1; mode=block".parse().unwrap());
-    headers.insert(X_CONTENT_TYPE_OPTIONS, "nosniff".parse().unwrap());
+    headers.insert(X_FRAME_OPTIONS, HeaderValue::from_static(XFO_VALUE));
+    headers.insert(X_XSS_PROTECTION, HeaderValue::from_static(XXP_VALUE));
+    headers.insert(X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static(XCTO_VALUE));
 }
 
 /// Sets redirect headers on a given `Response`.
