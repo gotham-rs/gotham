@@ -17,8 +17,6 @@ extern crate bincode;
 extern crate borrow_bag;
 extern crate chrono;
 extern crate cookie;
-#[cfg(windows)]
-extern crate crossbeam;
 extern crate failure;
 extern crate futures;
 extern crate http;
