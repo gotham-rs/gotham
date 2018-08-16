@@ -19,6 +19,7 @@ extern crate chrono;
 extern crate cookie;
 extern crate failure;
 extern crate futures;
+extern crate futures_cpupool;
 extern crate http;
 extern crate hyper;
 extern crate linked_hash_map;
