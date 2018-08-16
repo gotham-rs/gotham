@@ -10,4 +10,4 @@ gotham = { path = "../../../gotham" }
 
 hyper = "0.12"
 mime = "0.3"
-cookie = "0.10"
+cookie = "0.11"
