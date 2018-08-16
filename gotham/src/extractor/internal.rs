@@ -374,7 +374,7 @@ where
     phantom: PhantomData<&'a str>,
 }
 
-fn convert_to_string_ref<'a, T>(t: &'a T) -> &'a str
+fn convert_to_string_ref<T>(t: &T) -> &str
 where
     T: AsRef<str> + ?Sized,
 {

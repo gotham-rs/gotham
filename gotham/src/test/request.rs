@@ -1,62 +1,53 @@
-use hyper::error::UriError;
-use hyper::header::Header;
+use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
 
-use handler::NewHandler;
-use test::{TestClient, TestRequestError, TestResponse};
+use test::{TestClient, TestResponse};
+
+use error::*;
 
 /// Builder API for constructing `TestServer` requests. When the request is built,
 /// `RequestBuilder::perform` will issue the request and provide access to the response.
 #[must_use]
-pub struct RequestBuilder<NH>
-where
-    NH: NewHandler + 'static,
-{
-    client: TestClient<NH>,
-    request: Result<Request, TestRequestError>,
+pub struct RequestBuilder {
+    client: TestClient,
+    request: Result<Request<Body>>,
 }
 
-impl<NH> RequestBuilder<NH>
-where
-    NH: NewHandler + 'static,
-{
-    pub(super) fn new(
-        client: TestClient<NH>,
-        method: Method,
-        uri: Result<Uri, UriError>,
-    ) -> RequestBuilder<NH> {
-        let request = match uri {
-            Ok(uri) => Ok(Request::new(method, uri)),
-            Err(e) => Err(e.into()),
-        };
+impl RequestBuilder {
+    pub(super) fn new(client: TestClient, method: Method, uri: Uri) -> RequestBuilder {
+        let request = Ok(Request::builder()
+            .method(method)
+            .uri(uri)
+            .body(Body::empty())
+            .unwrap());
 
         RequestBuilder { client, request }
     }
 
     /// Adds the given header into the underlying `Request`, replacing any existing header of the
     /// same type.
-    pub fn with_header<H>(self, header: H) -> RequestBuilder<NH>
+    pub fn with_header<N>(self, name: N, value: HeaderValue) -> RequestBuilder
     where
-        H: Header,
+        N: IntoHeaderName,
     {
         let mut request = self.request;
 
         if let Ok(ref mut req) = request {
-            req.headers_mut().set(header);
+            req.headers_mut().insert(name, value);
         }
 
         RequestBuilder { request, ..self }
     }
 
     /// Adds the given body into the underlying `Request`, replacing any existing body.
-    pub fn with_body<T>(self, body: T) -> RequestBuilder<NH>
+    pub fn with_body<T>(self, body: T) -> RequestBuilder
     where
         T: Into<Body>,
     {
         let mut request = self.request;
 
         if let Ok(ref mut req) = request {
-            req.set_body(body);
+            *req.body_mut() = body.into();
         }
 
         RequestBuilder { request, ..self }
@@ -64,7 +55,7 @@ where
 
     /// Send a constructed request using the `TestClient` used to create this builder, and await
     /// the response.
-    pub fn perform(self) -> Result<TestResponse, TestRequestError> {
+    pub fn perform(self) -> Result<TestResponse> {
         self.client.perform(self.request?)
     }
 }

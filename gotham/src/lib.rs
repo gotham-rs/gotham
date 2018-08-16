@@ -16,11 +16,11 @@ extern crate base64;
 extern crate bincode;
 extern crate borrow_bag;
 extern crate chrono;
-#[cfg(windows)]
-extern crate crossbeam;
+extern crate cookie;
+extern crate failure;
 extern crate futures;
 extern crate futures_cpupool;
-#[macro_use]
+extern crate http;
 extern crate hyper;
 extern crate linked_hash_map;
 #[macro_use]
@@ -33,7 +33,6 @@ extern crate regex;
 #[macro_use]
 extern crate serde;
 extern crate tokio;
-extern crate tokio_core;
 extern crate url;
 extern crate uuid;
 
@@ -41,6 +40,7 @@ extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
 
+pub mod error;
 pub mod extractor;
 pub mod handler;
 pub mod helpers;
@@ -55,8 +55,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 
 use futures::{Future, Stream};
-use hyper::server::Http;
-use hyper::Chunk;
+use hyper::server::conn::Http;
 use tokio::executor::{self, thread_pool};
 use tokio::net::TcpListener;
 use tokio::runtime::{self, Runtime, TaskExecutor};
@@ -106,14 +105,22 @@ where
     A: ToSocketAddrs + 'static,
 {
     let (listener, addr) = tcp_listener(addr);
-    let gotham_service = GothamService::new(new_handler);
-    let protocol = Arc::new(Http::<Chunk>::new());
 
     info!(
         target: "gotham::start",
         " Gotham listening on http://{}",
         addr
     );
+
+    bind_server(listener, new_handler)
+}
+
+fn bind_server<NH>(listener: TcpListener, new_handler: NH) -> impl Future<Item = (), Error = ()>
+where
+    NH: NewHandler + 'static,
+{
+    let protocol = Arc::new(Http::new());
+    let gotham_service = GothamService::new(new_handler);
 
     listener
         .incoming()

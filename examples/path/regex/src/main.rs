@@ -9,7 +9,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
@@ -22,14 +22,14 @@ struct PathExtractor {
 }
 
 /// Create a `Handler` that is invoked for requests using a numeric identifier.
-pub fn greet_user(state: State) -> (State, Response) {
+pub fn greet_user(state: State) -> (State, Response<Body>) {
     let res = {
         let path = PathExtractor::borrow_from(&state);
         let response_string = format!("Hello, User {}!", &path.id);
 
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((response_string.into_bytes(), mime::TEXT_PLAIN)),
         )
     };
@@ -78,7 +78,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Hello, User 123!");
@@ -93,6 +93,6 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }

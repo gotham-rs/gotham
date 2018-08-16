@@ -35,7 +35,7 @@ use state::{request_id, State};
 /// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// #
 /// #[derive(StateData)]
 /// struct MiddlewareData {
@@ -84,14 +84,14 @@ use state::{request_id, State};
 /// #     }
 /// }
 ///
-/// fn handler(state: State) -> (State, Response) {
+/// fn handler(state: State) -> (State, Response<Body>) {
 ///     let body = {
 ///        let data = state.borrow::<MiddlewareData>();
 ///        format!("{:?}", data.vec)
 ///     };
 ///
 ///     let res = create_response(&state,
-///                               StatusCode::Ok,
+///                               StatusCode::OK,
 ///                               Some((body.into_bytes(), mime::TEXT_PLAIN)));
 ///
 ///     (state, res)
@@ -112,7 +112,7 @@ use state::{request_id, State};
 ///
 ///     let test_server = TestServer::new(router).unwrap();
 ///     let response = test_server.client().get("http://example.com/").perform().unwrap();
-///     assert_eq!(response.status(), StatusCode::Ok);
+///     assert_eq!(response.status(), StatusCode::OK);
 ///     assert_eq!(response.read_utf8_body().unwrap(), "[1, 2, 3]");
 /// }
 /// ```
@@ -286,20 +286,21 @@ mod tests {
     use super::*;
 
     use futures::future;
-    use hyper::{Response, StatusCode};
+    use hyper::{Body, Response, StatusCode};
 
     use handler::{Handler, IntoHandlerError};
     use middleware::Middleware;
     use state::StateData;
     use test::TestServer;
 
-    fn handler(state: State) -> (State, Response) {
+    fn handler(state: State) -> (State, Response<Body>) {
         let number = state.borrow::<Number>().value;
         (
             state,
-            Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body(format!("{}", number)),
+            Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("{}", number).into())
+                .unwrap(),
         )
     }
 

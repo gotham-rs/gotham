@@ -1,11 +1,12 @@
 //! An introduction to storing and retrieving session data, in a type safe way, with the Gotham
 //! web framework.
 
+extern crate cookie;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
@@ -19,7 +20,7 @@ use gotham::state::{FromState, State};
 ///
 /// Each request made will increment a counter of requests which have been made,
 /// and tell you how many times you've visited the page.
-fn get_handler(mut state: State) -> (State, Response) {
+fn get_handler(mut state: State) -> (State, Response<Body>) {
     // Define a narrow scope so that state can be borrowed/moved later in the function.
     let visits = {
         // Borrow a reference to the usize stored for the session (keyed by a cookie) from state.
@@ -31,7 +32,7 @@ fn get_handler(mut state: State) -> (State, Response) {
     let res = {
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((
                 format!("You have visited this page {} time(s) before\n", visits)
                     .as_bytes()
@@ -78,9 +79,9 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cookie::Cookie;
     use gotham::test::TestServer;
-    use hyper::header::{Cookie, SetCookie};
-    use std::borrow::Cow;
+    use hyper::header::{COOKIE, SET_COOKIE};
 
     #[test]
     fn cookie_is_set_and_counter_increments() {
@@ -91,14 +92,18 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
-        let set_cookie: Vec<String> = {
-            let cookie_header = response.headers().get::<SetCookie>();
-            assert!(cookie_header.is_some());
-            cookie_header.unwrap().0.clone()
+        let cookie: Cookie = {
+            let set_cookie: Vec<_> = response
+                .headers()
+                .get_all(SET_COOKIE)
+                .iter()
+                .flat_map(|hv| hv.to_str())
+                .collect();
+            assert!(set_cookie.len() == 1);
+            set_cookie.get(0).unwrap().to_string().parse().unwrap()
         };
-        assert!(set_cookie.len() == 1);
 
         let body = response.read_body().unwrap();
         assert_eq!(
@@ -106,27 +111,14 @@ mod tests {
             "You have visited this page 0 time(s) before\n".as_bytes()
         );
 
-        let cookie = {
-            let mut cookie = Cookie::new();
-
-            let only_cookie: String = set_cookie.get(0).unwrap().clone();
-            let cookie_components: Vec<_> = only_cookie.split(";").collect();
-            let cookie_str_parts: Vec<_> = cookie_components.get(0).unwrap().split("=").collect();
-            cookie.append(
-                Cow::Owned(cookie_str_parts.get(0).unwrap().to_string()),
-                Cow::Owned(cookie_str_parts.get(1).unwrap().to_string()),
-            );
-            cookie
-        };
-
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(cookie)
+            .with_header(COOKIE, (&cookie.to_string()).parse().unwrap())
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let body = response.read_body().unwrap();
         assert_eq!(
             &body[..],

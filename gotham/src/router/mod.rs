@@ -6,13 +6,13 @@ pub mod response;
 pub mod route;
 pub mod tree;
 
-use std::io;
 use std::sync::Arc;
 
 use futures::{future, Future};
-use hyper::header::Allow;
-use hyper::{Response, StatusCode};
+use hyper::header::ALLOW;
+use hyper::{Body, Response, StatusCode};
 
+use error::*;
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use helpers::http::request::path::RequestPathSegments;
 use helpers::http::response::create_response;
@@ -57,7 +57,7 @@ impl NewHandler for Router {
     type Instance = Router;
 
     // Creates a new Router instance to route new HTTP requests
-    fn new_handler(&self) -> io::Result<Self::Instance> {
+    fn new_handler(&self) -> Result<Self::Instance> {
         trace!(" cloning instance");
         Ok(self.clone())
     }
@@ -90,21 +90,26 @@ impl Handler for Router {
 
                             trace!("[{}] responding with error status", request_id(&state));
                             let mut res = create_response(&state, status, None);
-                            if let StatusCode::MethodNotAllowed = status {
-                                res.headers_mut().set(Allow(allow));
+                            if let StatusCode::METHOD_NOT_ALLOWED = status {
+                                for allowed in allow {
+                                    res.headers_mut().append(
+                                        ALLOW,
+                                        allowed.as_str().to_string().parse().unwrap(),
+                                    );
+                                }
                             }
                             Box::new(future::ok((state, res)))
                         }
                     }
                 } else {
                     trace!("[{}] did not find routable node", request_id(&state));
-                    let res = create_response(&state, StatusCode::NotFound, None);
+                    let res = create_response(&state, StatusCode::NOT_FOUND, None);
                     Box::new(future::ok((state, res)))
                 }
             }
             None => {
                 trace!("[{}] invalid request path segments", request_id(&state));
-                let res = create_response(&state, StatusCode::InternalServerError, None);
+                let res = create_response(&state, StatusCode::INTERNAL_SERVER_ERROR, None);
                 Box::new(future::ok((state, res)))
             }
         };
@@ -134,7 +139,7 @@ impl Router {
         &self,
         mut state: State,
         params: SegmentMapping<'a>,
-        route: &Box<Route + Send + Sync>,
+        route: &Box<Route<ResBody = Body> + Send + Sync>,
     ) -> Box<HandlerFuture> {
         match route.extract_request_path(&mut state, params) {
             Ok(()) => {
@@ -149,7 +154,7 @@ impl Router {
                         error!("[{}] the server cannot or will not process the request due to a client error within the query string",
                                request_id(&state));
 
-                        let mut res = Response::new();
+                        let mut res = Response::new(Body::empty());
                         route.extend_response_on_query_string_error(&mut state, &mut res);
                         Box::new(future::ok((state, res)))
                     }
@@ -157,10 +162,10 @@ impl Router {
             }
             Err(_) => {
                 error!(
-                "[{}] the server cannot or will not process the request due to a client error on the request path",
-                request_id(&state)
-            );
-                let mut res = Response::new();
+                    "[{}] the server cannot or will not process the request due to a client error on the request path",
+                    request_id(&state)
+                );
+                let mut res = Response::new(Body::empty());
                 route.extend_response_on_path_error(&mut state, &mut res);
                 Box::new(future::ok((state, res)))
             }
@@ -192,8 +197,8 @@ impl Router {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::header::{ContentLength, Headers};
-    use hyper::{Method, Uri};
+    use hyper::header::{HeaderMap, CONTENT_LENGTH};
+    use hyper::{Body, Method, Uri};
     use std::str::FromStr;
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
@@ -208,22 +213,22 @@ mod tests {
     use router::tree::Tree;
     use state::set_request_id;
 
-    fn handler(state: State) -> (State, Response) {
-        (state, Response::new())
+    fn handler(state: State) -> (State, Response<Body>) {
+        (state, Response::new(Body::empty()))
     }
 
     fn send_request(
         r: Router,
         method: Method,
         uri: &str,
-    ) -> Result<(State, Response), (State, HandlerError)> {
+    ) -> ::std::result::Result<(State, Response<Body>), (State, HandlerError)> {
         let uri = Uri::from_str(uri).unwrap();
 
         let mut state = State::new();
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         r.handle(state).wait()
@@ -235,18 +240,18 @@ mod tests {
         let tree = Tree::new();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
-        let method = Method::Get;
+        let method = Method::GET;
         let uri = Uri::from_str("https://test.gotham.rs").unwrap();
 
         let mut state = State::new();
         state.put(method);
         state.put(uri);
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         set_request_id(&mut state);
 
         match router.handle(state).wait() {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::InternalServerError);
+                assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -258,9 +263,9 @@ mod tests {
         let tree = Tree::new();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
-        match send_request(router, Method::Get, "https://test.gotham.rs") {
+        match send_request(router, Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::NotFound);
+                assert_eq!(res.status(), StatusCode::NOT_FOUND);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -273,7 +278,7 @@ mod tests {
         let mut tree = Tree::new();
 
         let route = {
-            let methods = vec![Method::Post];
+            let methods = vec![Method::POST];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
@@ -284,9 +289,9 @@ mod tests {
         tree.add_route(route);
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
-        match send_request(router, Method::Get, "https://test.gotham.rs") {
+        match send_request(router, Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::MethodNotAllowed);
+                assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -299,7 +304,7 @@ mod tests {
         let mut tree = Tree::new();
 
         let route = {
-            let methods = vec![Method::Get];
+            let methods = vec![Method::GET];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
@@ -310,9 +315,9 @@ mod tests {
         tree.add_route(route);
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
-        match send_request(router, Method::Get, "https://test.gotham.rs") {
+        match send_request(router, Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::Ok);
+                assert_eq!(res.status(), StatusCode::OK);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -326,7 +331,7 @@ mod tests {
             let mut tree = Tree::new();
 
             let route = {
-                let methods = vec![Method::Get];
+                let methods = vec![Method::GET];
                 let matcher = MethodOnlyRouteMatcher::new(methods);
                 let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
                 let extractors: Extractors<
@@ -346,7 +351,7 @@ mod tests {
         let mut delegated_node = Node::new("var", SegmentType::Dynamic);
 
         let route = {
-            let methods = vec![Method::Get];
+            let methods = vec![Method::GET];
             let matcher = MethodOnlyRouteMatcher::new(methods);
             let dispatcher = Box::new(DispatcherImpl::new(delegated_router, (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
@@ -360,17 +365,17 @@ mod tests {
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
         // Ensure that top level tree has no route
-        match send_request(router.clone(), Method::Get, "https://test.gotham.rs") {
+        match send_request(router.clone(), Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::NotFound);
+                assert_eq!(res.status(), StatusCode::NOT_FOUND);
             }
             Err(_) => panic!("Router should have handled request"),
         };
 
         // Ensure that top level tree of delegated router has route that responds correctly
-        match send_request(router, Method::Get, "https://test.gotham.rs/api") {
+        match send_request(router, Method::GET, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
-                assert_eq!(res.status(), StatusCode::Ok);
+                assert_eq!(res.status(), StatusCode::OK);
             }
             Err(_) => panic!("Router should have handled request"),
         };
@@ -382,19 +387,17 @@ mod tests {
         let tree = Tree::new();
 
         let mut response_finalizer_builder = ResponseFinalizerBuilder::new();
-        let not_found_extender = |_s: &mut State, r: &mut Response| {
-            r.headers_mut().set(ContentLength(3u64));
+        let not_found_extender = |_s: &mut State, r: &mut Response<Body>| {
+            r.headers_mut()
+                .insert(CONTENT_LENGTH, "3".to_owned().parse().unwrap());
         };
-        response_finalizer_builder.add(StatusCode::NotFound, Box::new(not_found_extender));
+        response_finalizer_builder.add(StatusCode::NOT_FOUND, Box::new(not_found_extender));
         let response_finalizer = response_finalizer_builder.finalize();
         let router = Router::new(tree, response_finalizer);
 
-        match send_request(router, Method::Get, "https://test.gotham.rs/api") {
+        match send_request(router, Method::GET, "https://test.gotham.rs/api") {
             Ok((_state, res)) => {
-                assert_eq!(
-                    *res.headers().get::<ContentLength>().unwrap(),
-                    ContentLength(3u64)
-                );
+                assert_eq!(res.headers().get(CONTENT_LENGTH).unwrap(), "3");
             }
             Err(_) => panic!("Router should have correctly handled request"),
         };

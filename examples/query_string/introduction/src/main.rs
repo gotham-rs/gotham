@@ -11,7 +11,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
@@ -58,7 +58,7 @@ struct Product {
 /// This handler uses the Serde project when generating responses. You don't need to
 /// know about Serde in order to understand the response that is being created here but if you're
 /// interested you can learn more at `http://serde.rs`.
-fn get_product_handler(mut state: State) -> (State, Response) {
+fn get_product_handler(mut state: State) -> (State, Response<Body>) {
     let res = {
         // Access the `QueryStringExtractor` instance from `state` which was put there for us by the
         // `Router` during request evaluation.
@@ -76,7 +76,7 @@ fn get_product_handler(mut state: State) -> (State, Response) {
         };
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((
                 serde_json::to_vec(&product).expect("serialized product"),
                 mime::APPLICATION_JSON,
@@ -121,7 +121,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         let expected_product = Product {

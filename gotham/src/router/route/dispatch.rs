@@ -65,7 +65,7 @@ where
             }
             Err(e) => {
                 trace!("[{}] error cloning handler", request_id(&state));
-                Box::new(future::err((state, e.into_handler_error())))
+                Box::new(future::err((state, e.compat().into_handler_error())))
             }
         }
     }
@@ -77,8 +77,7 @@ mod tests {
     use std::io;
     use std::sync::Arc;
 
-    use hyper::Response;
-    use hyper::StatusCode;
+    use hyper::{Body, Response, StatusCode};
 
     use middleware::{Middleware, NewMiddleware};
     use pipeline::new_pipeline;
@@ -86,13 +85,14 @@ mod tests {
     use state::StateData;
     use test::TestServer;
 
-    fn handler(state: State) -> (State, Response) {
+    fn handler(state: State) -> (State, Response<Body>) {
         let number = state.borrow::<Number>().value;
         (
             state,
-            Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body(format!("{}", number)),
+            Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("{}", number).into())
+                .unwrap(),
         )
     }
 
