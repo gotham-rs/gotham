@@ -2,14 +2,16 @@ use std::panic::RefUnwindSafe;
 use std::path::{Path, PathBuf};
 
 use extractor::{PathExtractor, QueryStringExtractor};
-use pipeline::chain::PipelineHandleChain;
-use router::builder::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor,
-                      SingleRouteBuilder};
-use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::matcher::RouteMatcher;
-use router::route::dispatch::DispatcherImpl;
 use handler::{Handler, NewHandler};
 use handler::static_file::{FileHandler, FilePathExtractor, FileSystemHandler};
+use hyper::Body;
+use pipeline::chain::PipelineHandleChain;
+use router::builder::{
+    ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
+};
+use router::route::dispatch::DispatcherImpl;
+use router::route::matcher::RouteMatcher;
+use router::route::{Delegation, Extractors, RouteImpl};
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
@@ -21,7 +23,7 @@ use handler::static_file::{FileHandler, FilePathExtractor, FileSystemHandler};
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
@@ -30,9 +32,9 @@ use handler::static_file::{FileHandler, FilePathExtractor, FileSystemHandler};
 /// # use gotham::middleware::session::NewSessionMiddleware;
 /// # use gotham::test::TestServer;
 /// #
-/// fn my_handler(state: State) -> (State, Response) {
+/// fn my_handler(state: State) -> (State, Response<Body>) {
 ///     // Handler implementation elided.
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
 /// }
 /// #
 /// # fn router() -> Router {
@@ -52,7 +54,7 @@ use handler::static_file::{FileHandler, FilePathExtractor, FileSystemHandler};
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub trait DefineSingleRoute {
@@ -66,7 +68,7 @@ pub trait DefineSingleRoute {
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -75,9 +77,9 @@ pub trait DefineSingleRoute {
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
-    /// fn my_handler(state: State) -> (State, Response) {
+    /// fn my_handler(state: State) -> (State, Response<Body>) {
     ///     // Handler implementation elided.
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// }
     /// #
     /// # fn router() -> Router {
@@ -97,7 +99,7 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn to<H>(self, handler: H)
@@ -114,8 +116,7 @@ pub trait DefineSingleRoute {
     /// # extern crate hyper;
     /// # extern crate futures;
     /// #
-    /// # use std::io;
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use futures::future;
     /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
     /// # use gotham::state::State;
@@ -125,6 +126,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::single::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
+    /// # use gotham::error::*;
     /// #
     /// struct MyNewHandler;
     /// struct MyHandler;
@@ -132,7 +134,7 @@ pub trait DefineSingleRoute {
     /// impl NewHandler for MyNewHandler {
     ///     type Instance = MyHandler;
     ///
-    ///     fn new_handler(&self) -> io::Result<Self::Instance> {
+    ///     fn new_handler(&self) -> Result<Self::Instance> {
     ///         Ok(MyHandler)
     ///     }
     /// }
@@ -140,7 +142,7 @@ pub trait DefineSingleRoute {
     /// impl Handler for MyHandler {
     ///     fn handle(self, state: State) -> Box<HandlerFuture> {
     ///         // Handler implementation elided.
-    /// #       let response = Response::new().with_status(StatusCode::Accepted);
+    /// #       let response = Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap();
     /// #       Box::new(future::ok((state, response)))
     ///     }
     /// }
@@ -161,7 +163,7 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn to_new_handler<NH>(self, new_handler: NH)
@@ -274,7 +276,7 @@ pub trait DefineSingleRoute {
     /// # extern crate serde_derive;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -289,14 +291,14 @@ pub trait DefineSingleRoute {
     ///     name: String,
     /// }
     ///
-    /// fn my_handler(state: State) -> (State, Response) {
+    /// fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   {
     ///     let params = MyPathParams::borrow_from(&state);
     ///
     ///     // Handler implementation elided.
     /// #   assert_eq!(params.name, "world");
     /// #   }
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// }
     /// #
     /// # fn router() -> Router {
@@ -321,12 +323,12 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/hello/world")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
     where
-        NPE: PathExtractor + Send + Sync + 'static,
+        NPE: PathExtractor<Body> + Send + Sync + 'static,
         Self: ReplacePathExtractor<NPE>,
         Self::Output: DefineSingleRoute;
 
@@ -344,7 +346,7 @@ pub trait DefineSingleRoute {
     /// # #[macro_use]
     /// # extern crate serde_derive;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::{State, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -359,12 +361,12 @@ pub trait DefineSingleRoute {
     ///     id: u64,
     /// }
     ///
-    /// fn my_handler(state: State) -> (State, Response) {
+    /// fn my_handler(state: State) -> (State, Response<Body>) {
     ///     let id = MyQueryParams::borrow_from(&state).id;
     ///
     ///     // Handler implementation elided.
     /// #   assert_eq!(id, 42);
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// }
     /// #
     /// # fn router() -> Router {
@@ -389,37 +391,38 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/request/path?id=42")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn with_query_string_extractor<NQSE>(
         self,
     ) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
     where
-        NQSE: QueryStringExtractor + Send + Sync + 'static,
+        NQSE: QueryStringExtractor<Body> + Send + Sync + 'static,
         Self: ReplaceQueryStringExtractor<NQSE>,
         Self::Output: DefineSingleRoute;
 
+    /// Adds additional `RouteMatcher` requirements to the current route.
+    ///
     /// ```
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
-    /// # use hyper::header::{Accept, qitem};
+    /// # use hyper::{Body, Response, StatusCode};
+    /// # use hyper::header::ACCEPT;
     /// # use gotham::state::State;
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
     /// build_simple_router(|route| {
-    ///     // All we match on is the Accept header, the method is not considered.
     ///     let matcher = AcceptHeaderRouteMatcher::new(vec![mime::APPLICATION_JSON]);
     ///     route.get("/request/path")
     ///          .add_route_matcher(matcher)
@@ -430,27 +433,19 @@ pub trait DefineSingleRoute {
     /// # fn main() {
     /// #   let test_server = TestServer::new(router()).unwrap();
     /// #
-    /// #   let accept_header = Accept(vec![
-    /// #     qitem(mime::APPLICATION_JSON),
-    /// #   ]);
-    /// #
-    /// #   let text_accept_header = Accept(vec![
-    /// #     qitem(mime::TEXT_PLAIN),
-    /// #   ]);
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .with_header(ACCEPT, mime::APPLICATION_JSON.to_string().parse().unwrap())
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/request/path")
-    /// #       .with_header(accept_header)
+    /// #       .with_header(ACCEPT, mime::TEXT_PLAIN.to_string().parse().unwrap())
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
-    /// #
-    /// #   let response = test_server.client()
-    /// #       .get("https://example.com/request/path")
-    /// #       .with_header(text_accept_header)
-    /// #       .perform()
-    /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::NotAcceptable);
+    /// #   assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
     /// # }
     /// ```
     fn add_route_matcher<NRM>(self, matcher: NRM) -> <Self as ExtendRouteMatcher<NRM>>::Output
@@ -465,8 +460,8 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<Body> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<Body> + Send + Sync + 'static,
 {
     fn to<H>(self, handler: H)
     where
@@ -491,7 +486,7 @@ where
 
     fn with_path_extractor<NPE>(self) -> <Self as ReplacePathExtractor<NPE>>::Output
     where
-        NPE: PathExtractor + Send + Sync + 'static,
+        NPE: PathExtractor<Body> + Send + Sync + 'static,
     {
         self.replace_path_extractor()
     }
@@ -500,7 +495,7 @@ where
         self,
     ) -> <Self as ReplaceQueryStringExtractor<NQSE>>::Output
     where
-        NQSE: QueryStringExtractor + Send + Sync + 'static,
+        NQSE: QueryStringExtractor<Body> + Send + Sync + 'static,
     {
         self.replace_query_string_extractor()
     }

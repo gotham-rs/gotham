@@ -27,7 +27,7 @@ use state::{request_id, State};
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use gotham::http::response::create_response;
+/// # use gotham::helpers::http::response::create_response;
 /// # use gotham::state::State;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
@@ -35,7 +35,7 @@ use state::{request_id, State};
 /// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// #
 /// #[derive(StateData)]
 /// struct MiddlewareData {
@@ -49,7 +49,7 @@ use state::{request_id, State};
 ///     // Implementation elided.
 ///     // Appends `1` to `MiddlewareData.vec`
 /// #     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #     {
 /// #         state.put(MiddlewareData { vec: vec![1] });
 /// #         chain(state)
@@ -63,7 +63,7 @@ use state::{request_id, State};
 ///     // Implementation elided.
 ///     // Appends `2` to `MiddlewareData.vec`
 /// #     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #     {
 /// #         state.borrow_mut::<MiddlewareData>().vec.push(2);
 /// #         chain(state)
@@ -77,21 +77,21 @@ use state::{request_id, State};
 ///     // Implementation elided.
 ///     // Appends `3` to `MiddlewareData.vec`
 /// #     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #     {
 /// #         state.borrow_mut::<MiddlewareData>().vec.push(3);
 /// #         chain(state)
 /// #     }
 /// }
 ///
-/// fn handler(state: State) -> (State, Response) {
+/// fn handler(state: State) -> (State, Response<Body>) {
 ///     let body = {
 ///        let data = state.borrow::<MiddlewareData>();
 ///        format!("{:?}", data.vec)
 ///     };
 ///
 ///     let res = create_response(&state,
-///                               StatusCode::Ok,
+///                               StatusCode::OK,
 ///                               Some((body.into_bytes(), mime::TEXT_PLAIN)));
 ///
 ///     (state, res)
@@ -112,7 +112,7 @@ use state::{request_id, State};
 ///
 ///     let test_server = TestServer::new(router).unwrap();
 ///     let response = test_server.client().get("http://example.com/").perform().unwrap();
-///     assert_eq!(response.status(), StatusCode::Ok);
+///     assert_eq!(response.status(), StatusCode::OK);
 ///     assert_eq!(response.read_utf8_body().unwrap(), "[1, 2, 3]");
 /// }
 /// ```
@@ -152,7 +152,7 @@ where
     /// will be served with the `f` function.
     fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         trace!("[{}] calling middleware", request_id(&state));
         self.chain.call(state, f)
@@ -166,6 +166,15 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
     trace!(" starting pipeline construction");
     // See: `impl NewMiddlewareChain for ()`
     PipelineBuilder { t: () }
+}
+
+/// Constructs a pipeline from a single middleware.
+pub fn single_middleware<M>(m: M) -> Pipeline<(M, ())>
+where
+    M: NewMiddleware,
+    M::Instance: Send + 'static,
+{
+    new_pipeline().add(m).build()
 }
 
 /// Allows a pipeline to be defined by adding `NewMiddleware` values, and building a `Pipeline`.
@@ -193,7 +202,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #
 /// # impl Middleware for MiddlewareOne {
 /// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #   {
 /// #       chain(state)
 /// #   }
@@ -201,7 +210,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #
 /// # impl Middleware for MiddlewareTwo {
 /// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #   {
 /// #       chain(state)
 /// #   }
@@ -209,7 +218,7 @@ pub fn new_pipeline() -> PipelineBuilder<()> {
 /// #
 /// # impl Middleware for MiddlewareThree {
 /// #   fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 /// #   {
 /// #       chain(state)
 /// #   }
@@ -252,7 +261,7 @@ where
     pub fn add<M>(self, m: M) -> PipelineBuilder<(M, T)>
     where
         M: NewMiddleware,
-        M::Instance: 'static,
+        M::Instance: Send + 'static,
         Self: Sized,
     {
         // "cons" the most recently added `NewMiddleware` onto the front of the list. This is
@@ -276,21 +285,22 @@ where
 mod tests {
     use super::*;
 
-    use hyper::{Response, StatusCode};
     use futures::future;
+    use hyper::{Body, Response, StatusCode};
 
     use handler::{Handler, IntoHandlerError};
     use middleware::Middleware;
     use state::StateData;
     use test::TestServer;
 
-    fn handler(state: State) -> (State, Response) {
+    fn handler(state: State) -> (State, Response<Body>) {
         let number = state.borrow::<Number>().value;
         (
             state,
-            Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body(format!("{}", number)),
+            Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("{}", number).into())
+                .unwrap(),
         )
     }
 
@@ -310,7 +320,7 @@ mod tests {
     impl Middleware for Number {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -335,7 +345,7 @@ mod tests {
     impl Middleware for Addition {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;

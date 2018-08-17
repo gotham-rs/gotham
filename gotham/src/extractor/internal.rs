@@ -4,14 +4,16 @@
 
 use std::error::Error;
 use std::fmt::{self, Display};
-use std::str::FromStr;
 use std::marker::PhantomData;
+use std::str::FromStr;
 
-use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess,
-                SeqAccess, VariantAccess, Visitor};
+use serde::de::{
+    self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess, SeqAccess,
+    VariantAccess, Visitor,
+};
 
-use router::tree::SegmentMapping;
-use http::request::query_string::QueryStringMapping;
+use helpers::http::request::query_string::QueryStringMapping;
+use router::tree::segment::SegmentMapping;
 
 /// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
 /// `PathExtractor` provided by the application.
@@ -372,7 +374,7 @@ where
     phantom: PhantomData<&'a str>,
 }
 
-fn convert_to_string_ref<'a, T>(t: &'a T) -> &'a str
+fn convert_to_string_ref<T>(t: &T) -> &str
 where
     T: AsRef<str> + ?Sized,
 {
@@ -700,7 +702,8 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use http::{FormUrlDecoded, PercentDecoded};
+    use helpers::http::{FormUrlDecoded, PercentDecoded};
+    use std;
 
     #[derive(Deserialize)]
     struct SimpleValues {
@@ -765,8 +768,8 @@ mod tests {
         assert_eq!(p.u16_val, 40511);
         assert_eq!(p.u32_val, 4000000000);
         assert_eq!(p.u64_val, 9000000000);
-        assert_eq!(p.f32_val, 1.4);
-        assert_eq!(p.f64_val, 2.6);
+        assert!((p.f32_val - 1.4).abs() < std::f32::EPSILON);
+        assert!((p.f64_val - 2.6).abs() < std::f64::EPSILON);
         assert_eq!(p.string_val, "this is an owned string");
         assert_eq!(p.char_val, 'a');
         assert_eq!(p.optional_val, Some("this is optional".to_owned()));
@@ -844,8 +847,8 @@ mod tests {
         assert_eq!(p.u16_val, 40511);
         assert_eq!(p.u32_val, 4000000000);
         assert_eq!(p.u64_val, 9000000000);
-        assert_eq!(p.f32_val, 1.4);
-        assert_eq!(p.f64_val, 2.6);
+        assert!((p.f32_val - 1.4).abs() < std::f32::EPSILON);
+        assert!((p.f64_val - 2.6).abs() < std::f64::EPSILON);
         assert_eq!(p.string_val, "this is an owned string");
         assert_eq!(p.char_val, 'a');
         assert_eq!(p.optional_val, Some("this is optional".to_owned()));
@@ -859,8 +862,8 @@ mod tests {
     }
 
     mod byte_buf {
-        use std::fmt;
         use serde::de::*;
+        use std::fmt;
 
         pub fn deserialize<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
         where
@@ -878,11 +881,11 @@ mod tests {
                 out.write_str("string")
             }
 
-            fn visit_string<E>(self, v: String) -> Result<Vec<u8>, E>
+            fn visit_str<E>(self, v: &str) -> Result<Vec<u8>, E>
             where
                 E: Error,
             {
-                Ok(v.into_bytes())
+                Ok(v.as_bytes().to_vec())
             }
         }
     }
@@ -922,8 +925,8 @@ mod tests {
     }
 
     mod borrowed_bytes {
-        use std::fmt;
         use serde::de::*;
+        use std::fmt;
 
         pub fn deserialize<'de, D>(de: D) -> Result<&'de [u8], D::Error>
         where
@@ -985,8 +988,8 @@ mod tests {
     }
 
     mod borrowed_str {
-        use std::fmt;
         use serde::de::*;
+        use std::fmt;
 
         pub fn deserialize<'de, D>(de: D) -> Result<&'de str, D::Error>
         where
