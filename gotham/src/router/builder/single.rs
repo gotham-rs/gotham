@@ -2,8 +2,8 @@ use std::panic::RefUnwindSafe;
 use std::path::{Path, PathBuf};
 
 use extractor::{PathExtractor, QueryStringExtractor};
-use handler::{Handler, NewHandler};
 use handler::static_file::{FileHandler, FilePathExtractor, FileSystemHandler};
+use handler::{Handler, NewHandler};
 use hyper::Body;
 use pipeline::chain::PipelineHandleChain;
 use router::builder::{
@@ -205,7 +205,7 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/doc.html")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Ok);
+    /// #   assert_eq!(response.status(), StatusCode::OK);
     /// # }
     /// ```
     fn to_filesystem<P: AsRef<Path>>(self, root: P)
@@ -252,7 +252,7 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Ok);
+    /// #   assert_eq!(response.status(), StatusCode::OK);
     /// # }
     /// ```
     fn to_file<P: AsRef<Path>>(self, path: P)

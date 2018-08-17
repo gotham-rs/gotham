@@ -1,6 +1,6 @@
 use error::Result;
-use helpers::http::response::{create_response, extend_response};
-use hyper::{body::Payload, Body, Response, StatusCode};
+use helpers::http::response::create_response;
+use hyper::{Body, Response, StatusCode};
 use mime::{self, Mime};
 use mime_guess::guess_mime_type_opt;
 use router::response::extender::StaticResponseExtender;
@@ -148,10 +148,9 @@ impl StaticResponseExtender for FilePathExtractor {
 
 #[cfg(test)]
 mod tests {
-    // use helpers::http::header::*;
+    use http::header::HeaderValue;
     use hyper::header::CONTENT_TYPE;
     use hyper::StatusCode;
-    use mime;
     use router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use router::Router;
     use std::str;
@@ -160,16 +159,24 @@ mod tests {
     #[test]
     fn static_files_guesses_content_type() {
         let expected_docs = vec![
-            ("doc.html", mime::TEXT_HTML, "<html>I am a doc.</html>"),
-            ("file.txt", mime::TEXT_PLAIN, "I am a file"),
+            (
+                "doc.html",
+                HeaderValue::from_static("text/html"),
+                "<html>I am a doc.</html>",
+            ),
+            (
+                "file.txt",
+                HeaderValue::from_static("text/plain"),
+                "I am a file",
+            ),
             (
                 "styles/style.css",
-                mime::TEXT_CSS,
+                HeaderValue::from_static("text/css"),
                 ".styled { border: none; }",
             ),
             (
                 "scripts/script.js",
-                "application/javascript".parse().unwrap(),
+                HeaderValue::from_static("application/javascript"),
                 "console.log('I am javascript!');",
             ),
         ];
@@ -198,7 +205,7 @@ mod tests {
             r"%2e%2e/private_files/secret.txt",
             r"..%2fprivate_files/secret.txt",
             r"%2e%2e%5cprivate_files/secret.txt",
-            r"%2e%2e\private_files/secret.txt",
+            r"%2e%2e/private_files/secret.txt",
             r"..%5cprivate_files/secret.txt",
             r"%252e%252e%255cprivate_files/secret.txt",
             r"..%255cprivate_files/secret.txt",
