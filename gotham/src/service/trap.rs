@@ -202,14 +202,14 @@ mod tests {
     use hyper::{HeaderMap, Method, StatusCode};
 
     use handler::{HandlerFuture, IntoHandlerError};
-    use helpers::http::response::create_response;
+    use helpers::http::response::create_empty_response;
     use state::set_request_id;
 
     #[test]
     fn success() {
         let new_handler = || {
             Ok(|state| {
-                let res = create_response(&state, StatusCode::ACCEPTED, None);
+                let res = create_empty_response(&state, StatusCode::ACCEPTED);
                 (state, res)
             })
         };
@@ -229,7 +229,7 @@ mod tests {
         let new_handler = || {
             Ok(|state| {
                 let f = future::lazy(move || {
-                    let res = create_response(&state, StatusCode::ACCEPTED, None);
+                    let res = create_empty_response(&state, StatusCode::ACCEPTED);
                     future::ok((state, res))
                 });
 

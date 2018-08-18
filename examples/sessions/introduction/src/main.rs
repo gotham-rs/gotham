@@ -34,9 +34,7 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
             &state,
             StatusCode::OK,
             Some((
-                format!("You have visited this page {} time(s) before\n", visits)
-                    .as_bytes()
-                    .to_vec(),
+                format!("You have visited this page {} time(s) before\n", visits),
                 mime::TEXT_PLAIN,
             )),
         )

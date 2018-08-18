@@ -60,7 +60,7 @@ impl Handler for CountingHandler {
             create_response(
                 &state,
                 StatusCode::OK,
-                Some((response_text.into_bytes(), mime::TEXT_PLAIN)),
+                Some((response_text, mime::TEXT_PLAIN)),
             )
         };
         Box::new(future::ok((state, res)))

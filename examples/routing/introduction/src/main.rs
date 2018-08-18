@@ -11,12 +11,14 @@ use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::State;
 
+const HELLO_ROUTER: &'static str = "Hello Router!";
+
 /// Create a `Handler` that is invoked for requests to the path "/"
 pub fn say_hello(state: State) -> (State, Response<Body>) {
     let res = create_response(
         &state,
         StatusCode::OK,
-        Some((String::from("Hello Router!").into_bytes(), mime::TEXT_PLAIN)),
+        Some((HELLO_ROUTER, mime::TEXT_PLAIN)),
     );
 
     (state, res)

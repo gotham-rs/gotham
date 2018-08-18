@@ -9,7 +9,7 @@ use futures::{future, Future, Stream};
 use hyper::{Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
-use gotham::helpers::http::response::create_response;
+use gotham::helpers::http::response::create_empty_response;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
@@ -35,7 +35,7 @@ fn post_handler(mut state: State) -> Box<HandlerFuture> {
             Ok(valid_body) => {
                 let body_content = String::from_utf8(valid_body.to_vec()).unwrap();
                 println!("Body: {}", body_content);
-                let res = create_response(&state, StatusCode::OK, None);
+                let res = create_empty_response(&state, StatusCode::OK);
                 future::ok((state, res))
             }
             Err(e) => return future::err((state, e.into_handler_error())),
@@ -47,7 +47,7 @@ fn post_handler(mut state: State) -> Box<HandlerFuture> {
 /// Show the GET request components by printing them.
 fn get_handler(state: State) -> (State, Response<Body>) {
     print_request_elements(&state);
-    let res = create_response(&state, StatusCode::OK, None);
+    let res = create_empty_response(&state, StatusCode::OK);
 
     (state, res)
 }

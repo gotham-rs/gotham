@@ -41,7 +41,7 @@ fn parts_handler(state: State) -> (State, Response<Body>) {
         create_response(
             &state,
             StatusCode::OK,
-            Some((response_string.into_bytes(), mime::TEXT_PLAIN)),
+            Some((response_string, mime::TEXT_PLAIN)),
         )
     };
 

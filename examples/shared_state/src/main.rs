@@ -67,11 +67,8 @@ fn say_hello(state: State) -> (State, Response<Body>) {
     };
 
     // create the response
-    let res = create_response(
-        &state,
-        StatusCode::OK,
-        Some((message.into_bytes(), mime::TEXT_PLAIN)),
-    );
+    let body = Some((message, mime::TEXT_PLAIN));
+    let res = create_response(&state, StatusCode::OK, body);
 
     // done!
     (state, res)

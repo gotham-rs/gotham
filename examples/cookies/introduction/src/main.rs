@@ -35,10 +35,7 @@ fn handler(state: State) -> (State, Response<Body>) {
         create_response(
             &state,
             StatusCode::OK,
-            Some((
-                format!("Hello {} visitor\n", adjective).as_bytes().to_vec(),
-                mime::TEXT_PLAIN,
-            )),
+            Some((format!("Hello {} visitor\n", adjective), mime::TEXT_PLAIN)),
         )
     };
     {

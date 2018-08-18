@@ -954,7 +954,7 @@ mod tests {
     use hyper::{Body, Response, StatusCode};
 
     use handler::HandlerFuture;
-    use helpers::http::response::create_response;
+    use helpers::http::response::create_empty_response;
     use middleware::{Middleware, NewMiddleware};
     use pipeline::single::*;
     use pipeline::*;
@@ -991,7 +991,7 @@ mod tests {
     }
 
     fn test_handler(state: State) -> (State, Response<Body>) {
-        let response = create_response(&state, StatusCode::ACCEPTED, None);
+        let response = create_empty_response(&state, StatusCode::ACCEPTED);
         (state, response)
     }
 

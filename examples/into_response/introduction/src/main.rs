@@ -36,9 +36,7 @@ impl IntoResponse<Body> for Product {
             state,
             StatusCode::OK,
             Some((
-                serde_json::to_string(&self)
-                    .expect("serialized product")
-                    .into_bytes(),
+                serde_json::to_string(&self).expect("serialized product"),
                 mime::APPLICATION_JSON,
             )),
         )

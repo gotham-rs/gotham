@@ -71,10 +71,10 @@ const XCTO_VALUE: &'static str = "nosniff";
 /// #     );
 /// # }
 /// ```
-pub fn create_response(
+pub fn create_response<B: Into<Body>>(
     state: &State,
     status: StatusCode,
-    body: Option<(Vec<u8>, Mime)>,
+    body: Option<(B, Mime)>,
 ) -> Response<Body> {
     let mut builder = Response::builder();
 
@@ -91,7 +91,39 @@ pub fn create_response(
         builder.body(Body::empty())
     };
 
-    built.expect("Response built from a compatible byte vector (Vec<u8>)")
+    built.expect("Response built from a compatible type")
+}
+
+/// Produces a simple empty `Response` with a provided status.
+///
+/// # Examples
+///
+/// ```rust
+/// # extern crate gotham;
+/// # extern crate hyper;
+/// #
+/// # use hyper::{Body, Response, StatusCode};
+/// # use gotham::state::State;
+/// # use gotham::helpers::http::response::create_empty_response;
+/// # use gotham::test::TestServer;
+/// fn handler(state: State) -> (State, Response<Body>) {
+///     let resp = create_empty_response(&state, StatusCode::NO_CONTENT);
+///
+///     (state, resp)
+/// }
+/// # fn main() {
+/// #     let test_server = TestServer::new(|| Ok(handler)).unwrap();
+/// #     let response = test_server
+/// #         .client()
+/// #         .get("http://example.com/")
+/// #         .perform()
+/// #         .unwrap();
+/// #
+/// #     assert_eq!(response.status(), StatusCode::NO_CONTENT);
+/// # }
+/// ```
+pub fn create_empty_response(state: &State, status: StatusCode) -> Response<Body> {
+    create_response::<&str>(state, status, None)
 }
 
 /// Produces a simple empty `Response` with a `Location` header and a 301
