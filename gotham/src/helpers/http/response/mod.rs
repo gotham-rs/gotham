@@ -74,24 +74,13 @@ const XCTO_VALUE: &'static str = "nosniff";
 pub fn create_response<B: Into<Body>>(
     state: &State,
     status: StatusCode,
-    body: Option<(B, Mime)>,
+    data: Option<(B, Mime)>,
 ) -> Response<Body> {
-    let mut builder = Response::builder();
-
-    let (data, mime) = body
-        .map(|(data, mime)| (Some(data), Some(mime)))
+    let (body, mime) = data
+        .map(|(body, mime)| (Some(body), Some(mime)))
         .unwrap_or_else(|| (None, None));
 
-    extend_response(state, status, &mut builder, mime);
-
-    let method = Method::borrow_from(state);
-    let built = if data.is_some() && *method != Method::HEAD {
-        builder.body(data.unwrap().into())
-    } else {
-        builder.body(Body::empty())
-    };
-
-    built.expect("Response built from a compatible type")
+    construct_response(state, status, mime, body)
 }
 
 /// Produces a simple empty `Response` with a provided status.
@@ -123,7 +112,7 @@ pub fn create_response<B: Into<Body>>(
 /// # }
 /// ```
 pub fn create_empty_response(state: &State, status: StatusCode) -> Response<Body> {
-    create_response::<&str>(state, status, None)
+    construct_response::<&str>(state, status, None, None)
 }
 
 /// Produces a simple empty `Response` with a `Location` header and a 301
@@ -160,14 +149,11 @@ pub fn create_empty_response(state: &State, status: StatusCode) -> Response<Body
 /// #     );
 /// # }
 /// ```
-pub fn create_permanent_redirect<B: Default, L: Into<Cow<'static, str>>>(
+pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
     state: &State,
     location: L,
-) -> Response<B> {
-    let mut res = Response::builder()
-        .status(StatusCode::PERMANENT_REDIRECT)
-        .body(B::default())
-        .expect("A Response built from constant values.");
+) -> Response<Body> {
+    let mut res = create_empty_response(state, StatusCode::PERMANENT_REDIRECT);
     set_redirect_headers(state, &mut res, location);
     res
 }
@@ -206,14 +192,11 @@ pub fn create_permanent_redirect<B: Default, L: Into<Cow<'static, str>>>(
 /// #     );
 /// # }
 /// ```
-pub fn create_temporary_redirect<B: Default, L: Into<Cow<'static, str>>>(
+pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
     state: &State,
     location: L,
-) -> Response<B> {
-    let mut res = Response::builder()
-        .status(StatusCode::TEMPORARY_REDIRECT)
-        .body(B::default())
-        .expect("Response built from constant values");
+) -> Response<Body> {
+    let mut res = create_empty_response(state, StatusCode::TEMPORARY_REDIRECT);
     set_redirect_headers(state, &mut res, location);
     res
 }
@@ -520,6 +503,26 @@ pub fn set_redirect_headers<B, L: Into<Cow<'static, str>>>(
     let headers = res.headers_mut();
     set_request_id(state, headers);
     headers.insert(LOCATION, location.into().to_string().parse().unwrap());
+}
+
+/// Simple response construction.
+fn construct_response<B: Into<Body>>(
+    state: &State,
+    status: StatusCode,
+    mime: Option<Mime>,
+    body: Option<B>,
+) -> Response<Body> {
+    let mut builder = Response::builder();
+
+    extend_response(state, status, &mut builder, mime);
+
+    let built = if body.is_some() && Method::borrow_from(state) != Method::HEAD {
+        builder.body(body.unwrap().into())
+    } else {
+        builder.body(Body::empty())
+    };
+
+    built.expect("Response built from a compatible type")
 }
 
 /// Sets the request id inside a given `HeaderMap`.
