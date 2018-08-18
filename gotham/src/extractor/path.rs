@@ -48,7 +48,7 @@ use state::{State, StateData};
 ///     let response = create_response(
 ///         &state,
 ///         StatusCode::OK,
-///         Some((body.into_bytes(), mime::TEXT_PLAIN)),
+///         (body, mime::TEXT_PLAIN),
 ///     );
 ///
 ///     (state, response)

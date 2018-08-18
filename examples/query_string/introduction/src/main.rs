@@ -77,10 +77,10 @@ fn get_product_handler(mut state: State) -> (State, Response<Body>) {
         create_response(
             &state,
             StatusCode::OK,
-            Some((
+            (
                 serde_json::to_vec(&product).expect("serialized product"),
                 mime::APPLICATION_JSON,
-            )),
+            ),
         )
     };
     (state, res)

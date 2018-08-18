@@ -43,7 +43,7 @@ const XCTO_VALUE: &'static str = "nosniff";
 ///     let response = create_response(
 ///         &state,
 ///         StatusCode::OK,
-///         Some((BODY.to_vec(), mime::TEXT_PLAIN)),
+///         (BODY, mime::TEXT_PLAIN),
 ///     );
 ///
 ///     (state, response)
@@ -74,13 +74,10 @@ const XCTO_VALUE: &'static str = "nosniff";
 pub fn create_response<B: Into<Body>>(
     state: &State,
     status: StatusCode,
-    data: Option<(B, Mime)>,
+    data: (B, Mime),
 ) -> Response<Body> {
-    let (body, mime) = data
-        .map(|(body, mime)| (Some(body), Some(mime)))
-        .unwrap_or_else(|| (None, None));
-
-    construct_response(state, status, mime, body)
+    let (body, mime) = data;
+    construct_response(state, status, Some(body), Some(mime))
 }
 
 /// Produces a simple empty `Response` with a provided status.
@@ -509,8 +506,8 @@ pub fn set_redirect_headers<B, L: Into<Cow<'static, str>>>(
 fn construct_response<B: Into<Body>>(
     state: &State,
     status: StatusCode,
-    mime: Option<Mime>,
     body: Option<B>,
+    mime: Option<Mime>,
 ) -> Response<Body> {
     let mut builder = Response::builder();
 

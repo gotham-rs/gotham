@@ -343,10 +343,10 @@ trait BodyReader {
 /// # use hyper::{Body, Response, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response<Body>) {
-/// #   let body = "This is the body content.".to_string().into_bytes();;
+/// #   let body = "This is the body content.".to_string();
 /// #   let response = create_response(&state,
 /// #                                  StatusCode::OK,
-/// #                                  Some((body, mime::TEXT_PLAIN)));
+/// #                                  (body, mime::TEXT_PLAIN));
 /// #
 /// #   (state, response)
 /// # }
@@ -572,11 +572,8 @@ mod tests {
                 .then(move |full_body| match full_body {
                     Ok(body) => {
                         let resp_data = body.to_vec();
-                        let res = create_response(
-                            &state,
-                            StatusCode::OK,
-                            Some((resp_data, mime::TEXT_PLAIN)),
-                        );
+                        let res =
+                            create_response(&state, StatusCode::OK, (resp_data, mime::TEXT_PLAIN));
                         future::ok((state, res))
                     }
 

@@ -15,11 +15,7 @@ const HELLO_ROUTER: &'static str = "Hello Router!";
 
 /// Create a `Handler` that is invoked for requests to the path "/"
 pub fn say_hello(state: State) -> (State, Response<Body>) {
-    let res = create_response(
-        &state,
-        StatusCode::OK,
-        Some((HELLO_ROUTER, mime::TEXT_PLAIN)),
-    );
+    let res = create_response(&state, StatusCode::OK, (HELLO_ROUTER, mime::TEXT_PLAIN));
 
     (state, res)
 }

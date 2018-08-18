@@ -35,7 +35,7 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 ///     let response = create_response(
 ///         &state,
 ///         StatusCode::OK,
-///         Some((body.into_bytes(), mime::TEXT_PLAIN)),
+///         (body, mime::TEXT_PLAIN),
 ///     );
 ///
 ///     (state, response)

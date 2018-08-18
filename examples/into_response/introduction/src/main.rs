@@ -35,10 +35,10 @@ impl IntoResponse<Body> for Product {
         create_response(
             state,
             StatusCode::OK,
-            Some((
+            (
                 serde_json::to_string(&self).expect("serialized product"),
                 mime::APPLICATION_JSON,
-            )),
+            ),
         )
     }
 }

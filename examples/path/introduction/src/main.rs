@@ -59,7 +59,7 @@ fn get_product_handler(state: State) -> (State, Response<Body>) {
         create_response(
             &state,
             StatusCode::OK,
-            Some((format!("Product: {}", product.name), mime::TEXT_PLAIN)),
+            (format!("Product: {}", product.name), mime::TEXT_PLAIN),
         )
     };
 
