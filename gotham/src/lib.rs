@@ -15,9 +15,11 @@
 extern crate base64;
 extern crate bincode;
 extern crate borrow_bag;
+extern crate bytes;
 extern crate chrono;
 extern crate cookie;
 extern crate failure;
+#[macro_use]
 extern crate futures;
 extern crate http;
 extern crate hyper;

@@ -1,18 +1,22 @@
+use bytes::{BufMut, BytesMut};
 use error::Result;
+use futures::{stream, Future, Stream};
+use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
 use helpers::http::response::create_response;
-use hyper::{Body, Response, StatusCode};
+use http;
+use hyper::{Body, Chunk, Response, StatusCode};
 use mime::{self, Mime};
 use mime_guess::guess_mime_type_opt;
 use router::response::extender::StaticResponseExtender;
 use state::{FromState, State, StateData};
+use std::cmp;
 use std::convert::From;
-use std::fs;
-use std::io::{self, Read};
+use std::fs::Metadata;
+use std::io;
 use std::iter::FromIterator;
 use std::path::{Component, Path, PathBuf};
-
-use futures::future;
-use handler::{Handler, HandlerFuture, NewHandler};
+use tokio::fs::File;
+use tokio::io::AsyncRead;
 
 /// Represents a handler for any files under the path `root`.
 #[derive(Clone)]
@@ -74,30 +78,61 @@ impl Handler for FileSystemHandler {
             base_path.extend(&normalize_path(&file_path));
             base_path
         };
-        let response = create_file_response(path, &state);
-        Box::new(future::ok((state, response)))
+        create_file_response(path, state)
     }
 }
 
 impl Handler for FileHandler {
     fn handle(self, state: State) -> Box<HandlerFuture> {
-        let response = create_file_response(self.path, &state);
-        Box::new(future::ok((state, response)))
+        create_file_response(self.path, state)
     }
 }
 
-fn create_file_response(path: PathBuf, state: &State) -> Response<Body> {
-    path.metadata()
-        .and_then(|meta| {
-            let mut contents = Vec::with_capacity(meta.len() as usize);
-            fs::File::open(&path).and_then(|mut f| f.read_to_end(&mut contents))?;
-            Ok(contents)
-        })
-        .map(|contents| {
-            let mime_type = mime_for_path(&path);
-            create_response(state, StatusCode::OK, Some((contents, mime_type)))
-        })
-        .unwrap_or_else(|err| error_response(state, err))
+fn create_file_response(path: PathBuf, state: State) -> Box<HandlerFuture> {
+    let mime_type = mime_for_path(&path);
+
+    let response_future = File::open(path).and_then(|file| file.metadata()).and_then(
+        move |(file, meta)| {
+            if not_modified() {
+                Ok(http::Response::builder()
+                    .status(StatusCode::NOT_MODIFIED)
+                    .body("".into())
+                    .unwrap())
+            } else {
+                let len = meta.len();
+                let buf_size = optimal_buf_size(&meta);
+
+                let stream = file_stream(file, buf_size, len);
+                let body = Body::wrap_stream(stream);
+
+                Ok(http::Response::builder()
+                    .status(StatusCode::OK)
+                    .header("content-length", len)
+                    .header("content-type", mime_type.as_ref())
+                    .body(body)
+                    .unwrap())
+            }
+        },
+    );
+    Box::new(response_future.then(|result| match result {
+        Ok(response) => Ok((state, response)),
+        Err(err) => {
+            let status = error_status(&err);
+            Err((state, err.into_handler_error().with_status(status)))
+        }
+    }))
+}
+
+fn error_status(e: &io::Error) -> StatusCode {
+    match e.kind() {
+        io::ErrorKind::NotFound => StatusCode::NOT_FOUND,
+        io::ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
+    }
+}
+
+fn not_modified() -> bool {
+    false
 }
 
 fn mime_for_path(path: &Path) -> Mime {
@@ -119,19 +154,6 @@ fn normalize_path(path: &Path) -> PathBuf {
         })
 }
 
-fn error_response(state: &State, e: io::Error) -> Response<Body> {
-    let status = match e.kind() {
-        io::ErrorKind::NotFound => StatusCode::NOT_FOUND,
-        io::ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
-        _ => StatusCode::INTERNAL_SERVER_ERROR,
-    };
-    create_response(
-        &state,
-        status,
-        Some((format!("{}", status).into_bytes(), mime::TEXT_PLAIN)),
-    )
-}
-
 /// Responsible for extracting the file path matched by the glob segment from the URL.
 #[derive(Debug, Deserialize)]
 pub struct FilePathExtractor {
@@ -144,6 +166,60 @@ impl StateData for FilePathExtractor {}
 impl StaticResponseExtender for FilePathExtractor {
     type ResBody = Body;
     fn extend(_state: &mut State, _res: &mut Response<Self::ResBody>) {}
+}
+
+fn file_stream(
+    mut f: File,
+    buf_size: usize,
+    mut len: u64,
+) -> impl Stream<Item = Chunk, Error = io::Error> + Send {
+    let mut buf = BytesMut::new();
+    stream::poll_fn(move || {
+        if len == 0 {
+            return Ok(None.into());
+        }
+        if buf.remaining_mut() < buf_size {
+            buf.reserve(buf_size);
+        }
+        let n = try_ready!(f.read_buf(&mut buf).map_err(|err| {
+            debug!("file read error: {}", err);
+            err
+        })) as u64;
+
+        if n == 0 {
+            debug!("file read found EOF before expected length");
+            return Ok(None.into());
+        }
+
+        let mut chunk = buf.take().freeze();
+        if n > len {
+            chunk = chunk.split_to(len as usize);
+            len = 0;
+        } else {
+            len -= n;
+        }
+
+        Ok(Some(Chunk::from(chunk)).into())
+    })
+}
+
+fn optimal_buf_size(metadata: &Metadata) -> usize {
+    let block_size = get_block_size(metadata);
+
+    // If file length is smaller than block size, don't waste space
+    // reserving a bigger-than-needed buffer.
+    cmp::min(block_size as u64, metadata.len()) as usize
+}
+
+#[cfg(unix)]
+fn get_block_size(metadata: &Metadata) -> usize {
+    use std::os::unix::fs::MetadataExt;
+    metadata.blksize() as usize
+}
+
+#[cfg(not(unix))]
+fn get_block_size(metadata: &Metadata) -> usize {
+    8_192
 }
 
 #[cfg(test)]
