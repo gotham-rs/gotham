@@ -6,7 +6,8 @@ use helpers::http::response::create_response;
 use http;
 use httpdate::parse_http_date;
 use hyper::header::{
-    HeaderMap, HeaderValue, ACCEPT_ENCODING, ETAG, IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED,
+    HeaderMap, HeaderValue, ACCEPT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, ETAG, IF_MODIFIED_SINCE,
+    IF_NONE_MATCH, LAST_MODIFIED,
 };
 use hyper::{Body, Chunk, Response, StatusCode};
 use mime::{self, Mime};
@@ -102,7 +103,7 @@ fn create_file_response(path: PathBuf, state: State) -> Box<HandlerFuture> {
             if not_modified(&meta, &headers) {
                 Ok(http::Response::builder()
                     .status(StatusCode::NOT_MODIFIED)
-                    .body("".into())
+                    .body(Body::empty())
                     .unwrap())
             } else {
                 let len = meta.len();
@@ -110,13 +111,16 @@ fn create_file_response(path: PathBuf, state: State) -> Box<HandlerFuture> {
 
                 let stream = file_stream(file, buf_size, len);
                 let body = Body::wrap_stream(stream);
+                let mut response = http::Response::builder();
+                response.status(StatusCode::OK);
+                response.header(CONTENT_LENGTH, len);
+                response.header(CONTENT_TYPE, mime_type.as_ref());
 
-                Ok(http::Response::builder()
-                    .status(StatusCode::OK)
-                    .header("content-length", len)
-                    .header("content-type", mime_type.as_ref())
-                    .body(body)
-                    .unwrap())
+                if let Some(etag) = entity_tag(&meta) {
+                    response.header(ETAG, etag);
+                }
+
+                Ok(response.body(body).unwrap())
             }
         },
     );
@@ -358,7 +362,7 @@ mod tests {
 
     #[test]
     fn static_if_none_match_etag() {
-        use hyper::header::IF_NONE_MATCH;
+        use hyper::header::{ETAG, IF_NONE_MATCH};
         use std::fs::File;
 
         let path = "resources/test/static_files/doc.html";
@@ -395,6 +399,10 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get(ETAG).unwrap().to_str().unwrap(),
+            etag
+        );
     }
 
     #[test]
