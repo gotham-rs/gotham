@@ -2,11 +2,11 @@ use std::sync::{Arc, Mutex, PoisonError, Weak};
 use std::time::{Duration, Instant};
 use std::{io, thread};
 
-use linked_hash_map::LinkedHashMap;
 use futures::future;
+use linked_hash_map::LinkedHashMap;
 
-use middleware::session::{SessionError, SessionIdentifier};
 use middleware::session::backend::{Backend, NewBackend, SessionFuture};
+use middleware::session::{SessionError, SessionIdentifier};
 
 /// Defines the in-process memory based session storage.
 ///

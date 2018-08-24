@@ -10,11 +10,11 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
-use gotham::http::response::create_response;
-use gotham::router::Router;
+use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 /// Holds data extracted from the Request path.
@@ -47,7 +47,7 @@ struct PathExtractor {
 }
 
 /// Handler function for `GET` requests directed to `/products/:name`
-fn get_product_handler(state: State) -> (State, Response) {
+fn get_product_handler(state: State) -> (State, Response<Body>) {
     let res = {
         // Access the `PathExtractor` instance from `state` which was put there for us by the
         // `Router` during request evaluation.
@@ -58,7 +58,7 @@ fn get_product_handler(state: State) -> (State, Response) {
         let product = PathExtractor::borrow_from(&state);
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((
                 format!("Product: {}", product.name).into_bytes(),
                 mime::TEXT_PLAIN,
@@ -106,7 +106,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Product: t-shirt");

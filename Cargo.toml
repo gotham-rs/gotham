@@ -11,6 +11,10 @@ members = [
 
     ## Examples (these crates are not published)
     "examples/hello_world",
+    "examples/shared_state",
+
+    # Tera template
+    "examples/templating/tera",
 
     # routing
     "examples/routing/introduction",
@@ -21,6 +25,7 @@ members = [
     # path
     "examples/path/introduction",
     "examples/path/globs",
+    "examples/path/regex",
 
     # query_string
     "examples/query_string/introduction",
@@ -43,8 +48,9 @@ members = [
 
     # handlers
     "examples/handlers/request_data",
+    "examples/handlers/stateful",
     "examples/handlers/simple_async_handlers",
-    "examples/handlers/async_handlers",
+    # "examples/handlers/async_handlers",
 
     # static_files
     "examples/static_files",

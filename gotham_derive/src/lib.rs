@@ -5,10 +5,10 @@ extern crate proc_macro;
 extern crate quote;
 extern crate syn;
 
-mod extractors;
 mod extenders;
-mod state;
+mod extractors;
 mod new_middleware;
+mod state;
 
 #[proc_macro_derive(PathExtractor)]
 pub fn base_path_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

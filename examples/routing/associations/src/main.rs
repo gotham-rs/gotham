@@ -5,9 +5,9 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use gotham::router::Router;
 use gotham::router::builder::*;
-use hyper::{Get, Head};
+use gotham::router::Router;
+use hyper::Method;
 
 mod handlers;
 use self::handlers::*;
@@ -34,7 +34,9 @@ use self::handlers::*;
 /// matching on.
 fn router() -> Router {
     build_simple_router(|route| {
-        route.request(vec![Get, Head], "/").to(index);
+        route
+            .request(vec![Method::GET, Method::HEAD], "/")
+            .to(index);
         route.get_or_head("/products").to(products::index);
         route.get("/bag").to(bag::index);
 
@@ -90,7 +92,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"index");
@@ -105,7 +107,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::MethodNotAllowed);
+        assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
     }
 
     #[test]
@@ -117,7 +119,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         assert!(response.read_body().unwrap().is_empty());
     }
 
@@ -130,7 +132,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"index");
@@ -145,7 +147,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"index");
@@ -160,7 +162,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[test]
@@ -172,7 +174,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"start");
@@ -191,7 +193,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"complete");
@@ -210,7 +212,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"create");
@@ -229,7 +231,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"update");
@@ -248,7 +250,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"update");
@@ -263,7 +265,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"delete");
@@ -282,7 +284,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"create");
@@ -301,7 +303,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"update");
@@ -316,7 +318,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"index");

@@ -9,24 +9,23 @@ extern crate mime;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate tokio_core;
-extern crate tokio_timer;
+extern crate tokio;
 
-use std::time::Duration;
 use futures::{stream, Future, Stream};
+use std::time::{Duration, Instant};
 
 use hyper::StatusCode;
 
-use gotham::handler::{HandlerFuture, IntoHandlerError};
-use gotham::http::response::create_response;
-use gotham::router::Router;
-use gotham::router::builder::{build_simple_router, DrawRoutes};
+use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
+use gotham::helpers::http::response::create_response;
 use gotham::router::builder::DefineSingleRoute;
+use gotham::router::builder::{build_simple_router, DrawRoutes};
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-use tokio_timer::{Timer, TimerError};
+use tokio::timer::Delay;
 
-type SleepFuture = Box<Future<Item = Vec<u8>, Error = TimerError>>;
+type SleepFuture = Box<Future<Item = Vec<u8>, Error = HandlerError> + Send>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
@@ -57,17 +56,16 @@ fn get_duration(seconds: &u64) -> Duration {
 /// so the patterns that you learn in this example should be applicable to
 /// real world problems.
 fn sleep(seconds: u64) -> SleepFuture {
-    // Here, we use a library to create a future that will wait for some number
-    // of seconds before resolving with ().
-    let timer = Timer::default();
-    let sleep_future = timer.sleep(get_duration(&seconds));
-    // To make this future into one that returns something other than (), we use
-    // .and_then() to add a callback chain when sleep_future resolves
-    // successfully. Note that we have to move ownership of `seconds` into the
-    // callback.
-    let f = sleep_future.and_then(move |()| Ok(format!("slept for {} seconds\n", seconds).into()));
+    let when = Instant::now() + get_duration(&seconds);
+    let delay = Delay::new(when)
+        .map_err(|e| panic!("timer failed; err={:?}", e))
+        .and_then(move |_| {
+            Ok(format!("slept for {} seconds\n", seconds)
+                .as_bytes()
+                .to_vec())
+        });
 
-    Box::new(f)
+    Box::new(delay)
 }
 
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
@@ -87,7 +85,7 @@ fn sleep_handler(mut state: State) -> Box<HandlerFuture> {
     // IntoHandlerError.
     Box::new(sleep_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::Ok, Some((data, mime::TEXT_PLAIN)));
+            let res = create_response(&state, StatusCode::OK, Some((data, mime::TEXT_PLAIN)));
             println!("sleep for {} seconds once: finished", seconds);
             Ok((state, res))
         }
@@ -121,7 +119,7 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
     // This bit is the same as the bit in the first example.
     Box::new(sleep_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::Ok, Some((data, mime::TEXT_PLAIN)));
+            let res = create_response(&state, StatusCode::OK, Some((data, mime::TEXT_PLAIN)));
             println!("sleep for one second {} times: finished", seconds);
             Ok((state, res))
         }
@@ -162,7 +160,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server.client().get(url_str).perform().unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
             &String::from_utf8(response.read_body().unwrap()).unwrap(),
             expected_response

@@ -9,17 +9,18 @@ extern crate mime;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate cookie;
 extern crate time;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
-use gotham::http::response::create_response;
+use gotham::helpers::http::response::create_response;
+use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::{FromState, State};
-use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 
 // A custom type for storing data associated with the user's session.
 #[derive(Clone, Deserialize, Serialize, StateData)]
@@ -31,7 +32,7 @@ struct VisitData {
 /// Handler function for `GET` requests directed to `/`
 ///
 /// Each request made will update state about your recent visits, and report it back.
-fn get_handler(mut state: State) -> (State, Response) {
+fn get_handler(mut state: State) -> (State, Response<Body>) {
     let maybe_visit_data = {
         let visit_data: &Option<VisitData> = SessionData::<Option<VisitData>>::borrow_from(&state);
         visit_data.clone()
@@ -47,7 +48,7 @@ fn get_handler(mut state: State) -> (State, Response) {
     let res = {
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((body.as_bytes().to_vec(), mime::TEXT_PLAIN)),
         )
     };
@@ -88,8 +89,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
-    use hyper::header::{Cookie, SetCookie};
-    use std::borrow::Cow;
+    use hyper::header::{COOKIE, SET_COOKIE};
 
     #[test]
     fn cookie_is_set_and_updates_response() {
@@ -100,14 +100,11 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers().get_all(SET_COOKIE).iter().count(), 1);
 
-        let set_cookie: Vec<String> = {
-            let cookie_header = response.headers().get::<SetCookie>();
-            assert!(cookie_header.is_some());
-            cookie_header.unwrap().0.clone()
-        };
-        assert!(set_cookie.len() == 1);
+        let headers = response.headers().clone();
+        let cookie = headers.get(SET_COOKIE).unwrap();
 
         let body = response.read_body().unwrap();
         assert_eq!(
@@ -115,32 +112,21 @@ mod tests {
             "You have never visited this page before.\n".as_bytes()
         );
 
-        let cookie = {
-            let mut cookie = Cookie::new();
-
-            let only_cookie: String = set_cookie.get(0).unwrap().clone();
-            let cookie_components: Vec<_> = only_cookie.split(";").collect();
-            let cookie_str_parts: Vec<_> = cookie_components.get(0).unwrap().split("=").collect();
-            cookie.append(
-                Cow::Owned(cookie_str_parts.get(0).unwrap().to_string()),
-                Cow::Owned(cookie_str_parts.get(1).unwrap().to_string()),
-            );
-            cookie
-        };
-
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(cookie)
+            .with_header(COOKIE, cookie.to_owned())
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
+
         let body = response.read_body().unwrap();
         let body_string = String::from_utf8(body).unwrap();
+        let expected = "You have visited this page 1 time(s) before. Your last visit was ";
+
         assert!(
-            body_string
-                .starts_with("You have visited this page 1 time(s) before. Your last visit was ",),
+            body_string.starts_with(expected),
             "Wrong body: {}",
             body_string
         );

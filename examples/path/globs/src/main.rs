@@ -9,11 +9,11 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
-use gotham::http::response::create_response;
-use gotham::router::Router;
+use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
@@ -24,7 +24,7 @@ struct PathExtractor {
     parts: Vec<String>,
 }
 
-fn parts_handler(state: State) -> (State, Response) {
+fn parts_handler(state: State) -> (State, Response<Body>) {
     let res = {
         let path = PathExtractor::borrow_from(&state);
 
@@ -40,7 +40,7 @@ fn parts_handler(state: State) -> (State, Response) {
 
         create_response(
             &state,
-            StatusCode::Ok,
+            StatusCode::OK,
             Some((response_string.into_bytes(), mime::TEXT_PLAIN)),
         )
     };
@@ -78,7 +78,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[test]
@@ -90,7 +90,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[test]
@@ -102,7 +102,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], &b"Got 1 part:\nhead"[..]);
@@ -117,7 +117,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(

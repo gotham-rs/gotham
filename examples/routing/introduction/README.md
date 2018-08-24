@@ -4,7 +4,7 @@ An introduction to fundamental `Router` and `Router Builder` concepts to create 
 
 ## Running
 
-From the `examples/introduction` directory:
+From the `examples/routing/introduction` directory:
 
 ```
 Terminal 1:
