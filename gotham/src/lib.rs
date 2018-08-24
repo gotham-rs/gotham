@@ -34,6 +34,7 @@ extern crate rand;
 extern crate regex;
 #[macro_use]
 extern crate serde;
+extern crate httpdate;
 extern crate tokio;
 extern crate url;
 extern crate uuid;

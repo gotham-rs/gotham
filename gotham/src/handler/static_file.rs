@@ -4,6 +4,7 @@ use futures::{stream, Future, Stream};
 use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
 use helpers::http::response::create_response;
 use http;
+use httpdate::parse_http_date;
 use hyper::header::{
     HeaderMap, HeaderValue, ACCEPT_ENCODING, ETAG, IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED,
 };
@@ -157,21 +158,22 @@ fn normalize_path(path: &Path) -> PathBuf {
 
 fn not_modified(metadata: &Metadata, headers: &HeaderMap) -> bool {
     // If-None-Match header takes precedence over If-Modified-Since
-    if let Some(etag) = entity_tag(&metadata) {
-        let if_none_match = headers.get_all(IF_NONE_MATCH);
-        if if_none_match.iter().any(|v| v == &etag) {
-            return true;
-        }
-    };
-    // } else if let Some(IfModifiedSince(if_modified_time)) = if_modified_since {
-    //     metadata
-    //         .modified()
-    //         .map(|modified| HttpDate::from(modified) <= if_modified_time)
-    //         .unwrap_or(false)
-    // } else {
-    //     false
-    // }
-    false
+    match headers.get(IF_NONE_MATCH) {
+        Some(_) => entity_tag(&metadata)
+            .map(|etag| headers.get_all(IF_NONE_MATCH).iter().any(|v| v == &etag))
+            .unwrap_or(false),
+        _ => headers
+            .get(IF_MODIFIED_SINCE)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| parse_http_date(v).ok())
+            .and_then(|if_modified_time| {
+                metadata
+                    .modified()
+                    .map(|modified| modified <= if_modified_time)
+                    .ok()
+            })
+            .unwrap_or(false),
+    }
 }
 
 fn entity_tag(metadata: &Metadata) -> Option<String> {
@@ -355,7 +357,8 @@ mod tests {
     }
 
     #[test]
-    fn static_not_modified_etag() {
+    fn static_if_none_match_etag() {
+        use hyper::header::IF_NONE_MATCH;
         use std::fs::File;
 
         let path = "resources/test/static_files/doc.html";
@@ -367,17 +370,76 @@ mod tests {
             .map(|meta| super::entity_tag(&meta).expect("entity tag"))
             .unwrap();
 
+        // matching etag
         let response = test_server
             .client()
             .get("http://localhost/")
             .with_header(
-                "If-None-Match",
+                IF_NONE_MATCH,
                 HeaderValue::from_bytes(etag.as_bytes()).unwrap(),
             )
             .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
+
+        // not matching etag
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .with_header(
+                IF_NONE_MATCH,
+                HeaderValue::from_bytes("bogus".as_bytes()).unwrap(),
+            )
+            .perform()
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[test]
+    fn static_if_modified_since() {
+        use httpdate::fmt_http_date;
+        use hyper::header::IF_MODIFIED_SINCE;
+        use std::fs::File;
+        use std::time::Duration;
+
+        let path = "resources/test/static_files/doc.html";
+        let test_server =
+            TestServer::new(build_simple_router(|route| route.get("/").to_file(path))).unwrap();
+
+        let modified = File::open(path)
+            .and_then(|file| file.metadata())
+            .and_then(|meta| meta.modified())
+            .unwrap();
+
+        // if-modified-since a newer date
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .with_header(
+                IF_MODIFIED_SINCE,
+                HeaderValue::from_bytes(fmt_http_date(modified + Duration::new(5, 0)).as_bytes())
+                    .unwrap(),
+            )
+            .perform()
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
+
+        // if-modified-since a older date
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .with_header(
+                IF_MODIFIED_SINCE,
+                HeaderValue::from_bytes(fmt_http_date(modified - Duration::new(5, 0)).as_bytes())
+                    .unwrap(),
+            )
+            .perform()
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
     }
 
     fn test_server() -> TestServer {
