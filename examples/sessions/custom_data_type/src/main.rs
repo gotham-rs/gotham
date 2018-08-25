@@ -45,13 +45,7 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
         ),
         &None => "You have never visited this page before.\n".to_owned(),
     };
-    let res = {
-        create_response(
-            &state,
-            StatusCode::OK,
-            Some((body.as_bytes().to_vec(), mime::TEXT_PLAIN)),
-        )
-    };
+    let res = { create_response(&state, StatusCode::OK, (body, mime::TEXT_PLAIN)) };
     {
         let visit_data: &mut Option<VisitData> =
             SessionData::<Option<VisitData>>::borrow_mut_from(&mut state);

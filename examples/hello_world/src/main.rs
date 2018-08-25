@@ -9,17 +9,15 @@ use hyper::{Body, Response, StatusCode};
 use gotham::helpers::http::response::create_response;
 use gotham::state::State;
 
+const HELLO_WORLD: &'static str = "Hello World!";
+
 /// Create a `Handler` which is invoked when responding to a `Request`.
 ///
 /// How does a function become a `Handler`?.
 /// We've simply implemented the `Handler` trait, for functions that match the signature used here,
 /// within Gotham itself.
 pub fn say_hello(state: State) -> (State, Response<Body>) {
-    let res = create_response(
-        &state,
-        StatusCode::OK,
-        Some((String::from("Hello World!").into_bytes(), mime::TEXT_PLAIN)),
-    );
+    let res = create_response(&state, StatusCode::OK, (HELLO_WORLD, mime::TEXT_PLAIN));
 
     (state, res)
 }

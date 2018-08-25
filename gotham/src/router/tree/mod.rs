@@ -67,7 +67,7 @@ mod tests {
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use helpers::http::request::path::RequestPathSegments;
-    use helpers::http::response::create_response;
+    use helpers::http::response::create_empty_response;
     use pipeline::set::*;
     use router::route::dispatch::DispatcherImpl;
     use router::route::matcher::MethodOnlyRouteMatcher;
@@ -77,7 +77,7 @@ mod tests {
     use super::*;
 
     fn handler(state: State) -> (State, Response<Body>) {
-        let res = create_response(&state, StatusCode::OK, None);
+        let res = create_empty_response(&state, StatusCode::OK);
         (state, res)
     }
 

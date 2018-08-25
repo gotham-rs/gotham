@@ -14,7 +14,7 @@ macro_rules! generic_handler {
             let res = create_response(
                 &state,
                 StatusCode::OK,
-                Some((String::from(stringify!($t)).into_bytes(), mime::TEXT_PLAIN)),
+                (stringify!($t), mime::TEXT_PLAIN),
             );
 
             (state, res)

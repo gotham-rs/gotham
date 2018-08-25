@@ -206,7 +206,7 @@ pub mod state;
 /// #
 /// # use hyper::{Body, Response, Method, StatusCode};
 /// # use futures::future;
-/// # use gotham::helpers::http::response::create_response;
+/// # use gotham::helpers::http::response::create_empty_response;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -225,7 +225,7 @@ pub mod state;
 ///         if *Method::borrow_from(&state) == Method::GET {
 ///             chain(state)
 ///         } else {
-///             let response = create_response(&state, StatusCode::METHOD_NOT_ALLOWED, None);
+///             let response = create_empty_response(&state, StatusCode::METHOD_NOT_ALLOWED);
 ///             Box::new(future::ok((state, response)))
 ///         }
 ///     }

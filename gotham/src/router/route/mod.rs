@@ -225,7 +225,7 @@ mod tests {
 
     use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use helpers::http::request::path::RequestPathSegments;
-    use helpers::http::response::create_response;
+    use helpers::http::response::create_empty_response;
     use pipeline::set::*;
     use router::builder::*;
     use router::route::dispatch::DispatcherImpl;
@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn internal_route_tests() {
         fn handler(state: State) -> (State, Response<Body>) {
-            let res = create_response(&state, StatusCode::ACCEPTED, None);
+            let res = create_empty_response(&state, StatusCode::ACCEPTED);
             (state, res)
         }
 
@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn external_route_tests() {
         fn handler(state: State) -> (State, Response<Body>) {
-            let res = create_response(&state, StatusCode::ACCEPTED, None);
+            let res = create_empty_response(&state, StatusCode::ACCEPTED);
             (state, res)
         }
 

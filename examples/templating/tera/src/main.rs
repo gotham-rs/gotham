@@ -29,11 +29,7 @@ pub fn say_hello(state: State) -> (State, Response<Body>) {
     context.add("user", "Gotham");
     let rendered = TERA.render("example.html.tera", &context).unwrap();
 
-    let res = create_response(
-        &state,
-        StatusCode::OK,
-        Some((rendered.into_bytes(), mime::TEXT_HTML)),
-    );
+    let res = create_response(&state, StatusCode::OK, (rendered, mime::TEXT_HTML));
 
     (state, res)
 }

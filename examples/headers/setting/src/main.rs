@@ -4,7 +4,7 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use gotham::helpers::http::response::create_response;
+use gotham::helpers::http::response::create_empty_response;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::State;
@@ -12,7 +12,7 @@ use hyper::{Body, Response, StatusCode};
 
 /// Create a `Handler` that adds a custom header.
 pub fn handler(state: State) -> (State, Response<Body>) {
-    let mut res = create_response(&state, StatusCode::OK, None);
+    let mut res = create_empty_response(&state, StatusCode::OK);
     {
         let headers = res.headers_mut();
         headers.insert("x-gotham", "Hello World!".parse().unwrap());

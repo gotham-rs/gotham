@@ -4,7 +4,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use hyper::{Body, Response, StatusCode};
 
 use handler::IntoResponse;
-use helpers::http::response::create_response;
+use helpers::http::response::create_empty_response;
 use state::{request_id, State};
 
 /// Describes an error which occurred during handler execution, and allows the creation of a HTTP
@@ -139,6 +139,6 @@ impl IntoResponse<Body> for HandlerError {
             self.cause().map(|e| e.description()).unwrap_or("(none)"),
         );
 
-        create_response(state, self.status_code, None)
+        create_empty_response(state, self.status_code)
     }
 }

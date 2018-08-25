@@ -15,7 +15,7 @@ use hyper::{Body, Response, StatusCode};
 use error::*;
 use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use helpers::http::request::path::RequestPathSegments;
-use helpers::http::response::create_response;
+use helpers::http::response::create_empty_response;
 use router::response::finalizer::ResponseFinalizer;
 use router::route::{Delegation, Route};
 use router::tree::segment::SegmentMapping;
@@ -89,7 +89,7 @@ impl Handler for Router {
                             let (status, allow) = non_match.deconstruct();
 
                             trace!("[{}] responding with error status", request_id(&state));
-                            let mut res = create_response(&state, status, None);
+                            let mut res = create_empty_response(&state, status);
                             if let StatusCode::METHOD_NOT_ALLOWED = status {
                                 for allowed in allow {
                                     res.headers_mut().append(
@@ -103,13 +103,13 @@ impl Handler for Router {
                     }
                 } else {
                     trace!("[{}] did not find routable node", request_id(&state));
-                    let res = create_response(&state, StatusCode::NOT_FOUND, None);
+                    let res = create_empty_response(&state, StatusCode::NOT_FOUND);
                     Box::new(future::ok((state, res)))
                 }
             }
             None => {
                 trace!("[{}] invalid request path segments", request_id(&state));
-                let res = create_response(&state, StatusCode::INTERNAL_SERVER_ERROR, None);
+                let res = create_empty_response(&state, StatusCode::INTERNAL_SERVER_ERROR);
                 Box::new(future::ok((state, res)))
             }
         };

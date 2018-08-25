@@ -9,7 +9,7 @@ extern crate mime;
 
 use futures::{future, Future};
 use gotham::handler::HandlerFuture;
-use gotham::helpers::http::response::create_response;
+use gotham::helpers::http::response::create_empty_response;
 use gotham::middleware::Middleware;
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
@@ -115,7 +115,7 @@ pub fn middleware_reliant_handler(mut state: State) -> (State, Response<Body>) {
     };
 
     // Finally we create a basic Response to complete our handling of the Request.
-    let res = create_response(&state, StatusCode::OK, None);
+    let res = create_empty_response(&state, StatusCode::OK);
     (state, res)
 }
 

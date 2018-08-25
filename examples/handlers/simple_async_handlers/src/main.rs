@@ -85,7 +85,7 @@ fn sleep_handler(mut state: State) -> Box<HandlerFuture> {
     // IntoHandlerError.
     Box::new(sleep_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, Some((data, mime::TEXT_PLAIN)));
+            let res = create_response(&state, StatusCode::OK, (data, mime::TEXT_PLAIN));
             println!("sleep for {} seconds once: finished", seconds);
             Ok((state, res))
         }
@@ -119,7 +119,7 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
     // This bit is the same as the bit in the first example.
     Box::new(sleep_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, Some((data, mime::TEXT_PLAIN)));
+            let res = create_response(&state, StatusCode::OK, (data, mime::TEXT_PLAIN));
             println!("sleep for one second {} times: finished", seconds);
             Ok((state, res))
         }

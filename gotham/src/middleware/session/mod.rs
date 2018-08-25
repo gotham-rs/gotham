@@ -217,12 +217,12 @@ impl SessionCookieConfig {
 ///     // active for this handler.
 ///     let body = {
 ///         let session = SessionData::<MySessionType>::borrow_from(&state);
-///         format!("{:?}", session.items).into_bytes()
+///         format!("{:?}", session.items)
 ///     };
 ///
 ///     let response = create_response(&state,
 ///                                    StatusCode::OK,
-///                                    Some((body, mime::TEXT_PLAIN)));
+///                                    (body, mime::TEXT_PLAIN));
 ///
 ///     (state, response)
 /// }
