@@ -208,7 +208,7 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::OK);
     /// # }
     /// ```
-    fn to_filesystem<P: AsRef<Path>>(self, options: P)
+    fn to_filesystem<P>(self, options: P)
     where
         Self: Sized,
         Self: ReplacePathExtractor<FilePathExtractor>,
@@ -255,7 +255,7 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::OK);
     /// # }
     /// ```
-    fn to_file<P: AsRef<Path>>(self, options: P)
+    fn to_file<P>(self, options: P)
     where
         Self: Sized,
         FileOptions: From<P>,

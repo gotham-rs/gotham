@@ -6,8 +6,8 @@ use helpers::http::response::create_response;
 use http;
 use httpdate::parse_http_date;
 use hyper::header::{
-    HeaderMap, HeaderValue, ACCEPT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, ETAG, IF_MODIFIED_SINCE,
-    IF_NONE_MATCH, LAST_MODIFIED,
+    HeaderMap, HeaderValue, ACCEPT_ENCODING, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, ETAG,
+    IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED,
 };
 use hyper::{Body, Chunk, Response, StatusCode};
 use mime::{self, Mime};
@@ -45,7 +45,7 @@ pub struct FileOptions {
 }
 
 impl FileOptions {
-    fn default<P: AsRef<Path>>(path: P) -> Self
+    pub fn new<P: AsRef<Path>>(path: P) -> Self
     where
         PathBuf: From<P>,
     {
@@ -56,29 +56,48 @@ impl FileOptions {
             brotli: false,
         }
     }
+
+    pub fn with_cache_control(&mut self, cache_control: String) -> &mut Self {
+        self.cache_control = cache_control;
+        self
+    }
+
+    pub fn with_gzip(&mut self, gzip: bool) -> &mut Self {
+        self.gzip = gzip;
+        self
+    }
+
+    pub fn with_brotli(&mut self, brotli: bool) -> &mut Self {
+        self.brotli = brotli;
+        self
+    }
+
+    pub fn build(&mut self) -> Self {
+        self.clone()
+    }
 }
 
 impl From<String> for FileOptions {
     fn from(path: String) -> Self {
-        FileOptions::default(path)
+        FileOptions::new(path)
     }
 }
 
 impl<'a> From<&'a String> for FileOptions {
     fn from(path: &'a String) -> Self {
-        FileOptions::default(path)
+        FileOptions::new(path)
     }
 }
 
 impl<'a> From<&'a str> for FileOptions {
     fn from(path: &'a str) -> Self {
-        FileOptions::default(path)
+        FileOptions::new(path)
     }
 }
 
 impl FileHandler {
     /// Create a new `FileHandler` for the given path.
-    pub fn new<P: AsRef<Path>>(path: P) -> FileHandler
+    pub fn new<P>(path: P) -> FileHandler
     where
         FileOptions: From<P>,
     {
@@ -90,7 +109,7 @@ impl FileHandler {
 
 impl FileSystemHandler {
     /// Create a new `FileSystemHandler` with the given root path.
-    pub fn new<P: AsRef<Path>>(path: P) -> FileSystemHandler
+    pub fn new<P>(path: P) -> FileSystemHandler
     where
         FileOptions: From<P>,
     {
@@ -124,22 +143,29 @@ impl Handler for FileSystemHandler {
             base_path.extend(&normalize_path(&file_path));
             base_path
         };
-        create_file_response(path, state)
+        create_file_response(
+            FileOptions {
+                path,
+                ..self.options
+            },
+            state,
+        )
     }
 }
 
 impl Handler for FileHandler {
     fn handle(self, state: State) -> Box<HandlerFuture> {
-        create_file_response(self.options.path, state)
+        create_file_response(self.options, state)
     }
 }
 
-fn create_file_response(path: PathBuf, state: State) -> Box<HandlerFuture> {
-    let mime_type = mime_for_path(&path);
+fn create_file_response(options: FileOptions, state: State) -> Box<HandlerFuture> {
+    let mime_type = mime_for_path(&options.path);
     let headers = HeaderMap::borrow_from(&state).clone();
 
-    let response_future = File::open(path).and_then(|file| file.metadata()).and_then(
-        move |(file, meta)| {
+    let response_future = File::open(options.path.clone())
+        .and_then(|file| file.metadata())
+        .and_then(move |(file, meta)| {
             if not_modified(&meta, &headers) {
                 Ok(http::Response::builder()
                     .status(StatusCode::NOT_MODIFIED)
@@ -155,6 +181,7 @@ fn create_file_response(path: PathBuf, state: State) -> Box<HandlerFuture> {
                 response.status(StatusCode::OK);
                 response.header(CONTENT_LENGTH, len);
                 response.header(CONTENT_TYPE, mime_type.as_ref());
+                response.header(CACHE_CONTROL, options.cache_control);
 
                 if let Some(etag) = entity_tag(&meta) {
                     response.header(ETAG, etag);
@@ -162,8 +189,7 @@ fn create_file_response(path: PathBuf, state: State) -> Box<HandlerFuture> {
 
                 Ok(response.body(body).unwrap())
             }
-        },
-    );
+        });
     Box::new(response_future.then(|result| match result {
         Ok(response) => Ok((state, response)),
         Err(err) => {
@@ -303,8 +329,9 @@ fn get_block_size(metadata: &Metadata) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use super::FileOptions;
     use http::header::HeaderValue;
-    use hyper::header::CONTENT_TYPE;
+    use hyper::header::{CACHE_CONTROL, CONTENT_TYPE};
     use hyper::StatusCode;
     use router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use router::Router;
@@ -488,6 +515,57 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[test]
+    fn static_with_cache_control() {
+        let router = build_simple_router(|route| {
+            route.get("/*").to_filesystem(
+                FileOptions::new("resources/test/static_files")
+                    .with_cache_control("no-cache".to_string())
+                    .build(),
+            )
+        });
+        let server = TestServer::new(router).unwrap();
+
+        let response = server
+            .client()
+            .get("http://localhost/doc.html")
+            .perform()
+            .unwrap();
+
+        assert_eq!(
+            response
+                .headers()
+                .get(CACHE_CONTROL)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "no-cache"
+        );
+    }
+    #[test]
+    fn static_default_cache_control() {
+        let router = build_simple_router(|route| {
+            route.get("/*").to_filesystem("resources/test/static_files")
+        });
+        let server = TestServer::new(router).unwrap();
+
+        let response = server
+            .client()
+            .get("http://localhost/doc.html")
+            .perform()
+            .unwrap();
+
+        assert_eq!(
+            response
+                .headers()
+                .get(CACHE_CONTROL)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "public"
+        );
     }
 
     fn test_server() -> TestServer {
