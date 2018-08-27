@@ -27,35 +27,75 @@ use tokio::io::AsyncRead;
 /// Represents a handler for any files under the path `root`.
 #[derive(Clone)]
 pub struct FileSystemHandler {
-    root: PathBuf,
+    options: FileOptions,
 }
 
 /// Represents a handler for a single file at `path`.
 #[derive(Clone)]
 pub struct FileHandler {
+    options: FileOptions,
+}
+
+#[derive(Clone)]
+pub struct FileOptions {
     path: PathBuf,
+    cache_control: String,
+    gzip: bool,
+    brotli: bool,
+}
+
+impl FileOptions {
+    fn default<P: AsRef<Path>>(path: P) -> Self
+    where
+        PathBuf: From<P>,
+    {
+        FileOptions {
+            path: PathBuf::from(path),
+            cache_control: "public".to_string(),
+            gzip: false,
+            brotli: false,
+        }
+    }
+}
+
+impl From<String> for FileOptions {
+    fn from(path: String) -> Self {
+        FileOptions::default(path)
+    }
+}
+
+impl<'a> From<&'a String> for FileOptions {
+    fn from(path: &'a String) -> Self {
+        FileOptions::default(path)
+    }
+}
+
+impl<'a> From<&'a str> for FileOptions {
+    fn from(path: &'a str) -> Self {
+        FileOptions::default(path)
+    }
 }
 
 impl FileHandler {
     /// Create a new `FileHandler` for the given path.
     pub fn new<P: AsRef<Path>>(path: P) -> FileHandler
     where
-        PathBuf: From<P>,
+        FileOptions: From<P>,
     {
         FileHandler {
-            path: PathBuf::from(path),
+            options: FileOptions::from(path),
         }
     }
 }
 
 impl FileSystemHandler {
     /// Create a new `FileSystemHandler` with the given root path.
-    pub fn new<P: AsRef<Path>>(root: P) -> FileSystemHandler
+    pub fn new<P: AsRef<Path>>(path: P) -> FileSystemHandler
     where
-        PathBuf: From<P>,
+        FileOptions: From<P>,
     {
         FileSystemHandler {
-            root: PathBuf::from(root),
+            options: FileOptions::from(path),
         }
     }
 }
@@ -79,7 +119,7 @@ impl NewHandler for FileSystemHandler {
 impl Handler for FileSystemHandler {
     fn handle(self, state: State) -> Box<HandlerFuture> {
         let path = {
-            let mut base_path = PathBuf::from(self.root);
+            let mut base_path = PathBuf::from(self.options.path);
             let file_path = PathBuf::from_iter(&FilePathExtractor::borrow_from(&state).parts);
             base_path.extend(&normalize_path(&file_path));
             base_path
@@ -90,7 +130,7 @@ impl Handler for FileSystemHandler {
 
 impl Handler for FileHandler {
     fn handle(self, state: State) -> Box<HandlerFuture> {
-        create_file_response(self.path, state)
+        create_file_response(self.options.path, state)
     }
 }
 
