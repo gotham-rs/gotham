@@ -1,9 +1,8 @@
 use bytes::{BufMut, BytesMut};
 use error::Result;
-use failure::Error;
 use futures::{stream, Future, Stream};
+use handler::accepted_encoding::accepted_encodings;
 use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-use helpers::http::response::create_response;
 use http;
 use httpdate::parse_http_date;
 use hyper::header::*;
@@ -19,8 +18,6 @@ use std::fs::Metadata;
 use std::io;
 use std::iter::FromIterator;
 use std::path::{Component, Path, PathBuf};
-use std::result;
-use std::str::FromStr;
 use std::time::UNIX_EPOCH;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
@@ -246,53 +243,6 @@ fn supported_encodings(options: &FileOptions) -> HashMap<String, String> {
         encodings.insert("br".to_string(), "br".to_string());
     }
     encodings
-}
-
-#[derive(Debug, Fail)]
-enum ParseEncodingError {
-    #[fail(display = "Invalid encoding")]
-    InvalidEncoding,
-}
-
-struct AcceptedEncoding {
-    encoding: String,
-    quality: f32,
-}
-
-impl FromStr for AcceptedEncoding {
-    type Err = ParseEncodingError;
-
-    fn from_str(s: &str) -> result::Result<Self, Self::Err> {
-        let mut iter = s.split(";");
-        iter.next()
-            .map(str::trim)
-            .and_then(|encoding_str| {
-                let encoding = encoding_str.to_string();
-                let quality = iter
-                    .next()
-                    .and_then(|qval| qval.replace("q=", "").trim().parse::<f32>().ok())
-                    .unwrap_or(0f32);
-                Some(AcceptedEncoding { encoding, quality })
-            })
-            .ok_or(ParseEncodingError::InvalidEncoding)
-    }
-}
-
-/// Returns an Iterator of encodings accepted by the client sorted by quality,
-/// with the preferred encoding first.
-fn accepted_encodings(headers: &HeaderMap) -> Vec<AcceptedEncoding> {
-    let mut accepted_encodings: Vec<AcceptedEncoding> = headers
-        .get_all(ACCEPT_ENCODING)
-        .iter()
-        .filter_map(|val| {
-            val.to_str()
-                .ok()
-                .and_then(|s| s.parse::<AcceptedEncoding>().ok())
-        })
-        .collect();
-
-    accepted_encodings.sort_by(|a, b| a.quality.partial_cmp(&b.quality).unwrap());
-    accepted_encodings
 }
 
 fn error_status(e: &io::Error) -> StatusCode {
@@ -666,52 +616,67 @@ mod tests {
     }
 
     #[test]
-    fn static_gzip_if_accept_and_exists() {
-        let router = build_simple_router(|route| {
-            route.get("/*").to_filesystem(
+    fn static_compressed_if_accept_and_exists() {
+        let compressed_options = vec![
+            (
+                "gzip",
+                ".gz",
                 FileOptions::new("resources/test/static_files")
                     .with_gzip(true)
                     .build(),
-            )
-        });
-        let server = TestServer::new(router).unwrap();
+            ),
+            (
+                "br",
+                ".br",
+                FileOptions::new("resources/test/static_files")
+                    .with_brotli(true)
+                    .build(),
+            ),
+        ];
 
-        let response = server
-            .client()
-            .get("http://localhost/doc.html")
-            .with_header(ACCEPT_ENCODING, HeaderValue::from_str("gzip").unwrap())
-            .perform()
-            .unwrap();
+        for (encoding, extension, options) in compressed_options {
+            let router = build_simple_router(|route| route.get("/*").to_filesystem(options));
+            let server = TestServer::new(router).unwrap();
 
-        assert_eq!(
-            response
-                .headers()
-                .get(CONTENT_ENCODING)
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            "gzip"
-        );
-        assert_eq!(
-            response
-                .headers()
-                .get(CONTENT_TYPE)
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            "text/html"
-        );
+            let response = server
+                .client()
+                .get("http://localhost/doc.html")
+                .with_header(ACCEPT_ENCODING, HeaderValue::from_str(encoding).unwrap())
+                .perform()
+                .unwrap();
 
-        let expected_body = fs::read("resources/test/static_files/doc.html.gz").unwrap();
-        assert_eq!(response.read_body().unwrap(), expected_body);
+            assert_eq!(
+                response
+                    .headers()
+                    .get(CONTENT_ENCODING)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+                encoding
+            );
+            assert_eq!(
+                response
+                    .headers()
+                    .get(CONTENT_TYPE)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+                "text/html"
+            );
+
+            let expected_body =
+                fs::read(format!("resources/test/static_files/doc.html{}", extension)).unwrap();
+            assert_eq!(response.read_body().unwrap(), expected_body);
+        }
     }
 
     #[test]
-    fn static_no_gzip_if_not_accepted() {
+    fn static_no_compression_if_not_accepted() {
         let router = build_simple_router(|route| {
             route.get("/*").to_filesystem(
                 FileOptions::new("resources/test/static_files")
                     .with_gzip(true)
+                    .with_brotli(true)
                     .build(),
             )
         });
@@ -740,11 +705,12 @@ mod tests {
     }
 
     #[test]
-    fn static_no_gzip_if_not_exists() {
+    fn static_no_compression_if_not_exists() {
         let router = build_simple_router(|route| {
             route.get("/*").to_filesystem(
                 FileOptions::new("resources/test/static_files_uncompressed")
                     .with_gzip(true)
+                    .with_brotli(true)
                     .build(),
             )
         });
@@ -754,6 +720,7 @@ mod tests {
             .client()
             .get("http://localhost/doc.html")
             .with_header(ACCEPT_ENCODING, HeaderValue::from_str("gzip").unwrap())
+            .with_header(ACCEPT_ENCODING, HeaderValue::from_str("brotli").unwrap())
             .perform()
             .unwrap();
 
@@ -769,6 +736,51 @@ mod tests {
         );
 
         let expected_body = fs::read("resources/test/static_files_uncompressed/doc.html").unwrap();
+        assert_eq!(response.read_body().unwrap(), expected_body);
+    }
+
+    #[test]
+    fn static_weighted_accept_encoding() {
+        let router = build_simple_router(|route| {
+            route.get("/*").to_filesystem(
+                FileOptions::new("resources/test/static_files")
+                    .with_gzip(true)
+                    .with_brotli(true)
+                    .build(),
+            )
+        });
+        let server = TestServer::new(router).unwrap();
+
+        let response = server
+            .client()
+            .get("http://localhost/doc.html")
+            .with_header(
+                ACCEPT_ENCODING,
+                HeaderValue::from_str("*;q=0.1, br;q=1.0, gzip;q=0.8").unwrap(),
+            )
+            .perform()
+            .unwrap();
+
+        assert_eq!(
+            response
+                .headers()
+                .get(CONTENT_TYPE)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "text/html"
+        );
+
+        assert_eq!(
+            response
+                .headers()
+                .get(CONTENT_ENCODING)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "br"
+        );
+        let expected_body = fs::read("resources/test/static_files/doc.html.br").unwrap();
         assert_eq!(response.read_body().unwrap(), expected_body);
     }
 

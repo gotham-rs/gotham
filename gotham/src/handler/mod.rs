@@ -13,6 +13,7 @@ use state::State;
 mod error;
 use error::*;
 
+mod accepted_encoding;
 /// Defines handlers for serving static files.
 pub mod static_file;
 
