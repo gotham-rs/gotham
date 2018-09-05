@@ -1,29 +1,29 @@
 use bytes::{BufMut, BytesMut};
 use error::Result;
+use failure::Error;
 use futures::{stream, Future, Stream};
 use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
 use helpers::http::response::create_response;
 use http;
 use httpdate::parse_http_date;
-use hyper::header::{
-    HeaderMap, HeaderValue, ACCEPT_ENCODING, CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE, ETAG,
-    IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED,
-};
+use hyper::header::*;
 use hyper::{Body, Chunk, Response, StatusCode};
 use mime::{self, Mime};
 use mime_guess::guess_mime_type_opt;
 use router::response::extender::StaticResponseExtender;
 use state::{FromState, State, StateData};
 use std::cmp;
+use std::collections::HashMap;
 use std::convert::From;
 use std::fs::Metadata;
 use std::io;
 use std::iter::FromIterator;
 use std::path::{Component, Path, PathBuf};
+use std::result;
+use std::str::FromStr;
 use std::time::UNIX_EPOCH;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
-
 /// Represents a handler for any files under the path `root`.
 #[derive(Clone)]
 pub struct FileSystemHandler {
@@ -163,9 +163,10 @@ fn create_file_response(options: FileOptions, state: State) -> Box<HandlerFuture
     let mime_type = mime_for_path(&options.path);
     let headers = HeaderMap::borrow_from(&state).clone();
 
-    let response_future = File::open(options.path.clone())
-        .and_then(|file| file.metadata())
-        .and_then(move |(file, meta)| {
+    let (path, encoding) = check_compressed_options(&options, &headers);
+
+    let response_future = File::open(path).and_then(|file| file.metadata()).and_then(
+        move |(file, meta)| {
             if not_modified(&meta, &headers) {
                 Ok(http::Response::builder()
                     .status(StatusCode::NOT_MODIFIED)
@@ -186,10 +187,14 @@ fn create_file_response(options: FileOptions, state: State) -> Box<HandlerFuture
                 if let Some(etag) = entity_tag(&meta) {
                     response.header(ETAG, etag);
                 }
+                if let Some(content_encoding) = encoding {
+                    response.header(CONTENT_ENCODING, content_encoding);
+                }
 
                 Ok(response.body(body).unwrap())
             }
-        });
+        },
+    );
     Box::new(response_future.then(|result| match result {
         Ok(response) => Ok((state, response)),
         Err(err) => {
@@ -197,6 +202,97 @@ fn create_file_response(options: FileOptions, state: State) -> Box<HandlerFuture
             Err((state, err.into_handler_error().with_status(status)))
         }
     }))
+}
+
+fn check_compressed_options(
+    options: &FileOptions,
+    headers: &HeaderMap,
+) -> (PathBuf, Option<String>) {
+    options
+        .path
+        .file_name()
+        .and_then(|filename| {
+            let supported = supported_encodings(options);
+            accepted_encodings(headers)
+                .iter()
+                .filter_map(|e| {
+                    supported
+                        .get(&e.encoding)
+                        .map(|ext| (e.encoding.clone(), ext))
+                })
+                .filter_map(|(encoding, ext)| {
+                    let path = options.path.with_file_name(format!(
+                        "{}.{}",
+                        filename.to_string_lossy(),
+                        ext
+                    ));
+                    if path.exists() {
+                        Some((path, Some(encoding)))
+                    } else {
+                        None
+                    }
+                })
+                .next()
+        })
+        .unwrap_or((options.path.clone(), None))
+}
+
+fn supported_encodings(options: &FileOptions) -> HashMap<String, String> {
+    let mut encodings = HashMap::new();
+    if options.gzip {
+        encodings.insert("gzip".to_string(), "gz".to_string());
+    }
+    if options.brotli {
+        encodings.insert("br".to_string(), "br".to_string());
+    }
+    encodings
+}
+
+#[derive(Debug, Fail)]
+enum ParseEncodingError {
+    #[fail(display = "Invalid encoding")]
+    InvalidEncoding,
+}
+
+struct AcceptedEncoding {
+    encoding: String,
+    quality: f32,
+}
+
+impl FromStr for AcceptedEncoding {
+    type Err = ParseEncodingError;
+
+    fn from_str(s: &str) -> result::Result<Self, Self::Err> {
+        let mut iter = s.split(";");
+        iter.next()
+            .map(str::trim)
+            .and_then(|encoding_str| {
+                let encoding = encoding_str.to_string();
+                let quality = iter
+                    .next()
+                    .and_then(|qval| qval.replace("q=", "").trim().parse::<f32>().ok())
+                    .unwrap_or(0f32);
+                Some(AcceptedEncoding { encoding, quality })
+            })
+            .ok_or(ParseEncodingError::InvalidEncoding)
+    }
+}
+
+/// Returns an Iterator of encodings accepted by the client sorted by quality,
+/// with the preferred encoding first.
+fn accepted_encodings(headers: &HeaderMap) -> Vec<AcceptedEncoding> {
+    let mut accepted_encodings: Vec<AcceptedEncoding> = headers
+        .get_all(ACCEPT_ENCODING)
+        .iter()
+        .filter_map(|val| {
+            val.to_str()
+                .ok()
+                .and_then(|s| s.parse::<AcceptedEncoding>().ok())
+        })
+        .collect();
+
+    accepted_encodings.sort_by(|a, b| a.quality.partial_cmp(&b.quality).unwrap());
+    accepted_encodings
 }
 
 fn error_status(e: &io::Error) -> StatusCode {
@@ -331,11 +427,11 @@ fn get_block_size(metadata: &Metadata) -> usize {
 mod tests {
     use super::FileOptions;
     use http::header::HeaderValue;
-    use hyper::header::{CACHE_CONTROL, CONTENT_TYPE};
+    use hyper::header::*;
     use hyper::StatusCode;
     use router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use router::Router;
-    use std::str;
+    use std::{fs, str};
     use test::TestServer;
 
     #[test]
@@ -544,6 +640,7 @@ mod tests {
             "no-cache"
         );
     }
+
     #[test]
     fn static_default_cache_control() {
         let router = build_simple_router(|route| {
@@ -566,6 +663,113 @@ mod tests {
                 .unwrap(),
             "public"
         );
+    }
+
+    #[test]
+    fn static_gzip_if_accept_and_exists() {
+        let router = build_simple_router(|route| {
+            route.get("/*").to_filesystem(
+                FileOptions::new("resources/test/static_files")
+                    .with_gzip(true)
+                    .build(),
+            )
+        });
+        let server = TestServer::new(router).unwrap();
+
+        let response = server
+            .client()
+            .get("http://localhost/doc.html")
+            .with_header(ACCEPT_ENCODING, HeaderValue::from_str("gzip").unwrap())
+            .perform()
+            .unwrap();
+
+        assert_eq!(
+            response
+                .headers()
+                .get(CONTENT_ENCODING)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "gzip"
+        );
+        assert_eq!(
+            response
+                .headers()
+                .get(CONTENT_TYPE)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "text/html"
+        );
+
+        let expected_body = fs::read("resources/test/static_files/doc.html.gz").unwrap();
+        assert_eq!(response.read_body().unwrap(), expected_body);
+    }
+
+    #[test]
+    fn static_no_gzip_if_not_accepted() {
+        let router = build_simple_router(|route| {
+            route.get("/*").to_filesystem(
+                FileOptions::new("resources/test/static_files")
+                    .with_gzip(true)
+                    .build(),
+            )
+        });
+        let server = TestServer::new(router).unwrap();
+
+        let response = server
+            .client()
+            .get("http://localhost/doc.html")
+            .with_header(ACCEPT_ENCODING, HeaderValue::from_str("identity").unwrap())
+            .perform()
+            .unwrap();
+
+        assert!(response.headers().get(CONTENT_ENCODING).is_none());
+        assert_eq!(
+            response
+                .headers()
+                .get(CONTENT_TYPE)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "text/html"
+        );
+
+        let expected_body = fs::read("resources/test/static_files/doc.html").unwrap();
+        assert_eq!(response.read_body().unwrap(), expected_body);
+    }
+
+    #[test]
+    fn static_no_gzip_if_not_exists() {
+        let router = build_simple_router(|route| {
+            route.get("/*").to_filesystem(
+                FileOptions::new("resources/test/static_files_uncompressed")
+                    .with_gzip(true)
+                    .build(),
+            )
+        });
+        let server = TestServer::new(router).unwrap();
+
+        let response = server
+            .client()
+            .get("http://localhost/doc.html")
+            .with_header(ACCEPT_ENCODING, HeaderValue::from_str("gzip").unwrap())
+            .perform()
+            .unwrap();
+
+        assert!(response.headers().get(CONTENT_ENCODING).is_none());
+        assert_eq!(
+            response
+                .headers()
+                .get(CONTENT_TYPE)
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            "text/html"
+        );
+
+        let expected_body = fs::read("resources/test/static_files_uncompressed/doc.html").unwrap();
+        assert_eq!(response.read_body().unwrap(), expected_body);
     }
 
     fn test_server() -> TestServer {

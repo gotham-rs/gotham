@@ -18,6 +18,7 @@ extern crate borrow_bag;
 extern crate bytes;
 extern crate chrono;
 extern crate cookie;
+#[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate futures;
