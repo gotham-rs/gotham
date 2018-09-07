@@ -1,8 +1,7 @@
 use std::panic::RefUnwindSafe;
-use std::path::{Path, PathBuf};
 
 use extractor::{PathExtractor, QueryStringExtractor};
-use handler::static_file::{FileHandler, FilePathExtractor, FileSystemHandler};
+use handler::static_file::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
 use handler::{Handler, NewHandler};
 use hyper::Body;
 use pipeline::chain::PipelineHandleChain;
@@ -170,7 +169,7 @@ pub trait DefineSingleRoute {
     where
         NH: NewHandler + 'static;
 
-    /// Directs the route to serve static files from the given root path.
+    /// Directs the route to serve static files from the given root directory.
     /// The route must contain a trailing glob segment, which will be used
     /// to serve any matching names under the given path.
     ///
@@ -195,7 +194,7 @@ pub trait DefineSingleRoute {
     /// #   );
     ///
     /// build_router(chain, pipelines, |route| {
-    ///     route.get("/*").to_filesystem("resources/test/static_files");
+    ///     route.get("/*").to_dir("resources/test/static_files");
     /// })
     /// # }
     /// #
@@ -208,15 +207,15 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::OK);
     /// # }
     /// ```
-    fn to_filesystem<P: AsRef<Path>>(self, root: P)
+    fn to_dir<P>(self, options: P)
     where
         Self: Sized,
         Self: ReplacePathExtractor<FilePathExtractor>,
         Self::Output: DefineSingleRoute,
-        PathBuf: From<P>,
+        FileOptions: From<P>,
     {
         self.with_path_extractor::<FilePathExtractor>()
-            .to_new_handler(FileSystemHandler::new(root));
+            .to_new_handler(DirHandler::new(options));
     }
 
     /// Directs the route to serve a single static file from the given path.
@@ -255,12 +254,12 @@ pub trait DefineSingleRoute {
     /// #   assert_eq!(response.status(), StatusCode::OK);
     /// # }
     /// ```
-    fn to_file<P: AsRef<Path>>(self, path: P)
+    fn to_file<P>(self, options: P)
     where
         Self: Sized,
-        PathBuf: From<P>,
+        FileOptions: From<P>,
     {
-        self.to_new_handler(FileHandler::new(path));
+        self.to_new_handler(FileHandler::new(options));
     }
 
     /// Applies a `PathExtractor` type to the current route, to extract path parameters into
