@@ -2,18 +2,25 @@ use hyper::header::{HeaderMap, ACCEPT_ENCODING};
 use std::result;
 use std::str::FromStr;
 
+/// An error returned from the `FromStr` implementation
+/// for `AcceptedEncoding`
 #[derive(Debug, Fail)]
 pub enum ParseEncodingError {
     #[fail(display = "Invalid encoding")]
     InvalidEncoding,
 }
 
+/// A value for a single accepted encoding,
+/// with an encoding name and quality value.
 #[derive(PartialEq, Debug)]
 pub struct AcceptedEncoding {
     pub encoding: String,
     pub quality: f32,
 }
 
+// Parses a single "accept-encoding" value, with optional quality value
+// e.g. "gzip" or  "gzip;q=0.8"
+// quality defaults to 1 if not supplied
 impl FromStr for AcceptedEncoding {
     type Err = ParseEncodingError;
 
@@ -35,6 +42,15 @@ impl FromStr for AcceptedEncoding {
 
 /// Returns an Iterator of encodings accepted by the client sorted by quality,
 /// with the preferred encoding first.
+/// Multiple encodings can be in single "Accept-Encoding" header value,
+/// e.g.
+/// Accept-Encoding: deflate, gzip;q=1.0, *;q=0.5
+///
+/// or in multiple headers,
+/// e.g.
+/// Accept-Encoding: deflate
+/// Accept-Encoding: gzip;q=1.0
+/// Accept-Encoding: *;q=0.5
 pub fn accepted_encodings(headers: &HeaderMap) -> Vec<AcceptedEncoding> {
     let mut accepted_encodings: Vec<AcceptedEncoding> = headers
         .get_all(ACCEPT_ENCODING)
