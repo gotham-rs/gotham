@@ -33,7 +33,30 @@ pub struct FileHandler {
     options: FileOptions,
 }
 
-#[derive(Clone)]
+/// Options to pass to file or dir handlers.
+/// Allows overriding default behaviour for compression, cache control headers, etc.
+///
+/// `FileOptions` implements `From` for `String` and `PathBuf` - so that a
+/// path can be passed to router builder methods if only default options are required.
+///
+/// For overridding default options, `FileOptions` provides builder methods. The default
+/// values and use of the builder methods are shown in the example below.
+///
+///
+/// ```rust
+/// # extern crate gotham;
+/// # use gotham::handler::static_file::FileOptions;
+///
+/// let default_options = FileOptions::from("my_static_path");
+/// let from_builder = FileOptions::new("my_static_path")
+///     .with_cache_control("public".to_string())
+///     .with_gzip(false)
+///     .with_brotli(false)
+///     .build();
+///
+/// assert_eq!(default_options, from_builder);
+/// ```
+#[derive(Clone, Debug, PartialEq)]
 pub struct FileOptions {
     path: PathBuf,
     cache_control: String,
@@ -42,6 +65,7 @@ pub struct FileOptions {
 }
 
 impl FileOptions {
+    /// Create a new `FileOptions` with default values.
     pub fn new<P: AsRef<Path>>(path: P) -> Self
     where
         PathBuf: From<P>,
@@ -54,40 +78,103 @@ impl FileOptions {
         }
     }
 
+    /// Sets the "cache_control" header in static file responses to the given value.
     pub fn with_cache_control(&mut self, cache_control: String) -> &mut Self {
         self.cache_control = cache_control;
         self
     }
 
+    /// If `true`, given a request for FILE, serves FILE.gz if it exists in the static directory and
+    /// if the accept-encoding header is set to allow gzipped content (defaults to false).
     pub fn with_gzip(&mut self, gzip: bool) -> &mut Self {
         self.gzip = gzip;
         self
     }
 
+    /// If `true`, given a request for FILE, serves FILE.br if it exists in the static directory and
+    /// if the accept-encoding header is set to allow brotli content (defaults to false).
     pub fn with_brotli(&mut self, brotli: bool) -> &mut Self {
         self.brotli = brotli;
         self
     }
 
+    /// Clones `self` to return an owned value for passing to a handler.
     pub fn build(&mut self) -> Self {
         self.clone()
     }
 }
 
+/// Create a `FileOptions` from a `String`.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # use gotham::handler::static_file::FileOptions;
+///
+/// let _options = FileOptions::from("my_static_path".to_string());
+/// ```
 impl From<String> for FileOptions {
     fn from(path: String) -> Self {
         FileOptions::new(path)
     }
 }
 
+/// Create a `FileOptions` from a `&String`.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # use gotham::handler::static_file::FileOptions;
+///
+/// let path = "my_static_path".to_string();
+/// let _options = FileOptions::from(&path);
+/// ```
 impl<'a> From<&'a String> for FileOptions {
     fn from(path: &'a String) -> Self {
         FileOptions::new(path)
     }
 }
 
+/// Create a `FileOptions` from a `&str`.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # use gotham::handler::static_file::FileOptions;
+///
+/// let _options = FileOptions::from("my_static_path");
+/// ```
 impl<'a> From<&'a str> for FileOptions {
     fn from(path: &'a str) -> Self {
+        FileOptions::new(path)
+    }
+}
+
+/// Create a `FileOptions` from a `PathBuf`.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # use std::path::PathBuf;
+/// # use gotham::handler::static_file::FileOptions;
+///
+/// let path = PathBuf::from("my_static_path");
+/// let _options = FileOptions::from(path);
+/// ```
+impl From<PathBuf> for FileOptions {
+    fn from(path: PathBuf) -> Self {
+        FileOptions::new(path)
+    }
+}
+
+/// Create a `FileOptions` from a `Path`.
+///
+/// ```rust
+/// # extern crate gotham;
+/// # use std::path::Path;
+/// # use gotham::handler::static_file::FileOptions;
+///
+/// let path = Path::new("my_static_path");
+/// let _options = FileOptions::from(path);
+/// ```
+impl<'a> From<&'a Path> for FileOptions {
+    fn from(path: &'a Path) -> Self {
         FileOptions::new(path)
     }
 }
@@ -156,6 +243,7 @@ impl Handler for FileHandler {
     }
 }
 
+// Creates the `HandlerFuture` response based on the given `FileOptions`.
 fn create_file_response(options: FileOptions, state: State) -> Box<HandlerFuture> {
     let mime_type = mime_for_path(&options.path);
     let headers = HeaderMap::borrow_from(&state).clone();
@@ -201,6 +289,9 @@ fn create_file_response(options: FileOptions, state: State) -> Box<HandlerFuture
     }))
 }
 
+// Checks for existence of compressed files if `FileOptions` and
+// "Accept-Encoding" headers allow. Returns the final path to read,
+// along with an optional encoding to return as the "Content-Encoding".
 fn check_compressed_options(
     options: &FileOptions,
     headers: &HeaderMap,
@@ -234,6 +325,9 @@ fn check_compressed_options(
         .unwrap_or((options.path.clone(), None))
 }
 
+// Creates a HashMap of encodings allowed by `FileOptions`, making it easier
+// to look up supported encodings. The HashMap contains encoding name as keys,
+// with file extension as values.
 fn supported_encodings(options: &FileOptions) -> HashMap<String, String> {
     let mut encodings = HashMap::new();
     if options.gzip {
@@ -272,6 +366,7 @@ fn normalize_path(path: &Path) -> PathBuf {
         })
 }
 
+// Checks whether a file is modified based on metadata and request headers.
 fn not_modified(metadata: &Metadata, headers: &HeaderMap) -> bool {
     // If-None-Match header takes precedence over If-Modified-Since
     match headers.get(IF_NONE_MATCH) {
@@ -319,6 +414,9 @@ impl StaticResponseExtender for FilePathExtractor {
     fn extend(_state: &mut State, _res: &mut Response<Self::ResBody>) {}
 }
 
+// Creates a Stream from the given file, for streaming as part of the Response.
+// Borrowed from Warp https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
+// Thanks @seanmonstar.
 fn file_stream(
     mut f: File,
     buf_size: usize,

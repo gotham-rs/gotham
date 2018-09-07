@@ -1,5 +1,4 @@
 use std::panic::RefUnwindSafe;
-use std::path::{Path, PathBuf};
 
 use extractor::{PathExtractor, QueryStringExtractor};
 use handler::static_file::{FileHandler, FileOptions, FilePathExtractor, FileSystemHandler};
