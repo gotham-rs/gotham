@@ -21,9 +21,9 @@ use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
-/// Represents a handler for any files under the path `root`.
+/// Represents a handler for any files under a directory.
 #[derive(Clone)]
-pub struct FileSystemHandler {
+pub struct DirHandler {
     options: FileOptions,
 }
 
@@ -191,13 +191,13 @@ impl FileHandler {
     }
 }
 
-impl FileSystemHandler {
-    /// Create a new `FileSystemHandler` with the given root path.
-    pub fn new<P>(path: P) -> FileSystemHandler
+impl DirHandler {
+    /// Create a new `DirHandler` with the given root path.
+    pub fn new<P>(path: P) -> DirHandler
     where
         FileOptions: From<P>,
     {
-        FileSystemHandler {
+        DirHandler {
             options: FileOptions::from(path),
         }
     }
@@ -211,7 +211,7 @@ impl NewHandler for FileHandler {
     }
 }
 
-impl NewHandler for FileSystemHandler {
+impl NewHandler for DirHandler {
     type Instance = Self;
 
     fn new_handler(&self) -> Result<Self::Instance> {
@@ -219,7 +219,7 @@ impl NewHandler for FileSystemHandler {
     }
 }
 
-impl Handler for FileSystemHandler {
+impl Handler for DirHandler {
     fn handle(self, state: State) -> Box<HandlerFuture> {
         let path = {
             let mut base_path = PathBuf::from(self.options.path);
@@ -664,7 +664,7 @@ mod tests {
     #[test]
     fn static_with_cache_control() {
         let router = build_simple_router(|route| {
-            route.get("/*").to_filesystem(
+            route.get("/*").to_dir(
                 FileOptions::new("resources/test/static_files")
                     .with_cache_control("no-cache".to_string())
                     .build(),
@@ -691,9 +691,8 @@ mod tests {
 
     #[test]
     fn static_default_cache_control() {
-        let router = build_simple_router(|route| {
-            route.get("/*").to_filesystem("resources/test/static_files")
-        });
+        let router =
+            build_simple_router(|route| route.get("/*").to_dir("resources/test/static_files"));
         let server = TestServer::new(router).unwrap();
 
         let response = server
@@ -733,7 +732,7 @@ mod tests {
         ];
 
         for (encoding, extension, options) in compressed_options {
-            let router = build_simple_router(|route| route.get("/*").to_filesystem(options));
+            let router = build_simple_router(|route| route.get("/*").to_dir(options));
             let server = TestServer::new(router).unwrap();
 
             let response = server
@@ -771,7 +770,7 @@ mod tests {
     #[test]
     fn static_no_compression_if_not_accepted() {
         let router = build_simple_router(|route| {
-            route.get("/*").to_filesystem(
+            route.get("/*").to_dir(
                 FileOptions::new("resources/test/static_files")
                     .with_gzip(true)
                     .with_brotli(true)
@@ -805,7 +804,7 @@ mod tests {
     #[test]
     fn static_no_compression_if_not_exists() {
         let router = build_simple_router(|route| {
-            route.get("/*").to_filesystem(
+            route.get("/*").to_dir(
                 FileOptions::new("resources/test/static_files_uncompressed")
                     .with_gzip(true)
                     .with_brotli(true)
@@ -840,7 +839,7 @@ mod tests {
     #[test]
     fn static_weighted_accept_encoding() {
         let router = build_simple_router(|route| {
-            route.get("/*").to_filesystem(
+            route.get("/*").to_dir(
                 FileOptions::new("resources/test/static_files")
                     .with_gzip(true)
                     .with_brotli(true)
@@ -887,6 +886,6 @@ mod tests {
     }
 
     fn static_router(mount: &str, path: &str) -> Router {
-        build_simple_router(|route| route.get(mount).to_filesystem(path))
+        build_simple_router(|route| route.get(mount).to_dir(path))
     }
 }

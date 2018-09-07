@@ -3,6 +3,7 @@
 extern crate env_logger;
 extern crate gotham;
 
+use gotham::handler::static_file::FileOptions;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 
 pub fn main() {
@@ -17,9 +18,18 @@ pub fn main() {
     );
 
     let router = build_simple_router(|route| {
-        route.get("/*").to_filesystem(&path);
-        route.get("assets/*").to_filesystem("assets");
-        route.get("/").to_file("assets/doc.html")
+        route.get("/").to_file("assets/doc.html");
+        // You can add a `to_dir` or `to_file` route simply using a
+        // `String` or `str` as above, or a `Path` or `PathBuf` to accept
+        // default options.
+        // Or you can customize options for comressed file handling, cache
+        // control headers etc by building a `FileOptions` instance.
+        route.get("assets/*").to_dir(
+            FileOptions::new(&path)
+                .with_cache_control("no-cache".to_string())
+                .with_gzip(true)
+                .build(),
+        );
     });
 
     gotham::start(addr, router)
