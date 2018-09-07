@@ -1,13 +1,11 @@
 //! An example of serving static files with Gotham.
 
-extern crate env_logger;
 extern crate gotham;
 
 use gotham::handler::static_file::FileOptions;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 
 pub fn main() {
-    env_logger::init();
     let path = std::env::args()
         .nth(1)
         .unwrap_or_else(|| panic!("Need to pass an arg which is the path to serve"));

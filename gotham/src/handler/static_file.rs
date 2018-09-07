@@ -21,13 +21,14 @@ use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
+
 /// Represents a handler for any files under a directory.
 #[derive(Clone)]
 pub struct DirHandler {
     options: FileOptions,
 }
 
-/// Represents a handler for a single file at `path`.
+/// Represents a handler for a single file.
 #[derive(Clone)]
 pub struct FileHandler {
     options: FileOptions,
@@ -36,7 +37,7 @@ pub struct FileHandler {
 /// Options to pass to file or dir handlers.
 /// Allows overriding default behaviour for compression, cache control headers, etc.
 ///
-/// `FileOptions` implements `From` for `String` and `PathBuf` - so that a
+/// `FileOptions` implements `From` for `String` and `PathBuf` (and related reference types) - so that a
 /// path can be passed to router builder methods if only default options are required.
 ///
 /// For overridding default options, `FileOptions` provides builder methods. The default
