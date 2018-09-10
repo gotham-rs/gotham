@@ -23,7 +23,7 @@ tokio = "0.1"
 mio = "0.6"
 borrow-bag = "1.0"
 url = "1.7"
-uuid = { version = "0.6", features = ["v4"] }
+uuid = { version = "0.7", features = ["v4"] }
 chrono = "0.4"
 base64 = "0.9"
 rand = "0.5"
