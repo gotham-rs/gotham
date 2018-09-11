@@ -52,8 +52,8 @@ members = [
     "examples/handlers/simple_async_handlers",
     # "examples/handlers/async_handlers",
 
-    # static_files
-    "examples/static_files",
+    # static_assets
+    "examples/static_assets",
 
     # example_contribution_template
     "examples/example_contribution_template/name"

@@ -1,12 +1,16 @@
+//! Defines `AcceptedEncoding` for parsing 'Accept-Encoding' header
+//! values in requests, used to determine whether compressed versions
+//! of static assets are supported by the client.
+
 use hyper::header::{HeaderMap, ACCEPT_ENCODING};
+
 use std::result;
 use std::str::FromStr;
 
 /// An error returned from the `FromStr` implementation
 /// for `AcceptedEncoding`
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum ParseEncodingError {
-    #[fail(display = "Invalid encoding")]
     InvalidEncoding,
 }
 

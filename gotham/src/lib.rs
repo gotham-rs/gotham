@@ -18,7 +18,6 @@ extern crate borrow_bag;
 extern crate bytes;
 extern crate chrono;
 extern crate cookie;
-#[macro_use]
 extern crate failure;
 #[macro_use]
 extern crate futures;
@@ -39,7 +38,6 @@ extern crate httpdate;
 extern crate tokio;
 extern crate url;
 extern crate uuid;
-
 #[macro_use]
 extern crate serde_derive;
 

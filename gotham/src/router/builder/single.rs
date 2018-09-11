@@ -1,7 +1,7 @@
 use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
-use handler::static_file::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
+use handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
 use handler::{Handler, NewHandler};
 use hyper::Body;
 use pipeline::chain::PipelineHandleChain;
@@ -194,7 +194,7 @@ pub trait DefineSingleRoute {
     /// #   );
     ///
     /// build_router(chain, pipelines, |route| {
-    ///     route.get("/*").to_dir("resources/test/static_files");
+    ///     route.get("/*").to_dir("resources/test/assets");
     /// })
     /// # }
     /// #
@@ -241,7 +241,7 @@ pub trait DefineSingleRoute {
     /// #   );
     ///
     /// build_router(chain, pipelines, |route| {
-    ///     route.get("/").to_file("resources/test/static_files/doc.html");
+    ///     route.get("/").to_file("resources/test/assets/doc.html");
     /// })
     /// # }
     /// #

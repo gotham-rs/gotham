@@ -1,5 +1,5 @@
 [package]
-name = "gotham_examples_static_files_introduction"
+name = "gotham_examples_static_assets_introduction"
 description = "An example of serving static files with Gotham"
 version = "0.0.0"
 publish = false
