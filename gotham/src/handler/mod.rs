@@ -13,6 +13,9 @@ use state::State;
 mod error;
 use error::*;
 
+/// Defines handlers for serving static assets.
+pub mod assets;
+
 pub use self::error::{HandlerError, IntoHandlerError};
 
 /// A type alias for the trait objects returned by `HandlerService`.

@@ -15,9 +15,11 @@
 extern crate base64;
 extern crate bincode;
 extern crate borrow_bag;
+extern crate bytes;
 extern crate chrono;
 extern crate cookie;
 extern crate failure;
+#[macro_use]
 extern crate futures;
 extern crate http;
 extern crate hyper;
@@ -25,17 +27,17 @@ extern crate linked_hash_map;
 #[macro_use]
 extern crate log;
 extern crate mime;
+extern crate mime_guess;
 extern crate mio;
 extern crate num_cpus;
 extern crate rand;
 extern crate regex;
 #[macro_use]
 extern crate serde;
+extern crate httpdate;
 extern crate tokio;
 extern crate url;
 extern crate uuid;
-
-#[cfg(test)]
 #[macro_use]
 extern crate serde_derive;
 

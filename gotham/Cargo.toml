@@ -18,8 +18,12 @@ serde = "1.0"
 serde_derive = "1.0"
 bincode = "1.0"
 mime = "0.3"
+# Using alpha version of mime_guess until mime crate stabilizes (releases 1.0).
+# see https://github.com/hyperium/mime/issues/52
+mime_guess = "2.0.0-alpha.6"
 futures = "0.1"
 tokio = "0.1"
+bytes = "0.4"
 mio = "0.6"
 borrow-bag = "1.0"
 url = "1.7"
@@ -32,8 +36,8 @@ num_cpus = "1.8"
 regex = "1.0"
 cookie = "0.11"
 http = "0.1"
+httpdate = "0.3"
 failure = "0.1"
-failure_derive = "0.1"
 
 [dev-dependencies]
 gotham_derive = { path = "../gotham_derive" }

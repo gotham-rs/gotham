@@ -1,6 +1,7 @@
 use std::panic::RefUnwindSafe;
 
 use extractor::{PathExtractor, QueryStringExtractor};
+use handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
 use handler::{Handler, NewHandler};
 use hyper::Body;
 use pipeline::chain::PipelineHandleChain;
@@ -167,6 +168,99 @@ pub trait DefineSingleRoute {
     fn to_new_handler<NH>(self, new_handler: NH)
     where
         NH: NewHandler + 'static;
+
+    /// Directs the route to serve static files from the given root directory.
+    /// The route must contain a trailing glob segment, which will be used
+    /// to serve any matching names under the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::StatusCode;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::single::*;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// #
+    /// # fn router() -> Router {
+    /// #   let (chain, pipelines) = single_pipeline(
+    /// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+    /// #   );
+    ///
+    /// build_router(chain, pipelines, |route| {
+    ///     route.get("/*").to_dir("resources/test/assets");
+    /// })
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/doc.html")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::OK);
+    /// # }
+    /// ```
+    fn to_dir<P>(self, options: P)
+    where
+        Self: Sized,
+        Self: ReplacePathExtractor<FilePathExtractor>,
+        Self::Output: DefineSingleRoute,
+        FileOptions: From<P>,
+    {
+        self.with_path_extractor::<FilePathExtractor>()
+            .to_new_handler(DirHandler::new(options));
+    }
+
+    /// Directs the route to serve a single static file from the given path.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::StatusCode;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::single::*;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// #
+    /// # fn router() -> Router {
+    /// #   let (chain, pipelines) = single_pipeline(
+    /// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+    /// #   );
+    ///
+    /// build_router(chain, pipelines, |route| {
+    ///     route.get("/").to_file("resources/test/assets/doc.html");
+    /// })
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::OK);
+    /// # }
+    /// ```
+    fn to_file<P>(self, options: P)
+    where
+        Self: Sized,
+        FileOptions: From<P>,
+    {
+        self.to_new_handler(FileHandler::new(options));
+    }
 
     /// Applies a `PathExtractor` type to the current route, to extract path parameters into
     /// `State` with the given type.
