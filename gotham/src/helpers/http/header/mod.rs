@@ -4,5 +4,5 @@
 /// Marks the identifier of a request to a Gotham server.
 pub const X_REQUEST_ID: &'static str = "x-request-id";
 
-/// Marks the execution time of a Gotham request in microseconds.
-pub const X_RUNTIME_MICROSECONDS: &'static str = "x-runtime-microseconds";
+/// Marks the execution time of a Gotham request.
+pub const X_RUNTIME_DURATION: &'static str = "x-runtime-duration";

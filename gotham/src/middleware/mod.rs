@@ -8,9 +8,11 @@ use handler::HandlerFuture;
 use state::State;
 
 pub mod chain;
+pub mod logger;
 pub mod security;
 pub mod session;
 pub mod state;
+pub mod timer;
 
 /// `Middleware` has the opportunity to provide additional behaviour to the `Request` / `Response`
 /// interaction. For example:
