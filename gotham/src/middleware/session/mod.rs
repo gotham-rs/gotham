@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Middleware, NewMiddleware};
 use handler::{HandlerError, HandlerFuture, IntoHandlerError};
-use helpers::http::response::extend_response;
+use helpers::http::response::create_empty_response;
 use state::{self, FromState, State, StateData};
 
 mod backend;
@@ -828,7 +828,7 @@ where
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
                     .and_then(|state| chain(state))
-                    .and_then(persist_session::<Body, T>);
+                    .and_then(persist_session::<T>);
 
                 Box::new(f)
             }
@@ -841,7 +841,7 @@ where
                 let f = self
                     .new_session(state)
                     .and_then(|state| chain(state))
-                    .and_then(persist_session::<Body, T>);
+                    .and_then(persist_session::<T>);
 
                 Box::new(f)
             }
@@ -868,12 +868,11 @@ where
     }
 }
 
-fn persist_session<B, T>(
-    (mut state, mut response): (State, Response<B>),
-) -> FutureResult<(State, Response<B>), (State, HandlerError)>
+fn persist_session<T>(
+    (mut state, mut response): (State, Response<Body>),
+) -> FutureResult<(State, Response<Body>), (State, HandlerError)>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
-    B: Default,
 {
     match state.try_take::<SessionDropData>() {
         Some(ref session_drop_data) => {
@@ -935,14 +934,13 @@ fn write_cookie<B>(cookie: String, response: &mut Response<B>) {
         .append(SET_COOKIE, cookie.parse().unwrap());
 }
 
-fn write_session<B, T>(
+fn write_session<T>(
     state: State,
-    response: Response<B>,
+    response: Response<Body>,
     session_data: SessionData<T>,
-) -> future::FutureResult<(State, Response<B>), (State, HandlerError)>
+) -> future::FutureResult<(State, Response<Body>), (State, HandlerError)>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
-    B: Default,
 {
     let bytes = match bincode::serialize(&session_data.value) {
         Ok(bytes) => bytes,
@@ -953,15 +951,9 @@ where
                 e
             );
 
-            let mut builder = Response::builder();
-            extend_response(
-                &state,
-                StatusCode::INTERNAL_SERVER_ERROR,
-                &mut builder,
-                None,
-            );
+            let response = create_empty_response(&state, StatusCode::INTERNAL_SERVER_ERROR);
 
-            return future::ok((state, builder.body(B::default()).unwrap()));
+            return future::ok((state, response));
         }
     };
 
@@ -983,15 +975,9 @@ where
             future::ok((state, response))
         }
         Err(_) => {
-            let mut builder = Response::builder();
-            extend_response(
-                &state,
-                StatusCode::INTERNAL_SERVER_ERROR,
-                &mut builder,
-                None,
-            );
+            let response = create_empty_response(&state, StatusCode::INTERNAL_SERVER_ERROR);
 
-            future::ok((state, builder.body(B::default()).unwrap()))
+            future::ok((state, response))
         }
     }
 }
