@@ -57,7 +57,7 @@ use std::sync::Arc;
 
 use futures::{Future, Stream};
 use hyper::server::conn::Http;
-use tokio::executor::{self, thread_pool};
+use tokio::executor;
 use tokio::net::TcpListener;
 use tokio::runtime::{self, Runtime, TaskExecutor};
 
@@ -137,14 +137,9 @@ where
 }
 
 fn new_runtime(threads: usize) -> Runtime {
-    let mut pool_builder = thread_pool::Builder::new();
-
-    pool_builder
-        .name_prefix("gotham-worker-")
-        .pool_size(threads);
-
     runtime::Builder::new()
-        .threadpool_builder(pool_builder)
+        .core_threads(threads)
+        .name_prefix("gotham-worker-")
         .build()
         .unwrap()
 }
