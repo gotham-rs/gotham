@@ -39,8 +39,7 @@ impl FromStr for AcceptedEncoding {
                     .and_then(|qval| qval.replace("q=", "").trim().parse::<f32>().ok())
                     .unwrap_or(1f32);
                 Some(AcceptedEncoding { encoding, quality })
-            })
-            .ok_or(ParseEncodingError::InvalidEncoding)
+            }).ok_or(ParseEncodingError::InvalidEncoding)
     }
 }
 

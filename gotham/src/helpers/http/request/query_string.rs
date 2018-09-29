@@ -51,8 +51,7 @@ mod tests {
                 values.sort();
 
                 (k.as_str(), values)
-            })
-            .collect();
+            }).collect();
 
         pairs.sort_by(|&(ref a, ref _a_val), &(ref b, ref _b_val)| a.cmp(b));
         pairs
