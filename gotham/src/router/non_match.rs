@@ -306,8 +306,7 @@ mod tests {
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
             .intersection(
                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
-            )
-            .deconstruct();
+            ).deconstruct();
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(&allow_list[..], &[Method::GET]);
 
@@ -319,8 +318,7 @@ mod tests {
                     Method::POST,
                     Method::OPTIONS,
                 ]),
-            )
-            .deconstruct();
+            ).deconstruct();
         assert_eq!(status, StatusCode::NOT_ACCEPTABLE);
         assert_eq!(&allow_list[..], &[Method::GET, Method::POST]);
     }
@@ -346,8 +344,7 @@ mod tests {
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
             .union(
                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
-            )
-            .deconstruct();
+            ).deconstruct();
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(&allow_list[..], &all);
 
@@ -359,8 +356,7 @@ mod tests {
                     Method::POST,
                     Method::OPTIONS,
                 ]),
-            )
-            .deconstruct();
+            ).deconstruct();
         assert_eq!(status, StatusCode::NOT_ACCEPTABLE);
         assert_eq!(
             &allow_list[..],
@@ -383,8 +379,7 @@ mod tests {
                 Method::TRACE,
                 Method::from_bytes(b"PROPFIND").unwrap(),
                 Method::from_bytes(b"PROPSET").unwrap(),
-            ])
-            .deconstruct();
+            ]).deconstruct();
 
         assert_eq!(
             &allow_list[..],

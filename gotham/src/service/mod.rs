@@ -18,7 +18,6 @@ use helpers::http::request::path::RequestPathSegments;
 use state::client_addr::put_client_addr;
 use state::{set_request_id, State};
 
-mod timing;
 mod trap;
 
 /// Wraps a `NewHandler` which will be used to serve requests. Used in `gotham::os::*` to bind

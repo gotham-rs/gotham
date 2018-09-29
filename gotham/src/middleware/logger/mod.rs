@@ -1,15 +1,19 @@
-//! Middleware for the Gotham framework to log on requests made to the server.
+//! Middlewares for the Gotham framework to log on requests made to the server.
 //!
-//! This implementation is quite bare at the moment and will log out using the
+//! This module contains several logging implementations, with varying degrees
+//! of complexity. The default `RequestLogger` will log out using the standard
 //! [Common Log Format](https://en.wikipedia.org/wiki/Common_Log_Format) (CLF).
-use chrono::prelude::*;
+//!
+//! There is also a `SimpleLogger` which emits only basic request logs.
 use futures::{future, Future};
-use hyper::{header::ContentLength, HttpVersion, Method, Uri};
+use hyper::{header::CONTENT_LENGTH, Method, Uri, Version};
 use log::Level;
 use std::io;
 
 use handler::HandlerFuture;
+use helpers::timing::Timer;
 use middleware::{Middleware, NewMiddleware};
+use state::request_id::request_id;
 use state::{client_addr, FromState, State};
 
 /// A struct that can act as a logging middleware for Gotham.
@@ -17,28 +21,14 @@ use state::{client_addr, FromState, State};
 /// We implement `NewMiddleware` here for Gotham to allow us to work with the request
 /// lifecycle correctly. This trait requires `Clone`, so that is also included.
 #[derive(Copy, Clone)]
-pub struct LoggingMiddleware {
-    duration: bool,
+pub struct RequestLogger {
     level: Level,
 }
 
-/// Main implementation for `LoggingMiddleware` to enable various configuration.
-impl LoggingMiddleware {
-    /// Creates a new `LoggingMiddleware` using the provided log level.
-    pub fn new(level: Level) -> LoggingMiddleware {
-        LoggingMiddleware {
-            level,
-            duration: false,
-        }
-    }
-
-    /// Creates a new `LoggingMiddleware` using the provided log level, with duration
-    /// attached to the end of log messages.
-    pub fn with_duration(level: Level) -> LoggingMiddleware {
-        LoggingMiddleware {
-            level,
-            duration: true,
-        }
+impl RequestLogger {
+    /// Constructs a new `RequestLogger` instance.
+    pub fn new(level: Level) -> Self {
+        RequestLogger { level }
     }
 }
 
@@ -46,7 +36,7 @@ impl LoggingMiddleware {
 ///
 /// This will simply dereference the internal state, rather than deriving `NewMiddleware`
 /// which will clone the structure - should be cheaper for repeated calls.
-impl NewMiddleware for LoggingMiddleware {
+impl NewMiddleware for RequestLogger {
     type Instance = Self;
 
     /// Returns a new middleware to be used to serve a request.
@@ -57,7 +47,7 @@ impl NewMiddleware for LoggingMiddleware {
 
 /// Implementing `gotham::middleware::Middleware` allows us to hook into the request chain
 /// in order to correctly log out after a request has executed.
-impl Middleware for LoggingMiddleware {
+impl Middleware for RequestLogger {
     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
     where
         Chain: FnOnce(State) -> Box<HandlerFuture>,
@@ -68,53 +58,34 @@ impl Middleware for LoggingMiddleware {
         }
 
         // extract the current time
-        let start_time = Utc::now();
+        let timer = Timer::new();
 
         // hook onto the end of the request to log the access
         let f = chain(state).and_then(move |(state, response)| {
             // format the start time to the CLF formats
-            let datetime = start_time.format("%d/%b/%Y:%H:%M:%S %z");
+            let datetime = timer.start_time().format("%d/%b/%Y:%H:%M:%S %z");
 
             // grab the ip address from the state
             let ip = client_addr(&state).unwrap().ip();
-
-            // calculate duration
-            let duration = {
-                // disabled, so skip
-                if !self.duration {
-                    "".to_owned()
-                } else {
-                    // calculate microsecond offset from start
-                    let micros_offset = Utc::now()
-                        .signed_duration_since(start_time)
-                        .num_microseconds()
-                        .unwrap();
-
-                    // format into a more readable format
-                    if micros_offset < 1000 {
-                        format!(" - {}µs", micros_offset)
-                    } else if micros_offset < 1000000 {
-                        format!(" - {:.2}ms", (micros_offset as f32) / 1000.0)
-                    } else {
-                        format!(" - {:.2}s", (micros_offset as f32) / 1000000.0)
-                    }
-                }
-            };
 
             {
                 // borrows from the state
                 let path = Uri::borrow_from(&state);
                 let method = Method::borrow_from(&state);
-                let version = HttpVersion::borrow_from(&state);
+                let version = Version::borrow_from(&state);
 
                 // take references based on the response
                 let status = response.status().as_u16();
-                let length = response.headers().get::<ContentLength>().unwrap();
+                let length = response
+                    .headers()
+                    .get(CONTENT_LENGTH)
+                    .map(|len| len.to_str().unwrap())
+                    .unwrap_or("0");
 
                 // log out
                 log!(
                     self.level,
-                    "{} - - [{}] \"{} {} {}\" {} {} {}",
+                    "{} - - [{}] \"{} {} {:?}\" {} {} - {}",
                     ip,
                     datetime,
                     method,
@@ -122,7 +93,7 @@ impl Middleware for LoggingMiddleware {
                     version,
                     status,
                     length,
-                    duration
+                    timer.elapsed()
                 );
             }
 
@@ -131,6 +102,68 @@ impl Middleware for LoggingMiddleware {
         });
 
         // box it up
+        Box::new(f)
+    }
+}
+
+/// A struct that can act as a simple logging middleware for Gotham.
+///
+/// We implement `NewMiddleware` here for Gotham to allow us to work with the request
+/// lifecycle correctly. This trait requires `Clone`, so that is also included.
+#[derive(Copy, Clone)]
+pub struct SimpleLogger {
+    level: Level,
+}
+
+impl SimpleLogger {
+    /// Constructs a new `SimpleLogger` instance.
+    pub fn new(level: Level) -> Self {
+        SimpleLogger { level }
+    }
+}
+
+/// Implementation of `NewMiddleware` is required for Gotham middleware.
+///
+/// This will simply dereference the internal state, rather than deriving `NewMiddleware`
+/// which will clone the structure - should be cheaper for repeated calls.
+impl NewMiddleware for SimpleLogger {
+    type Instance = Self;
+
+    /// Returns a new middleware to be used to serve a request.
+    fn new_middleware(&self) -> io::Result<Self::Instance> {
+        Ok(*self)
+    }
+}
+
+/// Implementing `gotham::middleware::Middleware` allows us to hook into the request chain
+/// in order to correctly log out after a request has executed.
+impl Middleware for SimpleLogger {
+    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    where
+        Chain: FnOnce(State) -> Box<HandlerFuture>,
+    {
+        // skip everything if logging is disabled
+        if !log_enabled!(self.level) {
+            return chain(state);
+        }
+
+        // extract the current time
+        let timer = Timer::new();
+
+        // execute the request and chain the logging call
+        let f = chain(state).and_then(move |(state, response)| {
+            log!(
+                self.level,
+                "[RESPONSE][{}][{:?}][{}][{}]",
+                request_id(&state),
+                response.version(),
+                response.status(),
+                timer.elapsed()
+            );
+
+            future::ok((state, response))
+        });
+
         Box::new(f)
     }
 }

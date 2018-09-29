@@ -90,7 +90,7 @@ impl Middleware for ExampleMiddleware {
                         "Supplied: {}, Supported: {}",
                         data.user_agent, data.supported
                     ).parse()
-                        .unwrap(),
+                    .unwrap(),
                 );
             };
             future::ok((state, response))

@@ -121,7 +121,8 @@ impl Handler for Router {
 impl Router {
     /// Manually assembles a `Router` instance from a provided `Tree`.
     #[deprecated(
-        since = "0.2.0", note = "use the new `gotham::router::builder` API to construct a Router"
+        since = "0.2.0",
+        note = "use the new `gotham::router::builder` API to construct a Router"
     )]
     pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
         Router::internal_new(tree, response_finalizer)
@@ -184,8 +185,7 @@ impl Router {
                 );
                 let response = err.into_response(&state);
                 future::ok((state, response))
-            })
-            .and_then(move |(state, res)| {
+            }).and_then(move |(state, res)| {
                 trace!("[{}] handler complete", request_id(&state));
                 response_finalizer.finalize(state, res)
             });

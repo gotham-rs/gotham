@@ -12,7 +12,6 @@ use futures::Async;
 use hyper::{Body, Response, StatusCode};
 
 use handler::{Handler, HandlerError, IntoResponse, NewHandler};
-use service::timing::Timer;
 use state::{request_id, State};
 
 type CompatError = failure::Compat<failure::Error>;
@@ -30,8 +29,6 @@ pub(super) fn call_handler<'a, T>(
 where
     T: NewHandler + 'a,
 {
-    let timer = Timer::new();
-
     let res = catch_unwind(move || {
         // Hyper doesn't allow us to present an affine-typed `Handler` interface directly. We have
         // to emulate the promise given by hyper's documentation, by creating a `Handler` value and
@@ -43,8 +40,8 @@ where
                 let AssertUnwindSafe(state) = state;
 
                 handler.handle(state).then(move |result| match result {
-                    Ok((state, res)) => finalize_success_response(timer, state, res),
-                    Err((state, err)) => finalize_error_response(timer, state, err),
+                    Ok((_state, res)) => future::ok(res),
+                    Err((state, err)) => finalize_error_response(state, err),
                 })
             })
     });
@@ -57,34 +54,13 @@ where
         );
     }
 
-    Box::new(finalize_panic_response(timer))
-}
-
-fn finalize_success_response(
-    timer: Timer,
-    state: State,
-    response: Response<Body>,
-) -> FutureResult<Response<Body>, CompatError> {
-    let timing = timer.elapsed(&state);
-
-    info!(
-        "[RESPONSE][{}][{:?}][{}][{}]",
-        request_id(&state),
-        response.version(),
-        response.status(),
-        timing
-    );
-
-    future::ok(timing.add_to_response(response))
+    Box::new(finalize_panic_response())
 }
 
 fn finalize_error_response(
-    timer: Timer,
     state: State,
     err: HandlerError,
 ) -> FutureResult<Response<Body>, CompatError> {
-    let timing = timer.elapsed(&state);
-
     {
         // HandlerError::cause() is far more interesting for logging, but the
         // API doesn't guarantee its presence (even though it always is).
@@ -94,23 +70,16 @@ fn finalize_error_response(
             .unwrap_or(err.description());
 
         error!(
-            "[ERROR][{}][Error: {}][{}]",
+            "[ERROR][{}][Error: {}]",
             request_id(&state),
-            err_description,
-            timing
+            err_description
         );
     }
-
     future::ok(err.into_response(&state))
 }
 
-fn finalize_panic_response(timer: Timer) -> FutureResult<Response<Body>, CompatError> {
-    let timing = timer.elapsed_no_logging();
-
-    error!(
-        "[PANIC][A panic occurred while invoking the handler][{}]",
-        timing
-    );
+fn finalize_panic_response() -> FutureResult<Response<Body>, CompatError> {
+    error!("[PANIC][A panic occurred while invoking the handler]");
 
     future::ok(
         Response::builder()
@@ -131,8 +100,7 @@ fn finalize_catch_unwind_response(
             );
 
             Err(failure::Error::from(e).compat())
-        })
-        .unwrap_or_else(|_| {
+        }).unwrap_or_else(|_| {
             error!("[PANIC][A panic occurred while polling the future]");
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
