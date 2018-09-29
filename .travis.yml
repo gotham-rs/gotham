@@ -23,12 +23,12 @@ matrix:
         - echo "Checking Gotham codebase with rustfmt release `cargo fmt --version`."
         - cargo fmt --all -- --check
     # Run Clippy in its own shard.
-    - rust: nightly-2018-06-29
+    - rust: stable
       env:
         - SHARD=clippy
         - PATH=$HOME/.cargo/bin/:$PATH
       before_script:
-        - cargo install clippy --version 0.0.211 --force
+        - rustup component add --toolchain stable clippy-preview
       script:
         - echo "Checking Gotham codebase with Clippy release `cargo clippy --version`."
         - cargo clippy --all --profile test
