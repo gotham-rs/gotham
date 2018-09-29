@@ -653,7 +653,7 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Body, Method, Request, Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -675,11 +675,10 @@ where
     /// #
     /// # fn main() {
     /// #   let test_server = TestServer::new(router()).unwrap();
-    /// #   let request = Request::builder()
-    /// #      .method(Method::OPTIONS)
-    /// #      .uri("https://example.com/resource")
-    /// #      .body(Body::empty()).unwrap();
-    /// #   let response = test_server.client().perform(request).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .options("https://example.com/resource")
+    /// #       .perform()
+    /// #       .unwrap();
     /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
