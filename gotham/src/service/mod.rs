@@ -27,6 +27,7 @@ pub(crate) struct GothamService<T>
 where
     T: NewHandler + 'static,
 {
+    client_addr: Option<SocketAddr>,
     handler: Arc<T>,
 }
 
@@ -36,29 +37,16 @@ where
 {
     pub(crate) fn new(handler: T) -> GothamService<T> {
         GothamService {
-            handler: Arc::new(handler),
+            client_addr: None,
+            handler: Arc::new(handler)
         }
     }
-
-    pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
-        ConnectedGothamService {
-            client_addr,
-            handler: self.handler.clone(),
-        }
+    pub(crate) fn connect(&self, client_addr: SocketAddr) -> GothamService<T> {
+        GothamService{client_addr : Some(client_addr), handler: self.handler.clone()}
     }
 }
 
-/// A `GothamService` which has been connected to a client. The major difference is that a
-/// `client_addr` has been assigned (as this isn't available from Hyper).
-pub(crate) struct ConnectedGothamService<T>
-where
-    T: NewHandler + 'static,
-{
-    handler: Arc<T>,
-    client_addr: SocketAddr,
-}
-
-impl<T> Service for ConnectedGothamService<T>
+impl<T> Service for GothamService<T>
 where
     T: NewHandler,
 {
@@ -70,7 +58,7 @@ where
     fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
         let mut state = State::new();
 
-        put_client_addr(&mut state, self.client_addr);
+        put_client_addr(&mut state, self.client_addr.expect("service not connected!"));
 
         let (
             request::Parts {
