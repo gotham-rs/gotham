@@ -518,7 +518,6 @@ mod tests {
         let path = "resources/test/assets/doc.html";
         let test_server =
             TestServer::new(build_simple_router(|route| route.get("/").to_file(path))).unwrap();
-        let test_client = test_server.client();
 
         let etag = File::open(path)
             .and_then(|file| file.metadata())
@@ -526,30 +525,26 @@ mod tests {
             .unwrap();
 
         // matching etag
-        let mut request = test_client.get("http://localhost/");
-
-        {
-            request.headers_mut().insert(
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .with_header(
                 IF_NONE_MATCH,
                 HeaderValue::from_bytes(etag.as_bytes()).unwrap(),
-            );
-        }
-
-        let response = test_client.perform(request).unwrap();
+            ).perform()
+            .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
 
         // not matching etag
-        let mut request = test_client.get("http://localhost/");
-
-        {
-            request.headers_mut().insert(
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .with_header(
                 IF_NONE_MATCH,
                 HeaderValue::from_bytes("bogus".as_bytes()).unwrap(),
-            );
-        }
-
-        let response = test_client.perform(request).unwrap();
+            ).perform()
+            .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(
@@ -568,7 +563,6 @@ mod tests {
         let path = "resources/test/assets/doc.html";
         let test_server =
             TestServer::new(build_simple_router(|route| route.get("/").to_file(path))).unwrap();
-        let test_client = test_server.client();
 
         let modified = File::open(path)
             .and_then(|file| file.metadata())
@@ -576,32 +570,28 @@ mod tests {
             .unwrap();
 
         // if-modified-since a newer date
-        let mut request = test_client.get("http://localhost/");
-
-        {
-            request.headers_mut().insert(
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .with_header(
                 IF_MODIFIED_SINCE,
                 HeaderValue::from_bytes(fmt_http_date(modified + Duration::new(5, 0)).as_bytes())
                     .unwrap(),
-            );
-        }
-
-        let response = test_client.perform(request).unwrap();
+            ).perform()
+            .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
 
         // if-modified-since a older date
-        let mut request = test_client.get("http://localhost/");
-
-        {
-            request.headers_mut().insert(
+        let response = test_server
+            .client()
+            .get("http://localhost/")
+            .with_header(
                 IF_MODIFIED_SINCE,
                 HeaderValue::from_bytes(fmt_http_date(modified - Duration::new(5, 0)).as_bytes())
                     .unwrap(),
-            );
-        }
-
-        let response = test_client.perform(request).unwrap();
+            ).perform()
+            .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
     }
@@ -678,17 +668,13 @@ mod tests {
         for (encoding, extension, options) in compressed_options {
             let router = build_simple_router(|route| route.get("/*").to_dir(options));
             let server = TestServer::new(router).unwrap();
-            let client = server.client();
 
-            let mut request = client.get("http://localhost/doc.html");
-
-            {
-                request
-                    .headers_mut()
-                    .insert(ACCEPT_ENCODING, HeaderValue::from_str(encoding).unwrap());
-            }
-
-            let response = client.perform(request).unwrap();
+            let response = server
+                .client()
+                .get("http://localhost/doc.html")
+                .with_header(ACCEPT_ENCODING, HeaderValue::from_str(encoding).unwrap())
+                .perform()
+                .unwrap();
 
             assert_eq!(
                 response
@@ -726,17 +712,13 @@ mod tests {
             )
         });
         let server = TestServer::new(router).unwrap();
-        let client = server.client();
 
-        let mut request = client.get("http://localhost/doc.html");
-
-        {
-            request
-                .headers_mut()
-                .insert(ACCEPT_ENCODING, HeaderValue::from_str("identity").unwrap());
-        }
-
-        let response = client.perform(request).unwrap();
+        let response = server
+            .client()
+            .get("http://localhost/doc.html")
+            .with_header(ACCEPT_ENCODING, HeaderValue::from_str("identity").unwrap())
+            .perform()
+            .unwrap();
 
         assert!(response.headers().get(CONTENT_ENCODING).is_none());
         assert_eq!(
@@ -764,20 +746,14 @@ mod tests {
             )
         });
         let server = TestServer::new(router).unwrap();
-        let client = server.client();
 
-        let mut request = client.get("http://localhost/doc.html");
-
-        {
-            request
-                .headers_mut()
-                .insert(ACCEPT_ENCODING, HeaderValue::from_str("gzip").unwrap());
-            request
-                .headers_mut()
-                .insert(ACCEPT_ENCODING, HeaderValue::from_str("brotli").unwrap());
-        }
-
-        let response = client.perform(request).unwrap();
+        let response = server
+            .client()
+            .get("http://localhost/doc.html")
+            .with_header(ACCEPT_ENCODING, HeaderValue::from_str("gzip").unwrap())
+            .with_header(ACCEPT_ENCODING, HeaderValue::from_str("brotli").unwrap())
+            .perform()
+            .unwrap();
 
         assert!(response.headers().get(CONTENT_ENCODING).is_none());
         assert_eq!(
@@ -805,18 +781,15 @@ mod tests {
             )
         });
         let server = TestServer::new(router).unwrap();
-        let client = server.client();
 
-        let mut request = client.get("http://localhost/doc.html");
-
-        {
-            request.headers_mut().insert(
+        let response = server
+            .client()
+            .get("http://localhost/doc.html")
+            .with_header(
                 ACCEPT_ENCODING,
                 HeaderValue::from_str("*;q=0.1, br;q=1.0, gzip;q=0.8").unwrap(),
-            );
-        }
-
-        let response = client.perform(request).unwrap();
+            ).perform()
+            .unwrap();
 
         assert_eq!(
             response
