@@ -26,7 +26,7 @@ lazy_static! {
 /// to be used as Response Body
 pub fn say_hello(state: State) -> (State, Response<Body>) {
     let mut context = Context::new();
-    context.add("user", "Gotham");
+    context.insert("user", "Gotham");
     let rendered = TERA.render("example.html.tera", &context).unwrap();
 
     let res = create_response(&state, StatusCode::OK, (rendered, mime::TEXT_HTML));
