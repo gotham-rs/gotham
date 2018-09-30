@@ -25,7 +25,7 @@ pub fn main() {
         // control headers etc by building a `FileOptions` instance.
         route.get("assets/*").to_dir(
             FileOptions::new(&path)
-                .with_cache_control("no-cache".to_string())
+                .with_cache_control("no-cache")
                 .with_gzip(true)
                 .build(),
         );

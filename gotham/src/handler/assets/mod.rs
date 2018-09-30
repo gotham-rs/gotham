@@ -89,8 +89,8 @@ impl FileOptions {
     }
 
     /// Sets the "cache_control" header in static file responses to the given value.
-    pub fn with_cache_control(&mut self, cache_control: String) -> &mut Self {
-        self.cache_control = cache_control;
+    pub fn with_cache_control(&mut self, cache_control: &str) -> &mut Self {
+        self.cache_control = cache_control.to_owned();
         self
     }
 
@@ -601,7 +601,7 @@ mod tests {
         let router = build_simple_router(|route| {
             route.get("/*").to_dir(
                 FileOptions::new("resources/test/assets")
-                    .with_cache_control("no-cache".to_string())
+                    .with_cache_control("no-cache")
                     .build(),
             )
         });
