@@ -11,12 +11,13 @@ use std::time::{Duration, Instant};
 use failure;
 
 use futures::{future, Future, Stream};
+use http::HttpTryFrom;
 use hyper::client::{
     connect::{Connect, Connected, Destination},
     Client,
 };
 use hyper::header::CONTENT_TYPE;
-use hyper::{Body, Method, Request, Response, Uri};
+use hyper::{Body, Method, Response, Uri};
 use mime;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
@@ -28,7 +29,7 @@ use error::*;
 
 mod request;
 
-pub use self::request::RequestBuilder;
+pub use self::request::TestRequest;
 
 struct TestServerData {
     addr: SocketAddr,
@@ -140,7 +141,7 @@ impl TestServer {
     ///
     /// If the future came from a different instance of `TestServer`, the event loop will run until
     /// the timeout is triggered.
-    fn run_request<F>(&mut self, f: F) -> Result<F::Item>
+    fn run_request<F>(&self, f: F) -> Result<F::Item>
     where
         F: Future + Send + 'static,
         F::Error: failure::Fail + Sized,
@@ -170,7 +171,7 @@ impl TestServer {
     ///
     /// This blocks on the result of the future and behaves like a synchronous
     /// polling call of the future, even if it might be on another thread.
-    fn run_future<F, R, E>(&mut self, future: F) -> Result<R>
+    fn run_future<F, R, E>(&self, future: F) -> Result<R>
     where
         F: Send + 'static + Future<Item = R, Error = E>,
         R: Send + 'static,
@@ -205,109 +206,100 @@ pub struct TestClient {
 }
 
 impl TestClient {
-    /// Parse the URI and begin constructing a HEAD request using this `TestClient`.
-    pub fn head(self, uri: &str) -> RequestBuilder {
+    /// Begin constructing a HEAD request using this `TestClient`.
+    pub fn head<U>(&self, uri: U) -> TestRequest
+    where
+        Uri: HttpTryFrom<U>,
+    {
         self.build_request(Method::HEAD, uri)
     }
 
-    /// Begin constructing a HEAD request using this `TestClient`.
-    pub fn head_uri(self, uri: Uri) -> RequestBuilder {
-        self.build_request_uri(Method::HEAD, uri)
-    }
-
-    /// Parse the URI and begin constructing a GET request using this `TestClient`.
-    pub fn get(self, uri: &str) -> RequestBuilder {
+    /// Begin constructing a GET request using this `TestClient`.
+    pub fn get<U>(&self, uri: U) -> TestRequest
+    where
+        Uri: HttpTryFrom<U>,
+    {
         self.build_request(Method::GET, uri)
     }
 
-    /// Begin constructing a GET request using this `TestClient`.
-    pub fn get_uri(self, uri: Uri) -> RequestBuilder {
-        self.build_request_uri(Method::GET, uri)
-    }
-
-    /// Parse the URI and begin constructing a POST request using this `TestClient`.
-    pub fn post<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder
+    /// Begin constructing an OPTIONS request using this `TestClient`.
+    pub fn options<U>(&self, uri: U) -> TestRequest
     where
-        T: Into<Body>,
+        Uri: HttpTryFrom<U>,
     {
-        self.build_request(Method::POST, uri)
-            .with_body(body)
-            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
+        self.build_request(Method::OPTIONS, uri)
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder
+    pub fn post<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest
     where
-        T: Into<Body>,
+        B: Into<Body>,
+        Uri: HttpTryFrom<U>,
     {
-        self.build_request_uri(Method::POST, uri)
-            .with_body(body)
-            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
-    }
-
-    /// Parse the URI and begin constructing a PUT request using this `TestClient`.
-    pub fn put<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder
-    where
-        T: Into<Body>,
-    {
-        self.build_request(Method::PUT, uri)
-            .with_body(body)
-            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
+        self.build_request_with_body(Method::POST, uri, body, mime)
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder
+    pub fn put<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest
     where
-        T: Into<Body>,
+        B: Into<Body>,
+        Uri: HttpTryFrom<U>,
     {
-        self.build_request_uri(Method::PUT, uri)
-            .with_body(body)
-            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
-    }
-
-    /// Parse the URI and begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<T>(self, uri: &str, body: T, content_type: mime::Mime) -> RequestBuilder
-    where
-        T: Into<Body>,
-    {
-        self.build_request(Method::PATCH, uri)
-            .with_body(body)
-            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
+        self.build_request_with_body(Method::PUT, uri, body, mime)
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch_uri<T>(self, uri: Uri, body: T, content_type: mime::Mime) -> RequestBuilder
+    pub fn patch<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest
     where
-        T: Into<Body>,
+        B: Into<Body>,
+        Uri: HttpTryFrom<U>,
     {
-        self.build_request_uri(Method::PATCH, uri)
-            .with_body(body)
-            .with_header(CONTENT_TYPE, content_type.to_string().parse().unwrap())
-    }
-
-    /// Parse the URI and begin constructing a DELETE request using this `TestClient`.
-    pub fn delete(self, uri: &str) -> RequestBuilder {
-        self.build_request(Method::DELETE, uri)
+        self.build_request_with_body(Method::PATCH, uri, body, mime)
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
-    pub fn delete_uri(self, uri: Uri) -> RequestBuilder {
-        self.build_request_uri(Method::DELETE, uri)
+    pub fn delete<U>(&self, uri: U) -> TestRequest
+    where
+        Uri: HttpTryFrom<U>,
+    {
+        self.build_request(Method::DELETE, uri)
     }
 
-    /// Parse the URI and begin constructing a request with the given HTTP method.
-    pub fn build_request(self, method: Method, uri: &str) -> RequestBuilder {
-        RequestBuilder::new(self, method, uri.parse().unwrap())
+    /// Begin constructing a request with the given HTTP method and URI.
+    pub fn build_request<U>(&self, method: Method, uri: U) -> TestRequest
+    where
+        Uri: HttpTryFrom<U>,
+    {
+        TestRequest::new(self, method, uri)
     }
 
-    /// Begin constructing a request with the given HTTP method and Uri.
-    pub fn build_request_uri(self, method: Method, uri: Uri) -> RequestBuilder {
-        RequestBuilder::new(self, method, uri)
+    /// Begin constructing a request with the given HTTP method, URI and body.
+    pub fn build_request_with_body<B, U>(
+        &self,
+        method: Method,
+        uri: U,
+        body: B,
+        mime: mime::Mime,
+    ) -> TestRequest
+    where
+        B: Into<Body>,
+        Uri: HttpTryFrom<U>,
+    {
+        let mut request = self.build_request(method, uri);
+
+        {
+            let headers = request.headers_mut();
+            headers.insert(CONTENT_TYPE, mime.to_string().parse().unwrap());
+        }
+
+        *request.body_mut() = body.into();
+
+        request
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform(mut self, req: Request<Body>) -> Result<TestResponse> {
-        let req_future = self.client.request(req).map_err(|e| {
+    pub fn perform(&self, req: TestRequest) -> Result<TestResponse> {
+        let req_future = self.client.request(req.request()).map_err(|e| {
             warn!("Error from test client request {:?}", e);
             failure::err_msg("request failed").compat()
         });
@@ -597,8 +589,8 @@ mod tests {
         assert_eq!(res.status(), StatusCode::OK);
 
         {
-            let content_type = res.headers().get(CONTENT_TYPE).expect("ContentType");
-            assert_eq!(content_type, mime::TEXT_PLAIN.as_ref());
+            let mime = res.headers().get(CONTENT_TYPE).expect("ContentType");
+            assert_eq!(mime, mime::TEXT_PLAIN.as_ref());
         }
 
         let content_length = {
