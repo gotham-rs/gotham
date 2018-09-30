@@ -59,7 +59,7 @@ pub struct FileHandler {
 ///
 /// let default_options = FileOptions::from("my_static_path");
 /// let from_builder = FileOptions::new("my_static_path")
-///     .with_cache_control("public".to_string())
+///     .with_cache_control("public")
 ///     .with_gzip(false)
 ///     .with_brotli(false)
 ///     .build();
