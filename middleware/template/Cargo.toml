@@ -1,5 +1,5 @@
 [package]
-name = "middleware-template"
+name = "gotham-middleware-template"
 version = "0.0.0"
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
            "Bradley Beddoes <bradleybeddoes@gmail.com>"]
