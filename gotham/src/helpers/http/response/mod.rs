@@ -67,8 +67,22 @@ pub fn create_response<B: Into<Body>>(
     status: StatusCode,
     data: (B, Mime),
 ) -> Response<Body> {
+    // unwrap the data for the body
     let (body, mime) = data;
-    construct_response(state, status, Some(body), Some(mime))
+
+    // use the basic empty response as a base
+    let mut res = create_empty_response(state, status);
+
+    // insert the content type header
+    res.headers_mut()
+        .insert(CONTENT_TYPE, mime.as_ref().parse().unwrap());
+
+    // add the body on non-HEAD requests
+    if Method::borrow_from(state) != Method::HEAD {
+        *res.body_mut() = body.into();
+    }
+
+    res
 }
 
 /// Produces a simple empty `Response` with a provided status.
@@ -100,7 +114,18 @@ pub fn create_response<B: Into<Body>>(
 /// # }
 /// ```
 pub fn create_empty_response(state: &State, status: StatusCode) -> Response<Body> {
-    construct_response::<&str>(state, status, None, None)
+    // new builder for the response
+    let mut builder = Response::builder();
+
+    // always add status and req-id
+    builder.status(status);
+    builder.header(X_REQUEST_ID, request_id(state));
+
+    // attach an empty body by default
+    let built = builder.body(Body::empty());
+
+    // this expect should be safe due to generic bounds
+    built.expect("Response built from a compatible type")
 }
 
 /// Produces a simple empty `Response` with a `Location` header and a 301
@@ -189,33 +214,4 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
     res.headers_mut()
         .insert(LOCATION, location.into().to_string().parse().unwrap());
     res
-}
-
-/// Simple response construction.
-fn construct_response<B: Into<Body>>(
-    state: &State,
-    status: StatusCode,
-    body: Option<B>,
-    mime: Option<Mime>,
-) -> Response<Body> {
-    let mut builder = Response::builder();
-
-    // always add status and req-id
-    builder.status(status);
-    builder.header(X_REQUEST_ID, request_id(state));
-
-    // attach mime type when available
-    if let Some(mime) = mime {
-        builder.header(CONTENT_TYPE, mime.as_ref());
-    }
-
-    // attach body when available, but not on HEAD requests (which have no content)
-    let built = if body.is_some() && Method::borrow_from(state) != Method::HEAD {
-        builder.body(body.unwrap().into())
-    } else {
-        builder.body(Body::empty())
-    };
-
-    // this expect should be safe due to generic bounds
-    built.expect("Response built from a compatible type")
 }
