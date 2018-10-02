@@ -24,9 +24,7 @@ use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-use tokio_core::reactor::Handle;
-
-type ResponseContentFuture = Box<Future<Item = Vec<u8>, Error = hyper::Error>>;
+type ResponseContentFuture = Box<Future<Item = Vec<u8>, Error = hyper::Error> + Send>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
@@ -37,17 +35,13 @@ struct QueryStringExtractor {
 /// into `create_response` easily, and the example handlers can focus on the business logic.
 /// You may notice that the body collecting looks very similar to the POST example in
 /// `examples/handlers/request_data`.
-/// Notice also that this function needs a reference to a `Handle`. This is a handle to the event
-/// loop that the web request is being handled on. There are plans to stop needing it in later
-/// versions of tokio, so for now you can treat it as a bit of annoying bookkeeping and get on with
-/// your life.
 #[cfg(not(test))]
-fn http_get(handle: &Handle, url_str: &str) -> ResponseContentFuture {
-    let client = Client::new(handle);
+fn http_get(url_str: &str) -> ResponseContentFuture {
+    let client = Client::new();
     let url: Uri = url_str.parse().unwrap();
     let f = client.get(url).and_then(|response| {
         response
-            .body()
+            .into_body()
             .concat2()
             .and_then(|full_body| Ok(full_body.to_vec()))
     });
@@ -61,7 +55,7 @@ fn http_get(handle: &Handle, url_str: &str) -> ResponseContentFuture {
 /// The subject of patching/mocking things out for test purposes is a big one, and this is just a
 /// toy example, so we just return success.
 #[cfg(test)]
-fn http_get(_handle: &Handle, _url_str: &str) -> ResponseContentFuture {
+fn http_get(_url_str: &str) -> ResponseContentFuture {
     // We make the test version return something different from what a real view would, to make
     // it easier to spot in the tests.
     Box::new(future::ok(b"y".to_vec()))
@@ -91,10 +85,6 @@ fn series_handler(mut state: State) -> Box<HandlerFuture> {
     } else if length == 1 {
         Box::new(future::ok(b"z".to_vec()))
     } else {
-        // As discussed in `http_get`, we need to pass around a handle to the event loop
-        // we're running on. This is just book-keeping really, but here's how to do it:
-        let handle = Handle::borrow_from(&state).clone();
-
         // These are the two URLs we're going to request. We're just splitting the length into
         // two roughly equal parts and calling ourselves. In a real application, these might
         // be external web apis or internal microservices.
@@ -107,8 +97,8 @@ fn series_handler(mut state: State) -> Box<HandlerFuture> {
         // Here, we get the first URL, and then get the second URL, and then concatenate the
         // two together. Notice that we have to move body_a into the second closure, and so our
         // code drifts to the right.
-        let f = http_get(&handle, &url_a).and_then(move |mut body_a| {
-            http_get(&handle, &url_b).and_then(move |body_b| {
+        let f = http_get(&url_a).and_then(move |mut body_a| {
+            http_get(&url_b).and_then(move |body_b| {
                 body_a.extend(body_b);
                 Ok(body_a)
             })
@@ -121,7 +111,7 @@ fn series_handler(mut state: State) -> Box<HandlerFuture> {
     // All we do is move `state` in, to return it, and convert any errors that we have.
     Box::new(data_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::Ok, Some((data, mime::TEXT_PLAIN)));
+            let res = create_response(&state, StatusCode::OK, (data, mime::TEXT_PLAIN));
             println!("series length: {} finished", length);
             Ok((state, res))
         }
@@ -147,8 +137,6 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
     } else if length == 1 {
         Box::new(future::ok(b"z".to_vec()))
     } else {
-        let handle = Handle::borrow_from(&mut state).clone();
-
         let url_a = format!("http://127.0.0.1:7878/loop?length={}", length / 2);
         let url_b = format!(
             "http://127.0.0.1:7878/loop?length={}",
@@ -162,7 +150,7 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
             stream::iter_ok(vec![url_a, url_b]).fold(Vec::new(), move |mut accumulator, url| {
                 // Do the http_get(), and append the result to the accumulator so that it can
                 // be returned.
-                http_get(&handle, &url).and_then(move |body| {
+                http_get(&url).and_then(move |body| {
                     accumulator.extend(body);
                     Ok(accumulator)
                 })
@@ -173,7 +161,7 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
 
     Box::new(data_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::Ok, Some((data, mime::TEXT_PLAIN)));
+            let res = create_response(&state, StatusCode::OK, (data, mime::TEXT_PLAIN));
             println!("loop length: {} finished", length);
             Ok((state, res))
         }
@@ -218,8 +206,6 @@ fn parallel_handler(mut state: State) -> Box<HandlerFuture> {
     } else if length == 1 {
         Box::new(future::ok(b"z".to_vec()))
     } else {
-        let handle = Handle::borrow_from(&mut state);
-
         let url_a = format!("http://127.0.0.1:7878/parallel?length={}", length / 2);
         let url_b = format!(
             "http://127.0.0.1:7878/parallel?length={}",
@@ -228,8 +214,8 @@ fn parallel_handler(mut state: State) -> Box<HandlerFuture> {
 
         // Here, we get both urls in parallel, and then join the futures together at the end.
         // See the docs of this function for a discussion of why this is a bad idea.
-        let f1 = http_get(handle, &url_a);
-        let f2 = http_get(handle, &url_b);
+        let f1 = http_get(&url_a);
+        let f2 = http_get(&url_b);
 
         Box::new(f1.join(f2).and_then(|(mut body_a, body_b)| {
             body_a.extend(body_b);
@@ -239,7 +225,7 @@ fn parallel_handler(mut state: State) -> Box<HandlerFuture> {
 
     Box::new(data_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::Ok, Some((data, mime::TEXT_PLAIN)));
+            let res = create_response(&state, StatusCode::OK, (data, mime::TEXT_PLAIN));
             println!("parallel length: {} finished", length);
             Ok((state, res))
         }
@@ -285,7 +271,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server.client().get(url_str).perform().unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         assert_eq!(response.read_body().unwrap(), expected_response);
     }
 

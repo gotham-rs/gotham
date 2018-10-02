@@ -50,7 +50,7 @@ members = [
     "examples/handlers/request_data",
     "examples/handlers/stateful",
     "examples/handlers/simple_async_handlers",
-    # "examples/handlers/async_handlers",
+    "examples/handlers/async_handlers",
 
     # static_assets
     "examples/static_assets",
