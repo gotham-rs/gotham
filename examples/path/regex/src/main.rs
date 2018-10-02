@@ -27,7 +27,7 @@ pub fn greet_user(state: State) -> (State, Response<Body>) {
         let path = PathExtractor::borrow_from(&state);
         let response_string = format!("Hello, User {}!", &path.id);
 
-        create_response(&state, StatusCode::OK, (response_string, mime::TEXT_PLAIN))
+        create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, response_string)
     };
 
     (state, res)

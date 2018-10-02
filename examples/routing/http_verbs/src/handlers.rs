@@ -14,7 +14,8 @@ macro_rules! generic_handler {
             let res = create_response(
                 &state,
                 StatusCode::OK,
-                (stringify!($t), mime::TEXT_PLAIN),
+                mime::TEXT_PLAIN,
+                stringify!($t),
             );
 
             (state, res)

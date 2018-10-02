@@ -34,7 +34,8 @@ use state::{request_id, FromState, State};
 ///     let response = create_response(
 ///         &state,
 ///         StatusCode::OK,
-///         (BODY, mime::TEXT_PLAIN),
+///         mime::TEXT_PLAIN,
+///         BODY,
 ///     );
 ///
 ///     (state, response)
@@ -62,14 +63,10 @@ use state::{request_id, FromState, State};
 /// #     );
 /// # }
 /// ```
-pub fn create_response<B: Into<Body>>(
-    state: &State,
-    status: StatusCode,
-    data: (B, Mime),
-) -> Response<Body> {
-    // unwrap the data for the body
-    let (body, mime) = data;
-
+pub fn create_response<B>(state: &State, status: StatusCode, mime: Mime, body: B) -> Response<Body>
+where
+    B: Into<Body>,
+{
     // use the basic empty response as a base
     let mut res = create_empty_response(state, status);
 

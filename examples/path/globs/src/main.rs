@@ -38,7 +38,7 @@ fn parts_handler(state: State) -> (State, Response<Body>) {
             response_string.push_str(&part);
         }
 
-        create_response(&state, StatusCode::OK, (response_string, mime::TEXT_PLAIN))
+        create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, response_string)
     };
 
     (state, res)

@@ -56,7 +56,7 @@ impl Handler for CountingHandler {
             visits
         );
 
-        let res = { create_response(&state, StatusCode::OK, (response_text, mime::TEXT_PLAIN)) };
+        let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, response_text);
         Box::new(future::ok((state, res)))
     }
 }

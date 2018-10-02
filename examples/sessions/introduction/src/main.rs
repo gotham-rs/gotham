@@ -29,21 +29,19 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
         *visits
     };
 
-    let res = {
-        create_response(
-            &state,
-            StatusCode::OK,
-            (
-                format!("You have visited this page {} time(s) before\n", visits),
-                mime::TEXT_PLAIN,
-            ),
-        )
-    };
+    let res = create_response(
+        &state,
+        StatusCode::OK,
+        mime::TEXT_PLAIN,
+        format!("You have visited this page {} time(s) before\n", visits),
+    );
+
     {
         // Mutably borrow the usize, so we can increment it.
         let visits: &mut usize = SessionData::<usize>::borrow_mut_from(&mut state);
         *visits += 1;
     }
+
     (state, res)
 }
 
