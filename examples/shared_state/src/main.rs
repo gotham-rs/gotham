@@ -9,9 +9,6 @@ extern crate gotham_derive;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::single::single_pipeline;
 use gotham::pipeline::single_middleware;
@@ -103,6 +100,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn receive_incrementing_hello_response() {

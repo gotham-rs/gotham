@@ -4,8 +4,6 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Body, Response, StatusCode};
-
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::State;
@@ -45,6 +43,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_router_response() {

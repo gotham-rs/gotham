@@ -6,9 +6,6 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
@@ -73,6 +70,7 @@ mod tests {
     use cookie::Cookie;
     use gotham::test::TestServer;
     use hyper::header::{COOKIE, SET_COOKIE};
+    use hyper::StatusCode;
 
     #[test]
     fn cookie_is_set_and_counter_increments() {

@@ -8,9 +8,6 @@ extern crate lazy_static;
 #[macro_use]
 extern crate tera;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::state::State;
 use tera::{Context, Tera};
 
@@ -44,6 +41,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_world_response() {

@@ -9,9 +9,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
@@ -62,6 +59,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_router_response() {

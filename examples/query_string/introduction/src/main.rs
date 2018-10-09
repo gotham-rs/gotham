@@ -11,9 +11,6 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
@@ -108,6 +105,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn product_name_is_extracted() {

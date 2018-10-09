@@ -4,9 +4,6 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::state::State;
 
 const HELLO_WORLD: &'static str = "Hello World!";
@@ -31,6 +28,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_world_response() {
