@@ -58,7 +58,7 @@ struct Product {
 /// This handler uses the Serde project when generating responses. You don't need to
 /// know about Serde in order to understand the response that is being created here but if you're
 /// interested you can learn more at `http://serde.rs`.
-fn get_product_handler(mut state: State) -> (State, Response<Body>) {
+fn get_product_handler(mut state: State) -> (State, (mime::Mime, Vec<u8>)) {
     let res = {
         // Access the `QueryStringExtractor` instance from `state` which was put there for us by the
         // `Router` during request evaluation.
@@ -74,9 +74,8 @@ fn get_product_handler(mut state: State) -> (State, Response<Body>) {
         let product = Product {
             name: query_param.name,
         };
-        create_response(
-            &state,
-            StatusCode::OK,
+
+        (
             mime::APPLICATION_JSON,
             serde_json::to_vec(&product).expect("serialized product"),
         )

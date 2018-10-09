@@ -12,9 +12,6 @@ extern crate serde_derive;
 extern crate cookie;
 extern crate time;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
@@ -32,7 +29,7 @@ struct VisitData {
 /// Handler function for `GET` requests directed to `/`
 ///
 /// Each request made will update state about your recent visits, and report it back.
-fn get_handler(mut state: State) -> (State, Response<Body>) {
+fn get_handler(mut state: State) -> (State, String) {
     let maybe_visit_data = {
         let visit_data: &Option<VisitData> = SessionData::<Option<VisitData>>::borrow_from(&state);
         visit_data.clone()
@@ -46,8 +43,6 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
         &None => "You have never visited this page before.\n".to_owned(),
     };
 
-    let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, body);
-
     {
         let visit_data: &mut Option<VisitData> =
             SessionData::<Option<VisitData>>::borrow_mut_from(&mut state);
@@ -58,7 +53,7 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
         });
     }
 
-    (state, res)
+    (state, body)
 }
 
 /// Create a `Router`
@@ -87,6 +82,7 @@ mod tests {
     use super::*;
     use gotham::test::TestServer;
     use hyper::header::{COOKIE, SET_COOKIE};
+    use hyper::StatusCode;
 
     #[test]
     fn cookie_is_set_and_updates_response() {

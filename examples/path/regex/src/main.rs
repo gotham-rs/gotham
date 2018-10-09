@@ -22,15 +22,13 @@ struct PathExtractor {
 }
 
 /// Create a `Handler` that is invoked for requests using a numeric identifier.
-pub fn greet_user(state: State) -> (State, Response<Body>) {
-    let res = {
+pub fn greet_user(state: State) -> (State, String) {
+    let message = {
         let path = PathExtractor::borrow_from(&state);
-        let response_string = format!("Hello, User {}!", &path.id);
-
-        create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, response_string)
+        format!("Hello, User {}!", &path.id)
     };
 
-    (state, res)
+    (state, message)
 }
 
 /// Create a `Router`

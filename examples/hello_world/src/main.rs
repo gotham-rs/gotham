@@ -16,10 +16,8 @@ const HELLO_WORLD: &'static str = "Hello World!";
 /// How does a function become a `Handler`?.
 /// We've simply implemented the `Handler` trait, for functions that match the signature used here,
 /// within Gotham itself.
-pub fn say_hello(state: State) -> (State, Response<Body>) {
-    let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, HELLO_WORLD);
-
-    (state, res)
+pub fn say_hello(state: State) -> (State, &'static str) {
+    (state, HELLO_WORLD)
 }
 
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.

@@ -20,7 +20,7 @@ use gotham::state::{FromState, State};
 ///
 /// Each request made will increment a counter of requests which have been made,
 /// and tell you how many times you've visited the page.
-fn get_handler(mut state: State) -> (State, Response<Body>) {
+fn get_handler(mut state: State) -> (State, String) {
     // Define a narrow scope so that state can be borrowed/moved later in the function.
     let visits = {
         // Borrow a reference to the usize stored for the session (keyed by a cookie) from state.
@@ -29,12 +29,7 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
         *visits
     };
 
-    let res = create_response(
-        &state,
-        StatusCode::OK,
-        mime::TEXT_PLAIN,
-        format!("You have visited this page {} time(s) before\n", visits),
-    );
+    let message = format!("You have visited this page {} time(s) before\n", visits);
 
     {
         // Mutably borrow the usize, so we can increment it.
@@ -42,7 +37,7 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
         *visits += 1;
     }
 
-    (state, res)
+    (state, message)
 }
 
 /// Create a `Router`

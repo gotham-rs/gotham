@@ -57,7 +57,7 @@ impl RequestCounter {
 /// The request counter is shared via the state, so we can safely
 /// borrow one from the provided state. As the counter uses locks
 /// internally, we don't have to borrow a mutable reference either!
-fn say_hello(state: State) -> (State, Response<Body>) {
+fn say_hello(state: State) -> (State, String) {
     let message = {
         // borrow a reference of the counter from the state
         let counter = RequestCounter::borrow_from(&state);
@@ -66,11 +66,8 @@ fn say_hello(state: State) -> (State, Response<Body>) {
         format!("Hello from request #{}!\n", counter.incr())
     };
 
-    // create the response
-    let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, message);
-
-    // done!
-    (state, res)
+    // return message
+    (state, message)
 }
 
 /// Constructs a simple router on `/` to say hello, along with

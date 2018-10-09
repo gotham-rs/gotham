@@ -3,22 +3,13 @@
 //! We've used a macro here for brevity but this is NOT how you would implement a handler in
 //! a real world application.
 
-use gotham::helpers::http::response::create_response;
+use gotham::handler::IntoResponse;
 use gotham::state::State;
-use hyper::{Body, Response, StatusCode};
-use mime;
 
 macro_rules! generic_handler {
     ($($t:ident),*) => { $(
-        pub fn $t(state: State) -> (State, Response<Body>) {
-            let res = create_response(
-                &state,
-                StatusCode::OK,
-                mime::TEXT_PLAIN,
-                stringify!($t),
-            );
-
-            (state, res)
+        pub fn $t(state: State) -> (State, impl IntoResponse) {
+            (state, stringify!($t))
         }
     )+ }}
 

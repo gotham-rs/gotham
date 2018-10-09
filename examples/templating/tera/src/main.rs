@@ -24,14 +24,12 @@ lazy_static! {
 /// Create a `Handler` which calls the Tera static reference, renders
 /// a template with a given Context, and returns the result as a String
 /// to be used as Response Body
-pub fn say_hello(state: State) -> (State, Response<Body>) {
+pub fn say_hello(state: State) -> (State, (mime::Mime, String)) {
     let mut context = Context::new();
     context.insert("user", "Gotham");
     let rendered = TERA.render("example.html.tera", &context).unwrap();
 
-    let res = create_response(&state, StatusCode::OK, mime::TEXT_HTML, rendered);
-
-    (state, res)
+    (state, (mime::TEXT_HTML, rendered))
 }
 
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.

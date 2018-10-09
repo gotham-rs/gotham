@@ -6,13 +6,11 @@ extern crate hyper;
 extern crate mime;
 
 use futures::future;
-use hyper::StatusCode;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 use gotham::error::Result;
-use gotham::handler::{Handler, HandlerFuture, NewHandler};
-use gotham::helpers::http::response::create_response;
+use gotham::handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::State;
@@ -56,8 +54,9 @@ impl Handler for CountingHandler {
             visits
         );
 
-        let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, response_text);
-        Box::new(future::ok((state, res)))
+        let response = response_text.into_response(&state);
+
+        Box::new(future::ok((state, response)))
     }
 }
 
@@ -85,6 +84,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn counter_increments_per_request() {
