@@ -338,7 +338,8 @@ trait BodyReader {
 /// #   let body = "This is the body content.".to_string();
 /// #   let response = create_response(&state,
 /// #                                  StatusCode::OK,
-/// #                                  (body, mime::TEXT_PLAIN));
+/// #                                  mime::TEXT_PLAIN,
+/// #                                  body);
 /// #
 /// #   (state, response)
 /// # }
@@ -565,7 +566,7 @@ mod tests {
                     Ok(body) => {
                         let resp_data = body.to_vec();
                         let res =
-                            create_response(&state, StatusCode::OK, (resp_data, mime::TEXT_PLAIN));
+                            create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, resp_data);
                         future::ok((state, res))
                     }
 

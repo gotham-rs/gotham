@@ -8,9 +8,6 @@ extern crate lazy_static;
 #[macro_use]
 extern crate tera;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::state::State;
 use tera::{Context, Tera};
 
@@ -24,14 +21,12 @@ lazy_static! {
 /// Create a `Handler` which calls the Tera static reference, renders
 /// a template with a given Context, and returns the result as a String
 /// to be used as Response Body
-pub fn say_hello(state: State) -> (State, Response<Body>) {
+pub fn say_hello(state: State) -> (State, (mime::Mime, String)) {
     let mut context = Context::new();
     context.insert("user", "Gotham");
     let rendered = TERA.render("example.html.tera", &context).unwrap();
 
-    let res = create_response(&state, StatusCode::OK, (rendered, mime::TEXT_HTML));
-
-    (state, res)
+    (state, (mime::TEXT_HTML, rendered))
 }
 
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.
@@ -46,6 +41,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_world_response() {

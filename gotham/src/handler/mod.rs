@@ -3,11 +3,15 @@
 //! A function can be used directly as a handler using one of the default implementations of
 //! `Handler`, but the traits can also be implemented directly for greater control. See the
 //! `Handler` trait for some examples of valid handlers.
+use std::borrow::Cow;
 use std::panic::RefUnwindSafe;
 
+use bytes::Bytes;
 use futures::{future, Future};
-use hyper::{Body, Response};
+use hyper::{Body, Chunk, Response, StatusCode};
+use mime::{self, Mime};
 
+use helpers::http::response;
 use state::State;
 
 mod error;
@@ -150,6 +154,16 @@ pub trait Handler: Send {
     fn handle(self, state: State) -> Box<HandlerFuture>;
 }
 
+impl<F, R> Handler for F
+where
+    F: FnOnce(State) -> R + Send,
+    R: IntoHandlerFuture,
+{
+    fn handle(self, state: State) -> Box<HandlerFuture> {
+        self(state).into_handler_future()
+    }
+}
+
 /// A type which is used to spawn new `Handler` values. When implementing a custom `Handler` type,
 /// this is used to define how instances of the `Handler` are created.
 ///
@@ -258,7 +272,7 @@ pub trait IntoHandlerFuture {
 
 impl<T> IntoHandlerFuture for (State, T)
 where
-    T: IntoResponse<Body>,
+    T: IntoResponse,
 {
     fn into_handler_future(self) -> Box<HandlerFuture> {
         let (state, t) = self;
@@ -309,7 +323,7 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 ///     }
 /// }
 ///
-/// impl IntoResponse<Body> for MyStruct {
+/// impl IntoResponse for MyStruct {
 ///     fn into_response(self, _state: &State) -> Response<Body> {
 ///         Response::builder()
 ///             .status(StatusCode::OK)
@@ -335,23 +349,23 @@ impl IntoHandlerFuture for Box<HandlerFuture> {
 /// # }
 /// ```
 
-pub trait IntoResponse<B> {
+pub trait IntoResponse {
     /// Converts this value into a `hyper::Response`
-    fn into_response(self, state: &State) -> Response<B>;
+    fn into_response(self, state: &State) -> Response<Body>;
 }
 
-impl<B> IntoResponse<B> for Response<B> {
-    fn into_response(self, _state: &State) -> Response<B> {
+impl IntoResponse for Response<Body> {
+    fn into_response(self, _state: &State) -> Response<Body> {
         self
     }
 }
 
-impl<B, T, E> IntoResponse<B> for ::std::result::Result<T, E>
+impl<T, E> IntoResponse for ::std::result::Result<T, E>
 where
-    T: IntoResponse<B>,
-    E: IntoResponse<B>,
+    T: IntoResponse,
+    E: IntoResponse,
 {
-    fn into_response(self, state: &State) -> Response<B> {
+    fn into_response(self, state: &State) -> Response<Body> {
         match self {
             Ok(res) => res.into_response(state),
             Err(e) => e.into_response(state),
@@ -359,12 +373,43 @@ where
     }
 }
 
-impl<F, R> Handler for F
+impl<B> IntoResponse for (Mime, B)
 where
-    F: FnOnce(State) -> R + Send,
-    R: IntoHandlerFuture,
+    B: Into<Body>,
 {
-    fn handle(self, state: State) -> Box<HandlerFuture> {
-        self(state).into_handler_future()
+    fn into_response(self, state: &State) -> Response<Body> {
+        (StatusCode::OK, self.0, self.1).into_response(state)
     }
 }
+
+impl<B> IntoResponse for (StatusCode, Mime, B)
+where
+    B: Into<Body>,
+{
+    fn into_response(self, state: &State) -> Response<Body> {
+        response::create_response(state, self.0, self.1, self.2)
+    }
+}
+
+// derive IntoResponse for Into<Body> types
+macro_rules! derive_into_response {
+    ($type:ty) => {
+        impl IntoResponse for $type {
+            fn into_response(self, state: &State) -> Response<Body> {
+                (StatusCode::OK, mime::TEXT_PLAIN, self).into_response(state)
+            }
+        }
+    };
+}
+
+// derive Into<Body> types - this is required because we
+// can't impl IntoResponse for Into<Body> due to Response<T>
+// and the potential it will add Into<Body> in the future
+derive_into_response!(Bytes);
+derive_into_response!(Chunk);
+derive_into_response!(String);
+derive_into_response!(Vec<u8>);
+derive_into_response!(&'static str);
+derive_into_response!(&'static [u8]);
+derive_into_response!(Cow<'static, str>);
+derive_into_response!(Cow<'static, [u8]>);

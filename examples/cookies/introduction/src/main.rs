@@ -31,13 +31,13 @@ fn handler(state: State) -> (State, Response<Body>) {
             .unwrap_or_else(|| "first time".to_string())
     };
 
-    let mut response = {
-        create_response(
-            &state,
-            StatusCode::OK,
-            (format!("Hello {} visitor\n", adjective), mime::TEXT_PLAIN),
-        )
-    };
+    let mut response = create_response(
+        &state,
+        StatusCode::OK,
+        mime::TEXT_PLAIN,
+        format!("Hello {} visitor\n", adjective),
+    );
+
     {
         let cookie = Cookie::build("adjective", "repeat")
             .http_only(true)
@@ -46,6 +46,7 @@ fn handler(state: State) -> (State, Response<Body>) {
             .headers_mut()
             .append(SET_COOKIE, cookie.to_string().parse().unwrap());
     }
+
     (state, response)
 }
 

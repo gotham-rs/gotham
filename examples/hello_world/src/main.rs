@@ -4,9 +4,6 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::state::State;
 
 const HELLO_WORLD: &'static str = "Hello World!";
@@ -16,10 +13,8 @@ const HELLO_WORLD: &'static str = "Hello World!";
 /// How does a function become a `Handler`?.
 /// We've simply implemented the `Handler` trait, for functions that match the signature used here,
 /// within Gotham itself.
-pub fn say_hello(state: State) -> (State, Response<Body>) {
-    let res = create_response(&state, StatusCode::OK, (HELLO_WORLD, mime::TEXT_PLAIN));
-
-    (state, res)
+pub fn say_hello(state: State) -> (State, &'static str) {
+    (state, HELLO_WORLD)
 }
 
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.
@@ -33,6 +28,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_world_response() {

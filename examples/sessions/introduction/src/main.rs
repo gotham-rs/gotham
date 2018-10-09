@@ -6,9 +6,6 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Body, Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
@@ -20,7 +17,7 @@ use gotham::state::{FromState, State};
 ///
 /// Each request made will increment a counter of requests which have been made,
 /// and tell you how many times you've visited the page.
-fn get_handler(mut state: State) -> (State, Response<Body>) {
+fn get_handler(mut state: State) -> (State, String) {
     // Define a narrow scope so that state can be borrowed/moved later in the function.
     let visits = {
         // Borrow a reference to the usize stored for the session (keyed by a cookie) from state.
@@ -29,22 +26,15 @@ fn get_handler(mut state: State) -> (State, Response<Body>) {
         *visits
     };
 
-    let res = {
-        create_response(
-            &state,
-            StatusCode::OK,
-            (
-                format!("You have visited this page {} time(s) before\n", visits),
-                mime::TEXT_PLAIN,
-            ),
-        )
-    };
+    let message = format!("You have visited this page {} time(s) before\n", visits);
+
     {
         // Mutably borrow the usize, so we can increment it.
         let visits: &mut usize = SessionData::<usize>::borrow_mut_from(&mut state);
         *visits += 1;
     }
-    (state, res)
+
+    (state, message)
 }
 
 /// Create a `Router`
@@ -80,6 +70,7 @@ mod tests {
     use cookie::Cookie;
     use gotham::test::TestServer;
     use hyper::header::{COOKIE, SET_COOKIE};
+    use hyper::StatusCode;
 
     #[test]
     fn cookie_is_set_and_counter_increments() {

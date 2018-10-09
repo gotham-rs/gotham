@@ -111,7 +111,7 @@ fn series_handler(mut state: State) -> Box<HandlerFuture> {
     // All we do is move `state` in, to return it, and convert any errors that we have.
     Box::new(data_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, (data, mime::TEXT_PLAIN));
+            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
             println!("series length: {} finished", length);
             Ok((state, res))
         }
@@ -161,7 +161,7 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
 
     Box::new(data_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, (data, mime::TEXT_PLAIN));
+            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
             println!("loop length: {} finished", length);
             Ok((state, res))
         }
@@ -225,7 +225,7 @@ fn parallel_handler(mut state: State) -> Box<HandlerFuture> {
 
     Box::new(data_future.then(move |result| match result {
         Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, (data, mime::TEXT_PLAIN));
+            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
             println!("parallel length: {} finished", length);
             Ok((state, res))
         }

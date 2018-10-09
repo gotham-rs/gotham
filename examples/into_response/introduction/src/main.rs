@@ -30,15 +30,13 @@ struct Product {
 /// This trait implementation uses the Serde project when generating responses. You don't need to
 /// know about Serde in order to understand the response that is being created here but if you're
 /// interested you can learn more at `http://serde.rs`.
-impl IntoResponse<Body> for Product {
+impl IntoResponse for Product {
     fn into_response(self, state: &State) -> Response<Body> {
         create_response(
             state,
             StatusCode::OK,
-            (
-                serde_json::to_string(&self).expect("serialized product"),
-                mime::APPLICATION_JSON,
-            ),
+            mime::APPLICATION_JSON,
+            serde_json::to_string(&self).expect("serialized product"),
         )
     }
 }

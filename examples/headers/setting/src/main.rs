@@ -13,6 +13,7 @@ use hyper::{Body, Response, StatusCode};
 /// Create a `Handler` that adds a custom header.
 pub fn handler(state: State) -> (State, Response<Body>) {
     let mut res = create_empty_response(&state, StatusCode::OK);
+
     {
         let headers = res.headers_mut();
         headers.insert("x-gotham", "Hello World!".parse().unwrap());
