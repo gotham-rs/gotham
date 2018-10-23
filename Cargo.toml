@@ -51,6 +51,7 @@ members = [
     "examples/handlers/stateful",
     "examples/handlers/simple_async_handlers",
     "examples/handlers/async_handlers",
+    "examples/handlers/form_urlencoded",
 
     # static_assets
     "examples/static_assets",
