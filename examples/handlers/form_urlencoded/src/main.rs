@@ -31,7 +31,7 @@ fn form_handler(mut state: State) -> Box<HandlerFuture> {
                     let res_body_line = format!("{}: {}\n", key, value);
                     res_body.push_str(&res_body_line);
                 }
-                let res = create_response(&state, StatusCode::OK, (res_body, mime::TEXT_PLAIN));
+                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, res_body);
                 future::ok((state, res))
             }
             Err(e) => return future::err((state, e.into_handler_error())),
