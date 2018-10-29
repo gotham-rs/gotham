@@ -1,6 +1,6 @@
 [package]
 name = "gotham"
-version = "0.3.0" # Alter html_root_url in lib.rs also
+version = "0.4.0-dev" # Alter html_root_url in lib.rs also
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
           "Colin Bankier <colinbankier@gmail.com>",
           "Isaac Whitfield <iw@whitfin.io>",
@@ -43,7 +43,7 @@ httpdate = "0.3"
 failure = "0.1"
 
 [dev-dependencies]
-gotham_derive = "0.3.0"
+gotham_derive = "0.4.0-dev"
 
 [badges]
 travis-ci = { repository = "gotham-rs/gotham", branch = "master" }
