@@ -29,7 +29,7 @@ borrow-bag = "1.0"
 url = "1.7"
 uuid = { version = "0.7", features = ["v4"] }
 chrono = "0.4"
-base64 = "0.9"
+base64 = "0.10"
 rand = "0.5"
 linked-hash-map = "0.5"
 num_cpus = "1.8"
