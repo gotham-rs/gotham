@@ -176,24 +176,24 @@ mod tests {
 
                 let (pipelines, p1) = pipelines.add(
                     new_pipeline()
-                    .add(Number { value: 0 }) // 0
-                    .add(Addition { value: 1 }) // 1
-                    .add(Multiplication { value: 2 }) // 2
-                    .build(),
+                        .add(Number { value: 0 }) // 0
+                        .add(Addition { value: 1 }) // 1
+                        .add(Multiplication { value: 2 }) // 2
+                        .build(),
                 );
 
                 let (pipelines, p2) = pipelines.add(
                     new_pipeline()
-                    .add(Addition { value: 1 }) // 3
-                    .add(Multiplication { value: 2 }) // 6
-                    .build(),
+                        .add(Addition { value: 1 }) // 3
+                        .add(Multiplication { value: 2 }) // 6
+                        .build(),
                 );
 
                 let (pipelines, p3) = pipelines.add(
                     new_pipeline()
-                    .add(Addition { value: 2 }) // 8
-                    .add(Multiplication { value: 3 }) // 24
-                    .build(),
+                        .add(Addition { value: 2 }) // 8
+                        .add(Multiplication { value: 3 }) // 24
+                        .build(),
                 );
 
                 let pipelines = Arc::new(pipelines);
