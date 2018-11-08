@@ -1,7 +1,7 @@
 //! This module holds the functions to get and create products from the DB.
 
-pub mod schema;
 pub mod models;
+pub mod schema;
 
 #[macro_use]
 extern crate diesel;

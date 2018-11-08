@@ -9,22 +9,22 @@ extern crate r2d2;
 extern crate r2d2_diesel;
 extern crate serde_json;
 
-use hyper::{Response, StatusCode};
-use gotham::state::{FromState, State};
-use gotham::router::Router;
-use gotham::pipeline::new_pipeline;
-use gotham::router::builder::*;
-use gotham::router::route::dispatch::{finalize_pipeline_set, new_pipeline_set};
-use gotham::handler::HandlerFuture;
-use gotham::http::response::create_response;
-use gotham_middleware_diesel::DieselMiddleware;
-use gotham::handler::IntoHandlerError;
-use diesel::sqlite::SqliteConnection;
-use r2d2_diesel::ConnectionManager;
-use r2d2::{Pool, PooledConnection};
-use futures::{future, Future, Stream};
-use std::str;
 use basic_diesel::models::NewProduct;
+use diesel::sqlite::SqliteConnection;
+use futures::{future, Future, Stream};
+use gotham::handler::HandlerFuture;
+use gotham::handler::IntoHandlerError;
+use gotham::helpers::http::response::create_response;
+use gotham::pipeline::new_pipeline;
+use gotham::pipeline::single::single_pipeline;
+use gotham::router::builder::*;
+use gotham::router::Router;
+use gotham::state::{FromState, State};
+use gotham_middleware_diesel::DieselMiddleware;
+use hyper::{Body, Response, StatusCode};
+use r2d2::{Pool, PooledConnection};
+use r2d2_diesel::ConnectionManager;
+use std::str;
 
 // The URL of the database.
 static DATABASE_URL: &'static str = "products.db";
@@ -38,17 +38,18 @@ fn create_middleware(url: &str) -> DieselMiddleware<SqliteConnection> {
 }
 
 /// Handler function. Responsible of getting and displaying the products from the DB
-fn get_products_handler(state: State) -> (State, Response) {
+fn get_products_handler(state: State) -> (State, Response<Body>) {
     let conn: PooledConnection<ConnectionManager<SqliteConnection>> =
         gotham_middleware_diesel::state_data::connection(&state);
     let products = basic_diesel::get_products(&conn);
 
-    (
-        state,
-        Response::new()
-            .with_status(StatusCode::Ok)
-            .with_body(format!("{}", serde_json::to_string(&products).unwrap())),
-    )
+    let response = create_response(
+        &state,
+        StatusCode::OK,
+        mime::APPLICATION_JSON,
+        serde_json::to_string(&products).expect("serialized product"),
+    );
+    (state, response)
 }
 
 /// Handle function. Manages the `NewProduct` to insert to the DB
@@ -63,7 +64,7 @@ fn post_product_handler(mut state: State) -> Box<HandlerFuture> {
                 };
                 let conn: PooledConnection<ConnectionManager<SqliteConnection>> =
                     gotham_middleware_diesel::state_data::connection(&state);
-                let mut res: Response;
+                let mut res: Response<Body>;
                 match basic_diesel::create_product(
                     &conn,
                     product.title,
@@ -71,11 +72,7 @@ fn post_product_handler(mut state: State) -> Box<HandlerFuture> {
                     product.link,
                 ) {
                     Ok(_) => {
-                        res = create_response(
-                            &state,
-                            StatusCode::Created,
-                            Some((vec![], mime::TEXT_PLAIN)),
-                        )
+                        res = create_response(&state, StatusCode::CREATED, mime::TEXT_PLAIN, vec![])
                     }
                     Err(e) => return future::err((state, e.into_handler_error())),
                 }
@@ -96,18 +93,11 @@ fn post_product_handler(mut state: State) -> Box<HandlerFuture> {
 /// It returns the content of the SQLite DB file located in `products.db`
 /// This DB consists of `Products` entries.
 fn router(middleware: DieselMiddleware<SqliteConnection>) -> Router {
-    // Create a new pipeline set
-    let editable_pipeline_set = new_pipeline_set();
-
     // Add the middleware to a new pipeline
-    let (editable_pipeline_set, pipeline) =
-        editable_pipeline_set.add(new_pipeline().add(middleware).build());
-    let pipeline_set = finalize_pipeline_set(editable_pipeline_set);
-
-    let default_pipeline_chain = (pipeline, ());
+    let (chain, pipeline) = single_pipeline(new_pipeline().add(middleware).build());
 
     // Build the router
-    build_router(default_pipeline_chain, pipeline_set, |route| {
+    build_router(chain, pipeline, |route| {
         route.get("/").to(get_products_handler);
         route.post("/").to(post_product_handler);
     })
@@ -140,7 +130,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         let str_body = str::from_utf8(&body).unwrap();
@@ -159,6 +149,6 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Created);
+        assert_eq!(response.status(), StatusCode::CREATED);
     }
 }
