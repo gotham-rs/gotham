@@ -191,15 +191,9 @@ impl TestServer {
         R: Send + 'static,
         E: failure::Fail,
     {
-        self.data
-            .runtime
-            .write()
-            .unwrap()
-            .block_on(future)
-            .map_err(|e| {
-                warn!("Error in test server: {:?}", e);
-                e.into()
-            })
+        let (tx, rx) = futures::sync::oneshot::channel();
+        self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
+        rx.wait().unwrap().map_err(|e| e.into())
     }
 }
 
