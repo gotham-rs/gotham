@@ -115,6 +115,20 @@ impl TestServer {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
+    /// Spawns the given future on the `TestServer`'s internal runtime.
+    /// This allows you to spawn more futures ontop of the `TestServer` in your
+    /// tests.
+    pub fn spawn<F>(&self, fut: F)
+    where
+        F: Future<Item = (), Error = ()> + Send + 'static,
+    {
+        self.data
+            .runtime
+            .write()
+            .expect("unable to acquire read lock")
+            .spawn(fut);
+    }
+
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
@@ -177,15 +191,9 @@ impl TestServer {
         R: Send + 'static,
         E: failure::Fail,
     {
-        self.data
-            .runtime
-            .write()
-            .unwrap()
-            .block_on(future)
-            .map_err(|e| {
-                warn!("Error in test server: {:?}", e);
-                e.into()
-            })
+        let (tx, rx) = futures::sync::oneshot::channel();
+        self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
+        rx.wait().unwrap().map_err(|e| e.into())
     }
 }
 
