@@ -5,7 +5,8 @@ use borrow_bag::{Handle, Lookup};
 use futures::future;
 use std::panic::RefUnwindSafe;
 
-use handler::{HandlerFuture, IntoHandlerError};
+use error::Result;
+use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
 use middleware::chain::NewMiddlewareChain;
 use pipeline::set::PipelineSet;
 use pipeline::Pipeline;
@@ -64,5 +65,70 @@ impl<P> PipelineHandleChain<P> for () {
     {
         trace!("[{}] start pipeline", request_id(&state));
         f(state)
+    }
+}
+
+/// Creates a `NewHandler` implementation, who's generated handlers will first process the pipeline
+/// and finally call the passed handler.
+pub fn new_handler_with_pipeline<C, P, NH>(
+    pipeline_chain: C,
+    pipelines: PipelineSet<P>,
+    new_handler: NH,
+) -> NewHandlerWithPipeline<C, P, NH>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + RefUnwindSafe + 'static,
+    NH: NewHandler,
+    NH::Instance: 'static,
+{
+    NewHandlerWithPipeline {
+        pipeline_chain,
+        pipelines,
+        new_handler,
+    }
+}
+
+/// `NewHandler` implementation returned by `new_handler_with_pipeline`.
+pub struct NewHandlerWithPipeline<C, P, NH> {
+    pipeline_chain: C,
+    pipelines: PipelineSet<P>,
+    new_handler: NH,
+}
+
+/// `Handler` implementation instantiated by `NewHandlerWithPipeline`.
+pub struct HandlerWithPipeline<C, P, H> {
+    pipeline_chain: C,
+    pipelines: PipelineSet<P>,
+    handler: H,
+}
+
+impl<C, P, NH> NewHandler for NewHandlerWithPipeline<C, P, NH>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + RefUnwindSafe + 'static,
+    NH: NewHandler,
+    NH::Instance: 'static,
+{
+    type Instance = HandlerWithPipeline<C, P, NH::Instance>;
+
+    fn new_handler(&self) -> Result<Self::Instance> {
+        Ok(HandlerWithPipeline {
+            pipeline_chain: self.pipeline_chain,
+            pipelines: self.pipelines.clone(),
+            handler: self.new_handler.new_handler()?,
+        })
+    }
+}
+
+impl<C, P, H> Handler for HandlerWithPipeline<C, P, H>
+where
+    C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
+    P: Send + Sync + RefUnwindSafe + 'static,
+    H: Handler + 'static,
+{
+    fn handle(self, state: State) -> Box<HandlerFuture> {
+        let handler = self.handler;
+        self.pipeline_chain
+            .call(&self.pipelines, state, |state| handler.handle(state))
     }
 }
