@@ -16,6 +16,9 @@ members = [
     # Tera template
     "examples/templating/tera",
 
+    # Askama template
+    "examples/templating/askama",
+
     # routing
     "examples/routing/introduction",
     "examples/routing/http_verbs",
