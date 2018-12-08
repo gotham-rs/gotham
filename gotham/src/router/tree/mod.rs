@@ -116,13 +116,11 @@ mod tests {
             None => panic!(),
         }
 
-        assert!(
-            tree.traverse(&[PercentDecoded::new("/").unwrap()])
-                .is_none()
-        );
-        assert!(
-            tree.traverse(&[PercentDecoded::new("/activate").unwrap()])
-                .is_none()
-        );
+        assert!(tree
+            .traverse(&[PercentDecoded::new("/").unwrap()])
+            .is_none());
+        assert!(tree
+            .traverse(&[PercentDecoded::new("/activate").unwrap()])
+            .is_none());
     }
 }

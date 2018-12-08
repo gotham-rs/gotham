@@ -185,7 +185,8 @@ impl Router {
                 );
                 let response = err.into_response(&state);
                 future::ok((state, response))
-            }).and_then(move |(state, res)| {
+            })
+            .and_then(move |(state, res)| {
                 trace!("[{}] handler complete", request_id(&state));
                 response_finalizer.finalize(state, res)
             });
@@ -334,10 +335,8 @@ mod tests {
                 let methods = vec![Method::GET];
                 let matcher = MethodOnlyRouteMatcher::new(methods);
                 let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
-                let extractors: Extractors<
-                    NoopPathExtractor,
-                    NoopQueryStringExtractor,
-                > = Extractors::new();
+                let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
+                    Extractors::new();
                 let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
                 Box::new(route)
             };

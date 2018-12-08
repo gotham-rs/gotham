@@ -204,7 +204,8 @@ mod tests {
                 let dispatcher = DispatcherImpl::new(new_handler, pipeline_chain, pipelines);
                 dispatcher.dispatch(state)
             })
-        }).unwrap();
+        })
+        .unwrap();
 
         let response = test_server
             .client()

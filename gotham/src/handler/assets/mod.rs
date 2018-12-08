@@ -262,7 +262,8 @@ fn check_compressed_options(
                 .iter()
                 .filter_map(|e| {
                     get_extension(&e.encoding, &options).map(|ext| (e.encoding.to_string(), ext))
-                }).filter_map(|(encoding, ext)| {
+                })
+                .filter_map(|(encoding, ext)| {
                     let path = options.path.with_file_name(format!(
                         "{}.{}",
                         filename.to_string_lossy(),
@@ -273,8 +274,10 @@ fn check_compressed_options(
                     } else {
                         None
                     }
-                }).next()
-        }).unwrap_or((options.path.clone(), None))
+                })
+                .next()
+        })
+        .unwrap_or((options.path.clone(), None))
 }
 
 // Gets the file extension for the compressed version of a file
@@ -324,7 +327,8 @@ fn not_modified(metadata: &Metadata, headers: &HeaderMap) -> bool {
                     .modified()
                     .map(|modified| modified <= if_modified_time)
                     .ok()
-            }).unwrap_or(false),
+            })
+            .unwrap_or(false),
     }
 }
 
@@ -495,7 +499,8 @@ mod tests {
     fn assets_single_file() {
         let test_server = TestServer::new(build_simple_router(|route| {
             route.get("/").to_file("resources/test/assets/doc.html")
-        })).unwrap();
+        }))
+        .unwrap();
 
         let response = test_server
             .client()
@@ -531,7 +536,8 @@ mod tests {
             .with_header(
                 IF_NONE_MATCH,
                 HeaderValue::from_bytes(etag.as_bytes()).unwrap(),
-            ).perform()
+            )
+            .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
@@ -543,7 +549,8 @@ mod tests {
             .with_header(
                 IF_NONE_MATCH,
                 HeaderValue::from_bytes("bogus".as_bytes()).unwrap(),
-            ).perform()
+            )
+            .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
@@ -577,7 +584,8 @@ mod tests {
                 IF_MODIFIED_SINCE,
                 HeaderValue::from_bytes(fmt_http_date(modified + Duration::new(5, 0)).as_bytes())
                     .unwrap(),
-            ).perform()
+            )
+            .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_MODIFIED);
@@ -590,7 +598,8 @@ mod tests {
                 IF_MODIFIED_SINCE,
                 HeaderValue::from_bytes(fmt_http_date(modified - Duration::new(5, 0)).as_bytes())
                     .unwrap(),
-            ).perform()
+            )
+            .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
@@ -788,7 +797,8 @@ mod tests {
             .with_header(
                 ACCEPT_ENCODING,
                 HeaderValue::from_str("*;q=0.1, br;q=1.0, gzip;q=0.8").unwrap(),
-            ).perform()
+            )
+            .perform()
             .unwrap();
 
         assert_eq!(

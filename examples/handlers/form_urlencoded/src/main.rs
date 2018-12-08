@@ -68,7 +68,8 @@ mod tests {
                 "http://localhost",
                 "name=Bob&address=123+Jersey Ave.&message=Hello world%21",
                 mime::APPLICATION_WWW_FORM_URLENCODED,
-            ).perform()
+            )
+            .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);

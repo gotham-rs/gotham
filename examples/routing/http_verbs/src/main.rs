@@ -155,7 +155,8 @@ mod tests {
                 "http://localhost/checkout/address",
                 "data",
                 mime::TEXT_PLAIN,
-            ).perform()
+            )
+            .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
@@ -173,7 +174,8 @@ mod tests {
                 "http://localhost/checkout/address",
                 "data",
                 mime::TEXT_PLAIN,
-            ).perform()
+            )
+            .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
@@ -191,7 +193,8 @@ mod tests {
                 "http://localhost/checkout/address",
                 "data",
                 mime::TEXT_PLAIN,
-            ).perform()
+            )
+            .perform()
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);

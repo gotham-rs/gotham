@@ -394,7 +394,8 @@ mod tests {
                 Ok(p) => p.call(state, |state| handler.handle(state)),
                 Err(e) => Box::new(future::err((state, e.into_handler_error()))),
             })
-        }).unwrap();
+        })
+        .unwrap();
 
         let response = test_server
             .client()

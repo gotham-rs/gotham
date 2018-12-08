@@ -89,7 +89,8 @@ impl Middleware for ExampleMiddleware {
                     format!(
                         "Supplied: {}, Supported: {}",
                         data.user_agent, data.supported
-                    ).parse()
+                    )
+                    .parse()
                     .unwrap(),
                 );
             };

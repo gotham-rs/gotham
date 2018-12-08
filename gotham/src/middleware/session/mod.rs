@@ -371,7 +371,8 @@ where
 
 impl<T> StateData for SessionData<T> where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
-{}
+{
+}
 
 impl<T> Deref for SessionData<T>
 where

@@ -100,7 +100,8 @@ fn finalize_catch_unwind_response(
             );
 
             Err(failure::Error::from(e).compat())
-        }).unwrap_or_else(|_| {
+        })
+        .unwrap_or_else(|_| {
             error!("[PANIC][A panic occurred while polling the future]");
             Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)

@@ -86,7 +86,8 @@ impl<T, B> PathExtractor<B> for T
 where
     B: Payload,
     for<'de> T: Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData,
-{}
+{
+}
 
 /// A `PathExtractor` that does not extract/store any data from the `Request` path.
 ///
