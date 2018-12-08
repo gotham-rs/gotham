@@ -8,6 +8,7 @@ templating engines from with Gotham.
 As the engines are external, there's no real order to check these examples out;
 feel free to view examples as they're needed.
 
+- [Askama](askama) - Render templates using `askama`
 - [Tera](tera) - Demonstrates the `Tera` templating engine with Gotham.
 
 ## Help
