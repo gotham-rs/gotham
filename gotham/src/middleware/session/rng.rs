@@ -1,7 +1,7 @@
-use rand::prng::chacha::ChaChaCore;
 use rand::rngs::adapter::ReseedingRng;
 use rand::rngs::OsRng;
 use rand::FromEntropy;
+use rand_chacha::ChaChaCore;
 
 // A `ChaChaRng` which is periodically reseeded from an `OsRng`. This was originally using an
 // `OsRng`, but sourcing entropy from the kernel was measured to be a performance bottleneck.
