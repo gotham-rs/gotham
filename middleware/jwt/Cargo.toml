@@ -1,0 +1,25 @@
+[package]
+name = "gotham_middleware_jwt"
+version = "0.3.1"
+authors = ["Nicholas Young <nyoung@uptime.ventures>",
+          "Colin Bankier <colinbankier@gmail.com>",
+          "Isaac Whitfield <iw@whitfin.io>",
+          "Judson Lester <nyarly@gmail.com>",
+          "Bradley Beddoes <bradleybeddoes@gmail.com>"]
+description = "JWT middleware for the Gotham web framework."
+repository = "https://github.com/gotham-rs/gotham"
+keywords = ["gotham-middleware", "jwt", "jsonwebtoken", "authentication"]
+homepage = "https://gotham.rs"
+readme = "README.md"
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[dependencies]
+futures = "0.1"
+gotham = "0.3"
+gotham_derive = "0.3"
+serde = "1.0"
+serde_derive = "1.0"
+hyper = "0.12"
+jsonwebtoken = "5.0"
+log = "0.4"
