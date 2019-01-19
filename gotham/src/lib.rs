@@ -31,6 +31,7 @@ extern crate mime_guess;
 extern crate mio;
 extern crate num_cpus;
 extern crate rand;
+extern crate rand_chacha;
 extern crate regex;
 #[macro_use]
 extern crate serde;
