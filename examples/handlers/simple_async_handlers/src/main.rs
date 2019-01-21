@@ -34,12 +34,12 @@ struct QueryStringExtractor {
 
 /// Sneaky hack to make tests take less time. Nothing to see here ;-).
 #[cfg(not(test))]
-fn get_duration(seconds: &u64) -> Duration {
-    Duration::from_secs(seconds.to_owned())
+fn get_duration(seconds: u64) -> Duration {
+    Duration::from_secs(seconds)
 }
 #[cfg(test)]
-fn get_duration(seconds: &u64) -> Duration {
-    Duration::from_millis(seconds.to_owned())
+fn get_duration(seconds: u64) -> Duration {
+    Duration::from_millis(seconds)
 }
 /// All this function does is return a future that resolves after a number of
 /// seconds, with a Vec<u8> that tells you how long it slept for.
@@ -56,7 +56,7 @@ fn get_duration(seconds: &u64) -> Duration {
 /// so the patterns that you learn in this example should be applicable to
 /// real world problems.
 fn sleep(seconds: u64) -> SleepFuture {
-    let when = Instant::now() + get_duration(&seconds);
+    let when = Instant::now() + get_duration(seconds);
     let delay = Delay::new(when)
         .map_err(|e| panic!("timer failed; err={:?}", e))
         .and_then(move |_| {
@@ -75,7 +75,7 @@ fn sleep_handler(mut state: State) -> Box<HandlerFuture> {
     println!("sleep for {} seconds once: starting", seconds);
 
     // Here, we call our helper function that returns a future.
-    let sleep_future = sleep(seconds.clone());
+    let sleep_future = sleep(seconds);
 
     // Here, we convert the future from `sleep()` into the form that Gotham expects.
     // We have to use .then() rather than .and_then() because we need to coerce both

@@ -1,5 +1,6 @@
 //! An example of using stateful handlers with the Gotahm web framework.
 
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
 extern crate futures;
 extern crate gotham;
 extern crate hyper;

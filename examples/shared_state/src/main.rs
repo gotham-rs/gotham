@@ -3,6 +3,8 @@
 //! This example demonstrates a basic request counter which can be
 //! used across server threads, and be used to track the number of
 //! requests sent to the backend.
+
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;

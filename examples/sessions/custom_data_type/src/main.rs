@@ -35,12 +35,12 @@ fn get_handler(mut state: State) -> (State, String) {
         visit_data.clone()
     };
 
-    let body = match &maybe_visit_data {
-        &Some(ref visit_data) => format!(
+    let body = match maybe_visit_data {
+        Some(ref visit_data) => format!(
             "You have visited this page {} time(s) before. Your last visit was {}.\n",
             visit_data.count, visit_data.last_visit,
         ),
-        &None => "You have never visited this page before.\n".to_owned(),
+        None => "You have never visited this page before.\n".to_owned(),
     };
 
     {

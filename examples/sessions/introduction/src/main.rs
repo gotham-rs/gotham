@@ -1,6 +1,7 @@
 //! An introduction to storing and retrieving session data, in a type safe way, with the Gotham
 //! web framework.
 
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::get_unwrap))]
 extern crate cookie;
 extern crate gotham;
 extern crate hyper;
