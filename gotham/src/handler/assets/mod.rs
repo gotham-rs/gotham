@@ -546,10 +546,7 @@ mod tests {
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(
-                IF_NONE_MATCH,
-                HeaderValue::from_bytes(b"bogus").unwrap(),
-            )
+            .with_header(IF_NONE_MATCH, HeaderValue::from_bytes(b"bogus").unwrap())
             .perform()
             .unwrap();
 
