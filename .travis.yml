@@ -31,7 +31,7 @@ matrix:
         - rustup component add --toolchain stable clippy
       script:
         - echo "Checking Gotham codebase with Clippy release `cargo clippy --version`."
-        - cargo clippy --all --profile test -- -A clippy::all
+        - cargo clippy --all --profile test
   allow_failures:
     - rust: nightly
 addons:
