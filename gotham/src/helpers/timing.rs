@@ -51,10 +51,10 @@ impl Display for Timing {
             Timing::Microseconds(i) => {
                 if i < 1000 {
                     write!(f, "{}µs", i)
-                } else if i < 1000000 {
+                } else if i < 1_000_000 {
                     write!(f, "{:.2}ms", (i as f32) / 1000.0)
                 } else {
-                    write!(f, "{:.2}s", (i as f32) / 1000000.0)
+                    write!(f, "{:.2}s", (i as f32) / 1_000_000.0)
                 }
             }
             Timing::Invalid => f.write_str("invalid"),
