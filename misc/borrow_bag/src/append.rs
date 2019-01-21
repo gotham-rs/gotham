@@ -78,8 +78,7 @@ mod tests {
 
     #[test]
     fn append_test() {
-        let list = ();
-        let (list, _): ((u8, ()), Handle<u8, Take>) = list.append(1u8);
+        let (list, _): ((u8, ()), Handle<u8, Take>) = ().append(1u8);
         let (list, _) = list.append(2u8);
         let (list, _) = list.append(3u8);
 
