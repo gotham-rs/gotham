@@ -184,7 +184,7 @@ mod tests {
     };
     use jsonwebtoken::{encode, Algorithm, Header};
 
-    const SECRET: &'static str = "some-secret";
+    const SECRET: &str = "some-secret";
 
     #[derive(Debug, Deserialize, Serialize)]
     pub struct Claims {
@@ -192,22 +192,21 @@ mod tests {
         exp: usize,
     }
 
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::match_wild_err_arm))]
     fn token(alg: Algorithm) -> String {
         let claims = &Claims {
             sub: "test@example.net".to_owned(),
-            exp: 10000000000,
+            exp: 10_000_000_000,
         };
 
         let mut header = Header::default();
         header.kid = Some("signing-key".to_owned());
         header.alg = alg;
 
-        let token = match encode(&header, &claims, SECRET.as_ref()) {
+        match encode(&header, &claims, SECRET.as_ref()) {
             Ok(t) => t,
             Err(_) => panic!(),
-        };
-
-        token
+        }
     }
 
     fn handler(state: State) -> Box<HandlerFuture> {
@@ -225,7 +224,7 @@ mod tests {
             ..Validation::default()
         };
 
-        let middleware = JWTMiddleware::<Claims>::new(SECRET.as_ref()).validation(valid);
+        let middleware = JWTMiddleware::<Claims>::new(SECRET).validation(valid);
 
         let (chain, pipelines) = single_pipeline(new_pipeline().add(middleware).build());
 
@@ -252,7 +251,7 @@ mod tests {
         let res = test_server
             .client()
             .get("https://example.com")
-            .with_header(AUTHORIZATION, format!("").parse().unwrap())
+            .with_header(AUTHORIZATION, "".parse().unwrap())
             .perform()
             .unwrap();
 
@@ -265,7 +264,7 @@ mod tests {
         let res = test_server
             .client()
             .get("https://example.com")
-            .with_header(AUTHORIZATION, format!("Bearer ").parse().unwrap())
+            .with_header(AUTHORIZATION, "Bearer ".parse().unwrap())
             .perform()
             .unwrap();
 
@@ -278,7 +277,7 @@ mod tests {
         let res = test_server
             .client()
             .get("https://example.com")
-            .with_header(AUTHORIZATION, format!("Bearer xxxx").parse().unwrap())
+            .with_header(AUTHORIZATION, "Bearer xxxx".parse().unwrap())
             .perform()
             .unwrap();
 
@@ -291,7 +290,7 @@ mod tests {
         let res = test_server
             .client()
             .get("https://example.com")
-            .with_header(AUTHORIZATION, format!("Bearer").parse().unwrap())
+            .with_header(AUTHORIZATION, "Bearer".parse().unwrap())
             .perform()
             .unwrap();
 
@@ -304,7 +303,7 @@ mod tests {
         let res = test_server
             .client()
             .get("https://example.com")
-            .with_header(AUTHORIZATION, format!("Bearer: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE1MzA0MDE1MjcsImlhdCI6MTUzMDM5OTcyN30.lhg7K9SK3DXsvimVb6o_h6VcsINtkT-qHR-tvDH1bGI").parse().unwrap())
+            .with_header(AUTHORIZATION, "Bearer: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE1MzA0MDE1MjcsImlhdCI6MTUzMDM5OTcyN30.lhg7K9SK3DXsvimVb6o_h6VcsINtkT-qHR-tvDH1bGI".parse().unwrap())
             .perform()
             .unwrap();
 
