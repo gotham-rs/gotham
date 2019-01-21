@@ -29,7 +29,7 @@ impl FromStr for AcceptedEncoding {
     type Err = ParseEncodingError;
 
     fn from_str(s: &str) -> result::Result<Self, Self::Err> {
-        let mut iter = s.split(";");
+        let mut iter = s.split(';');
         iter.next()
             .map(str::trim)
             .and_then(|encoding_str| {
@@ -60,7 +60,7 @@ pub fn accepted_encodings(headers: &HeaderMap) -> Vec<AcceptedEncoding> {
         .get_all(ACCEPT_ENCODING)
         .iter()
         .filter_map(|val| val.to_str().ok())
-        .flat_map(|val| val.split(","))
+        .flat_map(|val| val.split(','))
         .filter_map(|val| val.parse::<AcceptedEncoding>().ok())
         .collect();
 
