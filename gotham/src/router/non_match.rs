@@ -269,7 +269,7 @@ impl From<MethodSet> for Vec<Method> {
         ];
 
         let mut result = methods_with_flags
-            .into_iter()
+            .iter()
             .filter_map(|&(ref method, flag)| if flag { Some(method.clone()) } else { None })
             .chain(method_set.other.into_iter())
             .collect::<Vec<Method>>();
