@@ -865,7 +865,7 @@ where
 fn descend<'n>(node_builder: &'n mut Node, path: &str) -> &'n mut Node {
     trace!("[walking to: {}]", path);
 
-    let path = if path.starts_with("/") {
+    let path = if path.starts_with('/') {
         &path[1..]
     } else {
         path
@@ -874,7 +874,7 @@ fn descend<'n>(node_builder: &'n mut Node, path: &str) -> &'n mut Node {
     if path.is_empty() {
         node_builder
     } else {
-        build_subtree(node_builder, path.split("/"))
+        build_subtree(node_builder, path.split('/'))
     }
 }
 
@@ -889,7 +889,7 @@ where
             let (segment, segment_type) = match segment.chars().next() {
                 Some(':') => {
                     let segment = &segment[1..];
-                    match segment.find(":") {
+                    match segment.find(':') {
                         Some(n) => {
                             let (segment, pattern) = segment.split_at(n);
                             let regex = ConstrainedSegmentRegex::new(&pattern[1..]);
