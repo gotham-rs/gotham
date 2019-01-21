@@ -8,6 +8,9 @@ use linked_hash_map::LinkedHashMap;
 use middleware::session::backend::{Backend, NewBackend, SessionFuture};
 use middleware::session::{SessionError, SessionIdentifier};
 
+/// Type alias for the `MemoryBackend` storage container.
+type MemoryMap = Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>;
+
 /// Defines the in-process memory based session storage.
 ///
 /// This is the default implementation which is used by `NewSessionMiddleware::default()`
@@ -27,7 +30,7 @@ pub struct MemoryBackend {
     // similarly naive benchmark using `wrk` and a lightweight sample app. Real-world use cases
     // might show a need to replace this with a smarter implementation, but today there's very
     // little overhead here.
-    storage: Arc<Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>>,
+    storage: Arc<MemoryMap>,
 }
 
 impl MemoryBackend {
@@ -117,7 +120,7 @@ impl Backend for MemoryBackend {
     }
 }
 
-fn cleanup_loop(storage: Weak<Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>>, ttl: Duration) {
+fn cleanup_loop(storage: Weak<MemoryMap>, ttl: Duration) {
     loop {
         // If the original `Arc<_>` goes away, we don't need to keep sweeping the cache, because
         // it's gone too. We can bail out of this thread when the weak ref fails to upgrade.
