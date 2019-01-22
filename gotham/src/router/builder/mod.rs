@@ -136,9 +136,7 @@ where
     F: FnOnce(&mut RouterBuilder<(), ()>),
 {
     let pipelines = finalize_pipeline_set(new_pipeline_set());
-    let pipeline_chain = ();
-
-    build_router(pipeline_chain, pipelines, f)
+    build_router((), pipelines, f)
 }
 
 /// The top-level builder which is created by `build_router` and passed to the provided closure.

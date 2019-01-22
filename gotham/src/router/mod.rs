@@ -77,7 +77,7 @@ impl Handler for Router {
                             Delegation::External => {
                                 trace!("[{}] delegating to secondary router", request_id(&state));
 
-                                state.put(rps.into_subsegments(processed));
+                                state.put(rps.subsegments(processed));
                                 route.dispatch(state)
                             }
                             Delegation::Internal => {
@@ -254,7 +254,7 @@ mod tests {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
             }
-            Err(_) => panic!("Router should have handled request"),
+            Err(_) => unreachable!("Router should have handled request"),
         };
     }
 
@@ -268,7 +268,7 @@ mod tests {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::NOT_FOUND);
             }
-            Err(_) => panic!("Router should have handled request"),
+            Err(_) => unreachable!("Router should have handled request"),
         };
     }
 
@@ -294,7 +294,7 @@ mod tests {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
             }
-            Err(_) => panic!("Router should have handled request"),
+            Err(_) => unreachable!("Router should have handled request"),
         };
     }
 
@@ -320,7 +320,7 @@ mod tests {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::OK);
             }
-            Err(_) => panic!("Router should have handled request"),
+            Err(_) => unreachable!("Router should have handled request"),
         };
     }
 
@@ -368,7 +368,7 @@ mod tests {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::NOT_FOUND);
             }
-            Err(_) => panic!("Router should have handled request"),
+            Err(_) => unreachable!("Router should have handled request"),
         };
 
         // Ensure that top level tree of delegated router has route that responds correctly
@@ -376,7 +376,7 @@ mod tests {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::OK);
             }
-            Err(_) => panic!("Router should have handled request"),
+            Err(_) => unreachable!("Router should have handled request"),
         };
     }
 
@@ -398,7 +398,7 @@ mod tests {
             Ok((_state, res)) => {
                 assert_eq!(res.headers().get(CONTENT_LENGTH).unwrap(), "3");
             }
-            Err(_) => panic!("Router should have correctly handled request"),
+            Err(_) => unreachable!("Router should have correctly handled request"),
         };
     }
 }

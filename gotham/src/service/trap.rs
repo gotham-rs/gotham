@@ -35,7 +35,7 @@ where
         // immediately consuming it.
         t.new_handler()
             .into_future()
-            .map_err(|e| failure::Error::from(e).compat())
+            .map_err(|e| e.compat())
             .and_then(move |handler| {
                 let AssertUnwindSafe(state) = state;
 
@@ -67,7 +67,7 @@ fn finalize_error_response(
         let err_description = err
             .cause()
             .map(Error::description)
-            .unwrap_or(err.description());
+            .unwrap_or_else(|| err.description());
 
         error!(
             "[ERROR][{}][Error: {}]",

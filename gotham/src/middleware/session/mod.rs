@@ -148,7 +148,7 @@ impl SessionCookieConfig {
             if self.domain.is_some() {
                 self.warn_overriding_attrs(HOST_COOKIE_PREFIX, "Domain")
             };
-            if self.path != "/".to_string() {
+            if self.path != "/" {
                 self.warn_overriding_attrs(HOST_COOKIE_PREFIX, "Path")
             };
             SessionCookieConfig {
@@ -168,7 +168,7 @@ impl SessionCookieConfig {
 
     fn invalid_host_config(&self) -> bool {
         self.name.starts_with(HOST_COOKIE_PREFIX)
-            && (!self.secure || self.domain.is_some() || self.path != "/".to_string())
+            && (!self.secure || self.domain.is_some() || self.path != "/")
     }
 
     fn warn_overriding_attrs(&self, prefix: &str, attribute: &str) {
@@ -829,7 +829,7 @@ where
                     .backend
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
-                    .and_then(|state| chain(state))
+                    .and_then(chain)
                     .and_then(persist_session::<T>);
 
                 Box::new(f)
@@ -842,7 +842,7 @@ where
 
                 let f = self
                     .new_session(state)
-                    .and_then(|state| chain(state))
+                    .and_then(chain)
                     .and_then(persist_session::<T>);
 
                 Box::new(f)
@@ -1113,7 +1113,7 @@ mod tests {
         let m = nm.new_middleware().unwrap();
         assert!(m.cookie_config.secure);
         assert!(m.cookie_config.domain.is_none());
-        assert!(m.cookie_config.path == "/".to_string());
+        assert!(m.cookie_config.path == "/");
     }
 
     #[test]

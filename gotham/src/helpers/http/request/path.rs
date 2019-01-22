@@ -32,7 +32,7 @@ impl RequestPathSegments {
         RequestPathSegments { segments }
     }
 
-    pub(crate) fn into_subsegments(&self, offset: usize) -> Self {
+    pub(crate) fn subsegments(&self, offset: usize) -> Self {
         RequestPathSegments {
             segments: self.segments.split_at(offset).1.to_vec(),
         }

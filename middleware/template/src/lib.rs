@@ -40,7 +40,7 @@ impl NewMiddleware for MyMiddleware {
     type Instance = MyMiddleware;
 
     fn new_middleware(&self) -> io::Result<Self::Instance> {
-        Ok(MyMiddleware { ..*self })
+        Ok(MyMiddleware {})
     }
 }
 

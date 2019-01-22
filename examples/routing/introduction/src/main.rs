@@ -8,7 +8,7 @@ use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::State;
 
-const HELLO_ROUTER: &'static str = "Hello Router!";
+const HELLO_ROUTER: &str = "Hello Router!";
 
 /// Create a `Handler` that is invoked for requests to the path "/"
 pub fn say_hello(state: State) -> (State, &'static str) {

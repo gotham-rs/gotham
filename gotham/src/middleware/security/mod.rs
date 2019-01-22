@@ -20,9 +20,9 @@ use state::State;
 use std::io;
 
 // constant strings to be used as header values
-const XFO_VALUE: &'static str = "DENY";
-const XXP_VALUE: &'static str = "1; mode=block";
-const XCTO_VALUE: &'static str = "nosniff";
+const XFO_VALUE: &str = "DENY";
+const XXP_VALUE: &str = "1; mode=block";
+const XCTO_VALUE: &str = "nosniff";
 
 /// Middleware binding for the Gotham security handlers.
 ///

@@ -404,6 +404,6 @@ mod tests {
             .unwrap();
 
         let buf = response.read_body().unwrap();
-        assert_eq!(buf.as_slice(), "24".as_bytes());
+        assert_eq!(buf.as_slice(), b"24");
     }
 }

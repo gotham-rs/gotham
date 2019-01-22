@@ -176,7 +176,7 @@ impl NewHandler for DirHandler {
 impl Handler for DirHandler {
     fn handle(self, state: State) -> Box<HandlerFuture> {
         let path = {
-            let mut base_path = PathBuf::from(self.options.path);
+            let mut base_path = self.options.path;
             let file_path = PathBuf::from_iter(&FilePathExtractor::borrow_from(&state).parts);
             base_path.extend(&normalize_path(&file_path));
             base_path
@@ -546,10 +546,7 @@ mod tests {
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(
-                IF_NONE_MATCH,
-                HeaderValue::from_bytes("bogus".as_bytes()).unwrap(),
-            )
+            .with_header(IF_NONE_MATCH, HeaderValue::from_bytes(b"bogus").unwrap())
             .perform()
             .unwrap();
 

@@ -6,7 +6,7 @@ extern crate mime;
 
 use gotham::state::State;
 
-const HELLO_WORLD: &'static str = "Hello World!";
+const HELLO_WORLD: &str = "Hello World!";
 
 /// Create a `Handler` which is invoked when responding to a `Request`.
 ///

@@ -8,6 +8,7 @@
 #![warn(missing_docs, deprecated)]
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::should_implement_trait))]
 #![doc(test(attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -92,7 +93,6 @@ impl<V> BorrowBag<V> {
     /// ```
     // This isn't add like +..
     // Consider renaming this method?
-    #[cfg_attr(feature = "cargo-clippy", allow(should_implement_trait))]
     pub fn add<T>(self, t: T) -> (BorrowBag<V::Output>, Handle<T, V::Navigator>)
     where
         V: Append<T>,

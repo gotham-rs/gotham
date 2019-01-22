@@ -178,7 +178,7 @@ impl Node {
         let next_segment = segments.split_first();
 
         // stop if we're done
-        if let None = next_segment {
+        if next_segment.is_none() {
             if !self.is_routable() {
                 return None;
             }
