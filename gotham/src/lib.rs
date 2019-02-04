@@ -68,7 +68,7 @@ mod service;
 pub mod state;
 pub mod test;
 
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::net::ToSocketAddrs;
 use std::sync::Arc;
 
 use futures::{Future, Stream};
@@ -121,7 +121,8 @@ where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static,
 {
-    let (listener, addr) = tcp_listener(addr);
+    let listener = tcp_listener(addr);
+    let addr = listener.local_addr().unwrap();
 
     info!(
         target: "gotham::start",
@@ -160,7 +161,7 @@ fn new_runtime(threads: usize) -> Runtime {
         .unwrap()
 }
 
-fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
+fn tcp_listener<A>(addr: A) -> TcpListener
 where
     A: ToSocketAddrs + 'static,
 {
@@ -170,7 +171,5 @@ where
         Err(_) => panic!("unable to parse listener address"),
     };
 
-    let listener = TcpListener::bind(&addr).expect("unable to open TCP listener");
-
-    (listener, addr)
+    TcpListener::bind(&addr).expect("unable to open TCP listener")
 }
