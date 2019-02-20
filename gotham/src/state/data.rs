@@ -1,5 +1,6 @@
 use std::any::Any;
 
+use cookie::CookieJar;
 use hyper::{Body, HeaderMap, Method, Uri, Version};
 
 use helpers::http::request::path::RequestPathSegments;
@@ -35,6 +36,7 @@ impl StateData for Method {}
 impl StateData for Uri {}
 impl StateData for Version {}
 impl StateData for HeaderMap {}
+impl StateData for CookieJar {}
 
 impl StateData for RequestPathSegments {}
 impl StateData for RequestId {}
