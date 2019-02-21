@@ -8,6 +8,7 @@ use handler::HandlerFuture;
 use state::State;
 
 pub mod chain;
+pub mod cookie;
 pub mod logger;
 pub mod security;
 pub mod session;

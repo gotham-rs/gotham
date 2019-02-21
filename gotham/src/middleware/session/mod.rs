@@ -8,16 +8,17 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use base64;
 use bincode;
-use cookie::{Cookie, CookieJar};
+use cookie::CookieJar;
 use futures::{
     future::{self, FutureResult},
     Future,
 };
-use hyper::header::{HeaderMap, COOKIE, SET_COOKIE};
+use hyper::header::SET_COOKIE;
 use hyper::{Body, Response, StatusCode};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 
+use super::cookie::CookieParser;
 use super::{Middleware, NewMiddleware};
 use handler::{HandlerError, HandlerFuture, IntoHandlerError};
 use helpers::http::response::create_empty_response;
@@ -798,19 +799,12 @@ where
         Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
         Self: Sized,
     {
-        let state_cookies = {
-            HeaderMap::borrow_from(&state)
-                .get_all(COOKIE)
-                .iter()
-                .flat_map(|cv| cv.to_str())
-                .flat_map(|cs| Cookie::parse(cs.to_owned()))
-                .fold(CookieJar::new(), |mut jar, cookie| {
-                    jar.add_original(cookie);
-                    jar
-                })
-        };
+        // cookies might have been parsed already by middleware
+        let cookies = CookieJar::try_borrow_from(&state)
+            .map(|jar| jar.to_owned())
+            .unwrap_or_else(|| CookieParser::from_state(&state));
 
-        let session_identifier = state_cookies
+        let session_identifier = cookies
             .get(&self.cookie_config.name)
             .map(|cookie| cookie.value())
             .map(|value| SessionIdentifier {
@@ -1045,6 +1039,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cookie::Cookie;
     use hyper::header::{HeaderMap, COOKIE};
     use hyper::{Response, StatusCode};
     use rand;

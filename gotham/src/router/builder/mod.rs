@@ -312,6 +312,7 @@ mod tests {
     use hyper::service::Service;
     use hyper::{Body, Request, Response, StatusCode};
 
+    use middleware::cookie::CookieParser;
     use middleware::session::NewSessionMiddleware;
     use pipeline::new_pipeline;
     use router::response::extender::StaticResponseExtender;
@@ -460,8 +461,12 @@ mod tests {
     #[test]
     fn build_router_test() {
         let pipelines = new_pipeline_set();
-        let (pipelines, default) =
-            pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+        let (pipelines, default) = pipelines.add(
+            new_pipeline()
+                .add(CookieParser)
+                .add(NewSessionMiddleware::default())
+                .build(),
+        );
 
         let pipelines = finalize_pipeline_set(pipelines);
 
