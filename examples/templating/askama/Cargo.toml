@@ -7,9 +7,9 @@ publish = false
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-askama = "0.7.2"
+askama = "0.8.0"
 hyper = "0.12.17"
 mime = "0.3.12"
 
 [build-dependencies]
-askama = "0.7.2"
+askama = "0.8.0"
