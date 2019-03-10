@@ -14,7 +14,6 @@
         clippy::should_implement_trait,
         clippy::unit_arg,
         clippy::match_wild_err_arm,
-        clippy::new_without_default_derive,
         clippy::new_without_default,
         clippy::wrong_self_convention,
         clippy::mutex_atomic,

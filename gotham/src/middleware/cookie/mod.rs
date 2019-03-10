@@ -5,8 +5,8 @@ use cookie::{Cookie, CookieJar};
 use hyper::header::{HeaderMap, COOKIE};
 
 use super::{Middleware, NewMiddleware};
-use handler::HandlerFuture;
-use state::{FromState, State};
+use crate::handler::HandlerFuture;
+use crate::state::{FromState, State};
 
 /// A struct that can act as a cookie parsing middleware for Gotham.
 ///
@@ -51,6 +51,6 @@ impl NewMiddleware for CookieParser {
 
     /// Clones the current middleware to a new instance.
     fn new_middleware(&self) -> io::Result<Self::Instance> {
-        Ok(self.clone())
+        Ok(*self)
     }
 }

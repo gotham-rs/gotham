@@ -17,7 +17,7 @@ use hyper::client::{
     Client,
 };
 use hyper::header::CONTENT_TYPE;
-use hyper::{Body, Method, Request, Response, Uri};
+use hyper::{Body, Method, Response, Uri};
 use log::{info, warn};
 use mime;
 use tokio::net::{TcpListener, TcpStream};

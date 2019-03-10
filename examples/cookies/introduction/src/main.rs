@@ -6,7 +6,7 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::header::{COOKIE, SET_COOKIE};
+use hyper::header::SET_COOKIE;
 use hyper::{Body, Response, StatusCode};
 
 use cookie::{Cookie, CookieJar};

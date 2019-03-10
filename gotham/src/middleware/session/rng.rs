@@ -1,5 +1,4 @@
 use log::error;
-use rand::prng::chacha::ChaChaCore;
 use rand::rngs::adapter::ReseedingRng;
 use rand::rngs::OsRng;
 use rand::FromEntropy;
