@@ -62,7 +62,7 @@ impl Middleware for ApiMiddleware {
             .get(ACCEPT)
             .map(|ct| ct.to_str().unwrap().to_string());
 
-        let f = match accepts {
+        match accepts {
             None => chain(state),
             Some(ref s) if s == "application/json" || s == "*/*" => chain(state),
             _ => {
@@ -75,8 +75,7 @@ impl Middleware for ApiMiddleware {
                 );
                 Box::new(future::ok((state, response)))
             }
-        };
-        Box::new(f)
+        }
     }
 }
 
