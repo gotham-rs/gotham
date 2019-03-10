@@ -20,7 +20,7 @@ extern crate serde_derive;
 extern crate hyper;
 extern crate mime;
 
-use futures::future::{self, Either};
+use futures::future;
 use hyper::header::{HeaderMap, ACCEPT};
 use hyper::{Body, Response, StatusCode};
 
@@ -63,8 +63,8 @@ impl Middleware for ApiMiddleware {
             .map(|ct| ct.to_str().unwrap().to_string());
 
         let f = match accepts {
-            None => Either::A(chain(state)),
-            Some(ref s) if s == "application/json" || s == "*/*" => Either::A(chain(state)),
+            None => chain(state),
+            Some(ref s) if s == "application/json" || s == "*/*" => chain(state),
             _ => {
                 let body = r#"{"message":"Invalid accept type"}"#;
                 let response = create_response(
@@ -73,7 +73,7 @@ impl Middleware for ApiMiddleware {
                     mime::APPLICATION_JSON,
                     body,
                 );
-                Either::B(future::ok((state, response)))
+                Box::new(future::ok((state, response)))
             }
         };
         Box::new(f)
