@@ -1,4 +1,5 @@
 use proc_macro;
+use quote::quote;
 use syn;
 
 pub(crate) fn bad_request_static_response_extender(

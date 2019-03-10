@@ -11,6 +11,7 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/gotham-rs/gotham"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "gotham"]
+edition = "2018"
 
 [dependencies]
 syn = "0.15"
