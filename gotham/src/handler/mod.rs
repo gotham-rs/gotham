@@ -11,11 +11,11 @@ use futures::{future, Future};
 use hyper::{Body, Chunk, Response, StatusCode};
 use mime::{self, Mime};
 
-use helpers::http::response;
-use state::State;
+use crate::helpers::http::response;
+use crate::state::State;
 
 mod error;
-use error::*;
+use crate::error::*;
 
 /// Defines handlers for serving static assets.
 pub mod assets;

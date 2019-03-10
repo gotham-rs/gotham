@@ -12,14 +12,14 @@ use std::panic::RefUnwindSafe;
 
 use hyper::{Body, Response, Uri};
 
-use extractor::{self, PathExtractor, QueryStringExtractor};
-use handler::HandlerFuture;
-use helpers::http::request::query_string;
-use router::non_match::RouteNonMatch;
-use router::route::dispatch::Dispatcher;
-use router::route::matcher::RouteMatcher;
-use router::tree::segment::SegmentMapping;
-use state::{request_id, State};
+use crate::extractor::{self, PathExtractor, QueryStringExtractor};
+use crate::handler::HandlerFuture;
+use crate::helpers::http::request::query_string;
+use crate::router::non_match::RouteNonMatch;
+use crate::router::route::dispatch::Dispatcher;
+use crate::router::route::matcher::RouteMatcher;
+use crate::router::tree::segment::SegmentMapping;
+use crate::state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]
 /// Indicates whether this `Route` will dispatch the request to an inner `Router` instance. To

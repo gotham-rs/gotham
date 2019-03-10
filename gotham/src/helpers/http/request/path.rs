@@ -1,6 +1,6 @@
 //! Defines helper functions for processing the request path
 
-use helpers::http::PercentDecoded;
+use crate::helpers::http::PercentDecoded;
 
 const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 

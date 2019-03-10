@@ -23,9 +23,9 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
 use tokio::timer::Delay;
 
-use handler::NewHandler;
+use crate::handler::NewHandler;
 
-use error::*;
+use crate::error::*;
 
 mod request;
 
@@ -438,9 +438,9 @@ mod tests {
     use hyper::{Body, Response, StatusCode, Uri};
     use mime;
 
-    use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-    use helpers::http::response::create_response;
-    use state::{client_addr, FromState, State};
+    use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+    use crate::helpers::http::response::create_response;
+    use crate::state::{client_addr, FromState, State};
 
     #[derive(Clone)]
     struct TestHandler {

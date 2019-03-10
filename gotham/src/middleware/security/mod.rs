@@ -13,10 +13,10 @@
 //! More may be added in future, but these headers provide compatibility with
 //! previous versions of Gotham.
 use futures::{future, Future};
-use handler::HandlerFuture;
+use crate::handler::HandlerFuture;
 use hyper::header::{HeaderValue, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
-use middleware::{Middleware, NewMiddleware};
-use state::State;
+use crate::middleware::{Middleware, NewMiddleware};
+use crate::state::State;
 use std::io;
 
 // constant strings to be used as header values

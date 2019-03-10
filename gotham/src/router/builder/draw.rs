@@ -3,18 +3,18 @@ use std::panic::RefUnwindSafe;
 
 use hyper::Method;
 
-use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-use pipeline::chain::PipelineHandleChain;
-use pipeline::set::PipelineSet;
-use router::builder::{
+use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::pipeline::set::PipelineSet;
+use crate::router::builder::{
     AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder,
 };
-use router::route::matcher::{
+use crate::router::route::matcher::{
     AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,
 };
-use router::tree::node::Node;
-use router::tree::regex::ConstrainedSegmentRegex;
-use router::tree::segment::SegmentType;
+use crate::router::tree::node::Node;
+use crate::router::tree::regex::ConstrainedSegmentRegex;
+use crate::router::tree::segment::SegmentType;
 
 /// The type returned when building a route that only considers path and http verb(s) when
 /// determining if it matches a request.

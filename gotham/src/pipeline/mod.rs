@@ -6,10 +6,10 @@ pub mod single;
 
 use std::io;
 
-use handler::HandlerFuture;
-use middleware::chain::{MiddlewareChain, NewMiddlewareChain};
-use middleware::NewMiddleware;
-use state::{request_id, State};
+use crate::handler::HandlerFuture;
+use crate::middleware::chain::{MiddlewareChain, NewMiddlewareChain};
+use crate::middleware::NewMiddleware;
+use crate::state::{request_id, State};
 
 /// When using middleware, one or more `Middleware` are combined to form a `Pipeline`.
 /// `Middleware` are invoked strictly in the order they're added to the `Pipeline`.
@@ -289,10 +289,10 @@ mod tests {
     use futures::future;
     use hyper::{Body, Response, StatusCode};
 
-    use handler::{Handler, IntoHandlerError};
-    use middleware::Middleware;
-    use state::StateData;
-    use test::TestServer;
+    use crate::handler::{Handler, IntoHandlerError};
+    use crate::middleware::Middleware;
+    use crate::state::StateData;
+    use crate::test::TestServer;
 
     fn handler(state: State) -> (State, Response<Body>) {
         let number = state.borrow::<Number>().value;

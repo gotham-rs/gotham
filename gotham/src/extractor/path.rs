@@ -1,8 +1,8 @@
 use hyper::{body::Payload, Body, Response};
 use serde::{Deserialize, Deserializer};
 
-use router::response::extender::StaticResponseExtender;
-use state::{State, StateData};
+use crate::router::response::extender::StaticResponseExtender;
+use crate::state::{State, StateData};
 
 /// Defines a binding for storing the dynamic segments of the `Request` path in `State`. On failure
 /// the `StaticResponseExtender` implementation extends the `Response` to indicate why the

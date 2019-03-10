@@ -1,10 +1,10 @@
 //! Defines a hierarchial `Tree` with subtrees of `Node`.
 
-use helpers::http::PercentDecoded;
+use crate::helpers::http::PercentDecoded;
+use crate::router::route::Route;
+use crate::router::tree::node::Node;
+use crate::router::tree::segment::{SegmentMapping, SegmentType};
 use hyper::Body;
-use router::route::Route;
-use router::tree::node::Node;
-use router::tree::segment::{SegmentMapping, SegmentType};
 
 pub mod node;
 pub mod regex;

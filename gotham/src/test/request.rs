@@ -5,9 +5,9 @@ use http::HttpTryFrom;
 use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
 
-use test::{TestClient, TestResponse};
+use super::{TestClient, TestResponse};
 
-use error::*;
+use crate::error::*;
 
 /// Builder API for constructing `TestServer` requests. When the request is built,
 /// `RequestBuilder::perform` will issue the request and provide access to the response.

@@ -7,10 +7,10 @@ use std::sync::Arc;
 use futures::future;
 use hyper::{Body, Response, StatusCode};
 
-use handler::HandlerFuture;
-use state::{request_id, State};
+use crate::handler::HandlerFuture;
+use crate::state::{request_id, State};
 
-use router::response::extender::ResponseExtender;
+use crate::router::response::extender::ResponseExtender;
 
 /// Holds an immutable collection of `ResponseExtender` values, as configured using
 /// `ResponseFinalizerBuilder::add`. This type is constructed automatically when using the
@@ -36,7 +36,7 @@ impl ResponseFinalizerBuilder {
         ResponseFinalizerBuilder::internal_new()
     }
 
-    pub(in router) fn internal_new() -> Self {
+    pub(in crate::router) fn internal_new() -> Self {
         let handlers = HashMap::new();
         ResponseFinalizerBuilder { data: handlers }
     }

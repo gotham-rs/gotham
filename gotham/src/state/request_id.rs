@@ -3,7 +3,7 @@
 use hyper::header::HeaderMap;
 use uuid::Uuid;
 
-use state::{FromState, State};
+use crate::state::{FromState, State};
 
 /// A container type for the value returned by `request_id`.
 pub(super) struct RequestId {

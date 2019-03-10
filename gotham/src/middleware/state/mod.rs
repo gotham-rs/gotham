@@ -4,9 +4,9 @@
 //! the state of a request, through the use of `Middleware`. Middleware can
 //! be created via `StateMiddleware::with`, with the provided value being the
 //! value to attach to the request state.
-use handler::HandlerFuture;
-use middleware::{Middleware, NewMiddleware};
-use state::{State, StateData};
+use crate::handler::HandlerFuture;
+use crate::middleware::{Middleware, NewMiddleware};
+use crate::state::{State, StateData};
 use std::io;
 use std::panic::RefUnwindSafe;
 

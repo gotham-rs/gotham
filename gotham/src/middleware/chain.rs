@@ -3,9 +3,9 @@
 use std::io;
 use std::panic::RefUnwindSafe;
 
-use handler::HandlerFuture;
-use middleware::{Middleware, NewMiddleware};
-use state::{request_id, State};
+use crate::handler::HandlerFuture;
+use crate::middleware::{Middleware, NewMiddleware};
+use crate::state::{request_id, State};
 
 /// A recursive type representing a pipeline, which is used to spawn a `MiddlewareChain`.
 ///

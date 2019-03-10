@@ -3,10 +3,10 @@
 use futures::future;
 use std::panic::RefUnwindSafe;
 
-use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-use pipeline::chain::PipelineHandleChain;
-use pipeline::set::PipelineSet;
-use state::{request_id, State};
+use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::pipeline::set::PipelineSet;
+use crate::state::{request_id, State};
 
 /// Used by `Router` to dispatch requests via pipelines and finally into the configured `Handler`.
 pub trait Dispatcher: RefUnwindSafe {

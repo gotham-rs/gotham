@@ -3,9 +3,9 @@ use std::fmt::{self, Debug, Display, Formatter};
 
 use hyper::{Body, Response, StatusCode};
 
-use handler::IntoResponse;
-use helpers::http::response::create_empty_response;
-use state::{request_id, State};
+use crate::handler::IntoResponse;
+use crate::helpers::http::response::create_empty_response;
+use crate::state::{request_id, State};
 
 /// Describes an error which occurred during handler execution, and allows the creation of a HTTP
 /// `Response`.
@@ -136,7 +136,7 @@ impl IntoResponse for HandlerError {
             self.status_code
                 .canonical_reason()
                 .unwrap_or("(unregistered)",),
-            self.cause().map(|e| e.description()).unwrap_or("(none)"),
+            self.source().map(|e| e.description()).unwrap_or("(none)"),
         );
 
         create_empty_response(state, self.status_code)

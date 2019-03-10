@@ -13,10 +13,10 @@ use http::request;
 use hyper::service::Service;
 use hyper::{Body, Request, Response};
 
-use handler::NewHandler;
-use helpers::http::request::path::RequestPathSegments;
-use state::client_addr::put_client_addr;
-use state::{set_request_id, State};
+use crate::handler::NewHandler;
+use crate::helpers::http::request::path::RequestPathSegments;
+use crate::state::client_addr::put_client_addr;
+use crate::state::{set_request_id, State};
 
 mod trap;
 
@@ -109,9 +109,9 @@ mod tests {
 
     use hyper::{Body, StatusCode};
 
-    use helpers::http::response::create_empty_response;
-    use router::builder::*;
-    use state::State;
+    use crate::helpers::http::response::create_empty_response;
+    use crate::router::builder::*;
+    use crate::state::State;
 
     fn handler(state: State) -> (State, Response<Body>) {
         let res = create_empty_response(&state, StatusCode::ACCEPTED);

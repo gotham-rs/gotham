@@ -10,11 +10,11 @@ use hyper::{header::CONTENT_LENGTH, Method, Uri, Version};
 use log::Level;
 use std::io;
 
-use handler::HandlerFuture;
-use helpers::timing::Timer;
-use middleware::{Middleware, NewMiddleware};
-use state::request_id::request_id;
-use state::{client_addr, FromState, State};
+use crate::handler::HandlerFuture;
+use crate::helpers::timing::Timer;
+use crate::middleware::{Middleware, NewMiddleware};
+use crate::state::request_id::request_id;
+use crate::state::{client_addr, FromState, State};
 
 /// A struct that can act as a logging middleware for Gotham.
 ///

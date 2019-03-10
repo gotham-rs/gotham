@@ -11,8 +11,8 @@ use futures::future::{self, Future, FutureResult, IntoFuture};
 use futures::Async;
 use hyper::{Body, Response, StatusCode};
 
-use handler::{Handler, HandlerError, IntoResponse, NewHandler};
-use state::{request_id, State};
+use crate::handler::{Handler, HandlerError, IntoResponse, NewHandler};
+use crate::state::{request_id, State};
 
 type CompatError = failure::Compat<failure::Error>;
 
@@ -62,10 +62,10 @@ fn finalize_error_response(
     err: HandlerError,
 ) -> FutureResult<Response<Body>, CompatError> {
     {
-        // HandlerError::cause() is far more interesting for logging, but the
+        // HandlerError::source() is far more interesting for logging, but the
         // API doesn't guarantee its presence (even though it always is).
         let err_description = err
-            .cause()
+            .source()
             .map(Error::description)
             .unwrap_or_else(|| err.description());
 
@@ -170,9 +170,9 @@ mod tests {
 
     use hyper::{HeaderMap, Method, StatusCode};
 
-    use handler::{HandlerFuture, IntoHandlerError};
-    use helpers::http::response::create_empty_response;
-    use state::set_request_id;
+    use crate::handler::{HandlerFuture, IntoHandlerError};
+    use crate::helpers::http::response::create_empty_response;
+    use crate::state::set_request_id;
 
     #[test]
     fn success() {

@@ -20,9 +20,9 @@ use serde::{Deserialize, Serialize};
 
 use super::cookie::CookieParser;
 use super::{Middleware, NewMiddleware};
-use handler::{HandlerError, HandlerFuture, IntoHandlerError};
-use helpers::http::response::create_empty_response;
-use state::{self, FromState, State, StateData};
+use crate::handler::{HandlerError, HandlerFuture, IntoHandlerError};
+use crate::helpers::http::response::create_empty_response;
+use crate::state::{self, FromState, State, StateData};
 
 mod backend;
 mod rng;

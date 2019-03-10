@@ -6,8 +6,8 @@
 
 mod accepted_encoding;
 
+use crate::error::Result;
 use bytes::{BufMut, BytesMut};
-use error::Result;
 use futures::{stream, Future, Stream};
 use http;
 use httpdate::parse_http_date;
@@ -19,9 +19,9 @@ use tokio::fs::File;
 use tokio::io::AsyncRead;
 
 use self::accepted_encoding::accepted_encodings;
-use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-use router::response::extender::StaticResponseExtender;
-use state::{FromState, State, StateData};
+use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+use crate::router::response::extender::StaticResponseExtender;
+use crate::state::{FromState, State, StateData};
 
 use std::cmp;
 use std::convert::From;
@@ -546,7 +546,10 @@ mod tests {
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(IF_NONE_MATCH, HeaderValue::from_bytes(b"bogus").unwrap())
+            .with_header(
+                IF_NONE_MATCH,
+                HeaderValue::from_bytes(b"bogus").unwrap(),
+            )
             .perform()
             .unwrap();
 
