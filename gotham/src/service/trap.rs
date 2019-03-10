@@ -10,6 +10,7 @@ use failure;
 use futures::future::{self, Future, FutureResult, IntoFuture};
 use futures::Async;
 use hyper::{Body, Response, StatusCode};
+use log::error;
 
 use crate::handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use crate::state::{request_id, State};

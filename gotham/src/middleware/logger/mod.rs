@@ -8,6 +8,7 @@
 use futures::{future, Future};
 use hyper::{header::CONTENT_LENGTH, Method, Uri, Version};
 use log::Level;
+use log::{log, log_enabled};
 use std::io;
 
 use crate::handler::HandlerFuture;

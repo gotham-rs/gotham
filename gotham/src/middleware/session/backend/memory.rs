@@ -4,6 +4,7 @@ use std::{io, thread};
 
 use futures::future;
 use linked_hash_map::LinkedHashMap;
+use log::trace;
 
 use crate::middleware::session::backend::{Backend, NewBackend, SessionFuture};
 use crate::middleware::session::{SessionError, SessionIdentifier};

@@ -5,6 +5,8 @@ mod data;
 mod from_state;
 pub mod request_id;
 
+use log::trace;
+
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 

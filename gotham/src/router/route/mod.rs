@@ -11,6 +11,7 @@ use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
 use hyper::{Body, Response, Uri};
+use log::debug;
 
 use crate::extractor::{self, PathExtractor, QueryStringExtractor};
 use crate::handler::HandlerFuture;

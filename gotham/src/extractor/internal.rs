@@ -11,6 +11,7 @@ use serde::de::{
     self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess, SeqAccess,
     VariantAccess, Visitor,
 };
+use serde::forward_to_deserialize_any;
 
 use crate::helpers::http::request::query_string::QueryStringMapping;
 use crate::router::tree::segment::SegmentMapping;

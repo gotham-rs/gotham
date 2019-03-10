@@ -1,10 +1,10 @@
 //! Request timing middleware, used to measure response times of requests.
-use futures::{future, Future};
 use crate::handler::HandlerFuture;
 use crate::helpers::http::header::X_RUNTIME_DURATION;
 use crate::helpers::timing::Timer;
 use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::State;
+use futures::{future, Future};
 use std::io;
 
 /// Middleware binding to attach request execution times inside headers.

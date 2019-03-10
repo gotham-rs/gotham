@@ -15,6 +15,7 @@ use futures::{
 };
 use hyper::header::SET_COOKIE;
 use hyper::{Body, Response, StatusCode};
+use log::{error, trace, warn};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 

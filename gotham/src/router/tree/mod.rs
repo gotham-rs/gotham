@@ -5,6 +5,7 @@ use crate::router::route::Route;
 use crate::router::tree::node::Node;
 use crate::router::tree::segment::{SegmentMapping, SegmentType};
 use hyper::Body;
+use log::trace;
 
 pub mod node;
 pub mod regex;

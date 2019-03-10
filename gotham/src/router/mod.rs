@@ -11,6 +11,7 @@ use std::sync::Arc;
 use futures::{future, Future};
 use hyper::header::ALLOW;
 use hyper::{Body, Response, StatusCode};
+use log::{error, trace};
 
 use crate::error::*;
 use crate::handler::{Handler, HandlerFuture, IntoResponse, NewHandler};

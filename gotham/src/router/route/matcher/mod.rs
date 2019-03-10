@@ -12,6 +12,7 @@ pub use self::any::AnyRouteMatcher;
 use std::panic::RefUnwindSafe;
 
 use hyper::{Method, StatusCode};
+use log::trace;
 
 use crate::router::non_match::RouteNonMatch;
 use crate::state::{request_id, FromState, State};

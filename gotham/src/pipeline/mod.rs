@@ -4,6 +4,7 @@ pub mod chain;
 pub mod set;
 pub mod single;
 
+use log::trace;
 use std::io;
 
 use crate::handler::HandlerFuture;

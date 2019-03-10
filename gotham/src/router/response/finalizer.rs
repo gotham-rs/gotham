@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use futures::future;
 use hyper::{Body, Response, StatusCode};
+use log::trace;
 
 use crate::handler::HandlerFuture;
 use crate::state::{request_id, State};

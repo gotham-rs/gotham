@@ -12,6 +12,7 @@ use futures::Future;
 use http::request;
 use hyper::service::Service;
 use hyper::{Body, Request, Response};
+use log::debug;
 
 use crate::handler::NewHandler;
 use crate::helpers::http::request::path::RequestPathSegments;

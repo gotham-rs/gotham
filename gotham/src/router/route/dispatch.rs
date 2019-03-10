@@ -1,6 +1,7 @@
 //! Defines the route `Dispatcher` and supporting types.
 
 use futures::future;
+use log::trace;
 use std::panic::RefUnwindSafe;
 
 use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};

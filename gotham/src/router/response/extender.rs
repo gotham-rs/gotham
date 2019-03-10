@@ -1,7 +1,8 @@
 //! Defines functionality for extending a Response.
 
-use hyper::{body::Payload, Body, Response};
 use crate::state::{request_id, State};
+use hyper::{body::Payload, Body, Response};
+use log::trace;
 use std::panic::RefUnwindSafe;
 
 /// Extend the `Response` based on current `State` and `Response` data.

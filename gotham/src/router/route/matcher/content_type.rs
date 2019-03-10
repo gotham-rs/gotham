@@ -2,6 +2,7 @@
 
 use hyper::header::{HeaderMap, CONTENT_TYPE};
 use hyper::StatusCode;
+use log::trace;
 use mime;
 
 use crate::router::non_match::RouteNonMatch;

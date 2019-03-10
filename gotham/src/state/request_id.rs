@@ -1,6 +1,7 @@
 //! Defines a unique id per `Request` that should be output with all logging.
 
 use hyper::header::HeaderMap;
+use log::trace;
 use uuid::Uuid;
 
 use crate::state::{FromState, State};

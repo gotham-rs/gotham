@@ -8,13 +8,15 @@ mod accepted_encoding;
 
 use crate::error::Result;
 use bytes::{BufMut, BytesMut};
-use futures::{stream, Future, Stream};
+use futures::{stream, try_ready, Future, Stream};
 use http;
 use httpdate::parse_http_date;
 use hyper::header::*;
 use hyper::{Body, Chunk, Response, StatusCode};
+use log::debug;
 use mime::{self, Mime};
 use mime_guess::guess_mime_type_opt;
+use serde_derive::Deserialize;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
 

@@ -1,6 +1,7 @@
 //! Defines `Node` for `Tree`.
 
 use hyper::{Body, StatusCode};
+use log::trace;
 
 use crate::helpers::http::PercentDecoded;
 use crate::router::non_match::RouteNonMatch;

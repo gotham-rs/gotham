@@ -2,6 +2,7 @@ use std::error::Error;
 use std::fmt::{self, Debug, Display, Formatter};
 
 use hyper::{Body, Response, StatusCode};
+use log::{debug, trace};
 
 use crate::handler::IntoResponse;
 use crate::helpers::http::response::create_empty_response;

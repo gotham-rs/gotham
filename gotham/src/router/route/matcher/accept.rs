@@ -2,6 +2,7 @@
 
 use hyper::header::{HeaderMap, HeaderValue, ACCEPT};
 use hyper::StatusCode;
+use log::trace;
 use mime;
 
 use crate::error;

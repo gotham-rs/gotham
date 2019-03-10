@@ -1,5 +1,7 @@
 //! Defines the types for connecting multiple middleware into a "chain" when forming a pipeline.
 
+use log::trace;
+
 use std::io;
 use std::panic::RefUnwindSafe;
 

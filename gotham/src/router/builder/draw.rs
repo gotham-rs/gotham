@@ -2,6 +2,7 @@ use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
 use hyper::Method;
+use log::trace;
 
 use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use crate::pipeline::chain::PipelineHandleChain;

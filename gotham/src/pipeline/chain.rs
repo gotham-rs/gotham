@@ -3,6 +3,7 @@
 
 use borrow_bag::{Handle, Lookup};
 use futures::future;
+use log::trace;
 use std::panic::RefUnwindSafe;
 
 use crate::handler::{HandlerFuture, IntoHandlerError};
