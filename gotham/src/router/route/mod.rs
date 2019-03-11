@@ -224,14 +224,14 @@ mod tests {
     use hyper::{HeaderMap, Method, StatusCode, Uri};
     use std::str::FromStr;
 
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use helpers::http::request::path::RequestPathSegments;
-    use helpers::http::response::create_empty_response;
-    use pipeline::set::*;
-    use router::builder::*;
-    use router::route::dispatch::DispatcherImpl;
-    use router::route::matcher::MethodOnlyRouteMatcher;
-    use state::set_request_id;
+    use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use crate::helpers::http::request::path::RequestPathSegments;
+    use crate::helpers::http::response::create_empty_response;
+    use crate::pipeline::set::*;
+    use crate::router::builder::*;
+    use crate::router::route::dispatch::DispatcherImpl;
+    use crate::router::route::matcher::MethodOnlyRouteMatcher;
+    use crate::state::set_request_id;
 
     #[test]
     fn internal_route_tests() {

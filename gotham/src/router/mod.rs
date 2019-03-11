@@ -203,17 +203,17 @@ mod tests {
     use hyper::{Body, Method, Uri};
     use std::str::FromStr;
 
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use handler::HandlerError;
-    use pipeline::set::*;
-    use router::response::finalizer::ResponseFinalizerBuilder;
-    use router::route::dispatch::DispatcherImpl;
-    use router::route::matcher::MethodOnlyRouteMatcher;
-    use router::route::{Extractors, RouteImpl};
-    use router::tree::node::Node;
-    use router::tree::segment::SegmentType;
-    use router::tree::Tree;
-    use state::set_request_id;
+    use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use crate::handler::HandlerError;
+    use crate::pipeline::set::*;
+    use crate::router::response::finalizer::ResponseFinalizerBuilder;
+    use crate::router::route::dispatch::DispatcherImpl;
+    use crate::router::route::matcher::MethodOnlyRouteMatcher;
+    use crate::router::route::{Extractors, RouteImpl};
+    use crate::router::tree::node::Node;
+    use crate::router::tree::segment::SegmentType;
+    use crate::router::tree::Tree;
+    use crate::state::set_request_id;
 
     fn handler(state: State) -> (State, Response<Body>) {
         (state, Response::new(Body::empty()))

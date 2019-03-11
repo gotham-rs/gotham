@@ -66,14 +66,14 @@ impl Tree {
 mod tests {
     use hyper::{Method, Response, StatusCode};
 
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use helpers::http::request::path::RequestPathSegments;
-    use helpers::http::response::create_empty_response;
-    use pipeline::set::*;
-    use router::route::dispatch::DispatcherImpl;
-    use router::route::matcher::MethodOnlyRouteMatcher;
-    use router::route::{Delegation, Extractors, RouteImpl};
-    use state::State;
+    use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use crate::helpers::http::request::path::RequestPathSegments;
+    use crate::helpers::http::response::create_empty_response;
+    use crate::pipeline::set::*;
+    use crate::router::route::dispatch::DispatcherImpl;
+    use crate::router::route::matcher::MethodOnlyRouteMatcher;
+    use crate::router::route::{Delegation, Extractors, RouteImpl};
+    use crate::state::State;
 
     use super::*;
 

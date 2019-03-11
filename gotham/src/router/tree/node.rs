@@ -292,15 +292,15 @@ mod tests {
 
     use hyper::{HeaderMap, Method, Response};
 
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use helpers::http::request::path::RequestPathSegments;
-    use helpers::http::PercentDecoded;
-    use pipeline::set::*;
-    use router::route::dispatch::DispatcherImpl;
-    use router::route::matcher::MethodOnlyRouteMatcher;
-    use router::route::{Delegation, Extractors, Route, RouteImpl};
-    use router::tree::regex::ConstrainedSegmentRegex;
-    use state::{set_request_id, State};
+    use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use crate::helpers::http::request::path::RequestPathSegments;
+    use crate::helpers::http::PercentDecoded;
+    use crate::pipeline::set::*;
+    use crate::router::route::dispatch::DispatcherImpl;
+    use crate::router::route::matcher::MethodOnlyRouteMatcher;
+    use crate::router::route::{Delegation, Extractors, Route, RouteImpl};
+    use crate::router::tree::regex::ConstrainedSegmentRegex;
+    use crate::state::{set_request_id, State};
 
     fn handler(state: State) -> (State, Response<Body>) {
         (state, Response::new(Body::empty()))

@@ -953,14 +953,14 @@ mod tests {
     use futures::future;
     use hyper::{Body, Response, StatusCode};
 
-    use handler::HandlerFuture;
-    use helpers::http::response::create_empty_response;
-    use middleware::{Middleware, NewMiddleware};
-    use pipeline::single::*;
-    use pipeline::*;
-    use router::builder::*;
-    use state::State;
-    use test::TestServer;
+    use crate::handler::HandlerFuture;
+    use crate::helpers::http::response::create_empty_response;
+    use crate::middleware::{Middleware, NewMiddleware};
+    use crate::pipeline::single::*;
+    use crate::pipeline::*;
+    use crate::router::builder::*;
+    use crate::state::State;
+    use crate::test::TestServer;
 
     #[derive(Clone, Copy)]
     struct QuickExitMiddleware;

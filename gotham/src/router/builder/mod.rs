@@ -313,13 +313,14 @@ mod tests {
     use futures::{Future, Stream};
     use hyper::service::Service;
     use hyper::{Body, Request, Response, StatusCode};
+    use serde_derive::Deserialize;
 
-    use middleware::cookie::CookieParser;
-    use middleware::session::NewSessionMiddleware;
-    use pipeline::new_pipeline;
-    use router::response::extender::StaticResponseExtender;
-    use service::GothamService;
-    use state::{State, StateData};
+    use crate::middleware::cookie::CookieParser;
+    use crate::middleware::session::NewSessionMiddleware;
+    use crate::pipeline::new_pipeline;
+    use crate::router::response::extender::StaticResponseExtender;
+    use crate::service::GothamService;
+    use crate::state::{State, StateData};
 
     #[derive(Deserialize)]
     struct SalutationParams {

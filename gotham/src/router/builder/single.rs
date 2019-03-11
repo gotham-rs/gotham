@@ -1,3 +1,5 @@
+use hyper::Body;
+
 use std::panic::RefUnwindSafe;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
@@ -10,7 +12,6 @@ use crate::router::builder::{
 use crate::router::route::dispatch::DispatcherImpl;
 use crate::router::route::matcher::RouteMatcher;
 use crate::router::route::{Delegation, Extractors, RouteImpl};
-use hyper::Body;
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the

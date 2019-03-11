@@ -66,7 +66,7 @@ pub fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::*;use hyper::header::COOKIE;
     use cookie::Cookie;
     use gotham::test::TestServer;
 

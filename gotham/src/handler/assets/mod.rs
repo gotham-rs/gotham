@@ -421,13 +421,13 @@ fn get_block_size(metadata: &Metadata) -> usize {
 #[cfg(test)]
 mod tests {
     use super::FileOptions;
+    use crate::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
+    use crate::router::Router;
+    use crate::test::TestServer;
     use http::header::HeaderValue;
     use hyper::header::*;
     use hyper::StatusCode;
-    use router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
-    use router::Router;
     use std::{fs, str};
-    use test::TestServer;
 
     #[test]
     fn assets_guesses_content_type() {
