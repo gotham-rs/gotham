@@ -66,9 +66,10 @@ pub fn main() {
 
 #[cfg(test)]
 mod tests {
-    use super::*;use hyper::header::COOKIE;
+    use super::*;
     use cookie::Cookie;
     use gotham::test::TestServer;
+    use hyper::header::COOKIE;
 
     #[test]
     fn cookie_is_set_and_counter_increments() {
