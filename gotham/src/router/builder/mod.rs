@@ -10,17 +10,19 @@ use std::panic::RefUnwindSafe;
 
 use hyper::{Body, StatusCode};
 
-use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
-use pipeline::chain::PipelineHandleChain;
-use pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
-use router::response::extender::ResponseExtender;
-use router::response::finalizer::ResponseFinalizerBuilder;
-use router::route::dispatch::DispatcherImpl;
-use router::route::matcher::{AnyRouteMatcher, RouteMatcher};
-use router::route::{Delegation, Extractors, RouteImpl};
-use router::tree::node::Node;
-use router::tree::Tree;
-use router::Router;
+use crate::extractor::{
+    NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor,
+};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
+use crate::router::response::extender::ResponseExtender;
+use crate::router::response::finalizer::ResponseFinalizerBuilder;
+use crate::router::route::dispatch::DispatcherImpl;
+use crate::router::route::matcher::{AnyRouteMatcher, RouteMatcher};
+use crate::router::route::{Delegation, Extractors, RouteImpl};
+use crate::router::tree::node::Node;
+use crate::router::tree::Tree;
+use crate::router::Router;
 
 pub use self::associated::{AssociatedRouteBuilder, AssociatedSingleRouteBuilder};
 pub use self::draw::DrawRoutes;
@@ -311,13 +313,14 @@ mod tests {
     use futures::{Future, Stream};
     use hyper::service::Service;
     use hyper::{Body, Request, Response, StatusCode};
+    use serde_derive::Deserialize;
 
-    use middleware::cookie::CookieParser;
-    use middleware::session::NewSessionMiddleware;
-    use pipeline::new_pipeline;
-    use router::response::extender::StaticResponseExtender;
-    use service::GothamService;
-    use state::{State, StateData};
+    use crate::middleware::cookie::CookieParser;
+    use crate::middleware::session::NewSessionMiddleware;
+    use crate::pipeline::new_pipeline;
+    use crate::router::response::extender::StaticResponseExtender;
+    use crate::service::GothamService;
+    use crate::state::{State, StateData};
 
     #[derive(Deserialize)]
     struct SalutationParams {

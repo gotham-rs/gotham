@@ -4,6 +4,7 @@ pub mod header;
 pub mod request;
 pub mod response;
 
+use log::trace;
 use std;
 use url::percent_encoding::percent_decode;
 

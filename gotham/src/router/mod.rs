@@ -11,16 +11,17 @@ use std::sync::Arc;
 use futures::{future, Future};
 use hyper::header::ALLOW;
 use hyper::{Body, Response, StatusCode};
+use log::{error, trace};
 
-use error::*;
-use handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
-use helpers::http::request::path::RequestPathSegments;
-use helpers::http::response::create_empty_response;
-use router::response::finalizer::ResponseFinalizer;
-use router::route::{Delegation, Route};
-use router::tree::segment::SegmentMapping;
-use router::tree::Tree;
-use state::{request_id, State};
+use crate::error::*;
+use crate::handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
+use crate::helpers::http::request::path::RequestPathSegments;
+use crate::helpers::http::response::create_empty_response;
+use crate::router::response::finalizer::ResponseFinalizer;
+use crate::router::route::{Delegation, Route};
+use crate::router::tree::segment::SegmentMapping;
+use crate::router::tree::Tree;
+use crate::state::{request_id, State};
 
 struct RouterData {
     tree: Tree,
@@ -202,17 +203,17 @@ mod tests {
     use hyper::{Body, Method, Uri};
     use std::str::FromStr;
 
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use handler::HandlerError;
-    use pipeline::set::*;
-    use router::response::finalizer::ResponseFinalizerBuilder;
-    use router::route::dispatch::DispatcherImpl;
-    use router::route::matcher::MethodOnlyRouteMatcher;
-    use router::route::{Extractors, RouteImpl};
-    use router::tree::node::Node;
-    use router::tree::segment::SegmentType;
-    use router::tree::Tree;
-    use state::set_request_id;
+    use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use crate::handler::HandlerError;
+    use crate::pipeline::set::*;
+    use crate::router::response::finalizer::ResponseFinalizerBuilder;
+    use crate::router::route::dispatch::DispatcherImpl;
+    use crate::router::route::matcher::MethodOnlyRouteMatcher;
+    use crate::router::route::{Extractors, RouteImpl};
+    use crate::router::tree::node::Node;
+    use crate::router::tree::segment::SegmentType;
+    use crate::router::tree::Tree;
+    use crate::state::set_request_id;
 
     fn handler(state: State) -> (State, Response<Body>) {
         (state, Response::new(Body::empty()))

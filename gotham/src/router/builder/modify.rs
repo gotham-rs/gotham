@@ -1,11 +1,12 @@
+use hyper::Body;
+
 use std::panic::RefUnwindSafe;
 
-use extractor::{PathExtractor, QueryStringExtractor};
-use hyper::Body;
-use pipeline::chain::PipelineHandleChain;
-use router::builder::single::DefineSingleRoute;
-use router::builder::SingleRouteBuilder;
-use router::route::matcher::{AndRouteMatcher, RouteMatcher};
+use crate::extractor::{PathExtractor, QueryStringExtractor};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::router::builder::single::DefineSingleRoute;
+use crate::router::builder::SingleRouteBuilder;
+use crate::router::route::matcher::{AndRouteMatcher, RouteMatcher};
 
 /// Describes the operation of replacing a `PathExtractor` on a route. This trait exists to remove
 /// type clutter from the documentation of `SingleRouteBuilder::with_path_extractor`.

@@ -11,9 +11,10 @@ use serde::de::{
     self, Deserialize, DeserializeSeed, Deserializer, EnumAccess, MapAccess, SeqAccess,
     VariantAccess, Visitor,
 };
+use serde::forward_to_deserialize_any;
 
-use helpers::http::request::query_string::QueryStringMapping;
-use router::tree::segment::SegmentMapping;
+use crate::helpers::http::request::query_string::QueryStringMapping;
+use crate::router::tree::segment::SegmentMapping;
 
 /// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
 /// `PathExtractor` provided by the application.
@@ -702,7 +703,8 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use helpers::http::{FormUrlDecoded, PercentDecoded};
+    use crate::helpers::http::{FormUrlDecoded, PercentDecoded};
+    use serde_derive::Deserialize;
     use std;
 
     #[derive(Deserialize)]

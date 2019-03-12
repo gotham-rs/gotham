@@ -11,15 +11,16 @@ use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
 use hyper::{Body, Response, Uri};
+use log::debug;
 
-use extractor::{self, PathExtractor, QueryStringExtractor};
-use handler::HandlerFuture;
-use helpers::http::request::query_string;
-use router::non_match::RouteNonMatch;
-use router::route::dispatch::Dispatcher;
-use router::route::matcher::RouteMatcher;
-use router::tree::segment::SegmentMapping;
-use state::{request_id, State};
+use crate::extractor::{self, PathExtractor, QueryStringExtractor};
+use crate::handler::HandlerFuture;
+use crate::helpers::http::request::query_string;
+use crate::router::non_match::RouteNonMatch;
+use crate::router::route::dispatch::Dispatcher;
+use crate::router::route::matcher::RouteMatcher;
+use crate::router::tree::segment::SegmentMapping;
+use crate::state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]
 /// Indicates whether this `Route` will dispatch the request to an inner `Router` instance. To
@@ -223,14 +224,14 @@ mod tests {
     use hyper::{HeaderMap, Method, StatusCode, Uri};
     use std::str::FromStr;
 
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use helpers::http::request::path::RequestPathSegments;
-    use helpers::http::response::create_empty_response;
-    use pipeline::set::*;
-    use router::builder::*;
-    use router::route::dispatch::DispatcherImpl;
-    use router::route::matcher::MethodOnlyRouteMatcher;
-    use state::set_request_id;
+    use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use crate::helpers::http::request::path::RequestPathSegments;
+    use crate::helpers::http::response::create_empty_response;
+    use crate::pipeline::set::*;
+    use crate::router::builder::*;
+    use crate::router::route::dispatch::DispatcherImpl;
+    use crate::router::route::matcher::MethodOnlyRouteMatcher;
+    use crate::state::set_request_id;
 
     #[test]
     fn internal_route_tests() {

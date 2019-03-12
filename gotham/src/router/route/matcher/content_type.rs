@@ -2,11 +2,12 @@
 
 use hyper::header::{HeaderMap, CONTENT_TYPE};
 use hyper::StatusCode;
+use log::trace;
 use mime;
 
-use router::non_match::RouteNonMatch;
-use router::route::RouteMatcher;
-use state::{request_id, FromState, State};
+use crate::router::non_match::RouteNonMatch;
+use crate::router::route::RouteMatcher;
+use crate::state::{request_id, FromState, State};
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with a `Content-Type` header
 /// that includes a supported media type. The matcher will fail if the Content-Type

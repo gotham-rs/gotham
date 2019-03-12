@@ -1,12 +1,13 @@
 //! Defines the route `Dispatcher` and supporting types.
 
 use futures::future;
+use log::trace;
 use std::panic::RefUnwindSafe;
 
-use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-use pipeline::chain::PipelineHandleChain;
-use pipeline::set::PipelineSet;
-use state::{request_id, State};
+use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::pipeline::set::PipelineSet;
+use crate::state::{request_id, State};
 
 /// Used by `Router` to dispatch requests via pipelines and finally into the configured `Handler`.
 pub trait Dispatcher: RefUnwindSafe {
@@ -79,11 +80,11 @@ mod tests {
 
     use hyper::{Body, Response, StatusCode};
 
-    use middleware::{Middleware, NewMiddleware};
-    use pipeline::new_pipeline;
-    use pipeline::set::*;
-    use state::StateData;
-    use test::TestServer;
+    use crate::middleware::{Middleware, NewMiddleware};
+    use crate::pipeline::new_pipeline;
+    use crate::pipeline::set::*;
+    use crate::state::StateData;
+    use crate::test::TestServer;
 
     fn handler(state: State) -> (State, Response<Body>) {
         let number = state.borrow::<Number>().value;

@@ -5,7 +5,7 @@ use std::panic::RefUnwindSafe;
 
 use futures::Future;
 
-use middleware::session::{SessionError, SessionIdentifier};
+use crate::middleware::session::{SessionError, SessionIdentifier};
 
 /// A type which is used to spawn new `Backend` values.
 pub trait NewBackend: Sync + Clone + RefUnwindSafe {

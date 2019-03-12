@@ -2,19 +2,20 @@ use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
 use hyper::Method;
+use log::trace;
 
-use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-use pipeline::chain::PipelineHandleChain;
-use pipeline::set::PipelineSet;
-use router::builder::{
+use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::pipeline::set::PipelineSet;
+use crate::router::builder::{
     AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder,
 };
-use router::route::matcher::{
+use crate::router::route::matcher::{
     AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,
 };
-use router::tree::node::Node;
-use router::tree::regex::ConstrainedSegmentRegex;
-use router::tree::segment::SegmentType;
+use crate::router::tree::node::Node;
+use crate::router::tree::regex::ConstrainedSegmentRegex;
+use crate::router::tree::segment::SegmentType;
 
 /// The type returned when building a route that only considers path and http verb(s) when
 /// determining if it matches a request.
@@ -952,14 +953,14 @@ mod tests {
     use futures::future;
     use hyper::{Body, Response, StatusCode};
 
-    use handler::HandlerFuture;
-    use helpers::http::response::create_empty_response;
-    use middleware::{Middleware, NewMiddleware};
-    use pipeline::single::*;
-    use pipeline::*;
-    use router::builder::*;
-    use state::State;
-    use test::TestServer;
+    use crate::handler::HandlerFuture;
+    use crate::helpers::http::response::create_empty_response;
+    use crate::middleware::{Middleware, NewMiddleware};
+    use crate::pipeline::single::*;
+    use crate::pipeline::*;
+    use crate::router::builder::*;
+    use crate::state::State;
+    use crate::test::TestServer;
 
     #[derive(Clone, Copy)]
     struct QuickExitMiddleware;

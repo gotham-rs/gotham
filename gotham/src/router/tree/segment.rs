@@ -1,8 +1,8 @@
 //! Defines `SegmentType` for `Tree`.
 use std::collections::HashMap;
 
-use helpers::http::PercentDecoded;
-use router::tree::regex::ConstrainedSegmentRegex;
+use crate::helpers::http::PercentDecoded;
+use crate::router::tree::regex::ConstrainedSegmentRegex;
 
 /// Mapping of segment names into the collection of values for that segment.
 pub type SegmentMapping<'r> = HashMap<&'r str, Vec<&'r PercentDecoded>>;

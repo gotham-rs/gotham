@@ -1,4 +1,5 @@
 use proc_macro;
+use quote::quote;
 use syn;
 
 pub(crate) fn state_data(ast: &syn::DeriveInput) -> proc_macro::TokenStream {

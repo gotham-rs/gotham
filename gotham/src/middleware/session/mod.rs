@@ -15,14 +15,15 @@ use futures::{
 };
 use hyper::header::SET_COOKIE;
 use hyper::{Body, Response, StatusCode};
+use log::{error, trace, warn};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 
 use super::cookie::CookieParser;
 use super::{Middleware, NewMiddleware};
-use handler::{HandlerError, HandlerFuture, IntoHandlerError};
-use helpers::http::response::create_empty_response;
-use state::{self, FromState, State, StateData};
+use crate::handler::{HandlerError, HandlerFuture, IntoHandlerError};
+use crate::helpers::http::response::create_empty_response;
+use crate::state::{self, FromState, State, StateData};
 
 mod backend;
 mod rng;
@@ -1043,6 +1044,7 @@ mod tests {
     use hyper::header::{HeaderMap, COOKIE};
     use hyper::{Response, StatusCode};
     use rand;
+    use serde_derive::{Deserialize, Serialize};
     use std::sync::Mutex;
     use std::time::Duration;
 

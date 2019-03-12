@@ -6,7 +6,7 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::header::{COOKIE, SET_COOKIE};
+use hyper::header::SET_COOKIE;
 use hyper::{Body, Response, StatusCode};
 
 use cookie::{Cookie, CookieJar};
@@ -69,6 +69,7 @@ mod tests {
     use super::*;
     use cookie::Cookie;
     use gotham::test::TestServer;
+    use hyper::header::COOKIE;
 
     #[test]
     fn cookie_is_set_and_counter_increments() {

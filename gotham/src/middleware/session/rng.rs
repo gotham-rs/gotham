@@ -1,3 +1,4 @@
+use log::error;
 use rand::rngs::adapter::ReseedingRng;
 use rand::rngs::OsRng;
 use rand::FromEntropy;

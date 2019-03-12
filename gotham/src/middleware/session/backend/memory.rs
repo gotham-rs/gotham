@@ -4,9 +4,10 @@ use std::{io, thread};
 
 use futures::future;
 use linked_hash_map::LinkedHashMap;
+use log::trace;
 
-use middleware::session::backend::{Backend, NewBackend, SessionFuture};
-use middleware::session::{SessionError, SessionIdentifier};
+use crate::middleware::session::backend::{Backend, NewBackend, SessionFuture};
+use crate::middleware::session::{SessionError, SessionIdentifier};
 
 /// Type alias for the `MemoryBackend` storage container.
 type MemoryMap = Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>;

@@ -6,22 +6,24 @@
 
 mod accepted_encoding;
 
+use crate::error::Result;
 use bytes::{BufMut, BytesMut};
-use error::Result;
-use futures::{stream, Future, Stream};
+use futures::{stream, try_ready, Future, Stream};
 use http;
 use httpdate::parse_http_date;
 use hyper::header::*;
 use hyper::{Body, Chunk, Response, StatusCode};
+use log::debug;
 use mime::{self, Mime};
 use mime_guess::guess_mime_type_opt;
+use serde_derive::Deserialize;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
 
 use self::accepted_encoding::accepted_encodings;
-use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-use router::response::extender::StaticResponseExtender;
-use state::{FromState, State, StateData};
+use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+use crate::router::response::extender::StaticResponseExtender;
+use crate::state::{FromState, State, StateData};
 
 use std::cmp;
 use std::convert::From;
@@ -419,13 +421,13 @@ fn get_block_size(metadata: &Metadata) -> usize {
 #[cfg(test)]
 mod tests {
     use super::FileOptions;
+    use crate::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
+    use crate::router::Router;
+    use crate::test::TestServer;
     use http::header::HeaderValue;
     use hyper::header::*;
     use hyper::StatusCode;
-    use router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
-    use router::Router;
     use std::{fs, str};
-    use test::TestServer;
 
     #[test]
     fn assets_guesses_content_type() {

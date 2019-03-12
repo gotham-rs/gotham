@@ -3,13 +3,14 @@
 
 use borrow_bag::{Handle, Lookup};
 use futures::future;
+use log::trace;
 use std::panic::RefUnwindSafe;
 
-use handler::{HandlerFuture, IntoHandlerError};
-use middleware::chain::NewMiddlewareChain;
-use pipeline::set::PipelineSet;
-use pipeline::Pipeline;
-use state::{request_id, State};
+use crate::handler::{HandlerFuture, IntoHandlerError};
+use crate::middleware::chain::NewMiddlewareChain;
+use crate::pipeline::set::PipelineSet;
+use crate::pipeline::Pipeline;
+use crate::state::{request_id, State};
 
 /// A heterogeneous list of `Handle<P, _>` values, where `P` is a pipeline type. The pipelines are
 /// borrowed and invoked in order to serve a request.

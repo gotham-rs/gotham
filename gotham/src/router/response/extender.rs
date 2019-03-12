@@ -1,7 +1,8 @@
 //! Defines functionality for extending a Response.
 
+use crate::state::{request_id, State};
 use hyper::{body::Payload, Body, Response};
-use state::{request_id, State};
+use log::trace;
 use std::panic::RefUnwindSafe;
 
 /// Extend the `Response` based on current `State` and `Response` data.
@@ -10,13 +11,13 @@ pub trait StaticResponseExtender: RefUnwindSafe {
     type ResBody: Payload;
 
     /// Extend the response.
-    fn extend(&mut State, &mut Response<Self::ResBody>);
+    fn extend(state: &mut State, response: &mut Response<Self::ResBody>);
 }
 
 /// Allow complex types to extend the `Response` based on current `State` and `Response` data.
 pub trait ResponseExtender<B>: RefUnwindSafe {
     /// Extend the Response
-    fn extend(&self, &mut State, &mut Response<B>);
+    fn extend(&self, state: &mut State, response: &mut Response<B>);
 }
 
 impl<F, B> ResponseExtender<B> for F

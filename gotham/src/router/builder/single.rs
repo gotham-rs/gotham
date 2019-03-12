@@ -1,16 +1,17 @@
+use hyper::Body;
+
 use std::panic::RefUnwindSafe;
 
-use extractor::{PathExtractor, QueryStringExtractor};
-use handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
-use handler::{Handler, NewHandler};
-use hyper::Body;
-use pipeline::chain::PipelineHandleChain;
-use router::builder::{
+use crate::extractor::{PathExtractor, QueryStringExtractor};
+use crate::handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
+use crate::handler::{Handler, NewHandler};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::router::builder::{
     ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
 };
-use router::route::dispatch::DispatcherImpl;
-use router::route::matcher::RouteMatcher;
-use router::route::{Delegation, Extractors, RouteImpl};
+use crate::router::route::dispatch::DispatcherImpl;
+use crate::router::route::matcher::RouteMatcher;
+use crate::router::route::{Delegation, Extractors, RouteImpl};
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the

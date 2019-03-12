@@ -1,9 +1,10 @@
 //! Defines a unique id per `Request` that should be output with all logging.
 
 use hyper::header::HeaderMap;
+use log::trace;
 use uuid::Uuid;
 
-use state::{FromState, State};
+use crate::state::{FromState, State};
 
 /// A container type for the value returned by `request_id`.
 pub(super) struct RequestId {
