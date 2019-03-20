@@ -8,7 +8,9 @@ members = [
     ## Middleware
     "middleware/template",
     "middleware/under_development/diesel",
-    # "middleware/jwt",
+
+    # version clash at ring
+    #"middleware/jwt",
 
     ## Examples (these crates are not published)
     "examples/hello_world",
