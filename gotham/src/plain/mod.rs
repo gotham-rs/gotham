@@ -10,6 +10,8 @@ use tokio::executor;
 use super::{new_runtime, tcp_listener};
 use super::{handler::NewHandler,service::GothamService};
 
+pub mod test;
+
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
 NH: NewHandler + 'static,
