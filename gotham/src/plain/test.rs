@@ -28,7 +28,7 @@ use crate::handler::NewHandler;
 
 use crate::error::*;
 
-use parent::test::request::TestRequest;
+use crate::test::request::TestRequest;
 
 struct TestServerData {
     addr: SocketAddr,

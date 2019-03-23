@@ -41,7 +41,6 @@ pub mod tls;
 
 use std::net::ToSocketAddrs;
 
-use futures::Future;
 use tokio::net::TcpListener;
 use tokio::runtime::{self, Runtime};
 use tokio_rustls::rustls;
@@ -55,14 +54,8 @@ pub fn start<NH, A>(addr: A, new_handler: NH, tls_config: Option<rustls::ServerC
   A: ToSocketAddrs + 'static,
 {
   match tls_config {
-    Some(cfg) => {
-      let threads = num_cpus::get();
-      let runtime = new_runtime(threads);
-      plain::start_on_executor(addr, new_handler, runtime.executor());
-      tls::start_on_executor(cfg, addr, new_handler, runtime.executor());
-      runtime.shutdown_on_idle().wait().unwrap()
-    },
-    None => plain::start_with_num_threads(addr, new_handler, num_cpus::get())
+    Some(cfg) => tls::start(addr, new_handler, cfg),
+    None => plain::start(addr, new_handler)
   }
 }
 

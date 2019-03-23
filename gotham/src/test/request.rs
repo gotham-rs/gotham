@@ -5,7 +5,7 @@ use http::HttpTryFrom;
 use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
 
-use super::{TestClient, TestResponse};
+use crate::plain::test::{TestClient, TestResponse};
 
 use crate::error::*;
 
@@ -31,7 +31,7 @@ impl<'a> DerefMut for TestRequest<'a> {
 }
 
 impl<'a> TestRequest<'a> {
-    pub(super) fn new<U>(client: &'a TestClient, method: Method, uri: U) -> Self
+    pub(crate) fn new<U>(client: &'a TestClient, method: Method, uri: U) -> Self
     where
         Uri: HttpTryFrom<U>,
     {
@@ -51,7 +51,7 @@ impl<'a> TestRequest<'a> {
     }
 
     /// Extracts the request from this `TestRequest`.
-    pub(super) fn request(self) -> Request<Body> {
+    pub(crate) fn request(self) -> Request<Body> {
         self.request
     }
 
