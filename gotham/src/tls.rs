@@ -80,9 +80,10 @@ where
     .for_each(move |socket| {
       let addr = socket.peer_addr().unwrap();
       let service = gotham_service.connect(addr);
+      let accepted_protocol = protocol.clone();
       let handler = tls.accept(socket)
-        .and_then(|socket|
-                  protocol.serve_connection(socket, service)
+        .and_then(move |socket|
+                  accepted_protocol.serve_connection(socket, service)
                   .map_err(|e| panic!("http error = {:?}", e))
                   )
         .map_err(|e| panic!("https error = {:?}", e));
