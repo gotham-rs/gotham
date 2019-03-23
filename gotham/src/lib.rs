@@ -34,9 +34,15 @@ pub mod pipeline;
 pub mod router;
 mod service;
 pub mod state;
+
+/// Test utilities for Gotham and Gotham consumer apps.
 pub mod test;
 
+/// Functions for creating a Gotham service on plain HTTP.
+/// In general, prefer the tls module.
 pub mod plain;
+
+/// Functions for creating a Gotham service on HTTPS.
 pub mod tls;
 
 use std::net::ToSocketAddrs;
@@ -48,6 +54,8 @@ use tokio_rustls::rustls;
 use handler::NewHandler;
 
 /// Starts a Gotham application with the default number of threads.
+/// If `tls_config` is `None`, the resulting service will run on HTTP,
+/// otherwise on HTTPS, which is preferred.
 pub fn start<NH, A>(addr: A, new_handler: NH, tls_config: Option<rustls::ServerConfig>)
   where
   NH: NewHandler + 'static,

@@ -12,6 +12,7 @@ use super::{handler::NewHandler,service::GothamService};
 
 pub mod test;
 
+/// Starts a Gotham application on plain, unsecured HTTP.
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
 NH: NewHandler + 'static,
