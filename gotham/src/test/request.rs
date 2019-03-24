@@ -5,18 +5,18 @@ use http::HttpTryFrom;
 use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
 
-use crate::plain::test::{TestClient, TestResponse};
+use super::{TestClient, TestResponse};
 
 use crate::error::*;
 
 /// Builder API for constructing `TestServer` requests. When the request is built,
 /// `RequestBuilder::perform` will issue the request and provide access to the response.
-pub struct TestRequest<'a> {
-    client: &'a TestClient,
+pub struct TestRequest<'a, S> {
+    client: &'a TestClient<S>,
     request: Request<Body>,
 }
 
-impl<'a> Deref for TestRequest<'a> {
+impl<'a, S> Deref for TestRequest<'a, S> {
     type Target = Request<Body>;
 
     fn deref(&self) -> &Request<Body> {
@@ -24,14 +24,14 @@ impl<'a> Deref for TestRequest<'a> {
     }
 }
 
-impl<'a> DerefMut for TestRequest<'a> {
+impl<'a, S> DerefMut for TestRequest<'a, S> {
     fn deref_mut(&mut self) -> &mut Request<Body> {
         &mut self.request
     }
 }
 
-impl<'a> TestRequest<'a> {
-    pub(crate) fn new<U>(client: &'a TestClient, method: Method, uri: U) -> Self
+impl<'a, S> TestRequest<'a, S> {
+    pub(crate) fn new<U>(client: &'a TestClient<S>, method: Method, uri: U) -> Self
     where
         Uri: HttpTryFrom<U>,
     {

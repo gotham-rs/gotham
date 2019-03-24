@@ -2,25 +2,15 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use std::fmt;
 use std::net::{self, IpAddr, SocketAddr};
-use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use failure;
 
-use futures::{future, Future, Stream};
-use http::HttpTryFrom;
-use hyper::client::{
-    connect::{Connect, Connected, Destination},
-    Client,
-};
-use hyper::header::CONTENT_TYPE;
-use hyper::{Body, Method, Response, Uri};
-use log::{info, warn};
-use mime;
-use tokio::net::{TcpListener, TcpStream};
+use futures::Future;
+use hyper::client::Client;
+use tokio::net::{TcpListener};
 use tokio::runtime::Runtime;
 use tokio::timer::Delay;
 
@@ -28,8 +18,7 @@ use crate::handler::NewHandler;
 
 use crate::error::*;
 
-use crate::test::BodyReader;
-use crate::test::request::TestRequest;
+use crate::test::{self, TestClient, TestConnect};
 
 struct TestServerData {
     addr: SocketAddr,
@@ -75,6 +64,24 @@ impl Clone for TestServer {
     }
 }
 
+impl test::TestServer for TestServer {
+    fn request_expiry(&self) -> Delay {
+        Delay::new(Instant::now() + Duration::from_secs(self.data.timeout))
+    }
+
+
+    fn run_future<F, R, E>(&self, future: F) -> Result<R>
+        where
+            F: Send + 'static + Future<Item = R, Error = E>,
+            R: Send + 'static,
+            E: failure::Fail,
+            {
+                let (tx, rx) = futures::sync::oneshot::channel();
+                self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
+                rx.wait().unwrap().map_err(|e| e.into())
+            }
+}
+
 impl TestServer {
     /// Creates a `TestServer` instance for the `Handler` spawned by `new_handler`. This server has
     /// the same guarantee given by `hyper::server::Http::bind`, that a new service will be spawned
@@ -111,7 +118,7 @@ impl TestServer {
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see a default socket address of `127.0.0.1:10000` as the source address for
     /// the connection.
-    pub fn client(&self) -> TestClient {
+    pub fn client(&self) -> TestClient<Self> {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
@@ -132,12 +139,12 @@ impl TestServer {
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
-    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient {
+    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<Self> {
         self.try_client_with_address(client_addr)
             .expect("TestServer: unable to spawn client")
     }
 
-    fn try_client_with_address(&self, _client_addr: net::SocketAddr) -> Result<TestClient> {
+    fn try_client_with_address(&self, _client_addr: net::SocketAddr) -> Result<TestClient<Self>> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
 
@@ -149,61 +156,6 @@ impl TestServer {
             client,
             test_server: self.clone(),
         })
-    }
-
-    /// Runs the event loop until the response future is completed.
-    ///
-    /// If the future came from a different instance of `TestServer`, the event loop will run until
-    /// the timeout is triggered.
-    fn run_request<F>(&self, f: F) -> Result<F::Item>
-    where
-        F: Future + Send + 'static,
-        F::Error: failure::Fail + Sized,
-        F::Item: Send,
-    {
-        let timeout = Delay::new(Instant::now() + Duration::from_secs(self.data.timeout));
-        let might_expire = self.run_future(f.select2(timeout).map_err(|either| {
-            let e: failure::Error = match either {
-                future::Either::A((req_err, _)) => {
-                    warn!("run_request request error: {:?}", req_err);
-                    req_err.into()
-                }
-                future::Either::B((times_up, _)) => {
-                    warn!("run_request timed out");
-                    times_up.into()
-                }
-            };
-            e.compat()
-        }))?;
-
-        match might_expire {
-            future::Either::A((item, _)) => Ok(item),
-            future::Either::B(_) => Err(failure::err_msg("timed out")),
-        }
-    }
-    /// Runs a future inside of the internal runtime.
-    ///
-    /// This blocks on the result of the future and behaves like a synchronous
-    /// polling call of the future, even if it might be on another thread.
-    fn run_future<F, R, E>(&self, future: F) -> Result<R>
-    where
-        F: Send + 'static + Future<Item = R, Error = E>,
-        R: Send + 'static,
-        E: failure::Fail,
-    {
-        let (tx, rx) = futures::sync::oneshot::channel();
-        self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
-        rx.wait().unwrap().map_err(|e| e.into())
-    }
-}
-
-impl BodyReader for TestServer {
-    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>> {
-        let f = response
-            .into_body()
-            .concat2()
-            .map(|chunk| chunk.into_iter().collect());
-        self.run_future(f)
     }
 }
 
@@ -220,6 +172,9 @@ mod tests {
     use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
+    use log::info;
+    use futures::future;
+    use http::header::CONTENT_TYPE;
 
     #[derive(Clone)]
     struct TestHandler {

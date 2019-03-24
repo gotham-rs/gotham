@@ -17,8 +17,7 @@ use hyper::header::CONTENT_TYPE;
 use hyper::{Body, Method, Response, Uri};
 use log::{info, warn};
 use mime;
-use tokio::net::{TcpStream};
-use std::time::{Duration, Instant};
+use tokio::net::TcpStream;
 use tokio::timer::Delay;
 
 use crate::error::*;
@@ -32,7 +31,12 @@ pub trait BodyReader {
 }
 
 pub trait TestServer: Clone {
-    fn run_future<F, R, E>(&self, future: F) -> Result<R>;
+    fn run_future<F, R, E>(&self, future: F) -> Result<R> where
+            F: Send + 'static + Future<Item = R, Error = E>,
+            R: Send + 'static,
+            E: failure::Fail;
+
+    fn request_expiry(&self) -> Delay;
 
     /// Runs the event loop until the response future is completed.
     ///
@@ -44,8 +48,7 @@ pub trait TestServer: Clone {
         F::Error: failure::Fail + Sized,
         F::Item: Send,
     {
-        let timeout = Delay::new(Instant::now() + Duration::from_secs(self.data.timeout));
-        let might_expire = self.run_future(f.select2(timeout).map_err(|either| {
+        let might_expire = self.run_future(f.select2(self.request_expiry()).map_err(|either| {
             let e: failure::Error = match either {
                 future::Either::A((req_err, _)) => {
                     warn!("run_request request error: {:?}", req_err);
@@ -82,7 +85,7 @@ pub struct TestClient<TS: TestServer> {
     test_server: TS,
 }
 
-impl<TS: TestServer> TestClient<TS> {
+impl<TS: TestServer + 'static> TestClient<TS> {
     /// Begin constructing a HEAD request using this `TestClient`.
     pub fn head<U>(&self, uri: U) -> TestRequest
     where
@@ -273,7 +276,7 @@ impl TestResponse {
 
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
-struct TestConnect {
+pub struct TestConnect {
     addr: SocketAddr,
 }
 
