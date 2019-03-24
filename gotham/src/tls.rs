@@ -11,6 +11,7 @@ use tokio::executor;
 use super::{new_runtime, tcp_listener};
 use super::{handler::NewHandler,service::GothamService};
 
+pub mod test;
 
 /// Starts a Gotham application with the default number of threads.
 pub fn start<NH, A>(addr: A, new_handler: NH, tls_config: rustls::ServerConfig)
