@@ -24,18 +24,21 @@ use crate::error::*;
 
 pub use request::TestRequest;
 
-pub trait BodyReader {
+pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
     /// response holds a buffer containing all bytes of the response body.
     fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>>;
 }
 
+/// An in memory server for testing purposes.
 pub trait TestServer: Clone {
+    /// Runs a Future until it resolves.
     fn run_future<F, R, E>(&self, future: F) -> Result<R> where
             F: Send + 'static + Future<Item = R, Error = E>,
             R: Send + 'static,
             E: failure::Fail;
 
+    /// Returns a Delay that will expire when a request should.
     fn request_expiry(&self) -> Delay;
 
     /// Runs the event loop until the response future is completed.
@@ -81,13 +84,13 @@ impl<T: TestServer> BodyReader for T {
 
 /// Client interface for issuing requests to a `TestServer`.
 pub struct TestClient<TS: TestServer> {
-    client: Client<TestConnect, Body>,
-    test_server: TS,
+    pub(crate) client: Client<TestConnect, Body>,
+    pub(crate) test_server: TS,
 }
 
 impl<TS: TestServer + 'static> TestClient<TS> {
     /// Begin constructing a HEAD request using this `TestClient`.
-    pub fn head<U>(&self, uri: U) -> TestRequest
+    pub fn head<U>(&self, uri: U) -> TestRequest<TS>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -95,7 +98,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
     }
 
     /// Begin constructing a GET request using this `TestClient`.
-    pub fn get<U>(&self, uri: U) -> TestRequest
+    pub fn get<U>(&self, uri: U) -> TestRequest<TS>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -103,7 +106,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
     }
 
     /// Begin constructing an OPTIONS request using this `TestClient`.
-    pub fn options<U>(&self, uri: U) -> TestRequest
+    pub fn options<U>(&self, uri: U) -> TestRequest<TS>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -111,7 +114,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest
+    pub fn post<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS>
     where
         B: Into<Body>,
         Uri: HttpTryFrom<U>,
@@ -120,7 +123,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest
+    pub fn put<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS>
     where
         B: Into<Body>,
         Uri: HttpTryFrom<U>,
@@ -129,7 +132,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest
+    pub fn patch<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS>
     where
         B: Into<Body>,
         Uri: HttpTryFrom<U>,
@@ -138,7 +141,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
-    pub fn delete<U>(&self, uri: U) -> TestRequest
+    pub fn delete<U>(&self, uri: U) -> TestRequest<TS>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -146,7 +149,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
     }
 
     /// Begin constructing a request with the given HTTP method and URI.
-    pub fn build_request<U>(&self, method: Method, uri: U) -> TestRequest
+    pub fn build_request<U>(&self, method: Method, uri: U) -> TestRequest<TS>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -160,7 +163,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
         uri: U,
         body: B,
         mime: mime::Mime,
-    ) -> TestRequest
+    ) -> TestRequest<TS>
     where
         B: Into<Body>,
         Uri: HttpTryFrom<U>,
@@ -178,7 +181,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform(&self, req: TestRequest) -> Result<TestResponse> {
+    pub fn perform(&self, req: TestRequest<TS>) -> Result<TestResponse> {
         let req_future = self.client.request(req.request()).map_err(|e| {
             warn!("Error from test client request {:?}", e);
             failure::err_msg("request failed").compat()
@@ -221,7 +224,7 @@ impl<TS: TestServer + 'static> TestClient<TS> {
 /// # }
 /// #
 /// # fn main() {
-/// use gotham::test::TestServer;
+/// use gotham::plain::test::TestServer;
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
@@ -277,7 +280,7 @@ impl TestResponse {
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
 pub struct TestConnect {
-    addr: SocketAddr,
+    pub(crate) addr: SocketAddr,
 }
 
 impl Connect for TestConnect {

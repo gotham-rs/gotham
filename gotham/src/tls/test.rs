@@ -15,7 +15,7 @@ use tokio::net::{TcpListener};
 use tokio::runtime::Runtime;
 use tokio::timer::Delay;
 
-use tokio_rustls::rustls::{self, NoClientAuth, internal::pemfile::{ certs, rsa_private_keys }};
+use tokio_rustls::rustls::{self, NoClientAuth, internal::pemfile::{ certs, pkcs8_private_keys }};
 
 use crate::handler::NewHandler;
 
@@ -104,13 +104,15 @@ impl TestServer {
         let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
         let addr = listener.local_addr()?;
 
-        let cfg = rustls::ServerConfig::new(NoClientAuth::new());
+        let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
         let mut cert_file = BufReader::new(&include_bytes!("test_chain.pem")[..]);
         let mut key_file = BufReader::new(&include_bytes!("test_key.pem")[..]);
+        let certs = certs(&mut cert_file).unwrap();
+        let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
         cfg.set_single_cert(
-            certs(&mut cert_file).unwrap(),
-            rsa_private_keys(&mut key_file).unwrap().remove(0)
-        );
+            certs,
+            keys.remove(0)
+        )?;
 
         let service_stream = super::bind_server(cfg, listener, new_handler);
         runtime.spawn(service_stream);
@@ -184,7 +186,7 @@ mod tests {
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
     use log::info;
-    use futures::future;
+    use futures::{future, Stream};
     use http::header::CONTENT_TYPE;
 
     #[derive(Clone)]

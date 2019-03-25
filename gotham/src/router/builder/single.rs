@@ -30,7 +30,7 @@ use crate::router::route::{Delegation, Extractors, RouteImpl};
 /// # use gotham::pipeline::new_pipeline;
 /// # use gotham::pipeline::single::*;
 /// # use gotham::middleware::session::NewSessionMiddleware;
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// #
 /// fn my_handler(state: State) -> (State, Response<Body>) {
 ///     // Handler implementation elided.
@@ -75,7 +75,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::single::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn my_handler(state: State) -> (State, Response<Body>) {
     ///     // Handler implementation elided.
@@ -125,7 +125,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::single::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// # use gotham::error::*;
     /// #
     /// struct MyNewHandler;
@@ -186,7 +186,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::single::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// #
     /// # fn router() -> Router {
@@ -233,7 +233,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::single::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// #
     /// # fn router() -> Router {
@@ -283,7 +283,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// #[derive(Deserialize, StateData, StaticResponseExtender)]
     /// struct MyPathParams {
@@ -353,7 +353,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// #[derive(StateData, Deserialize, StaticResponseExtender)]
     /// struct MyQueryParams {
@@ -415,7 +415,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())

@@ -79,7 +79,7 @@ where
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -148,7 +148,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -213,7 +213,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -275,7 +275,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -346,7 +346,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -389,7 +389,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -439,7 +439,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -483,7 +483,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -527,7 +527,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -571,7 +571,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -614,7 +614,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -657,7 +657,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.

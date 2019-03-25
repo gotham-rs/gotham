@@ -173,7 +173,7 @@ mod tests {
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
     use log::info;
-    use futures::future;
+    use futures::{future, Stream};
     use http::header::CONTENT_TYPE;
 
     #[derive(Clone)]

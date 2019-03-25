@@ -83,11 +83,11 @@ where
       let service = gotham_service.connect(addr);
       let accepted_protocol = protocol.clone();
       let handler = tls.accept(socket)
+        .map_err(|e| panic!("https error = {:?}", e))
         .and_then(move |socket|
                   accepted_protocol.serve_connection(socket, service)
                   .map_err(|e| panic!("http error = {:?}", e))
-                  )
-        .map_err(|e| panic!("https error = {:?}", e));
+                  );
 
       executor::spawn(handler);
 

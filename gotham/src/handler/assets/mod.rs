@@ -423,7 +423,7 @@ mod tests {
     use super::FileOptions;
     use crate::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use crate::router::Router;
-    use crate::test::TestServer;
+    use crate::plain::test::TestServer;
     use http::header::HeaderValue;
     use hyper::header::*;
     use hyper::StatusCode;

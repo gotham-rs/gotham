@@ -26,7 +26,7 @@ use crate::state::{request_id, FromState, State};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::header::X_REQUEST_ID;
 /// # use gotham::helpers::http::response::create_response;
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
 ///
@@ -93,7 +93,7 @@ where
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_empty_response;
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_empty_response(&state, StatusCode::NO_CONTENT);
 ///
@@ -137,7 +137,7 @@ pub fn create_empty_response(state: &State, status: StatusCode) -> Response<Body
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_permanent_redirect;
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// # use hyper::header::LOCATION;
 /// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_permanent_redirect(&state, "/over-there");
@@ -181,7 +181,7 @@ pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_temporary_redirect;
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// # use hyper::header::LOCATION;
 /// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_temporary_redirect(&state, "/quick-detour");

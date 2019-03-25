@@ -60,7 +60,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -105,7 +105,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -142,7 +142,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -180,7 +180,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -218,7 +218,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -256,7 +256,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -293,7 +293,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -330,7 +330,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -372,7 +372,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -412,7 +412,7 @@ where
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
@@ -486,7 +486,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # mod api {
     /// #   use super::*;
@@ -546,7 +546,7 @@ where
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::set::{finalize_pipeline_set, new_pipeline_set};
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # #[derive(Default, Serialize, Deserialize)]
     /// # struct Session;
@@ -658,7 +658,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// fn admin_router() -> Router {
     ///     // Implementation elided
@@ -715,7 +715,7 @@ where
     /// # use gotham::pipeline::single::single_pipeline;
     /// # use gotham::state::State;
     /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// # #[derive(Default, Serialize, Deserialize)]
     /// # struct Session;
@@ -793,7 +793,7 @@ where
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
-    /// # use gotham::test::TestServer;
+    /// # use gotham::plain::test::TestServer;
     /// #
     /// mod resource {
     /// #   use super::*;
@@ -960,7 +960,7 @@ mod tests {
     use crate::pipeline::*;
     use crate::router::builder::*;
     use crate::state::State;
-    use crate::test::TestServer;
+    use crate::plain::test::TestServer;
 
     #[derive(Clone, Copy)]
     struct QuickExitMiddleware;

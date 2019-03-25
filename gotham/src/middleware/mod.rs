@@ -41,7 +41,7 @@ pub mod timer;
 /// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::State;
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// #
 /// #[derive(NewMiddleware, Copy, Clone)]
 /// struct NoopMiddleware;
@@ -90,7 +90,7 @@ pub mod timer;
 /// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::State;
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// #
 /// #[derive(NewMiddleware, Copy, Clone)]
 /// struct MiddlewareWithStateData;
@@ -154,7 +154,7 @@ pub mod timer;
 /// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::State;
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// #
 /// #[derive(NewMiddleware, Copy, Clone)]
 /// struct MiddlewareAddingResponseHeader;
@@ -217,7 +217,7 @@ pub mod timer;
 /// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::{State, FromState};
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// #
 /// #[derive(NewMiddleware, Copy, Clone)]
 /// struct ConditionalMiddleware;
@@ -277,7 +277,7 @@ pub mod timer;
 /// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::State;
-/// # use gotham::test::TestServer;
+/// # use gotham::plain::test::TestServer;
 /// #
 /// #[derive(NewMiddleware, Copy, Clone)]
 /// struct AsyncMiddleware;
