@@ -8,12 +8,18 @@ use std::time::{Duration, Instant};
 use std::io::BufReader;
 
 use failure;
+use log::info;
 
 use futures::Future;
-use hyper::client::Client;
+use hyper::client::{
+    connect::{Connect, Connected, Destination},
+    Client,
+};
 use tokio::net::{TcpListener};
 use tokio::runtime::Runtime;
 use tokio::timer::Delay;
+
+use tokio::net::TcpStream;
 
 use tokio_rustls::rustls::{self, NoClientAuth, internal::pemfile::{ certs, pkcs8_private_keys }};
 
@@ -21,7 +27,7 @@ use crate::handler::NewHandler;
 
 use crate::error::*;
 
-use crate::test::{self, TestClient, TestConnect};
+use crate::test::{self, TestClient};
 
 struct TestServerData {
     addr: SocketAddr,
@@ -131,7 +137,7 @@ impl TestServer {
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see a default socket address of `127.0.0.1:10000` as the source address for
     /// the connection.
-    pub fn client(&self) -> TestClient<Self> {
+    pub fn client(&self) -> TestClient<Self, TestConnect> {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
@@ -152,12 +158,12 @@ impl TestServer {
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
-    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<Self> {
+    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<Self, TestConnect> {
         self.try_client_with_address(client_addr)
             .expect("TestServer: unable to spawn client")
     }
 
-    fn try_client_with_address(&self, _client_addr: net::SocketAddr) -> Result<TestClient<Self>> {
+    fn try_client_with_address(&self, _client_addr: net::SocketAddr) -> Result<TestClient<Self, TestConnect>> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
 
@@ -171,6 +177,29 @@ impl TestServer {
         })
     }
 }
+
+/// `TestConnect` represents the connection between a test client and the `TestServer` instance
+/// that created it. This type should never be used directly.
+pub struct TestConnect {
+    pub(crate) addr: SocketAddr,
+}
+
+impl Connect for TestConnect {
+    type Transport = TcpStream;
+    type Error = CompatError;
+    type Future =
+        Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
+
+    fn connect(&self, _dst: Destination) -> Self::Future {
+        Box::new(
+            TcpStream::connect(&self.addr)
+                .inspect(|s| info!("Client TcpStream connected: {:?}", s))
+                .map(|s| (s, Connected::new()))
+                .map_err(|e| Error::from(e).compat()),
+        )
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

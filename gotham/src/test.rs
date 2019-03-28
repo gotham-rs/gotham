@@ -2,7 +2,6 @@
 pub mod request;
 
 use std::fmt;
-use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
 
 use failure;
@@ -10,14 +9,13 @@ use failure;
 use futures::{future, Future, Stream};
 use http::HttpTryFrom;
 use hyper::client::{
-    connect::{Connect, Connected, Destination},
+    connect::Connect,
     Client,
 };
 use hyper::header::CONTENT_TYPE;
 use hyper::{Body, Method, Response, Uri};
-use log::{info, warn};
+use log::{warn};
 use mime;
-use tokio::net::TcpStream;
 use tokio::timer::Delay;
 
 use crate::error::*;
@@ -83,12 +81,12 @@ impl<T: TestServer> BodyReader for T {
 }
 
 /// Client interface for issuing requests to a `TestServer`.
-pub struct TestClient<TS: TestServer> {
-    pub(crate) client: Client<TestConnect, Body>,
+pub struct TestClient<TS: TestServer, C: Connect> {
+    pub(crate) client: Client<C, Body>,
     pub(crate) test_server: TS,
 }
 
-impl<TS: TestServer + 'static> TestClient<TS> {
+impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
     /// Begin constructing a HEAD request using this `TestClient`.
     pub fn head<U>(&self, uri: U) -> TestRequest<TS>
     where
@@ -274,27 +272,5 @@ impl TestResponse {
         let buf = self.read_body()?;
         let s = String::from_utf8(buf)?;
         Ok(s)
-    }
-}
-
-/// `TestConnect` represents the connection between a test client and the `TestServer` instance
-/// that created it. This type should never be used directly.
-pub struct TestConnect {
-    pub(crate) addr: SocketAddr,
-}
-
-impl Connect for TestConnect {
-    type Transport = TcpStream;
-    type Error = CompatError;
-    type Future =
-        Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
-
-    fn connect(&self, _dst: Destination) -> Self::Future {
-        Box::new(
-            TcpStream::connect(&self.addr)
-                .inspect(|s| info!("Client TcpStream connected: {:?}", s))
-                .map(|s| (s, Connected::new()))
-                .map_err(|e| Error::from(e).compat()),
-        )
     }
 }
