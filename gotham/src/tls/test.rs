@@ -21,8 +21,10 @@ use tokio::timer::Delay;
 
 use tokio::net::TcpStream;
 
-use tokio_rustls::{TlsConnector, client::TlsStream,
-    rustls::{self, NoClientAuth, internal::pemfile::{ certs, pkcs8_private_keys }},
+use tokio_rustls::{TlsConnector, TlsStream,
+    rustls::{self, ClientSession, NoClientAuth,
+        internal::pemfile::{ certs, pkcs8_private_keys }
+    },
     webpki::DNSNameRef
 };
 
@@ -172,7 +174,7 @@ impl TestServer {
         // it and then immediately discard the listener.
         let mut config = rustls::ClientConfig::new();
         let mut cert_file = BufReader::new(&include_bytes!("test_chain.pem")[..]);
-        config.root_store.add_pem_file(&mut cert_file);
+        config.root_store.add_pem_file(&mut cert_file).unwrap();
 
 
         let client = Client::builder().build(TestConnect {
@@ -195,22 +197,22 @@ pub struct TestConnect {
 }
 
 impl Connect for TestConnect {
-    type Transport = TlsStream;
+    type Transport = TlsStream<TcpStream, ClientSession>;
     type Error = CompatError;
     type Future =
         Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
 
     fn connect(&self, dst: Destination) -> Self::Future {
-        let tls = TlsConnector::from(self.config);
+        let tls = TlsConnector::from(self.config.clone());
         Box::new(
             TcpStream::connect(&self.addr)
-                .inspect(|s| info!("Client TcpStream connected: {:?}", s))
                 .and_then(move |stream| {
                     let domain = DNSNameRef::try_from_ascii_str(dst.host()).unwrap();
                     tls.connect(domain, stream)
                 })
+                .inspect(|s| info!("Client TcpStream connected: {:?}", s))
                 .map(|s| (s, Connected::new()))
-                .map_err(|e| Error::from(e).compat()),
+                .map_err(|e| {info!("TLS TestClient error: {:?}", e); Error::from(e).compat()}),
         )
     }
 }
@@ -290,6 +292,9 @@ mod tests {
         };
 
         let test_server = TestServer::new(new_service).unwrap();
+
+
+
         let response = test_server
             .client()
             .get("http://localhost/")
