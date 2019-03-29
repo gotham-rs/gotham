@@ -21,13 +21,17 @@ use tokio::timer::Delay;
 
 use tokio::net::TcpStream;
 
-use tokio_rustls::rustls::{self, NoClientAuth, internal::pemfile::{ certs, pkcs8_private_keys }};
+use tokio_rustls::{TlsConnector, client::TlsStream,
+    rustls::{self, NoClientAuth, internal::pemfile::{ certs, pkcs8_private_keys }},
+    webpki::DNSNameRef
+};
 
 use crate::handler::NewHandler;
 
 use crate::error::*;
 
 use crate::test::{self, TestClient};
+
 
 struct TestServerData {
     addr: SocketAddr,
@@ -166,9 +170,14 @@ impl TestServer {
     fn try_client_with_address(&self, _client_addr: net::SocketAddr) -> Result<TestClient<Self, TestConnect>> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
+        let mut config = rustls::ClientConfig::new();
+        let mut cert_file = BufReader::new(&include_bytes!("test_chain.pem")[..]);
+        config.root_store.add_pem_file(&mut cert_file);
+
 
         let client = Client::builder().build(TestConnect {
             addr: self.data.addr,
+            config: Arc::new(config),
         });
 
         Ok(TestClient {
@@ -182,18 +191,24 @@ impl TestServer {
 /// that created it. This type should never be used directly.
 pub struct TestConnect {
     pub(crate) addr: SocketAddr,
+    config: Arc<rustls::ClientConfig>,
 }
 
 impl Connect for TestConnect {
-    type Transport = TcpStream;
+    type Transport = TlsStream;
     type Error = CompatError;
     type Future =
         Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
 
-    fn connect(&self, _dst: Destination) -> Self::Future {
+    fn connect(&self, dst: Destination) -> Self::Future {
+        let tls = TlsConnector::from(self.config);
         Box::new(
             TcpStream::connect(&self.addr)
                 .inspect(|s| info!("Client TcpStream connected: {:?}", s))
+                .and_then(move |stream| {
+                    let domain = DNSNameRef::try_from_ascii_str(dst.host()).unwrap();
+                    tls.connect(domain, stream)
+                })
                 .map(|s| (s, Connected::new()))
                 .map_err(|e| Error::from(e).compat()),
         )

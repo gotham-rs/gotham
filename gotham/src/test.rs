@@ -86,9 +86,9 @@ pub struct TestClient<TS: TestServer, C: Connect> {
     pub(crate) test_server: TS,
 }
 
-impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
+impl<TS: TestServer + 'static, C: Connect + 'static> TestClient<TS, C> {
     /// Begin constructing a HEAD request using this `TestClient`.
-    pub fn head<U>(&self, uri: U) -> TestRequest<TS>
+    pub fn head<U>(&self, uri: U) -> TestRequest<TS, C>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -96,7 +96,7 @@ impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
     }
 
     /// Begin constructing a GET request using this `TestClient`.
-    pub fn get<U>(&self, uri: U) -> TestRequest<TS>
+    pub fn get<U>(&self, uri: U) -> TestRequest<TS, C>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -104,7 +104,7 @@ impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
     }
 
     /// Begin constructing an OPTIONS request using this `TestClient`.
-    pub fn options<U>(&self, uri: U) -> TestRequest<TS>
+    pub fn options<U>(&self, uri: U) -> TestRequest<TS, C>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -112,7 +112,7 @@ impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS>
+    pub fn post<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS, C>
     where
         B: Into<Body>,
         Uri: HttpTryFrom<U>,
@@ -121,7 +121,7 @@ impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS>
+    pub fn put<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS, C>
     where
         B: Into<Body>,
         Uri: HttpTryFrom<U>,
@@ -130,7 +130,7 @@ impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS>
+    pub fn patch<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS, C>
     where
         B: Into<Body>,
         Uri: HttpTryFrom<U>,
@@ -139,7 +139,7 @@ impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
-    pub fn delete<U>(&self, uri: U) -> TestRequest<TS>
+    pub fn delete<U>(&self, uri: U) -> TestRequest<TS, C>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -147,7 +147,7 @@ impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
     }
 
     /// Begin constructing a request with the given HTTP method and URI.
-    pub fn build_request<U>(&self, method: Method, uri: U) -> TestRequest<TS>
+    pub fn build_request<U>(&self, method: Method, uri: U) -> TestRequest<TS, C>
     where
         Uri: HttpTryFrom<U>,
     {
@@ -161,7 +161,7 @@ impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
         uri: U,
         body: B,
         mime: mime::Mime,
-    ) -> TestRequest<TS>
+    ) -> TestRequest<TS, C>
     where
         B: Into<Body>,
         Uri: HttpTryFrom<U>,
@@ -179,7 +179,7 @@ impl<TS: TestServer + 'static, C: Connect> TestClient<TS, C> {
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform(&self, req: TestRequest<TS>) -> Result<TestResponse> {
+    pub fn perform(&self, req: TestRequest<TS, C>) -> Result<TestResponse> {
         let req_future = self.client.request(req.request()).map_err(|e| {
             warn!("Error from test client request {:?}", e);
             failure::err_msg("request failed").compat()
