@@ -4,7 +4,7 @@ pub mod request;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-use failure;
+use failure::format_err;
 
 use futures::{future, Future, Stream};
 use http::HttpTryFrom;
@@ -182,7 +182,7 @@ impl<TS: TestServer + 'static, C: Connect + 'static> TestClient<TS, C> {
     pub fn perform(&self, req: TestRequest<TS, C>) -> Result<TestResponse> {
         let req_future = self.client.request(req.request()).map_err(|e| {
             warn!("Error from test client request {:?}", e);
-            failure::err_msg("request failed").compat()
+            format_err!("request failed: {:?}", e).compat()
         });
 
         self.test_server

@@ -117,8 +117,8 @@ impl TestServer {
         let addr = listener.local_addr()?;
 
         let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
-        let mut cert_file = BufReader::new(&include_bytes!("test_chain.pem")[..]);
-        let mut key_file = BufReader::new(&include_bytes!("test_key.pem")[..]);
+        let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
+        let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
         let certs = certs(&mut cert_file).unwrap();
         let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
         cfg.set_single_cert(
@@ -173,9 +173,8 @@ impl TestServer {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
         let mut config = rustls::ClientConfig::new();
-        let mut cert_file = BufReader::new(&include_bytes!("test_chain.pem")[..]);
+        let mut cert_file = BufReader::new(&include_bytes!("ca_cert.pem")[..]);
         config.root_store.add_pem_file(&mut cert_file).unwrap();
-
 
         let client = Client::builder().build(TestConnect {
             addr: self.data.addr,
@@ -208,7 +207,7 @@ impl Connect for TestConnect {
             TcpStream::connect(&self.addr)
                 .and_then(move |stream| {
                     let domain = DNSNameRef::try_from_ascii_str(dst.host()).unwrap();
-                    tls.connect(domain, stream)
+                    tls.connect(dbg!(domain), stream)
                 })
                 .inspect(|s| info!("Client TcpStream connected: {:?}", s))
                 .map(|s| (s, Connected::new()))
@@ -293,11 +292,9 @@ mod tests {
 
         let test_server = TestServer::new(new_service).unwrap();
 
-
-
         let response = test_server
             .client()
-            .get("http://localhost/")
+            .get("https://example.com/")
             .perform()
             .unwrap();
 
