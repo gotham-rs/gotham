@@ -21,6 +21,7 @@ use tokio::timer::Delay;
 use crate::error::*;
 
 pub use request::TestRequest;
+pub use crate::plain::test::TestServer;
 
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
@@ -29,7 +30,7 @@ pub(crate) trait BodyReader {
 }
 
 /// An in memory server for testing purposes.
-pub trait TestServer: Clone {
+pub trait Server: Clone {
     /// Runs a Future until it resolves.
     fn run_future<F, R, E>(&self, future: F) -> Result<R> where
             F: Send + 'static + Future<Item = R, Error = E>,
@@ -41,7 +42,7 @@ pub trait TestServer: Clone {
 
     /// Runs the event loop until the response future is completed.
     ///
-    /// If the future came from a different instance of `TestServer`, the event loop will run until
+    /// If the future came from a different instance of `Server`, the event loop will run until
     /// the timeout is triggered.
     fn run_request<F>(&self, f: F) -> Result<F::Item>
     where
@@ -70,7 +71,7 @@ pub trait TestServer: Clone {
     }
 }
 
-impl<T: TestServer> BodyReader for T {
+impl<T: Server> BodyReader for T {
     fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>> {
         let f = response
             .into_body()
@@ -80,13 +81,13 @@ impl<T: TestServer> BodyReader for T {
     }
 }
 
-/// Client interface for issuing requests to a `TestServer`.
-pub struct TestClient<TS: TestServer, C: Connect> {
+/// Client interface for issuing requests to a `Server`.
+pub struct TestClient<TS: Server, C: Connect> {
     pub(crate) client: Client<C, Body>,
     pub(crate) test_server: TS,
 }
 
-impl<TS: TestServer + 'static, C: Connect + 'static> TestClient<TS, C> {
+impl<TS: Server + 'static, C: Connect + 'static> TestClient<TS, C> {
     /// Begin constructing a HEAD request using this `TestClient`.
     pub fn head<U>(&self, uri: U) -> TestRequest<TS, C>
     where
@@ -222,7 +223,7 @@ impl<TS: TestServer + 'static, C: Connect + 'static> TestClient<TS, C> {
 /// # }
 /// #
 /// # fn main() {
-/// use gotham::plain::test::TestServer;
+/// use gotham::test::TestServer;
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///

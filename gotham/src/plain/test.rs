@@ -70,7 +70,7 @@ impl Clone for TestServer {
     }
 }
 
-impl test::TestServer for TestServer {
+impl test::Server for TestServer {
     fn request_expiry(&self) -> Delay {
         Delay::new(Instant::now() + Duration::from_secs(self.data.timeout))
     }

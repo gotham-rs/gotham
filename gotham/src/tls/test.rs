@@ -59,7 +59,7 @@ struct TestServerData {
 /// # }
 /// #
 /// # fn main() {
-/// use gotham::test::TestServer;
+/// use gotham::tls::test::TestServer;
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
@@ -79,7 +79,7 @@ impl Clone for TestServer {
     }
 }
 
-impl test::TestServer for TestServer {
+impl test::Server for TestServer {
     fn request_expiry(&self) -> Delay {
         Delay::new(Instant::now() + Duration::from_secs(self.data.timeout))
     }
@@ -207,7 +207,7 @@ impl Connect for TestConnect {
             TcpStream::connect(&self.addr)
                 .and_then(move |stream| {
                     let domain = DNSNameRef::try_from_ascii_str(dst.host()).unwrap();
-                    tls.connect(dbg!(domain), stream)
+                    tls.connect(domain, stream)
                 })
                 .inspect(|s| info!("Client TcpStream connected: {:?}", s))
                 .map(|s| (s, Connected::new()))
@@ -384,7 +384,7 @@ mod tests {
                     \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
 
         let res = client
-            .post("http://host/echo", data, mime::TEXT_PLAIN)
+            .post("https://example.com/echo", data, mime::TEXT_PLAIN)
             .perform()
             .expect("request successful");
 
