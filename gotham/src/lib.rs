@@ -49,23 +49,8 @@ use std::net::ToSocketAddrs;
 
 use tokio::net::TcpListener;
 use tokio::runtime::{self, Runtime};
-use tokio_rustls::rustls;
 
-use handler::NewHandler;
-
-/// Starts a Gotham application with the default number of threads.
-/// If `tls_config` is `None`, the resulting service will run on HTTP,
-/// otherwise on HTTPS, which is preferred.
-pub fn start<NH, A>(addr: A, new_handler: NH, tls_config: Option<rustls::ServerConfig>)
-  where
-  NH: NewHandler + 'static,
-  A: ToSocketAddrs + 'static,
-{
-  match tls_config {
-    Some(cfg) => tls::start(addr, new_handler, cfg),
-    None => plain::start(addr, new_handler)
-  }
-}
+pub use plain::start;
 
 fn new_runtime(threads: usize) -> Runtime {
   runtime::Builder::new()
