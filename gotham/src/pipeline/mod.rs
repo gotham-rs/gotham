@@ -292,8 +292,8 @@ mod tests {
 
     use crate::handler::{Handler, IntoHandlerError};
     use crate::middleware::Middleware;
-    use crate::test::TestServer;
     use crate::state::StateData;
+    use crate::test::TestServer;
 
     fn handler(state: State) -> (State, Response<Body>) {
         let number = state.borrow::<Number>().value;

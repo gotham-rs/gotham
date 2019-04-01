@@ -421,9 +421,9 @@ fn get_block_size(metadata: &Metadata) -> usize {
 #[cfg(test)]
 mod tests {
     use super::FileOptions;
-    use crate::test::TestServer;
     use crate::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use crate::router::Router;
+    use crate::test::TestServer;
     use http::header::HeaderValue;
     use hyper::header::*;
     use hyper::StatusCode;
