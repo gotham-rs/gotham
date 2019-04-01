@@ -8,19 +8,19 @@
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
 #![cfg_attr(
-  feature = "cargo-clippy",
-  allow(
-    clippy::needless_lifetimes,
-    clippy::should_implement_trait,
-    clippy::unit_arg,
-    clippy::match_wild_err_arm,
-    clippy::new_without_default,
-    clippy::wrong_self_convention,
-    clippy::mutex_atomic,
-    clippy::borrowed_box,
-    clippy::get_unwrap,
+    feature = "cargo-clippy",
+    allow(
+        clippy::needless_lifetimes,
+        clippy::should_implement_trait,
+        clippy::unit_arg,
+        clippy::match_wild_err_arm,
+        clippy::new_without_default,
+        clippy::wrong_self_convention,
+        clippy::mutex_atomic,
+        clippy::borrowed_box,
+        clippy::get_unwrap,
     )
-  )]
+)]
 #![doc(test(no_crate_inject, attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -53,22 +53,22 @@ use tokio::runtime::{self, Runtime};
 pub use plain::start;
 
 fn new_runtime(threads: usize) -> Runtime {
-  runtime::Builder::new()
-    .core_threads(threads)
-    .name_prefix("gotham-worker-")
-    .build()
-    .unwrap()
+    runtime::Builder::new()
+        .core_threads(threads)
+        .name_prefix("gotham-worker-")
+        .build()
+        .unwrap()
 }
 
 fn tcp_listener<A>(addr: A) -> TcpListener
 where
-A: ToSocketAddrs + 'static,
+    A: ToSocketAddrs + 'static,
 {
-  let addr = match addr.to_socket_addrs().map(|ref mut i| i.next()) {
-    Ok(Some(a)) => a,
-    Ok(_) => panic!("unable to resolve listener address"),
-    Err(_) => panic!("unable to parse listener address"),
-  };
+    let addr = match addr.to_socket_addrs().map(|ref mut i| i.next()) {
+        Ok(Some(a)) => a,
+        Ok(_) => panic!("unable to resolve listener address"),
+        Err(_) => panic!("unable to parse listener address"),
+    };
 
-  TcpListener::bind(&addr).expect("unable to open TCP listener")
+    TcpListener::bind(&addr).expect("unable to open TCP listener")
 }

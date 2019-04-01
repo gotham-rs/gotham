@@ -14,7 +14,7 @@ use hyper::client::{
     connect::{Connect, Connected, Destination},
     Client,
 };
-use tokio::net::{TcpListener};
+use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
 use tokio::timer::Delay;
 
@@ -75,17 +75,16 @@ impl test::Server for TestServer {
         Delay::new(Instant::now() + Duration::from_secs(self.data.timeout))
     }
 
-
     fn run_future<F, R, E>(&self, future: F) -> Result<R>
-        where
-            F: Send + 'static + Future<Item = R, Error = E>,
-            R: Send + 'static,
-            E: failure::Fail,
-            {
-                let (tx, rx) = futures::sync::oneshot::channel();
-                self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
-                rx.wait().unwrap().map_err(|e| e.into())
-            }
+    where
+        F: Send + 'static + Future<Item = R, Error = E>,
+        R: Send + 'static,
+        E: failure::Fail,
+    {
+        let (tx, rx) = futures::sync::oneshot::channel();
+        self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
+        rx.wait().unwrap().map_err(|e| e.into())
+    }
 }
 
 impl TestServer {
@@ -145,12 +144,18 @@ impl TestServer {
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
-    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient<Self, TestConnect> {
+    pub fn client_with_address(
+        &self,
+        client_addr: net::SocketAddr,
+    ) -> TestClient<Self, TestConnect> {
         self.try_client_with_address(client_addr)
             .expect("TestServer: unable to spawn client")
     }
 
-    fn try_client_with_address(&self, _client_addr: net::SocketAddr) -> Result<TestClient<Self, TestConnect>> {
+    fn try_client_with_address(
+        &self,
+        _client_addr: net::SocketAddr,
+    ) -> Result<TestClient<Self, TestConnect>> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
 
@@ -200,9 +205,9 @@ mod tests {
     use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
-    use log::info;
     use futures::{future, Stream};
     use http::header::CONTENT_TYPE;
+    use log::info;
 
     #[derive(Clone)]
     struct TestHandler {

@@ -83,8 +83,8 @@ mod tests {
     use crate::middleware::{Middleware, NewMiddleware};
     use crate::pipeline::new_pipeline;
     use crate::pipeline::set::*;
-    use crate::state::StateData;
     use crate::plain::test::TestServer;
+    use crate::state::StateData;
 
     fn handler(state: State) -> (State, Response<Body>) {
         let number = state.borrow::<Number>().value;

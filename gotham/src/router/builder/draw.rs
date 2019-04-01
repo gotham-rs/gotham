@@ -958,9 +958,9 @@ mod tests {
     use crate::middleware::{Middleware, NewMiddleware};
     use crate::pipeline::single::*;
     use crate::pipeline::*;
+    use crate::plain::test::TestServer;
     use crate::router::builder::*;
     use crate::state::State;
-    use crate::plain::test::TestServer;
 
     #[derive(Clone, Copy)]
     struct QuickExitMiddleware;

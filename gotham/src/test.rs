@@ -8,20 +8,17 @@ use failure::format_err;
 
 use futures::{future, Future, Stream};
 use http::HttpTryFrom;
-use hyper::client::{
-    connect::Connect,
-    Client,
-};
+use hyper::client::{connect::Connect, Client};
 use hyper::header::CONTENT_TYPE;
 use hyper::{Body, Method, Response, Uri};
-use log::{warn};
+use log::warn;
 use mime;
 use tokio::timer::Delay;
 
 use crate::error::*;
 
-pub use request::TestRequest;
 pub use crate::plain::test::TestServer;
+pub use request::TestRequest;
 
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
@@ -32,10 +29,11 @@ pub(crate) trait BodyReader {
 /// An in memory server for testing purposes.
 pub trait Server: Clone {
     /// Runs a Future until it resolves.
-    fn run_future<F, R, E>(&self, future: F) -> Result<R> where
-            F: Send + 'static + Future<Item = R, Error = E>,
-            R: Send + 'static,
-            E: failure::Fail;
+    fn run_future<F, R, E>(&self, future: F) -> Result<R>
+    where
+        F: Send + 'static + Future<Item = R, Error = E>,
+        R: Send + 'static,
+        E: failure::Fail;
 
     /// Returns a Delay that will expire when a request should.
     fn request_expiry(&self) -> Delay;
@@ -194,8 +192,6 @@ impl<TS: Server + 'static, C: Connect + 'static> TestClient<TS, C> {
             })
     }
 }
-
-
 
 /// Wrapping struct for the `Response` returned by a `TestClient`. Provides access to the
 /// `Response` value via the `Deref` and `DerefMut` traits, and also provides a function for

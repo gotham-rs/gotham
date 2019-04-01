@@ -14,7 +14,7 @@ use crate::error::*;
 /// Builder API for constructing `Server` requests. When the request is built,
 /// `RequestBuilder::perform` will issue the request and provide access to the response.
 pub struct TestRequest<'a, S: Server, C: Connect> {
-    client: &'a TestClient<S,C>,
+    client: &'a TestClient<S, C>,
     request: Request<Body>,
 }
 
