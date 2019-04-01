@@ -1,16 +1,18 @@
+use hyper::Body;
+
 use std::panic::RefUnwindSafe;
 
-use extractor::{PathExtractor, QueryStringExtractor};
-use router::route::matcher::{AndRouteMatcher, RouteMatcher};
-use pipeline::chain::PipelineHandleChain;
-use router::builder::SingleRouteBuilder;
-use router::builder::single::DefineSingleRoute;
+use crate::extractor::{PathExtractor, QueryStringExtractor};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::router::builder::single::DefineSingleRoute;
+use crate::router::builder::SingleRouteBuilder;
+use crate::router::route::matcher::{AndRouteMatcher, RouteMatcher};
 
 /// Describes the operation of replacing a `PathExtractor` on a route. This trait exists to remove
 /// type clutter from the documentation of `SingleRouteBuilder::with_path_extractor`.
 pub trait ReplacePathExtractor<T>
 where
-    T: PathExtractor,
+    T: PathExtractor<Body>,
 {
     /// The type returned when replacing the `PathExtractor` with the target type.
     type Output: DefineSingleRoute;
@@ -27,9 +29,9 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
-    NPE: PathExtractor + Send + Sync + 'static,
+    PE: PathExtractor<Body> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<Body> + Send + Sync + 'static,
+    NPE: PathExtractor<Body> + Send + Sync + 'static,
 {
     type Output = SingleRouteBuilder<'a, M, C, P, NPE, QSE>;
 
@@ -42,7 +44,7 @@ where
 /// remove type clutter from the documentation of `SingleRouteBuilder::with_query_string_extractor`.
 pub trait ReplaceQueryStringExtractor<T>
 where
-    T: QueryStringExtractor,
+    T: QueryStringExtractor<Body>,
 {
     /// The type returned when replacing the `QueryStringExtractor` with the target type.
     type Output: DefineSingleRoute;
@@ -59,9 +61,9 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
-    NQSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<Body> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<Body> + Send + Sync + 'static,
+    NQSE: QueryStringExtractor<Body> + Send + Sync + 'static,
 {
     type Output = SingleRouteBuilder<'a, M, C, P, PE, NQSE>;
 
@@ -91,8 +93,8 @@ where
     NRM: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<Body> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<Body> + Send + Sync + 'static,
 {
     /// The type returned when extending the existing `RouteMatcher` with the target type.
     type Output = SingleRouteBuilder<'a, AndRouteMatcher<M, NRM>, C, P, PE, QSE>;

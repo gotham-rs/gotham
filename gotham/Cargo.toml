@@ -1,8 +1,11 @@
 [package]
 name = "gotham"
-version = "0.3.0-dev" # Alter html_root_url in lib.rs also
+version = "0.4.0-dev" # Alter html_root_url in lib.rs also
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
-           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
+          "Colin Bankier <colinbankier@gmail.com>",
+          "Isaac Whitfield <iw@whitfin.io>",
+          "Judson Lester <nyarly@gmail.com>",
+          "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 description = "A flexible web framework that promotes stability, safety, security and speed."
 license = "MIT/Apache-2.0"
 homepage = "https://gotham.rs"
@@ -10,30 +13,39 @@ repository = "https://github.com/gotham-rs/gotham"
 readme = "README.md"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "blockchain"]
+edition = "2018"
 
 [dependencies]
-log = "0.4.1"
-hyper = { version = "0.11.25", features = [] }
-serde = "1"
-serde_derive = "1"
-bincode = "1"
+log = "0.4"
+hyper = "0.12"
+serde = "1.0"
+serde_derive = "1.0"
+bincode = "1.0"
 mime = "0.3"
+# Using alpha version of mime_guess until mime crate stabilizes (releases 1.0).
+# see https://github.com/hyperium/mime/issues/52
+mime_guess = "2.0.0-alpha.6"
 futures = "0.1"
-tokio-core = "0.1.13"
+tokio = "0.1"
+bytes = "0.4"
 mio = "0.6"
-borrow-bag = "1"
-url = "1"
-uuid = { version = "0.6", features = ["v4"] }
+borrow-bag = "1.0"
+url = "1.7"
+uuid = { version = "0.7", features = ["v4"] }
 chrono = "0.4"
-base64 = "0.9"
-rand = "0.4"
+base64 = "0.10"
+rand = "0.6"
+rand_chacha = "0.1"
 linked-hash-map = "0.5"
-num_cpus = "1.2"
-crossbeam = "0.3"
+num_cpus = "1.8"
 regex = "1.0"
+cookie = "0.11"
+http = "0.1"
+httpdate = "0.3.2"
+failure = "0.1"
 
 [dev-dependencies]
-gotham_derive = { path = "../gotham_derive" }
+gotham_derive = "0.4.0-dev"
 
 [badges]
 travis-ci = { repository = "gotham-rs/gotham", branch = "master" }

@@ -1,15 +1,16 @@
 //! Defines the types for connecting multiple pipeline handles into a "chain" when constructing the
 //! dispatcher for a route.
 
-use std::panic::RefUnwindSafe;
 use borrow_bag::{Handle, Lookup};
 use futures::future;
+use log::trace;
+use std::panic::RefUnwindSafe;
 
-use handler::{HandlerFuture, IntoHandlerError};
-use middleware::chain::NewMiddlewareChain;
-use pipeline::Pipeline;
-use pipeline::set::PipelineSet;
-use state::{request_id, State};
+use crate::handler::{HandlerFuture, IntoHandlerError};
+use crate::middleware::chain::NewMiddlewareChain;
+use crate::pipeline::set::PipelineSet;
+use crate::pipeline::Pipeline;
+use crate::state::{request_id, State};
 
 /// A heterogeneous list of `Handle<P, _>` values, where `P` is a pipeline type. The pipelines are
 /// borrowed and invoked in order to serve a request.
@@ -29,21 +30,21 @@ pub trait PipelineHandleChain<P>: RefUnwindSafe {
     /// once all `Middleware` in the `Pipeline` have passed the request through.
     fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static;
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static;
 }
 
 /// Part of a `PipelineHandleChain` which references a `Pipeline` and continues with a tail element.
 impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
 where
     T: NewMiddlewareChain,
-    T::Instance: 'static,
+    T::Instance: Send + 'static,
     U: PipelineHandleChain<P>,
     P: Lookup<Pipeline<T>, N>,
     N: RefUnwindSafe,
 {
     fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         let (handle, ref chain) = *self;
         match pipelines.borrow(handle).construct() {
@@ -60,7 +61,7 @@ where
 impl<P> PipelineHandleChain<P> for () {
     fn call<F>(&self, _: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         trace!("[{}] start pipeline", request_id(&state));
         f(state)

@@ -1,8 +1,8 @@
+use hyper::{body::Payload, Body, Response};
 use serde::{Deserialize, Deserializer};
-use hyper::Response;
 
-use state::{State, StateData};
-use router::response::extender::StaticResponseExtender;
+use crate::router::response::extender::StaticResponseExtender;
+use crate::state::{State, StateData};
 
 /// Defines a binding for storing the dynamic segments of the `Request` path in `State`. On failure
 /// the `StaticResponseExtender` implementation extends the `Response` to indicate why the
@@ -28,7 +28,7 @@ use router::response::extender::StaticResponseExtender;
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::{FromState, State};
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::router::Router;
@@ -41,14 +41,15 @@ use router::response::extender::StaticResponseExtender;
 ///     slug: String,
 /// }
 ///
-/// fn handler(mut state: State) -> (State, Response) {
+/// fn handler(mut state: State) -> (State, Response<Body>) {
 ///     let MyPathParams { id, slug } = MyPathParams::take_from(&mut state);
 ///     let body = format!("id = {}, slug = {}", id, slug);
 ///
 ///     let response = create_response(
 ///         &state,
-///         StatusCode::Ok,
-///         Some((body.into_bytes(), mime::TEXT_PLAIN)),
+///         StatusCode::OK,
+///         mime::TEXT_PLAIN,
+///         body,
 ///     );
 ///
 ///     (state, response)
@@ -70,17 +71,21 @@ use router::response::extender::StaticResponseExtender;
 /// #       .get("http://example.com/article/1551/ten-reasons-serde-is-amazing")
 /// #       .perform()
 /// #       .unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Ok);
+/// #   assert_eq!(response.status(), StatusCode::OK);
 /// #   let body = response.read_utf8_body().unwrap();
 /// #   assert_eq!(body, "id = 1551, slug = ten-reasons-serde-is-amazing");
 /// # }
-pub trait PathExtractor
-    : for<'de> Deserialize<'de> + StaticResponseExtender + StateData {
+pub trait PathExtractor<B>:
+    for<'de> Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData
+where
+    B: Payload,
+{
 }
 
-impl<T> PathExtractor for T
+impl<T, B> PathExtractor<B> for T
 where
-    for<'de> T: Deserialize<'de> + StaticResponseExtender + StateData,
+    B: Payload,
+    for<'de> T: Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData,
 {
 }
 
@@ -105,5 +110,6 @@ impl<'de> Deserialize<'de> for NoopPathExtractor {
 impl StateData for NoopPathExtractor {}
 
 impl StaticResponseExtender for NoopPathExtractor {
-    fn extend(_state: &mut State, _res: &mut Response) {}
+    type ResBody = Body;
+    fn extend(_state: &mut State, _res: &mut Response<Body>) {}
 }

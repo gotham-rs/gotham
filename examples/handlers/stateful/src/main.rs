@@ -1,19 +1,19 @@
 //! An example of using stateful handlers with the Gotahm web framework.
 
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
 extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
 use futures::future;
-use hyper::StatusCode;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
-use gotham::handler::{Handler, HandlerFuture, NewHandler};
-use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
+use gotham::error::Result;
+use gotham::handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::State;
 
 // A struct which can store the state which it needs.
@@ -55,21 +55,16 @@ impl Handler for CountingHandler {
             visits
         );
 
-        let res = {
-            create_response(
-                &state,
-                StatusCode::Ok,
-                Some((response_text.into_bytes(), mime::TEXT_PLAIN)),
-            )
-        };
-        Box::new(future::ok((state, res)))
+        let response = response_text.into_response(&state);
+
+        Box::new(future::ok((state, response)))
     }
 }
 
 impl NewHandler for CountingHandler {
     type Instance = Self;
 
-    fn new_handler(&self) -> std::io::Result<Self::Instance> {
+    fn new_handler(&self) -> Result<Self::Instance> {
         Ok(self.clone())
     }
 }
@@ -90,6 +85,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn counter_increments_per_request() {
@@ -100,7 +96,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_utf8_body().unwrap();
         assert!(
@@ -115,7 +111,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_utf8_body().unwrap();
         assert!(

@@ -2,30 +2,32 @@
 
 mod associated;
 mod draw;
-mod single;
 mod modify;
+mod single;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use hyper::StatusCode;
+use hyper::{Body, StatusCode};
 
-use pipeline::chain::PipelineHandleChain;
-use pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
-use router::Router;
-use router::tree::TreeBuilder;
-use router::response::extender::ResponseExtender;
-use router::response::finalizer::ResponseFinalizerBuilder;
-use router::route::{Delegation, Extractors, RouteImpl};
-use router::route::matcher::{AnyRouteMatcher, RouteMatcher};
-use router::route::dispatch::DispatcherImpl;
-use extractor::{NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor};
-use router::tree::node::NodeBuilder;
+use crate::extractor::{
+    NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor,
+};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
+use crate::router::response::extender::ResponseExtender;
+use crate::router::response::finalizer::ResponseFinalizerBuilder;
+use crate::router::route::dispatch::DispatcherImpl;
+use crate::router::route::matcher::{AnyRouteMatcher, RouteMatcher};
+use crate::router::route::{Delegation, Extractors, RouteImpl};
+use crate::router::tree::node::Node;
+use crate::router::tree::Tree;
+use crate::router::Router;
 
 pub use self::associated::{AssociatedRouteBuilder, AssociatedSingleRouteBuilder};
-pub use self::single::DefineSingleRoute;
 pub use self::draw::DrawRoutes;
 pub use self::modify::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor};
+pub use self::single::DefineSingleRoute;
 
 /// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
 /// value passed to the closure, and the `Router` is constructed before returning.
@@ -36,7 +38,7 @@ pub use self::modify::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStr
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
@@ -48,9 +50,9 @@ pub use self::modify::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStr
 /// # #[derive(Serialize, Deserialize, Default)]
 /// # struct Session;
 /// #
-/// # fn my_handler(state: State) -> (State, Response) {
+/// # fn my_handler(state: State) -> (State, Response<Body>) {
 /// #   assert!(state.has::<SessionData<Session>>());
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
 /// # }
 /// #
 /// fn router() -> Router {
@@ -71,7 +73,7 @@ pub use self::modify::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStr
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub fn build_router<C, P, F>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F) -> Router
@@ -80,11 +82,11 @@ where
     P: Send + Sync + 'static,
     F: FnOnce(&mut RouterBuilder<C, P>),
 {
-    let mut tree_builder = TreeBuilder::new();
+    let mut tree = Tree::new();
 
     let response_finalizer = {
         let mut builder = RouterBuilder {
-            node_builder: tree_builder.borrow_root_mut(),
+            node_builder: tree.borrow_root_mut(),
             pipeline_chain,
             pipelines,
             response_finalizer_builder: ResponseFinalizerBuilder::internal_new(),
@@ -95,7 +97,7 @@ where
         builder.response_finalizer_builder.finalize()
     };
 
-    Router::internal_new(tree_builder.finalize(), response_finalizer)
+    Router::internal_new(tree, response_finalizer)
 }
 
 /// Builds a `Router` with **no** middleware using the provided closure. Routes are defined using
@@ -106,14 +108,14 @@ where
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
 /// #
-/// # fn my_handler(state: State) -> (State, Response) {
-/// #   (state, Response::new().with_status(StatusCode::Accepted))
+/// # fn my_handler(state: State) -> (State, Response<Body>) {
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
 /// # }
 /// #
 /// fn router() -> Router {
@@ -128,7 +130,7 @@ where
 /// #       .get("https://example.com/request/path")
 /// #       .perform()
 /// #       .unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub fn build_simple_router<F>(f: F) -> Router
@@ -136,9 +138,7 @@ where
     F: FnOnce(&mut RouterBuilder<(), ()>),
 {
     let pipelines = finalize_pipeline_set(new_pipeline_set());
-    let pipeline_chain = ();
-
-    build_router(pipeline_chain, pipelines, f)
+    build_router((), pipelines, f)
 }
 
 /// The top-level builder which is created by `build_router` and passed to the provided closure.
@@ -148,7 +148,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut Node,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
     response_finalizer_builder: ResponseFinalizerBuilder,
@@ -165,38 +165,31 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
-    /// # use hyper::header::Warning;
+    /// # use hyper::{Body, Response, StatusCode};
+    /// # use hyper::header::WARNING;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::response::extender::ResponseExtender;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::InternalServerError))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::INTERNAL_SERVER_ERROR).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// struct MyExtender;
     ///
-    /// impl ResponseExtender for MyExtender {
-    ///     fn extend(&self, state: &mut State, response: &mut Response) {
+    /// impl ResponseExtender<Body> for MyExtender {
+    ///     fn extend(&self, state: &mut State, response: &mut Response<Body>) {
     ///         // Extender implementation omitted.
     /// #       let _ = state;
-    /// #       response.headers_mut().set(
-    /// #           Warning {
-    /// #               code: 299,
-    /// #               agent: "example.com".to_owned(),
-    /// #               text: "Deprecated".to_owned(),
-    /// #               date: None,
-    /// #           }
-    /// #       );
+    /// #       response.headers_mut().insert(WARNING, "299 example.com Deprecated".parse().unwrap());
     ///     }
     /// }
     ///
     /// fn router() -> Router {
     ///     build_simple_router(|route| {
-    ///         route.add_response_extender(StatusCode::InternalServerError, MyExtender);
+    ///         route.add_response_extender(StatusCode::INTERNAL_SERVER_ERROR, MyExtender);
     /// #
     /// #       route.get("/").to(my_handler);
     ///     })
@@ -208,20 +201,17 @@ where
     /// #       .get("https://example.com/")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::InternalServerError);
+    /// #   assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     /// #
     /// #   {
-    /// #       let warning = response.headers().get::<Warning>().unwrap();
-    /// #       assert_eq!(warning.code, 299);
-    /// #       assert_eq!(warning.agent, "example.com");
-    /// #       assert_eq!(warning.text, "Deprecated");
-    /// #       assert!(warning.date.is_none());
+    /// #       let warning = response.headers().get(WARNING).unwrap();
+    /// #       assert_eq!(warning, "299 example.com Deprecated");
     /// #   }
     /// # }
     /// ```
     pub fn add_response_extender<E>(&mut self, status_code: StatusCode, extender: E)
     where
-        E: ResponseExtender + Send + Sync + 'static,
+        E: ResponseExtender<Body> + Send + Sync + 'static,
     {
         self.response_finalizer_builder
             .add(status_code, Box::new(extender))
@@ -235,7 +225,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut Node,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
 }
@@ -247,7 +237,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut Node,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
 }
@@ -280,10 +270,10 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<Body> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<Body> + Send + Sync + 'static,
 {
-    node_builder: &'a mut NodeBuilder,
+    node_builder: &'a mut Node,
     matcher: M,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
@@ -296,15 +286,15 @@ where
     M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Send + Sync + 'static,
     P: Send + Sync + 'static,
-    PE: PathExtractor + Send + Sync + 'static,
-    QSE: QueryStringExtractor + Send + Sync + 'static,
+    PE: PathExtractor<Body> + Send + Sync + 'static,
+    QSE: QueryStringExtractor<Body> + Send + Sync + 'static,
 {
     /// Coerces the type of the internal `PhantomData`, to replace an extractor by changing the
     /// type parameter without changing anything else.
     fn coerce<NPE, NQSE>(self) -> SingleRouteBuilder<'a, M, C, P, NPE, NQSE>
     where
-        NPE: PathExtractor + Send + Sync + 'static,
-        NQSE: QueryStringExtractor + Send + Sync + 'static,
+        NPE: PathExtractor<Body> + Send + Sync + 'static,
+        NQSE: QueryStringExtractor<Body> + Send + Sync + 'static,
     {
         SingleRouteBuilder {
             node_builder: self.node_builder,
@@ -320,18 +310,17 @@ where
 mod tests {
     use super::*;
 
-    use std::sync::Arc;
-
-    use hyper::{Method, Request, Response, StatusCode};
-    use hyper::server::Service;
     use futures::{Future, Stream};
-    use tokio_core::reactor::Core;
+    use hyper::service::Service;
+    use hyper::{Body, Request, Response, StatusCode};
+    use serde_derive::Deserialize;
 
-    use pipeline::new_pipeline;
-    use middleware::session::NewSessionMiddleware;
-    use state::{State, StateData};
-    use service::GothamService;
-    use router::response::extender::StaticResponseExtender;
+    use crate::middleware::cookie::CookieParser;
+    use crate::middleware::session::NewSessionMiddleware;
+    use crate::pipeline::new_pipeline;
+    use crate::router::response::extender::StaticResponseExtender;
+    use crate::service::GothamService;
+    use crate::state::{State, StateData};
 
     #[derive(Deserialize)]
     struct SalutationParams {
@@ -341,7 +330,8 @@ mod tests {
     impl StateData for SalutationParams {}
 
     impl StaticResponseExtender for SalutationParams {
-        fn extend(_: &mut State, _: &mut Response) {}
+        type ResBody = Body;
+        fn extend(_: &mut State, _: &mut Response<Body>) {}
     }
 
     #[derive(Deserialize)]
@@ -353,100 +343,133 @@ mod tests {
     impl StateData for AddParams {}
 
     impl StaticResponseExtender for AddParams {
-        fn extend(_: &mut State, _: &mut Response) {}
+        type ResBody = Body;
+        fn extend(_: &mut State, _: &mut Response<Body>) {}
     }
 
     mod welcome {
         use super::*;
-        pub fn index(state: State) -> (State, Response) {
-            (state, Response::new().with_status(StatusCode::Ok))
+        pub fn index(state: State) -> (State, Response<Body>) {
+            (
+                state,
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
         }
 
-        pub fn literal(state: State) -> (State, Response) {
-            (state, Response::new().with_status(StatusCode::Created))
+        pub fn literal(state: State) -> (State, Response<Body>) {
+            (
+                state,
+                Response::builder()
+                    .status(StatusCode::CREATED)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
         }
 
-        pub fn hello(mut state: State) -> (State, Response) {
+        pub fn hello(mut state: State) -> (State, Response<Body>) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body(format!("Hello, {}!", params.name));
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("Hello, {}!", params.name).into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn globbed(state: State) -> (State, Response) {
-            let response = Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body("Globbed");
+        pub fn globbed(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body("Globbed".into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn delegated(state: State) -> (State, Response) {
-            let response = Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body("Delegated");
+        pub fn delegated(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body("Delegated".into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn goodbye(mut state: State) -> (State, Response) {
+        pub fn goodbye(mut state: State) -> (State, Response<Body>) {
             let params = state.take::<SalutationParams>();
-            let response = Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body(format!("Goodbye, {}!", params.name));
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("Goodbye, {}!", params.name).into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn add(mut state: State) -> (State, Response) {
+        pub fn add(mut state: State) -> (State, Response<Body>) {
             let params = state.take::<AddParams>();
-            let response = Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body(format!(
-                    "{} + {} = {}",
-                    params.x,
-                    params.y,
-                    params.x + params.y,
-                ));
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("{} + {} = {}", params.x, params.y, params.x + params.y,).into())
+                .unwrap();
             (state, response)
         }
     }
 
     mod resource {
         use super::*;
-        pub fn create(state: State) -> (State, Response) {
-            let response = Response::new().with_status(StatusCode::Created);
+        pub fn create(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::CREATED)
+                .body(Body::empty())
+                .unwrap();
             (state, response)
         }
 
-        pub fn destroy(state: State) -> (State, Response) {
-            let response = Response::new().with_status(StatusCode::Accepted);
+        pub fn destroy(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::ACCEPTED)
+                .body(Body::empty())
+                .unwrap();
             (state, response)
         }
 
-        pub fn show(state: State) -> (State, Response) {
-            let response = Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body("It's a resource.");
+        pub fn show(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body("It's a resource.".into())
+                .unwrap();
             (state, response)
         }
 
-        pub fn update(state: State) -> (State, Response) {
-            let response = Response::new().with_status(StatusCode::Accepted);
+        pub fn update(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::ACCEPTED)
+                .body(Body::empty())
+                .unwrap();
             (state, response)
         }
     }
 
     mod api {
         use super::*;
-        pub fn submit(state: State) -> (State, Response) {
-            (state, Response::new().with_status(StatusCode::Accepted))
+        pub fn submit(state: State) -> (State, Response<Body>) {
+            (
+                state,
+                Response::builder()
+                    .status(StatusCode::ACCEPTED)
+                    .body(Body::empty())
+                    .unwrap(),
+            )
         }
     }
 
     #[test]
     fn build_router_test() {
         let pipelines = new_pipeline_set();
-        let (pipelines, default) =
-            pipelines.add(new_pipeline().add(NewSessionMiddleware::default()).build());
+        let (pipelines, default) = pipelines.add(
+            new_pipeline()
+                .add(CookieParser)
+                .add(NewSessionMiddleware::default())
+                .build(),
+        );
 
         let pipelines = finalize_pipeline_set(pipelines);
 
@@ -495,77 +518,76 @@ mod tests {
             route.delegate("/delegated").to_router(delegated_router);
         });
 
-        let mut core = Core::new().unwrap();
-        let new_service = GothamService::new(Arc::new(router), core.handle());
+        let new_service = GothamService::new(router);
 
-        let mut call = move |req| {
-            let service = new_service.connect("127.0.0.1:10000".parse().unwrap());
-            core.run(service.call(req)).unwrap()
+        let call = move |req| {
+            let mut service = new_service.connect("127.0.0.1:10000".parse().unwrap());
+            service.call(req).wait().unwrap()
         };
 
-        let response = call(Request::new(Method::Get, "/".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
+        let response = call(Request::get("/").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
 
-        let response = call(Request::new(Method::Post, "/api/submit".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Accepted);
+        let response = call(Request::post("/api/submit").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
 
-        let response = call(Request::new(Method::Get, "/hello/world".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
-        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        let response = call(Request::get("/hello/world").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Hello, world!");
 
-        let response = call(Request::new(
-            Method::Get,
-            "/hello/world/more/path/here/handled/by/glob"
-                .parse()
+        let response = call(
+            Request::get("/hello/world/more/path/here/handled/by/glob")
+                .body(Body::empty())
                 .unwrap(),
-        ));
-        assert_eq!(response.status(), StatusCode::Ok);
-        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        );
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Globbed");
 
-        let response = call(Request::new(Method::Get, "/delegated/b".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
-        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        let response = call(Request::get("/delegated/b").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
 
-        let response = call(Request::new(Method::Get, "/goodbye/world".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
-        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        let response = call(Request::get("/goodbye/world").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
         assert_eq!(
             &String::from_utf8(response_bytes).unwrap(),
             "Goodbye, world!"
         );
 
-        let response = call(Request::new(Method::Get, "/goodbye/9875".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::NotFound);
+        let response = call(Request::get("/goodbye/9875").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
-        let response = call(Request::new(
-            Method::Get,
-            "/literal/:param/*".parse().unwrap(),
-        ));
-        assert_eq!(response.status(), StatusCode::Created);
+        let response = call(
+            Request::get("/literal/:param/*")
+                .body(Body::empty())
+                .unwrap(),
+        );
+        assert_eq!(response.status(), StatusCode::CREATED);
 
-        let response = call(Request::new(Method::Get, "/literal/a/b".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::NotFound);
+        let response = call(Request::get("/literal/a/b").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
-        let response = call(Request::new(Method::Get, "/add?x=16&y=71".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
-        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        let response = call(Request::get("/add?x=16&y=71").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "16 + 71 = 87");
 
-        let response = call(Request::new(Method::Post, "/resource".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Created);
+        let response = call(Request::post("/resource").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::CREATED);
 
-        let response = call(Request::new(Method::Patch, "/resource".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Accepted);
+        let response = call(Request::patch("/resource").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
 
-        let response = call(Request::new(Method::Delete, "/resource".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Accepted);
+        let response = call(Request::delete("/resource").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
 
-        let response = call(Request::new(Method::Get, "/resource".parse().unwrap()));
-        assert_eq!(response.status(), StatusCode::Ok);
-        let response_bytes = response.body().concat2().wait().unwrap().to_vec();
+        let response = call(Request::get("/resource").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
         assert_eq!(&response_bytes[..], b"It's a resource.");
     }
 }

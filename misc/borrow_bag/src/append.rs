@@ -69,11 +69,7 @@ where
 {
 }
 
-impl<U, V0, V1> PrefixedWith<(U, V0)> for (U, V1)
-where
-    V1: PrefixedWith<V0>,
-{
-}
+impl<U, V0, V1> PrefixedWith<(U, V0)> for (U, V1) where V1: PrefixedWith<V0> {}
 impl<U> PrefixedWith<()> for (U, ()) {}
 
 #[cfg(test)]
@@ -82,8 +78,7 @@ mod tests {
 
     #[test]
     fn append_test() {
-        let list = ();
-        let (list, _): ((u8, ()), Handle<u8, Take>) = list.append(1u8);
+        let (list, _): ((u8, ()), Handle<u8, Take>) = ().append(1u8);
         let (list, _) = list.append(2u8);
         let (list, _) = list.append(3u8);
 

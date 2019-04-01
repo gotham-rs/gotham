@@ -4,11 +4,16 @@
 use std::io;
 use std::panic::RefUnwindSafe;
 
-use handler::HandlerFuture;
-use state::State;
+use crate::handler::HandlerFuture;
+use crate::state::State;
 
 pub mod chain;
+pub mod cookie;
+pub mod logger;
+pub mod security;
 pub mod session;
+pub mod state;
+pub mod timer;
 
 /// `Middleware` has the opportunity to provide additional behaviour to the `Request` / `Response`
 /// interaction. For example:
@@ -29,7 +34,7 @@ pub mod session;
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -43,7 +48,7 @@ pub mod session;
 ///
 /// impl Middleware for NoopMiddleware {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         chain(state)
 ///     }
@@ -60,13 +65,13 @@ pub mod session;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::Accepted)))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 ///
@@ -97,7 +102,7 @@ pub mod session;
 ///
 /// impl Middleware for MiddlewareWithStateData {
 ///     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         state.put(MiddlewareStateData { i: 10 });
 ///         chain(state)
@@ -118,14 +123,14 @@ pub mod session;
 /// #               Ok(|mut state: State| {
 /// #                   let data = state.take::<MiddlewareStateData>();
 /// #                   let body = format!("{}", data.i).into_bytes();
-/// #                   (state, Response::new().with_status(StatusCode::Ok).with_body(body))
+/// #                   (state, Response::builder().status(StatusCode::OK).body(body.into()).unwrap())
 /// #               })
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Ok);
+/// #   assert_eq!(response.status(), StatusCode::OK);
 /// #   let body = response.read_utf8_body().unwrap();
 /// #   assert_eq!(&body, "10");
 /// # }
@@ -141,8 +146,8 @@ pub mod session;
 /// # extern crate futures;
 /// #
 /// # use futures::Future;
-/// # use hyper::{Response, StatusCode};
-/// # use hyper::header::Warning;
+/// # use hyper::{Body, Response, StatusCode};
+/// # use hyper::header::WARNING;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -156,19 +161,11 @@ pub mod session;
 ///
 /// impl Middleware for MiddlewareAddingResponseHeader {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         let f = chain(state)
 ///             .map(|(state, mut response)| {
-///                 response.headers_mut().set(
-///                     Warning {
-///                         code: 299,
-///                         agent: "example.com".to_owned(),
-///                         text: "Deprecated".to_owned(),
-///                         date: None,
-///                     }
-///                 );
-///
+///                 response.headers_mut().insert(WARNING, "299 example.com Deprecated".parse().unwrap());
 ///                 (state, response)
 ///             });
 ///
@@ -187,20 +184,17 @@ pub mod session;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::Accepted)))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// #
 /// #   {
-/// #       let warning = response.headers().get::<Warning>().unwrap();
-/// #       assert_eq!(warning.code, 299);
-/// #       assert_eq!(warning.agent, "example.com");
-/// #       assert_eq!(warning.text, "Deprecated");
-/// #       assert!(warning.date.is_none());
+/// #       let warning = response.headers().get(WARNING).unwrap();
+/// #       assert_eq!(warning, "299 example.com Deprecated");
 /// #   }
 /// # }
 /// ```
@@ -214,9 +208,9 @@ pub mod session;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
-/// # use hyper::{Response, Method, StatusCode};
+/// # use hyper::{Body, Response, Method, StatusCode};
 /// # use futures::future;
-/// # use gotham::helpers::http::response::create_response;
+/// # use gotham::helpers::http::response::create_empty_response;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -230,12 +224,12 @@ pub mod session;
 ///
 /// impl Middleware for ConditionalMiddleware {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
-///         if *Method::borrow_from(&state) == Method::Get {
+///         if *Method::borrow_from(&state) == Method::GET {
 ///             chain(state)
 ///         } else {
-///             let response = create_response(&state, StatusCode::MethodNotAllowed, None);
+///             let response = create_empty_response(&state, StatusCode::METHOD_NOT_ALLOWED);
 ///             Box::new(future::ok((state, response)))
 ///         }
 ///     }
@@ -252,17 +246,17 @@ pub mod session;
 /// #       route
 /// #           .get_or_head("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::Accepted)))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// #
 /// #   let response = test_server.client().head("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::MethodNotAllowed);
+/// #   assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
 /// # }
 /// ```
 ///
@@ -276,7 +270,7 @@ pub mod session;
 /// # extern crate futures;
 /// #
 /// # use futures::{future, Future};
-/// # use hyper::{Response, StatusCode};
+/// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -290,7 +284,7 @@ pub mod session;
 ///
 /// impl Middleware for AsyncMiddleware {
 ///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
 ///     {
 ///         // This could be any asynchronous action. `future::lazy(_)` defers a function
 ///         // until the next cycle of tokio's event loop.
@@ -310,13 +304,13 @@ pub mod session;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::new().with_status(StatusCode::Accepted)))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
 /// #           });
 /// #   });
 /// #
 /// #   let test_server = TestServer::new(router).unwrap();
 /// #   let response = test_server.client().get("https://example.com/").perform().unwrap();
-/// #   assert_eq!(response.status(), StatusCode::Accepted);
+/// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
 pub trait Middleware {
@@ -330,7 +324,7 @@ pub trait Middleware {
     ///   its function.
     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
         Self: Sized;
 }
 

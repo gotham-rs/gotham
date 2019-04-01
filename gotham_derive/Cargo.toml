@@ -1,17 +1,21 @@
 [package]
 name = "gotham_derive"
-version = "0.3.0-dev"
+version = "0.4.0-dev"
 authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
-           "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
+          "Colin Bankier",
+          "Isaac Whitfield <iw@whitfin.io>",
+          "Judson Lester <nyarly@gmail.com>",
+          "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
 description = "Macros 1.1 implementations for Gotham traits"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/gotham-rs/gotham"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "gotham"]
+edition = "2018"
 
 [dependencies]
-syn = "0.12"
-quote = "0.4"
+syn = "0.15"
+quote = "0.6"
 
 [lib]
 proc-macro = true

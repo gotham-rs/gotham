@@ -1,4 +1,4 @@
-use state::{State, StateData};
+use crate::state::{State, StateData};
 
 /// A trait for accessing data that is stored in `State`.
 ///
@@ -32,7 +32,7 @@ pub trait FromState: StateData + Sized {
     /// # });
     /// # }
     /// ```
-    fn try_borrow_from(&State) -> Option<&Self>;
+    fn try_borrow_from(state: &State) -> Option<&Self>;
 
     /// Borrows a value from the `State` storage.
     ///
@@ -63,7 +63,7 @@ pub trait FromState: StateData + Sized {
     /// # });
     /// # }
     /// ```
-    fn borrow_from(&State) -> &Self;
+    fn borrow_from(state: &State) -> &Self;
 
     /// Tries to mutably borrow a value from the `State` storage.
     ///
@@ -94,7 +94,7 @@ pub trait FromState: StateData + Sized {
     /// # });
     /// # }
     /// ```
-    fn try_borrow_mut_from(&mut State) -> Option<&mut Self>;
+    fn try_borrow_mut_from(state: &mut State) -> Option<&mut Self>;
 
     /// Mutably borrows a value from the `State` storage.
     ///
@@ -128,7 +128,7 @@ pub trait FromState: StateData + Sized {
     /// # });
     /// # }
     /// ```
-    fn borrow_mut_from(&mut State) -> &mut Self;
+    fn borrow_mut_from(state: &mut State) -> &mut Self;
 
     /// Tries to move a value out of the `State` storage and return ownership.
     ///
@@ -157,7 +157,7 @@ pub trait FromState: StateData + Sized {
     /// # });
     /// # }
     /// ```
-    fn try_take_from(&mut State) -> Option<Self>;
+    fn try_take_from(state: &mut State) -> Option<Self>;
 
     /// Moves a value out of the `State` storage and returns ownership.
     ///
@@ -188,7 +188,7 @@ pub trait FromState: StateData + Sized {
     /// # });
     /// # }
     /// ```
-    fn take_from(&mut State) -> Self;
+    fn take_from(state: &mut State) -> Self;
 }
 
 impl<T> FromState for T

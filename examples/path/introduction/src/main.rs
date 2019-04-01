@@ -10,11 +10,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use hyper::{Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 /// Holds data extracted from the Request path.
@@ -47,8 +44,8 @@ struct PathExtractor {
 }
 
 /// Handler function for `GET` requests directed to `/products/:name`
-fn get_product_handler(state: State) -> (State, Response) {
-    let res = {
+fn get_product_handler(state: State) -> (State, String) {
+    let message = {
         // Access the `PathExtractor` instance from `state` which was put there for us by the
         // `Router` during request evaluation.
         //
@@ -56,17 +53,10 @@ fn get_product_handler(state: State) -> (State, Response) {
         // struct automatically gains the `borrow_from` method and a number of other methods
         // via the `gotham::state::FromState` trait.
         let product = PathExtractor::borrow_from(&state);
-        create_response(
-            &state,
-            StatusCode::Ok,
-            Some((
-                format!("Product: {}", product.name).into_bytes(),
-                mime::TEXT_PLAIN,
-            )),
-        )
+        format!("Product: {}", product.name)
     };
 
-    (state, res)
+    (state, message)
 }
 
 /// Create a `Router`
@@ -96,6 +86,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn product_name_is_extracted() {
@@ -106,7 +97,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Product: t-shirt");

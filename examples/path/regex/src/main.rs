@@ -9,11 +9,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use hyper::{Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
@@ -22,19 +19,13 @@ struct PathExtractor {
 }
 
 /// Create a `Handler` that is invoked for requests using a numeric identifier.
-pub fn greet_user(state: State) -> (State, Response) {
-    let res = {
+pub fn greet_user(state: State) -> (State, String) {
+    let message = {
         let path = PathExtractor::borrow_from(&state);
-        let response_string = format!("Hello, User {}!", &path.id);
-
-        create_response(
-            &state,
-            StatusCode::Ok,
-            Some((response_string.into_bytes(), mime::TEXT_PLAIN)),
-        )
+        format!("Hello, User {}!", &path.id)
     };
 
-    (state, res)
+    (state, message)
 }
 
 /// Create a `Router`
@@ -68,6 +59,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_router_response() {
@@ -78,7 +70,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Hello, User 123!");
@@ -93,6 +85,6 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }

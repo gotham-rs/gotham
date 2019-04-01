@@ -8,13 +8,13 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 
-use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
-use gotham::router::builder::*;
-use gotham::state::State;
 use gotham::handler::IntoResponse;
+use gotham::helpers::http::response::create_response;
+use gotham::router::builder::*;
+use gotham::router::Router;
+use gotham::state::State;
 
 /// A Product
 #[derive(Serialize)]
@@ -31,16 +31,12 @@ struct Product {
 /// know about Serde in order to understand the response that is being created here but if you're
 /// interested you can learn more at `http://serde.rs`.
 impl IntoResponse for Product {
-    fn into_response(self, state: &State) -> Response {
+    fn into_response(self, state: &State) -> Response<Body> {
         create_response(
             state,
-            StatusCode::Ok,
-            Some((
-                serde_json::to_string(&self)
-                    .expect("serialized product")
-                    .into_bytes(),
-                mime::APPLICATION_JSON,
-            )),
+            StatusCode::OK,
+            mime::APPLICATION_JSON,
+            serde_json::to_string(&self).expect("serialized product"),
         )
     }
 }
@@ -88,7 +84,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         let expected_product = Product {

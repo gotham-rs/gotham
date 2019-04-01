@@ -12,6 +12,13 @@ members = [
     ## Examples (these crates are not published)
     "examples/hello_world",
     "examples/hello_world_until",
+    "examples/shared_state",
+
+    # Tera template
+    "examples/templating/tera",
+
+    # Askama template
+    "examples/templating/askama",
 
     # routing
     "examples/routing/introduction",
@@ -39,6 +46,7 @@ members = [
 
     # middleware
     "examples/middleware/introduction",
+    "examples/middleware/multiple_pipelines",
 
     # into_response
     "examples/into_response/introduction",
@@ -48,6 +56,10 @@ members = [
     "examples/handlers/stateful",
     "examples/handlers/simple_async_handlers",
     "examples/handlers/async_handlers",
+    "examples/handlers/form_urlencoded",
+
+    # static_assets
+    "examples/static_assets",
 
     # example_contribution_template
     "examples/example_contribution_template/name"

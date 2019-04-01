@@ -1,109 +1,110 @@
 //! An introduction to storing and retrieving cookie data, with the Gotham
 //! web framework.
 
+extern crate cookie;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
-use hyper::header::{Cookie, Headers, SetCookie};
+use hyper::header::SET_COOKIE;
+use hyper::{Body, Response, StatusCode};
+
+use cookie::{Cookie, CookieJar};
 
 use gotham::helpers::http::response::create_response;
+use gotham::middleware::cookie::CookieParser;
+use gotham::pipeline::new_pipeline;
+use gotham::pipeline::single::single_pipeline;
+use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 /// The first request will set a cookie, and subsequent requests will echo it back.
-fn handler(state: State) -> (State, Response) {
+fn handler(state: State) -> (State, Response<Body>) {
     // Define a narrow scope so that state can be borrowed/moved later in the function.
-    let adjective_from_cookie = {
-        // Get the request headers.
-        let headers: &Headers = Headers::borrow_from(&state);
-        // Get the Cookie header from the request.
-        let maybe_cookie = headers.get::<Cookie>();
-        // Get the value of the "adjective" cookie, if set.
-        maybe_cookie.and_then(|cookie| cookie.get("adjective").map(|s| s.to_owned()))
+    let adjective = {
+        // Retrieve the cookie from the jar stored on the state.
+        CookieJar::borrow_from(&state)
+            .get("adjective")
+            .map(|adj_cookie| adj_cookie.value().to_owned())
+            .unwrap_or_else(|| "first time".to_string())
     };
 
-    let adjective = adjective_from_cookie.unwrap_or("first time".to_owned());
+    let mut response = create_response(
+        &state,
+        StatusCode::OK,
+        mime::TEXT_PLAIN,
+        format!("Hello {} visitor\n", adjective),
+    );
 
-    let mut response = {
-        create_response(
-            &state,
-            StatusCode::Ok,
-            Some((
-                format!("Hello {} visitor\n", adjective).as_bytes().to_vec(),
-                mime::TEXT_PLAIN,
-            )),
-        )
-    };
     {
-        // Make a new cookie. This is currently one of the less type-safe corners of Gotham.
-        let cookie = "adjective=repeat; HttpOnly".to_owned();
-        set_cookie(cookie, &mut response);
+        let cookie = Cookie::build("adjective", "repeat")
+            .http_only(true)
+            .finish();
+        response
+            .headers_mut()
+            .append(SET_COOKIE, cookie.to_string().parse().unwrap());
     }
+
     (state, response)
 }
 
-fn set_cookie(cookie: String, response: &mut Response) {
-    // Get the response headers.
-    let headers = response.headers_mut();
-    if let Some(existing_cookies) = headers.get_mut::<SetCookie>() {
-        // If some cookies are already being set (e.g. by some middleware), append to that list.
-        existing_cookies.push(cookie);
-        return;
-    }
-    // Else create a new SetCookie header.
-    headers.set::<SetCookie>(SetCookie(vec![cookie]));
+/// Create a `Router`
+fn router() -> Router {
+    let (chain, pipelines) = single_pipeline(new_pipeline().add(CookieParser).build());
+    build_router(chain, pipelines, |route| {
+        route.get("/").to(handler);
+    })
 }
 
 /// Start a server and use a `Router` to dispatch requests
 pub fn main() {
     let addr = "127.0.0.1:7878";
     println!("Listening for requests at http://{}", addr);
-    gotham::start(addr, || Ok(handler))
+    gotham::start(addr, router())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cookie::Cookie;
     use gotham::test::TestServer;
-    use hyper::header::{Cookie, SetCookie};
+    use hyper::header::COOKIE;
 
     #[test]
     fn cookie_is_set_and_counter_increments() {
-        let test_server = TestServer::new(|| Ok(handler)).unwrap();
+        let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
             .get("http://localhost/")
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
-        let set_cookie: Vec<String> = {
-            let cookie_header = response.headers().get::<SetCookie>();
-            assert!(cookie_header.is_some());
-            cookie_header.unwrap().0.clone()
-        };
-        assert!(set_cookie.len() == 1);
+        assert_eq!(response.headers().get_all(SET_COOKIE).iter().count(), 1);
+
         assert_eq!(
-            set_cookie.get(0),
-            Some(&"adjective=repeat; HttpOnly".to_owned())
+            response
+                .headers()
+                .get(SET_COOKIE)
+                .map(|hv| hv.to_str().unwrap()),
+            Some("adjective=repeat; HttpOnly")
         );
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], "Hello first time visitor\n".as_bytes());
 
-        let mut cookie = Cookie::new();
-        cookie.append("adjective", "repeat");
+        let cookie = Cookie::new("adjective", "repeat");
 
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(cookie)
+            .with_header(COOKIE, cookie.to_string().parse().unwrap())
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], "Hello repeat visitor\n".as_bytes());
     }

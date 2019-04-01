@@ -1,25 +1,22 @@
 //! Setting a header value for a Gotham web framework response
 
 extern crate gotham;
-#[macro_use]
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
-use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
+use gotham::helpers::http::response::create_empty_response;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::State;
-
-// Define a custom header via the standard Hyper provided macro
-header! { (GothamHeader, "X-Gotham") => [String] }
+use hyper::{Body, Response, StatusCode};
 
 /// Create a `Handler` that adds a custom header.
-pub fn handler(state: State) -> (State, Response) {
-    let mut res = create_response(&state, StatusCode::Ok, None);
+pub fn handler(state: State) -> (State, Response<Body>) {
+    let mut res = create_empty_response(&state, StatusCode::OK);
+
     {
         let headers = res.headers_mut();
-        headers.set(GothamHeader("Hello World!".to_owned()));
+        headers.insert("x-gotham", "Hello World!".parse().unwrap());
     };
 
     (state, res)
@@ -53,10 +50,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
-        assert_eq!(
-            response.headers().get::<GothamHeader>().unwrap(),
-            &GothamHeader("Hello World!".to_string())
-        );
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers().get("x-gotham").unwrap(), "Hello World!");
     }
 }

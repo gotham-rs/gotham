@@ -8,6 +8,7 @@
 #![warn(missing_docs, deprecated)]
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::should_implement_trait))]
 #![doc(test(attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
@@ -18,8 +19,8 @@ mod handle;
 mod lookup;
 
 pub use append::Append;
-pub use lookup::Lookup;
 pub use handle::Handle;
+pub use lookup::Lookup;
 
 /// `BorrowBag` allows the storage of any value using `add(T)`, and returns a `Handle` which can be
 /// used to borrow the value back later. As the `BorrowBag` is add-only, `Handle` values remain
@@ -59,6 +60,7 @@ pub use handle::Handle;
 /// assert_eq!(x, &X);
 /// ```
 
+#[derive(Default)]
 pub struct BorrowBag<V> {
     v: V,
 }
@@ -89,6 +91,8 @@ impl<V> BorrowBag<V> {
     /// #
     /// # let _ = (bag, handle);
     /// ```
+    // This isn't add like +..
+    // Consider renaming this method?
     pub fn add<T>(self, t: T) -> (BorrowBag<V::Output>, Handle<T, V::Navigator>)
     where
         V: Append<T>,
@@ -108,11 +112,10 @@ impl<V> BorrowBag<V> {
     /// let i: &u8 = bag.borrow(handle);
     /// assert_eq!(*i, 15);
     /// ```
-    pub fn borrow<T, N>(&self, handle: Handle<T, N>) -> &T
+    pub fn borrow<T, N>(&self, _handle: Handle<T, N>) -> &T
     where
         V: Lookup<T, N>,
     {
-        drop(handle); // Otherwise it's unused.
         Lookup::<T, N>::get_from(&self.v)
     }
 }

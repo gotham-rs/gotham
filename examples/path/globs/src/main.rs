@@ -9,11 +9,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use hyper::{Response, StatusCode};
-
-use gotham::helpers::http::response::create_response;
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
@@ -24,7 +21,7 @@ struct PathExtractor {
     parts: Vec<String>,
 }
 
-fn parts_handler(state: State) -> (State, Response) {
+fn parts_handler(state: State) -> (State, String) {
     let res = {
         let path = PathExtractor::borrow_from(&state);
 
@@ -33,16 +30,13 @@ fn parts_handler(state: State) -> (State, Response) {
             path.parts.len(),
             if path.parts.len() == 1 { "" } else { "s" }
         );
+
         for part in path.parts.iter() {
             response_string.push_str("\n");
             response_string.push_str(&part);
         }
 
-        create_response(
-            &state,
-            StatusCode::Ok,
-            Some((response_string.into_bytes(), mime::TEXT_PLAIN)),
-        )
+        response_string
     };
 
     (state, res)
@@ -68,6 +62,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn empty_glob_does_not_match() {
@@ -78,7 +73,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[test]
@@ -90,7 +85,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::NotFound);
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[test]
@@ -102,7 +97,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], &b"Got 1 part:\nhead"[..]);
@@ -117,7 +112,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(

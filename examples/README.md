@@ -38,9 +38,12 @@ information on functionality and ordering.
 | [Cookies](cookies) | Working with Cookies. | 1 |
 | [Sessions](sessions) | Working with Sessions. | 2 |
 | [Headers](headers) | Working with HTTP Headers. | 1 |
-| [Handlers](handlers) | Developing application logic that responds to web requests. | 4 |
+| [Handlers](handlers) | Developing application logic that responds to web requests. | 5 |
 | [Middleware](middleware) | Developing custom middleware for your application. | 1 |
+| [Shared State](stared_state) | Sharing state across your application. | 1 |
 | [Into Response](into_response) | Implementing the Gotham web framework's `IntoResponse` trait. | 1 |
+| [Templating](templating) | An example using various templating engines. | 1 |
+| [Static Assets](static_assets) | Serving static assets. | 1 |
 
 ^ Gotham web framework examples are under active development.
 

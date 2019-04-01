@@ -1,12 +1,13 @@
 //! Defines the route `Dispatcher` and supporting types.
 
-use std::panic::RefUnwindSafe;
 use futures::future;
+use log::trace;
+use std::panic::RefUnwindSafe;
 
-use handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
-use pipeline::chain::PipelineHandleChain;
-use pipeline::set::PipelineSet;
-use state::{request_id, State};
+use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::pipeline::set::PipelineSet;
+use crate::state::{request_id, State};
 
 /// Used by `Router` to dispatch requests via pipelines and finally into the configured `Handler`.
 pub trait Dispatcher: RefUnwindSafe {
@@ -52,7 +53,7 @@ where
 impl<H, C, P> Dispatcher for DispatcherImpl<H, C, P>
 where
     H: NewHandler,
-    H::Instance: 'static,
+    H::Instance: Send + 'static,
     C: PipelineHandleChain<P>,
     P: RefUnwindSafe,
 {
@@ -65,7 +66,7 @@ where
             }
             Err(e) => {
                 trace!("[{}] error cloning handler", request_id(&state));
-                Box::new(future::err((state, e.into_handler_error())))
+                Box::new(future::err((state, e.compat().into_handler_error())))
             }
         }
     }
@@ -77,22 +78,22 @@ mod tests {
     use std::io;
     use std::sync::Arc;
 
-    use hyper::Response;
-    use hyper::StatusCode;
+    use hyper::{Body, Response, StatusCode};
 
-    use middleware::{Middleware, NewMiddleware};
-    use pipeline::new_pipeline;
-    use pipeline::set::*;
-    use state::StateData;
-    use test::TestServer;
+    use crate::middleware::{Middleware, NewMiddleware};
+    use crate::pipeline::new_pipeline;
+    use crate::pipeline::set::*;
+    use crate::state::StateData;
+    use crate::test::TestServer;
 
-    fn handler(state: State) -> (State, Response) {
+    fn handler(state: State) -> (State, Response<Body>) {
         let number = state.borrow::<Number>().value;
         (
             state,
-            Response::new()
-                .with_status(StatusCode::Ok)
-                .with_body(format!("{}", number)),
+            Response::builder()
+                .status(StatusCode::OK)
+                .body(format!("{}", number).into())
+                .unwrap(),
         )
     }
 
@@ -112,7 +113,7 @@ mod tests {
     impl Middleware for Number {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -137,7 +138,7 @@ mod tests {
     impl Middleware for Addition {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
@@ -160,7 +161,7 @@ mod tests {
     impl Middleware for Multiplication {
         fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value *= self.value;
@@ -176,24 +177,24 @@ mod tests {
 
                 let (pipelines, p1) = pipelines.add(
                     new_pipeline()
-                    .add(Number { value: 0 }) // 0
-                    .add(Addition { value: 1 }) // 1
-                    .add(Multiplication { value: 2 }) // 2
-                    .build(),
+                        .add(Number { value: 0 }) // 0
+                        .add(Addition { value: 1 }) // 1
+                        .add(Multiplication { value: 2 }) // 2
+                        .build(),
                 );
 
                 let (pipelines, p2) = pipelines.add(
                     new_pipeline()
-                    .add(Addition { value: 1 }) // 3
-                    .add(Multiplication { value: 2 }) // 6
-                    .build(),
+                        .add(Addition { value: 1 }) // 3
+                        .add(Multiplication { value: 2 }) // 6
+                        .build(),
                 );
 
                 let (pipelines, p3) = pipelines.add(
                     new_pipeline()
-                    .add(Addition { value: 2 }) // 8
-                    .add(Multiplication { value: 3 }) // 24
-                    .build(),
+                        .add(Addition { value: 2 }) // 8
+                        .add(Multiplication { value: 3 }) // 24
+                        .build(),
                 );
 
                 let pipelines = Arc::new(pipelines);
@@ -204,7 +205,8 @@ mod tests {
                 let dispatcher = DispatcherImpl::new(new_handler, pipeline_chain, pipelines);
                 dispatcher.dispatch(state)
             })
-        }).unwrap();
+        })
+        .unwrap();
 
         let response = test_server
             .client()
@@ -213,6 +215,6 @@ mod tests {
             .unwrap();
 
         let buf = response.read_body().unwrap();
-        assert_eq!(buf.as_slice(), "24".as_bytes());
+        assert_eq!(buf.as_slice(), b"24");
     }
 }

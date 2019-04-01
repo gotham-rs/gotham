@@ -3,8 +3,8 @@
 
 use borrow_bag::{Append, Handle};
 
-use pipeline::{NewMiddlewareChain, Pipeline};
-use pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
+use crate::pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
+use crate::pipeline::{NewMiddlewareChain, Pipeline};
 
 /// A `PipelineSet` which contains only a single pipeline.
 pub type SinglePipelineSet<C> = PipelineSet<<() as Append<Pipeline<C>>>::Output>;
@@ -65,8 +65,8 @@ where
 mod tests {
     use super::*;
 
-    use router::builder::*;
-    use pipeline::new_pipeline;
+    use crate::pipeline::new_pipeline;
+    use crate::router::builder::*;
 
     #[test]
     fn test_pipeline_construction() {
