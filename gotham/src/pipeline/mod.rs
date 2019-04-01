@@ -35,7 +35,7 @@ use crate::state::{request_id, State};
 /// # use gotham::pipeline::new_pipeline;
 /// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
-/// # use gotham::plain::test::TestServer;
+/// # use gotham::test::TestServer;
 /// # use hyper::{Body, Response, StatusCode};
 /// #
 /// #[derive(StateData)]
@@ -292,7 +292,7 @@ mod tests {
 
     use crate::handler::{Handler, IntoHandlerError};
     use crate::middleware::Middleware;
-    use crate::plain::test::TestServer;
+    use crate::test::TestServer;
     use crate::state::StateData;
 
     fn handler(state: State) -> (State, Response<Body>) {

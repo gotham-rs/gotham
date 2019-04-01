@@ -205,7 +205,7 @@ impl SessionCookieConfig {
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
 /// #                                   SessionIdentifier};
 /// # use gotham::helpers::http::response::create_response;
-/// # use gotham::plain::test::TestServer;
+/// # use gotham::test::TestServer;
 /// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::COOKIE;
 /// #
