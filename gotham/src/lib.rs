@@ -3,11 +3,11 @@
 //! You can find out more about Gotham, including where to get help, at <https://gotham.rs>.
 //!
 //! We look forward to welcoming you into the Gotham community!
-#![doc(html_root_url = "https://docs.rs/gotham/0.2.1")] // Update when changed in Cargo.toml
+#![doc(html_root_url = "https://docs.rs/gotham/0.3.0")] // Update when changed in Cargo.toml
 #![warn(missing_docs, deprecated)]
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
-#![doc(test(no_crate_inject, attr(deny(warnings))))]
+#![cfg_attr(
     feature = "cargo-clippy",
     allow(
         clippy::needless_lifetimes,

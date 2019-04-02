@@ -8,7 +8,7 @@ publish = false
 gotham = { path = "../../gotham" }
 
 futures = "0.1"
-hyper = "0.11"
+hyper = "0.12"
 mime = "0.3"
 tokio-core = "0.1"
 tokio-signal = "0.1"

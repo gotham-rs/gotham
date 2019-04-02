@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use futures::sync::oneshot;
 use futures::{Future, Stream};
-use hyper::{Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 use tokio_core::reactor::Core;
 
 use gotham::helpers::http::response::create_response;
@@ -27,11 +27,12 @@ use gotham::state::State;
 /// How does a function become a `Handler`?.
 /// We've simply implemented the `Handler` trait, for functions that match the signature used here,
 /// within Gotham itself.
-pub fn say_hello(state: State) -> (State, Response) {
+pub fn say_hello(state: State) -> (State, Response<Body>) {
     let res = create_response(
         &state,
         StatusCode::Ok,
-        Some((String::from("Hello World!").into_bytes(), mime::TEXT_PLAIN)),
+        mime::TEXT_PLAIN,
+        String::from("Hello World!")
     );
 
     (state, res)
