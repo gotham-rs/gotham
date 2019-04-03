@@ -8,10 +8,11 @@ members = [
     ## Middleware
     "middleware/template",
     "middleware/under_development/diesel",
-    "middleware/jwt",
+    # "middleware/jwt",
 
     ## Examples (these crates are not published)
     "examples/hello_world",
+    "examples/hello_world_until",
     "examples/shared_state",
 
     # Tera template
