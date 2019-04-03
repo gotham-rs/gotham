@@ -1,23 +1,11 @@
 //! A Hello World example application for working with Gotham.
 //! Supports graceful shutdown on Ctrl+C.
 
-extern crate futures;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-extern crate tokio_core;
-extern crate tokio_signal;
-
 #[cfg(all(test, unix))]
 extern crate nix;
 
-use std::thread;
-use std::time::Duration;
-
-use futures::sync::oneshot;
 use futures::{Future, Stream};
 use hyper::{Body, Response, StatusCode};
-use tokio_core::reactor::Core;
 
 use gotham::helpers::http::response::create_response;
 use gotham::state::State;
@@ -30,7 +18,7 @@ use gotham::state::State;
 pub fn say_hello(state: State) -> (State, Response<Body>) {
     let res = create_response(
         &state,
-        StatusCode::Ok,
+        StatusCode::OK,
         mime::TEXT_PLAIN,
         String::from("Hello World!")
     );
@@ -42,44 +30,9 @@ pub fn say_hello(state: State) -> (State, Response<Body>) {
 pub fn main() {
     let addr = "127.0.0.1:7878";
 
-    // Channel used by main thread to shut down Gotham thread.
-    let (shutdown_tx, shutdown_rx) = oneshot::channel();
-    // Channel used by Gotham thread to signal main thread about panic in Gotham thread.
-    let (panic_tx, panic_rx) = oneshot::channel();
-
-    // Gotham thread. gotham::run_until() will block this thread. Also, gotham::run_until() may spawn additional
-    // threads depending on number of available CPU cores. Also see gotham::run_with_num_threads_until().
-    let gotham_thread = thread::spawn(move || {
-        println!("Listening for requests at http://{}", addr);
-        println!("Press Ctrl+C to exit");
-        gotham::run_until(
-            addr,
-            || Ok(say_hello),
-            shutdown_rx.map_err(|error| panic!("Shutdown signal sender was dropped ({}).", error)),
-            Duration::from_secs(5),
-        );
-    });
-
-    // Second thread which is used to catch possible panic in the first thread (gotham_thread).
-    // One also may try to use std::panic::catch_unwind() instead of creating additional thread.
-    let catch_panic_thread = thread::spawn(move || {
-        if let Err(panic) = gotham_thread.join() {
-            if panic_tx.send(()).is_err() {
-                eprintln!("Failed to propagate panic from thread: receiver dropped");
-            };
-            // Propagate panic further to the main thread.
-            Err(panic)
-        } else {
-            Ok(())
-        }
-    });
-
-    let mut core = Core::new().expect("Failed to create reactor::Core");
-    let handle = core.handle();
-
+    let server = gotham::init_server(addr, || Ok(say_hello));
     // Future to wait for Ctrl+C.
-    let signal = tokio_signal::ctrl_c(&handle)
-        .flatten_stream()
+    let signal = tokio_signal::ctrl_c() .flatten_stream()
         .map_err(|error| panic!("Error listening for signal: {}", error))
         .take(1)
         .for_each(|()| {
@@ -87,21 +40,11 @@ pub fn main() {
             Ok(())
         });
 
-    let panic_rx = panic_rx.map_err(|error| panic!("Panic sender was dropped ({}).", error));
-    // Wait for either Ctrl+C or panic in Gotham thread.
-    // `let _ = ...` drops unfinished future.
-    let _ = core.run(signal.select(panic_rx))
-        .map_err(|(error, _)| error)
-        .unwrap();
+    let serve_until = signal.select(server)
+        .map(|(res, _)| res)
+        .map_err(|(error, _)| error);
 
-    // Send shutdown signal to the Gotham thread.
-    shutdown_tx.send(()).unwrap();
-
-    // Wait for the last thread.
-    catch_panic_thread
-        .join()
-        .unwrap()
-        .expect("Late panic in the Gotham thread");
+    tokio::run(serve_until);
 
     println!("Shutting down gracefully");
 }
@@ -109,11 +52,15 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::thread;
+    use std::time::Duration;
     use gotham::test::TestServer;
     #[cfg(unix)]
     use hyper::Client;
     #[cfg(unix)]
     use nix::sys::signal::{kill, Signal};
+    #[cfg(unix)]
+    use tokio::runtime::Runtime;
 
     #[test]
     fn receive_hello_world_response() {
@@ -124,7 +71,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Hello World!");
@@ -132,17 +79,19 @@ mod tests {
 
     #[cfg(unix)]
     fn try_request() -> bool {
-        let mut core = Core::new().unwrap();
-        let client = Client::new(&core.handle());
+        let client = Client::new();
 
         let uri = "http://127.0.0.1:7878/";
         let uri_parsed = uri.parse().unwrap();
-        let work = client.get(uri_parsed).map(|res| {
-            assert_eq!(res.status(), StatusCode::Ok);
-        });
+        let work = client.get(uri_parsed);
 
-        match core.run(work) {
-            Ok(_) => true,
+        let mut rt = Runtime::new().unwrap();
+
+        match rt.block_on(work) {
+            Ok(req) => {
+                assert_eq!(req.status(), StatusCode::OK);
+                true
+            }
 
             Err(error) => {
                 eprintln!("Unable to get \"{}\": {}", uri, error);
