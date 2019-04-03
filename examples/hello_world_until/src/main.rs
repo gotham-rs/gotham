@@ -20,7 +20,7 @@ pub fn say_hello(state: State) -> (State, Response<Body>) {
         &state,
         StatusCode::OK,
         mime::TEXT_PLAIN,
-        String::from("Hello World!")
+        String::from("Hello World!"),
     );
 
     (state, res)
@@ -32,7 +32,8 @@ pub fn main() {
 
     let server = gotham::init_server(addr, || Ok(say_hello));
     // Future to wait for Ctrl+C.
-    let signal = tokio_signal::ctrl_c() .flatten_stream()
+    let signal = tokio_signal::ctrl_c()
+        .flatten_stream()
         .map_err(|error| panic!("Error listening for signal: {}", error))
         .take(1)
         .for_each(|()| {
@@ -40,7 +41,8 @@ pub fn main() {
             Ok(())
         });
 
-    let serve_until = signal.select(server)
+    let serve_until = signal
+        .select(server)
         .map(|(res, _)| res)
         .map_err(|(error, _)| error);
 
@@ -52,13 +54,13 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
-    use std::time::Duration;
     use gotham::test::TestServer;
     #[cfg(unix)]
     use hyper::Client;
     #[cfg(unix)]
     use nix::sys::signal::{kill, Signal};
+    use std::thread;
+    use std::time::Duration;
     #[cfg(unix)]
     use tokio::runtime::Runtime;
 
