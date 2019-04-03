@@ -1,6 +1,6 @@
 # Hello World
 
-Example of how to use `run_until()` to implement graceful shutdown for the web
+Example of how to implement graceful shutdown for the web
 service.
 
 ## Running
