@@ -62,6 +62,9 @@ members = [
     # static_assets
     "examples/static_assets",
 
+    # diesel
+    "examples/diesel",
+
     # example_contribution_template
     "examples/example_contribution_template/name"
 ]
