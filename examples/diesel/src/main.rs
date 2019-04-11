@@ -13,6 +13,7 @@ use gotham::router::Router;
 use gotham::state::{FromState, State};
 use gotham_middleware_diesel::DieselMiddleware;
 use hyper::{Body, StatusCode};
+use serde_derive::Serialize;
 use std::str::from_utf8;
 
 mod models;
@@ -23,6 +24,11 @@ use schema::products;
 
 static DATABASE_URL: &'static str = "products.db";
 pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
+
+#[derive(Serialize)]
+struct RowsUpdated {
+    rows: usize,
+}
 
 fn create_product_handler(mut state: State) -> Box<HandlerFuture> {
     let repo = Repo::borrow_from(&state).clone();
@@ -38,8 +44,9 @@ fn create_product_handler(mut state: State) -> Box<HandlerFuture> {
         })
         .then(|result| match result {
             Ok(query_result) => match query_result {
-                Ok(num_rows) => {
-                    let body = format!("{{\"rows\": {} }}", num_rows);
+                Ok(rows) => {
+                    let body = serde_json::to_string(&RowsUpdated { rows })
+                        .expect("Failed to serialise to json");
                     let res =
                         create_response(&state, StatusCode::CREATED, mime::APPLICATION_JSON, body);
                     future::ok((state, res))
@@ -51,7 +58,7 @@ fn create_product_handler(mut state: State) -> Box<HandlerFuture> {
     Box::new(f)
 }
 
-fn get_products_handler(mut state: State) -> Box<HandlerFuture> {
+fn get_products_handler(state: State) -> Box<HandlerFuture> {
     use crate::schema::products::dsl::*;
 
     let repo = Repo::borrow_from(&state).clone();
@@ -73,7 +80,7 @@ fn get_products_handler(mut state: State) -> Box<HandlerFuture> {
 }
 
 fn router(repo: Repo) -> Router {
-    // Add the middleware to a new pipeline
+    // Add the diesel middleware to a new pipeline
     let (chain, pipeline) =
         single_pipeline(new_pipeline().add(DieselMiddleware::new(repo)).build());
 
