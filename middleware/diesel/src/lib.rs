@@ -7,13 +7,15 @@ use std::process;
 
 use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
-use gotham::state::FromState;
 use gotham::state::{request_id, State};
 
 mod repo;
 
 pub use crate::repo::Repo;
 
+/// A Gotham compatible Middleware that manages a pool of Diesel connections via a `Repo` and hands
+/// out connections to other Middleware and Handlers that require them via the Gotham `State`
+/// mechanism.
 pub struct DieselMiddleware<T>
 where
     T: Connection + 'static,

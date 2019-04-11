@@ -5,12 +5,9 @@ use gotham_derive::StateData;
 use r2d2::{Pool, PooledConnection};
 use tokio_threadpool::{blocking, BlockingError};
 
-// pub type ConnectionPool = Pool<ConnectionManager<PgConnection>>;
-// pub type Connection = PooledConnection<ConnectionManager<PgConnection>>;
-
 /// A database "repository", for running database workloads.
-/// Manages a connection pool and running blocking tasks in a
-/// way that does not block the tokio event loop.
+/// Manages a connection pool and running blocking tasks using
+/// `tokio_threadpool::blocking` which does not block the tokio event loop.
 #[derive(StateData)]
 pub struct Repo<T>
 where
@@ -47,7 +44,6 @@ where
 
     #[cfg(test)]
     fn configure_pool(manager: ConnectionManager<T>) -> Pool<ConnectionManager<T>> {
-        use crate::test_helpers::TestConnectionCustomizer;
         let customizer = TestConnectionCustomizer {};
 
         Pool::builder()
@@ -71,8 +67,8 @@ where
         T: Send + 'static,
     {
         let pool = self.connection_pool.clone();
-        // `tokio_threadpool::blocking` returns a `Poll` compatible with "old style" futures.
-        // `poll_fn` converts this into a future
+        // `tokio_threadpool::blocking` returns a `Poll` which can be converted into a future
+        // using `poll_fn`.
         // `f.take()` allows the borrow checker to be sure `f` is not moved into the inner closure
         // multiple times if `poll_fn` is called multple times.
         let mut f = Some(f);
@@ -80,4 +76,23 @@ where
     }
 }
 
-// impl<T> StateData for Repo<T> where T:Connection {}
+#[cfg(test)]
+use r2d2::CustomizeConnection;
+
+#[cfg(test)]
+#[derive(Debug)]
+pub struct TestConnectionCustomizer;
+
+#[cfg(test)]
+impl<C, E> CustomizeConnection<C, E> for TestConnectionCustomizer
+where
+    C: diesel::connection::Connection,
+    E: std::error::Error + Sync + Send,
+{
+    fn on_acquire(&self, conn: &mut C) -> Result<(), E> {
+        match conn.begin_test_transaction() {
+            Ok(_) => Ok(()),
+            Err(_) => Ok(()),
+        }
+    }
+}
