@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate diesel;
 
+use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use futures::{future, Future, Stream};
 use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
@@ -10,7 +11,7 @@ use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use gotham_middleware_diesel::{repo, DieselMiddleware};
+use gotham_middleware_diesel::DieselMiddleware;
 use hyper::{Body, StatusCode};
 use std::str::from_utf8;
 
@@ -21,27 +22,31 @@ use models::{NewProduct, Product};
 use schema::products;
 
 static DATABASE_URL: &'static str = "products.db";
-pub type Repo = repo::Repo<SqliteConnection>;
+pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 
 fn create_product_handler(mut state: State) -> Box<HandlerFuture> {
     let repo = Repo::borrow_from(&state).clone();
     let f = extract_json::<NewProduct>(&mut state)
-        .and_then(|product| {
+        .and_then(move |product| {
             repo.run(move |conn| {
                 // Insert the `NewProduct` in the DB
                 diesel::insert_into(products::table)
                     .values(&product)
-                    .execute(conn)
+                    .execute(&conn)
             })
+            .map_err(|e| e.into_handler_error())
         })
-        .and_then(|result| match result {
-            Ok(num_rows) => {
-                let body = format!("{{\"rows\": {} }}", num_rows);
-                let res =
-                    create_response(&state, StatusCode::CREATED, mime::APPLICATION_JSON, body);
-                future::ok((state, res))
-            }
-            Err(e) => future::err((state, e.into_handler_error())),
+        .then(|result| match result {
+            Ok(query_result) => match query_result {
+                Ok(num_rows) => {
+                    let body = format!("{{\"rows\": {} }}", num_rows);
+                    let res =
+                        create_response(&state, StatusCode::CREATED, mime::APPLICATION_JSON, body);
+                    future::ok((state, res))
+                }
+                Err(e) => future::err((state, e.into_handler_error())),
+            },
+            Err(e) => future::err((state, e)),
         });
     Box::new(f)
 }
@@ -51,14 +56,18 @@ fn get_products_handler(mut state: State) -> Box<HandlerFuture> {
 
     let repo = Repo::borrow_from(&state).clone();
     let f = repo
-        .run(move |conn| products.load(&conn))
-        .and_then(|result| match result {
-            Ok(users) => {
-                let body = serde_json::to_string(&users).expect("Failed to serialize users.");
-                let res = create_response(&state, StatusCode::OK, mime::APPLICATION_JSON, body);
-                future::ok((state, res))
-            }
-            Err(e) => future::err((state, e.into_handler_error())),
+        .run(move |conn| products.load::<Product>(&conn))
+        .map_err(|e| e.into_handler_error())
+        .then(|result| match result {
+            Ok(query_result) => match query_result {
+                Ok(users) => {
+                    let body = serde_json::to_string(&users).expect("Failed to serialize users.");
+                    let res = create_response(&state, StatusCode::OK, mime::APPLICATION_JSON, body);
+                    future::ok((state, res))
+                }
+                Err(e) => future::err((state, e.into_handler_error())),
+            },
+            Err(e) => future::err((state, e)),
         });
     Box::new(f)
 }

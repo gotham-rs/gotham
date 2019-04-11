@@ -1,6 +1,6 @@
 table! {
     products (id) {
-        id -> Nullable<Integer>,
+        id -> Integer,
         title -> Text,
         price -> Float,
         link -> Text,

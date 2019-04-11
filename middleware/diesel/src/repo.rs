@@ -5,6 +5,9 @@ use gotham_derive::StateData;
 use r2d2::{Pool, PooledConnection};
 use tokio_threadpool::{blocking, BlockingError};
 
+// pub type ConnectionPool = Pool<ConnectionManager<PgConnection>>;
+// pub type Connection = PooledConnection<ConnectionManager<PgConnection>>;
+
 /// A database "repository", for running database workloads.
 /// Manages a connection pool and running blocking tasks in a
 /// way that does not block the tokio event loop.
@@ -78,4 +81,3 @@ where
 }
 
 // impl<T> StateData for Repo<T> where T:Connection {}
-

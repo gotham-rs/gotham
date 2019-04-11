@@ -18,8 +18,8 @@ pub struct Product {
 /// Represents a new product to insert in the DB.
 #[derive(Insertable, Deserialize)]
 #[table_name = "products"]
-pub struct NewProduct<'a> {
-    pub title: &'a str,
+pub struct NewProduct {
+    pub title: String,
     pub price: f32,
     pub link: String,
 }

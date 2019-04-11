@@ -11,11 +11,6 @@ readme = "README.md"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "gotham", "diesel"]
 
-[features]
-postgres = ["diesel/postgres"]
-sqlite = ["diesel/sqlite"]
-mysql = ["diesel/mysql"]
-
 [dependencies]
 futures = "0.1"
 gotham = "0.3"

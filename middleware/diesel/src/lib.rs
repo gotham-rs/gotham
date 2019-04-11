@@ -7,11 +7,12 @@ use std::process;
 
 use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
+use gotham::state::FromState;
 use gotham::state::{request_id, State};
 
-pub mod repo;
+mod repo;
 
-use repo::Repo;
+pub use crate::repo::Repo;
 
 pub struct DieselMiddleware<T>
 where
