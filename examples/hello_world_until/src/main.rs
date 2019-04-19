@@ -30,7 +30,7 @@ pub fn say_hello(state: State) -> (State, Response<Body>) {
 pub fn main() {
     let addr = "127.0.0.1:7878";
 
-    let server = gotham::init_server(addr, || Ok(say_hello));
+    let server = gotham::plain::init_server(addr, || Ok(say_hello));
     // Future to wait for Ctrl+C.
     let signal = tokio_signal::ctrl_c()
         .flatten_stream()
