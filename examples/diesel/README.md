@@ -8,6 +8,19 @@ this allows multiple concurrent database requests to be handled, with a default 
 concurrent blocking operations. For further details see
 [https://docs.rs/tokio-threadpool/0.1.8/tokio_threadpool/fn.blocking.html](tokio_threadpool::blocking documentation).
 
+## Running tests
+Diesel will expect the tests database to exist before running tests.
+You can initialise with
+```
+DATABASE_URL=tests.db diesel database setup
+```
+and then run tests:
+```
+cargo test
+```
+The cargo tests in this repo embed the migrations to apply them automatically, however you could
+also do this externally using a tool like [cargo-make](https://sagiegurari.github.io/cargo-make/)
+
 ## Running
 
 From the `examples/diesel` directory:

@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate diesel;
 
+#[macro_use]
+extern crate diesel_migrations;
+
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use futures::{future, Future, Stream};
@@ -23,6 +26,7 @@ use models::{NewProduct, Product};
 use schema::products;
 
 static DATABASE_URL: &'static str = "products.db";
+// static DATABASE_URL: &'static str = "tests.db";
 pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 
 #[derive(Serialize)]
@@ -119,4 +123,35 @@ fn main() {
 
     println!("Listening for requests at http://{}", addr);
     gotham::start(addr, router(Repo::new(DATABASE_URL)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gotham::test::TestServer;
+    use gotham_middleware_diesel::Repo;
+    use hyper::StatusCode;
+    use std::str;
+
+    static DATABASE_URL: &'static str = "tests.db";
+    embed_migrations!();
+
+    #[test]
+    fn get_empty_products() {
+        let repo = Repo::new(DATABASE_URL);
+        repo.run(|conn| embedded_migrations::run(&conn));
+        let test_server = TestServer::new(router(repo)).unwrap();
+        let response = test_server
+            .client()
+            .get("http://localhost")
+            .perform()
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.read_body().unwrap();
+        let str_body = str::from_utf8(&body).unwrap();
+        let index = "[]";
+        assert_eq!(str_body, index);
+    }
 }
