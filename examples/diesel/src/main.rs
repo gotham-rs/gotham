@@ -1,6 +1,9 @@
+//! An example application working with the diesel middleware.
+
 #[macro_use]
 extern crate diesel;
 
+#[cfg(test)]
 #[macro_use]
 extern crate diesel_migrations;
 
@@ -9,10 +12,8 @@ use diesel::sqlite::SqliteConnection;
 use futures::{future, Future, Stream};
 use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
-use gotham::pipeline::new_pipeline;
-use gotham::pipeline::single::single_pipeline;
-use gotham::router::builder::*;
-use gotham::router::Router;
+use gotham::pipeline::{new_pipeline, single::single_pipeline};
+use gotham::router::{builder::*, Router};
 use gotham::state::{FromState, State};
 use gotham_middleware_diesel::DieselMiddleware;
 use hyper::{Body, StatusCode};
@@ -25,8 +26,14 @@ mod schema;
 use models::{NewProduct, Product};
 use schema::products;
 
+// For this example, we'll use a static database URL,
+// although one might commonly pass this in via
+// environment variables instead.
 static DATABASE_URL: &'static str = "products.db";
-// static DATABASE_URL: &'static str = "tests.db";
+
+// We'll use an Sqlite database in memory to keep things simple.
+// For convenience, we define a type for our app's database "Repo",
+// with `SqliteConnection` as it's connection type.
 pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 
 #[derive(Serialize)]
@@ -125,6 +132,9 @@ fn main() {
     gotham::start(addr, router(Repo::new(DATABASE_URL)));
 }
 
+// In tests `Repo::with_test_transactions` allows queries to run
+// within an isolated test transaction. This means multiple tests
+// can run in parallel without trampling on each other's data.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,11 +144,16 @@ mod tests {
     use std::str;
 
     static DATABASE_URL: &'static str = "tests.db";
+
+    // For this example, we run migrations automatically in each test.
+    // You could also choose to do this separately using something like
+    // `cargo-make` (https://sagiegurari.github.io/cargo-make/) to run
+    // migrations before the test suite.
     embed_migrations!();
 
     #[test]
     fn get_empty_products() {
-        let repo = Repo::new(DATABASE_URL);
+        let repo = Repo::with_test_transactions(DATABASE_URL);
         repo.run(|conn| embedded_migrations::run(&conn));
         let test_server = TestServer::new(router(repo)).unwrap();
         let response = test_server
@@ -152,6 +167,39 @@ mod tests {
         let body = response.read_body().unwrap();
         let str_body = str::from_utf8(&body).unwrap();
         let index = "[]";
+        assert_eq!(str_body, index);
+    }
+
+    #[test]
+    fn create_and_retrieve_product() {
+        let repo = Repo::with_test_transactions(DATABASE_URL);
+        repo.run(|conn| embedded_migrations::run(&conn));
+        let test_server = TestServer::new(router(repo)).unwrap();
+
+        //  First we'll insert something into the DB with a post
+        let body = r#"{"title":"test","price":1.0,"link":"http://localhost"}"#;
+        let response = test_server
+            .client()
+            .post("http://localhost", body, mime::APPLICATION_JSON)
+            .perform()
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::CREATED);
+
+        // Then we'll query it and test that it is returned
+        // As long as we're hitting a `test_server` created with the same
+        // `Repo` instance, we're in the same test transaction, and our
+        // data will be there across queries.
+        let response = test_server
+            .client()
+            .get("http://localhost")
+            .perform()
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = response.read_body().unwrap();
+        let str_body = str::from_utf8(&body).unwrap();
+        let index = r#"[{"id":1,"title":"test","price":1.0,"link":"http://localhost"}]"#;
         assert_eq!(str_body, index);
     }
 }
