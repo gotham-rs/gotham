@@ -54,16 +54,13 @@ fn create_product_handler(mut state: State) -> Box<HandlerFuture> {
             .map_err(|e| e.into_handler_error())
         })
         .then(|result| match result {
-            Ok(query_result) => match query_result {
-                Ok(rows) => {
-                    let body = serde_json::to_string(&RowsUpdated { rows })
-                        .expect("Failed to serialise to json");
-                    let res =
-                        create_response(&state, StatusCode::CREATED, mime::APPLICATION_JSON, body);
-                    future::ok((state, res))
-                }
-                Err(e) => future::err((state, e.into_handler_error())),
-            },
+            Ok(rows) => {
+                let body = serde_json::to_string(&RowsUpdated { rows })
+                    .expect("Failed to serialise to json");
+                let res =
+                    create_response(&state, StatusCode::CREATED, mime::APPLICATION_JSON, body);
+                future::ok((state, res))
+            }
             Err(e) => future::err((state, e)),
         });
     Box::new(f)
@@ -75,17 +72,13 @@ fn get_products_handler(state: State) -> Box<HandlerFuture> {
     let repo = Repo::borrow_from(&state).clone();
     let f = repo
         .run(move |conn| products.load::<Product>(&conn))
-        .map_err(|e| e.into_handler_error())
         .then(|result| match result {
-            Ok(query_result) => match query_result {
-                Ok(users) => {
-                    let body = serde_json::to_string(&users).expect("Failed to serialize users.");
-                    let res = create_response(&state, StatusCode::OK, mime::APPLICATION_JSON, body);
-                    future::ok((state, res))
-                }
-                Err(e) => future::err((state, e.into_handler_error())),
-            },
-            Err(e) => future::err((state, e)),
+            Ok(users) => {
+                let body = serde_json::to_string(&users).expect("Failed to serialize users.");
+                let res = create_response(&state, StatusCode::OK, mime::APPLICATION_JSON, body);
+                future::ok((state, res))
+            }
+            Err(e) => future::err((state, e.into_handler_error())),
         });
     Box::new(f)
 }

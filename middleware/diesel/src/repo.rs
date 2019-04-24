@@ -1,9 +1,10 @@
 use diesel::r2d2::ConnectionManager;
 use diesel::Connection;
+use futures::future;
 use futures::future::{poll_fn, Future};
 use gotham_derive::StateData;
 use r2d2::{CustomizeConnection, Pool, PooledConnection};
-use tokio_threadpool::{blocking, BlockingError};
+use tokio_threadpool::blocking;
 
 /// A database "repository", for running database workloads.
 /// Manages a connection pool and running blocking tasks using
@@ -54,9 +55,9 @@ where
 
     /// Runs the given closure in a way that is safe for blocking IO to the database.
     /// The closure will be passed a `Connection` from the pool to use.
-    pub fn run<F, R>(&self, f: F) -> impl Future<Item = R, Error = BlockingError>
+    pub fn run<F, R, E>(&self, f: F) -> impl Future<Item = R, Error = E>
     where
-        F: FnOnce(PooledConnection<ConnectionManager<T>>) -> R
+        F: FnOnce(PooledConnection<ConnectionManager<T>>) -> Result<R, E>
             + Send
             + std::marker::Unpin
             + 'static,
@@ -68,7 +69,15 @@ where
         // `f.take()` allows the borrow checker to be sure `f` is not moved into the inner closure
         // multiple times if `poll_fn` is called multple times.
         let mut f = Some(f);
-        poll_fn(move || blocking(|| (f.take().unwrap())(pool.get().unwrap())))
+        poll_fn(move || blocking(|| (f.take().unwrap())(pool.get().unwrap()))).then(
+            |future_result| match future_result {
+                Ok(query_result) => match query_result {
+                    Ok(result) => future::ok(result),
+                    Err(error) => future::err(error),
+                },
+                Err(_) => panic!("Error running async database task."),
+            },
+        )
     }
 }
 
