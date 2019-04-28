@@ -9,6 +9,44 @@ use tokio_threadpool::blocking;
 /// A database "repository", for running database workloads.
 /// Manages a connection pool and running blocking tasks using
 /// `tokio_threadpool::blocking` which does not block the tokio event loop.
+///
+/// ```rust
+/// # #[macro_use] extern crate diesel;
+/// # use gotham_middleware_diesel;
+/// # use diesel::prelude::*;
+/// # use diesel::Queryable;
+/// # use futures::future::{self, Future};
+/// # let database_url = ":memory:";
+/// # use diesel::sqlite::SqliteConnection;
+/// # mod schema {
+/// # table! {
+/// #     users {
+/// #         id -> Integer,
+/// #         name -> VarChar,
+/// #    }
+/// # }
+/// # }
+///
+/// #[derive(Queryable, Debug)]
+/// pub struct User {
+///     pub id: i32,
+///     pub name: String,
+/// }
+///
+/// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
+/// let repo = Repo::new(database_url);
+/// # repo.run(|conn| {
+/// #     conn.execute("CREATE TABLE IF NOT EXISTS users (
+/// #         id INTEGER PRIMARY KEY AUTOINCREMENT,
+/// #         name VARCHAR NOT NULL
+/// #         )")
+/// # });
+/// let result = repo.run(|conn| {
+///     use schema::users::dsl::*;
+///     users.load::<User>(&conn)
+/// });
+///
+/// ```
 #[derive(StateData)]
 pub struct Repo<T>
 where
@@ -32,10 +70,41 @@ impl<T> Repo<T>
 where
     T: Connection + 'static,
 {
+    /// Creates a repo with default connection pool settings.
+    /// The default connection pool is `r2d2::Builder::default()`
+    ///
+    /// ```rust
+    /// # #[macro_use] extern crate diesel;
+    /// # use gotham_middleware_diesel;
+    /// # use diesel::sqlite::SqliteConnection;
+    ///
+    /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
+    /// // Accepts a database URL, e.g. "postgres://username:password@host/database"
+    /// // for a postgres connection. Here we use an Sqlite in memory connection.
+    /// let repo = Repo::new(":memory:");
+    /// ```
     pub fn new(database_url: &str) -> Self {
         Self::from_pool_builder(database_url, r2d2::Builder::default())
     }
 
+    /// Creates a repo with a pool builder, allowing you to customize
+    /// any connection pool configuration.
+    ///
+    /// ```rust
+    /// # #[macro_use] extern crate diesel;
+    /// # use gotham_middleware_diesel;
+    /// # use diesel::sqlite::SqliteConnection;
+    /// use r2d2::Pool;
+    /// use core::time::Duration;
+    ///
+    /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
+    /// let database_url = ":memory:";
+    /// let repo = Repo::from_pool_builder(database_url,
+    ///     Pool::builder()
+    ///         .connection_timeout(Duration::from_secs(120))
+    ///         .max_size(100)
+    /// );
+    /// ```
     pub fn from_pool_builder(
         database_url: &str,
         builder: r2d2::Builder<ConnectionManager<T>>,
@@ -47,13 +116,28 @@ where
         Repo { connection_pool }
     }
 
+    /// Creates a repo for use in tests, where queries are executed
+    /// with an isolated test transaction and rolled back when
+    /// the connection is dropped. This allows tests to run in parallel
+    /// without impacting each other.
+    /// ```rust
+    /// # #[macro_use] extern crate diesel;
+    /// # use gotham_middleware_diesel;
+    /// # use diesel::sqlite::SqliteConnection;
+    /// use r2d2::Pool;
+    /// use core::time::Duration;
+    ///
+    /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
+    /// let repo = Repo::with_test_transactions(":memory:"));
+    /// ```
     pub fn with_test_transactions(database_url: &str) -> Self {
         let customizer = TestConnectionCustomizer {};
         let builder = Pool::builder().connection_customizer(Box::new(customizer));
         Self::from_pool_builder(database_url, builder)
     }
 
-    /// Runs the given closure in a way that is safe for blocking IO to the database.
+    /// Runs the given closure in a way that is safe for blocking IO to the
+    /// database without blocking the tokio reactor.
     /// The closure will be passed a `Connection` from the pool to use.
     pub fn run<F, R, E>(&self, f: F) -> impl Future<Item = R, Error = E>
     where
