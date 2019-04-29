@@ -15,7 +15,6 @@ use tokio_threadpool::blocking;
 /// # use gotham_middleware_diesel;
 /// # use diesel::prelude::*;
 /// # use diesel::Queryable;
-/// # use futures::future::{self, Future};
 /// # let database_url = ":memory:";
 /// # use diesel::sqlite::SqliteConnection;
 /// # mod schema {
@@ -74,7 +73,6 @@ where
     /// The default connection pool is `r2d2::Builder::default()`
     ///
     /// ```rust
-    /// # #[macro_use] extern crate diesel;
     /// # use gotham_middleware_diesel;
     /// # use diesel::sqlite::SqliteConnection;
     ///
@@ -91,7 +89,6 @@ where
     /// any connection pool configuration.
     ///
     /// ```rust
-    /// # #[macro_use] extern crate diesel;
     /// # use gotham_middleware_diesel;
     /// # use diesel::sqlite::SqliteConnection;
     /// use r2d2::Pool;
@@ -121,14 +118,11 @@ where
     /// the connection is dropped. This allows tests to run in parallel
     /// without impacting each other.
     /// ```rust
-    /// # #[macro_use] extern crate diesel;
     /// # use gotham_middleware_diesel;
     /// # use diesel::sqlite::SqliteConnection;
-    /// use r2d2::Pool;
-    /// use core::time::Duration;
     ///
     /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
-    /// let repo = Repo::with_test_transactions(":memory:"));
+    /// let repo = Repo::with_test_transactions(":memory:");
     /// ```
     pub fn with_test_transactions(database_url: &str) -> Self {
         let customizer = TestConnectionCustomizer {};

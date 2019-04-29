@@ -1,3 +1,76 @@
+//! Provides an interface for running Diesel queries in a Gotham application.
+//!
+//! The gotham diesel middleware uses `tokio_threadpool::blocking`, which allows
+//! blocking operations to run without blocking the tokio reactor. Although not true async,
+//! this allows multiple concurrent database requests to be handled, with a default of 100
+//! concurrent blocking operations. For further details see
+//! [tokio_threadpool::blocking documentation](https://docs.rs/tokio-threadpool/0.1.8/tokio_threadpool/fn.blocking.html).
+//!
+//! Usage example:
+//!
+//! ```rust
+//! # use gotham::router::Router;
+//! # use gotham::router::builder::*;
+//! # use gotham::pipeline::single::*;
+//! # use gotham::pipeline::*;
+//! # use gotham::state::{FromState, State};
+//! # use gotham::helpers::http::response::create_response;
+//! # use gotham::handler::{HandlerFuture, IntoHandlerError};
+//! # use gotham_middleware_diesel::{self, DieselMiddleware};
+//! # use diesel::{RunQueryDsl, SqliteConnection};
+//! # use hyper::StatusCode;
+//! # use futures::future::Future;
+//! # use gotham::test::TestServer;
+//!
+//! pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
+//!
+//! fn router() -> Router {
+//!     // Create a Repo - using an in memory Sqlite DB
+//!     let repo = Repo::new(":memory:");
+//!     // Add the diesel middleware to a new pipeline
+//!     let (chain, pipeline) =
+//!         single_pipeline(new_pipeline().add(DieselMiddleware::new(repo)).build());
+//!
+//!     // Build the router
+//!     build_router(chain, pipeline, |route| {
+//!         route.get("/").to(handler);
+//!     })
+//! }
+//!
+//! fn handler(state: State) -> Box<HandlerFuture> {
+//!     let repo = Repo::borrow_from(&state).clone();
+//!     // As an example, we perform the query:
+//!     // `SELECT 1`
+//!     let f = repo
+//!         .run(move |conn| {
+//!             diesel::select(diesel::dsl::sql("1"))
+//!             .load::<i64>(&conn)
+//!             .map(|v| v.into_iter().next().expect("no results"))
+//!         }).then(|result| match result {
+//!            Ok(n) => {
+//!                let body = format!("result: {}", n);
+//!                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, body);
+//!                Ok((state, res))
+//!            },
+//!            Err(e) => Err((state, e.into_handler_error())),
+//!         });
+//!    Box::new(f)
+//! }
+//!
+//! # fn main() {
+//! #    let test_server = TestServer::new(router()).unwrap();
+//! #    let response = test_server
+//! #        .client()
+//! #        .get("https://example.com/")
+//! #        .perform()
+//! #        .unwrap();
+//! #    assert_eq!(response.status(), StatusCode::OK);
+//! #    let body = response.read_utf8_body().unwrap();
+//! #    assert_eq!(&body, "result: 1");
+//! # }
+//! ```
+#![doc(test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
+
 use diesel::Connection;
 use futures::future::{self, Future};
 use log::{error, trace};
