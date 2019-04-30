@@ -2,35 +2,40 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use std::fmt;
+use std::io::BufReader;
 use std::net::{self, IpAddr, SocketAddr};
-use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use failure;
+use log::info;
 
-use futures::{future, Future, Stream};
-use http::HttpTryFrom;
+use futures::Future;
 use hyper::client::{
     connect::{Connect, Connected, Destination},
     Client,
 };
-use hyper::header::CONTENT_TYPE;
-use hyper::{Body, Method, Response, Uri};
-use log::{info, warn};
-use mime;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
 use tokio::timer::Delay;
+
+use tokio::net::TcpStream;
+
+use tokio_rustls::{
+    rustls::{
+        self,
+        internal::pemfile::{certs, pkcs8_private_keys},
+        ClientSession, NoClientAuth,
+    },
+    webpki::DNSNameRef,
+    TlsConnector, TlsStream,
+};
 
 use crate::handler::NewHandler;
 
 use crate::error::*;
 
-mod request;
-
-pub use self::request::TestRequest;
+use crate::test::{self, TestClient};
 
 struct TestServerData {
     addr: SocketAddr,
@@ -56,7 +61,7 @@ struct TestServerData {
 /// # }
 /// #
 /// # fn main() {
-/// use gotham::test::TestServer;
+/// use gotham::tls::test::TestServer;
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
@@ -73,6 +78,23 @@ impl Clone for TestServer {
         TestServer {
             data: self.data.clone(),
         }
+    }
+}
+
+impl test::Server for TestServer {
+    fn request_expiry(&self) -> Delay {
+        Delay::new(Instant::now() + Duration::from_secs(self.data.timeout))
+    }
+
+    fn run_future<F, R, E>(&self, future: F) -> Result<R>
+    where
+        F: Send + 'static + Future<Item = R, Error = E>,
+        R: Send + 'static,
+        E: failure::Fail,
+    {
+        let (tx, rx) = futures::sync::oneshot::channel();
+        self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
+        rx.wait().unwrap().map_err(|e| e.into())
     }
 }
 
@@ -95,7 +117,14 @@ impl TestServer {
         let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
         let addr = listener.local_addr()?;
 
-        let service_stream = super::bind_server(listener, new_handler);
+        let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
+        let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
+        let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
+        let certs = certs(&mut cert_file).unwrap();
+        let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
+        cfg.set_single_cert(certs, keys.remove(0))?;
+
+        let service_stream = super::bind_server(cfg, listener, new_handler);
         runtime.spawn(service_stream);
 
         let data = TestServerData {
@@ -112,7 +141,7 @@ impl TestServer {
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see a default socket address of `127.0.0.1:10000` as the source address for
     /// the connection.
-    pub fn client(&self) -> TestClient {
+    pub fn client(&self) -> TestClient<Self, TestConnect> {
         self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
     }
 
@@ -133,17 +162,27 @@ impl TestServer {
     /// Returns a client connected to the `TestServer`. The transport is handled internally, and
     /// the server will see `client_addr` as the source address for the connection. The
     /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
-    pub fn client_with_address(&self, client_addr: net::SocketAddr) -> TestClient {
+    pub fn client_with_address(
+        &self,
+        client_addr: net::SocketAddr,
+    ) -> TestClient<Self, TestConnect> {
         self.try_client_with_address(client_addr)
             .expect("TestServer: unable to spawn client")
     }
 
-    fn try_client_with_address(&self, _client_addr: net::SocketAddr) -> Result<TestClient> {
+    fn try_client_with_address(
+        &self,
+        _client_addr: net::SocketAddr,
+    ) -> Result<TestClient<Self, TestConnect>> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
+        let mut config = rustls::ClientConfig::new();
+        let mut cert_file = BufReader::new(&include_bytes!("ca_cert.pem")[..]);
+        config.root_store.add_pem_file(&mut cert_file).unwrap();
 
         let client = Client::builder().build(TestConnect {
             addr: self.data.addr,
+            config: Arc::new(config),
         });
 
         Ok(TestClient {
@@ -151,280 +190,35 @@ impl TestServer {
             test_server: self.clone(),
         })
     }
-
-    /// Runs the event loop until the response future is completed.
-    ///
-    /// If the future came from a different instance of `TestServer`, the event loop will run until
-    /// the timeout is triggered.
-    fn run_request<F>(&self, f: F) -> Result<F::Item>
-    where
-        F: Future + Send + 'static,
-        F::Error: failure::Fail + Sized,
-        F::Item: Send,
-    {
-        let timeout = Delay::new(Instant::now() + Duration::from_secs(self.data.timeout));
-        let might_expire = self.run_future(f.select2(timeout).map_err(|either| {
-            let e: failure::Error = match either {
-                future::Either::A((req_err, _)) => {
-                    warn!("run_request request error: {:?}", req_err);
-                    req_err.into()
-                }
-                future::Either::B((times_up, _)) => {
-                    warn!("run_request timed out");
-                    times_up.into()
-                }
-            };
-            e.compat()
-        }))?;
-
-        match might_expire {
-            future::Either::A((item, _)) => Ok(item),
-            future::Either::B(_) => Err(failure::err_msg("timed out")),
-        }
-    }
-    /// Runs a future inside of the internal runtime.
-    ///
-    /// This blocks on the result of the future and behaves like a synchronous
-    /// polling call of the future, even if it might be on another thread.
-    fn run_future<F, R, E>(&self, future: F) -> Result<R>
-    where
-        F: Send + 'static + Future<Item = R, Error = E>,
-        R: Send + 'static,
-        E: failure::Fail,
-    {
-        let (tx, rx) = futures::sync::oneshot::channel();
-        self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
-        rx.wait().unwrap().map_err(|e| e.into())
-    }
-}
-
-impl BodyReader for TestServer {
-    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>> {
-        let f = response
-            .into_body()
-            .concat2()
-            .map(|chunk| chunk.into_iter().collect());
-        self.run_future(f)
-    }
-}
-
-/// Client interface for issuing requests to a `TestServer`.
-pub struct TestClient {
-    client: Client<TestConnect, Body>,
-    test_server: TestServer,
-}
-
-impl TestClient {
-    /// Begin constructing a HEAD request using this `TestClient`.
-    pub fn head<U>(&self, uri: U) -> TestRequest
-    where
-        Uri: HttpTryFrom<U>,
-    {
-        self.build_request(Method::HEAD, uri)
-    }
-
-    /// Begin constructing a GET request using this `TestClient`.
-    pub fn get<U>(&self, uri: U) -> TestRequest
-    where
-        Uri: HttpTryFrom<U>,
-    {
-        self.build_request(Method::GET, uri)
-    }
-
-    /// Begin constructing an OPTIONS request using this `TestClient`.
-    pub fn options<U>(&self, uri: U) -> TestRequest
-    where
-        Uri: HttpTryFrom<U>,
-    {
-        self.build_request(Method::OPTIONS, uri)
-    }
-
-    /// Begin constructing a POST request using this `TestClient`.
-    pub fn post<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest
-    where
-        B: Into<Body>,
-        Uri: HttpTryFrom<U>,
-    {
-        self.build_request_with_body(Method::POST, uri, body, mime)
-    }
-
-    /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest
-    where
-        B: Into<Body>,
-        Uri: HttpTryFrom<U>,
-    {
-        self.build_request_with_body(Method::PUT, uri, body, mime)
-    }
-
-    /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest
-    where
-        B: Into<Body>,
-        Uri: HttpTryFrom<U>,
-    {
-        self.build_request_with_body(Method::PATCH, uri, body, mime)
-    }
-
-    /// Begin constructing a DELETE request using this `TestClient`.
-    pub fn delete<U>(&self, uri: U) -> TestRequest
-    where
-        Uri: HttpTryFrom<U>,
-    {
-        self.build_request(Method::DELETE, uri)
-    }
-
-    /// Begin constructing a request with the given HTTP method and URI.
-    pub fn build_request<U>(&self, method: Method, uri: U) -> TestRequest
-    where
-        Uri: HttpTryFrom<U>,
-    {
-        TestRequest::new(self, method, uri)
-    }
-
-    /// Begin constructing a request with the given HTTP method, URI and body.
-    pub fn build_request_with_body<B, U>(
-        &self,
-        method: Method,
-        uri: U,
-        body: B,
-        mime: mime::Mime,
-    ) -> TestRequest
-    where
-        B: Into<Body>,
-        Uri: HttpTryFrom<U>,
-    {
-        let mut request = self.build_request(method, uri);
-
-        {
-            let headers = request.headers_mut();
-            headers.insert(CONTENT_TYPE, mime.to_string().parse().unwrap());
-        }
-
-        *request.body_mut() = body.into();
-
-        request
-    }
-
-    /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform(&self, req: TestRequest) -> Result<TestResponse> {
-        let req_future = self.client.request(req.request()).map_err(|e| {
-            warn!("Error from test client request {:?}", e);
-            failure::err_msg("request failed").compat()
-        });
-
-        self.test_server
-            .run_request(req_future)
-            .map(|response| TestResponse {
-                response,
-                reader: Box::new(self.test_server.clone()),
-            })
-    }
-}
-
-trait BodyReader {
-    /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
-    /// response holds a buffer containing all bytes of the response body.
-    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>>;
-}
-
-/// Wrapping struct for the `Response` returned by a `TestClient`. Provides access to the
-/// `Response` value via the `Deref` and `DerefMut` traits, and also provides a function for
-/// awaiting a completed response body.
-///
-/// # Examples
-///
-/// ```rust
-/// # extern crate hyper;
-/// # extern crate gotham;
-/// # extern crate mime;
-/// #
-/// # use gotham::state::State;
-/// # use gotham::helpers::http::response::create_response;
-/// # use hyper::{Body, Response, StatusCode};
-/// #
-/// # fn my_handler(state: State) -> (State, Response<Body>) {
-/// #   let body = "This is the body content.".to_string();
-/// #   let response = create_response(&state,
-/// #                                  StatusCode::OK,
-/// #                                  mime::TEXT_PLAIN,
-/// #                                  body);
-/// #
-/// #   (state, response)
-/// # }
-/// #
-/// # fn main() {
-/// use gotham::test::TestServer;
-///
-/// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
-///
-/// let response = test_server.client().get("http://localhost/").perform().unwrap();
-/// assert_eq!(response.status(), StatusCode::OK);
-/// let body = response.read_body().unwrap();
-/// assert_eq!(&body[..], b"This is the body content.");
-/// # }
-/// ```
-///
-pub struct TestResponse {
-    response: Response<Body>,
-    reader: Box<BodyReader>,
-}
-
-impl Deref for TestResponse {
-    type Target = Response<Body>;
-
-    fn deref(&self) -> &Response<Body> {
-        &self.response
-    }
-}
-
-impl DerefMut for TestResponse {
-    fn deref_mut(&mut self) -> &mut Response<Body> {
-        &mut self.response
-    }
-}
-
-impl fmt::Debug for TestResponse {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TestResponse")
-    }
-}
-
-impl TestResponse {
-    /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
-    /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
-    pub fn read_body(mut self) -> Result<Vec<u8>> {
-        self.reader.read_body(self.response)
-    }
-
-    /// Awaits the UTF-8 encoded body of the underlying `Response`, and returns the `String`. This
-    /// will cause the event loop to execute until the `Response` body has been fully read and the
-    /// `String` created.
-    pub fn read_utf8_body(self) -> Result<String> {
-        let buf = self.read_body()?;
-        let s = String::from_utf8(buf)?;
-        Ok(s)
-    }
 }
 
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
-struct TestConnect {
-    addr: SocketAddr,
+pub struct TestConnect {
+    pub(crate) addr: SocketAddr,
+    config: Arc<rustls::ClientConfig>,
 }
 
 impl Connect for TestConnect {
-    type Transport = TcpStream;
+    type Transport = TlsStream<TcpStream, ClientSession>;
     type Error = CompatError;
     type Future =
         Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
 
-    fn connect(&self, _dst: Destination) -> Self::Future {
+    fn connect(&self, dst: Destination) -> Self::Future {
+        let tls = TlsConnector::from(self.config.clone());
         Box::new(
             TcpStream::connect(&self.addr)
+                .and_then(move |stream| {
+                    let domain = DNSNameRef::try_from_ascii_str(dst.host()).unwrap();
+                    tls.connect(domain, stream)
+                })
                 .inspect(|s| info!("Client TcpStream connected: {:?}", s))
                 .map(|s| (s, Connected::new()))
-                .map_err(|e| Error::from(e).compat()),
+                .map_err(|e| {
+                    info!("TLS TestClient error: {:?}", e);
+                    Error::from(e).compat()
+                }),
         )
     }
 }
@@ -442,6 +236,9 @@ mod tests {
     use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
+    use futures::{future, Stream};
+    use http::header::CONTENT_TYPE;
+    use log::info;
 
     #[derive(Clone)]
     struct TestHandler {
@@ -500,9 +297,10 @@ mod tests {
         };
 
         let test_server = TestServer::new(new_service).unwrap();
+
         let response = test_server
             .client()
-            .get("http://localhost/")
+            .get("https://example.com/")
             .perform()
             .unwrap();
 
@@ -592,7 +390,7 @@ mod tests {
                     \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
 
         let res = client
-            .post("http://host/echo", data, mime::TEXT_PLAIN)
+            .post("https://example.com/echo", data, mime::TEXT_PLAIN)
             .perform()
             .expect("request successful");
 
