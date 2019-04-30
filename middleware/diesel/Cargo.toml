@@ -1,6 +1,6 @@
 [package]
 name = "gotham_middleware_diesel"
-version = "0.4.0"
+version = "0.4.0-dev"
 authors = ["colinbankier <colinbankier@gmail.com>"]
 edition = "2018"
 description = "A Gotham Middleware that provides access to a Diesel connection via an R2D2 pool to allow other Middleware and Handlers to interact with a database."
