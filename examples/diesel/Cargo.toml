@@ -8,10 +8,9 @@ license = "MIT/Apache-2.0"
 publish = false
 
 [dependencies]
-gotham = "0.3"
-gotham_derive = "0.3"
+gotham = { path = "../../gotham/"}
+gotham_derive = { path = "../../gotham_derive/" }
 gotham_middleware_diesel = { path = "../../middleware/diesel"}
-
 hyper = "0.12"
 futures = "0.1"
 mime = "0.3"
