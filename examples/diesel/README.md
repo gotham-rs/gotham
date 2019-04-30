@@ -8,13 +8,18 @@ this allows multiple concurrent database requests to be handled, with a default 
 concurrent blocking operations. For further details see
 [tokio_threadpool::blocking documentation](https://docs.rs/tokio-threadpool/0.1.8/tokio_threadpool/fn.blocking.html).
 
-When used in tests, the middleware uses isolated test transactions to allow
+When used in tests, the middleware can use isolated test transactions to allow
 tests to run in parallel.
 
 ## Running
+You'll need the diesel cli to setup the database and run migrations.
+This can be installed with `cargo install diesel_cli`.
+See [diesel getting started instructions](http://diesel.rs/guides/getting-started/) for further details.
+
+First, we'll setup the database and run the application.
+Then, we'll create and retieve a product from our database via our REST api.
 
 From the `examples/diesel` directory:
-
 ```
 Terminal 1:
 $ DATABASE_URL=products.db diesel database setup
@@ -27,8 +32,6 @@ $ cargo run
 
 Terminal 2:
 $ curl -v http://127.0.0.1:7878
-*   Trying 127.0.0.1...
-* TCP_NODELAY set
 * Connected to 127.0.0.1 (127.0.0.1) port 7878 (#0)
 > GET / HTTP/1.1
 > Host: 127.0.0.1:7878
@@ -45,11 +48,6 @@ $ curl -v http://127.0.0.1:7878
 []%
 
 $ curl -v -H "Content-Type: application/json" -d '{"title":"test","price":1.0,"link":"http://localhost"}' 'http://localhost:7878'
-*   Trying ::1...
-* TCP_NODELAY set
-* connect to ::1 port 7878 failed: Connection refused
-*   Trying 127.0.0.1...
-* TCP_NODELAY set
 * Connected to localhost (127.0.0.1) port 7878 (#0)
 > POST / HTTP/1.1
 > Host: localhost:7878
@@ -69,11 +67,6 @@ $ curl -v -H "Content-Type: application/json" -d '{"title":"test","price":1.0,"l
 {"rows":1}%
 
 $ curl -v localhost:7878
-*   Trying ::1...
-* TCP_NODELAY set
-* connect to ::1 port 7878 failed: Connection refused
-*   Trying 127.0.0.1...
-* TCP_NODELAY set
 * Connected to localhost (127.0.0.1) port 7878 (#0)
 > GET / HTTP/1.1
 > Host: localhost:7878

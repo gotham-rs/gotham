@@ -31,7 +31,9 @@ use schema::products;
 // environment variables instead.
 static DATABASE_URL: &'static str = "products.db";
 
-// We'll use an Sqlite database in memory to keep things simple.
+// We'll use a file based Sqlite database to keep things simple.
+// Don't forget to run the step in the README to create the database
+// first using the diesel cli.
 // For convenience, we define a type for our app's database "Repo",
 // with `SqliteConnection` as it's connection type.
 pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;

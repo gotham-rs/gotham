@@ -15,9 +15,9 @@ keywords = ["http", "async", "web", "gotham", "diesel"]
 futures = "0.1"
 gotham = "0.4.0-dev"
 gotham_derive = "0.4.0-dev"
-diesel = { version = "1.3.3", features = ["extras"] }
-r2d2 = "0.8.3"
-tokio-threadpool = "0.1.12"
+diesel = { version = "1.3", features = ["extras"] }
+r2d2 = "0.8"
+tokio-threadpool = "0.1"
 log = "0.4"
 
 [dev-dependencies]
