@@ -12,7 +12,6 @@ use tokio_threadpool::blocking;
 ///
 /// ```rust
 /// # #[macro_use] extern crate diesel;
-/// # use gotham_middleware_diesel;
 /// # use diesel::prelude::*;
 /// # use diesel::Queryable;
 /// # let database_url = ":memory:";
@@ -73,7 +72,6 @@ where
     /// The default connection pool is `r2d2::Builder::default()`
     ///
     /// ```rust
-    /// # use gotham_middleware_diesel;
     /// # use diesel::sqlite::SqliteConnection;
     ///
     /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
@@ -89,7 +87,6 @@ where
     /// any connection pool configuration.
     ///
     /// ```rust
-    /// # use gotham_middleware_diesel;
     /// # use diesel::sqlite::SqliteConnection;
     /// use r2d2::Pool;
     /// use core::time::Duration;
@@ -118,7 +115,6 @@ where
     /// the connection is dropped. This allows tests to run in parallel
     /// without impacting each other.
     /// ```rust
-    /// # use gotham_middleware_diesel;
     /// # use diesel::sqlite::SqliteConnection;
     ///
     /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
