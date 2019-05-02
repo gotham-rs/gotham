@@ -50,7 +50,7 @@ use std::net::ToSocketAddrs;
 use tokio::net::TcpListener;
 use tokio::runtime::{self, Runtime};
 
-pub use plain::start;
+pub use plain::*;
 
 fn new_runtime(threads: usize) -> Runtime {
     runtime::Builder::new()
