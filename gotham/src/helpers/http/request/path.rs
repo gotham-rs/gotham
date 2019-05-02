@@ -60,7 +60,7 @@ mod tests {
         let rps = RequestPathSegments::new("/some/path/to//my/handler");
 
         assert_eq!(
-            rps.segments.iter().map(|s| s.as_ref()).collect::<Vec<_>>(),
+            rps.segments.iter().map(AsRef::as_ref).collect::<Vec<_>>(),
             vec!["some", "path", "to", "my", "handler"]
         );
     }

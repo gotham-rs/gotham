@@ -47,7 +47,7 @@ mod tests {
         let mut pairs: Vec<(&str, Vec<&str>)> = qsm
             .iter()
             .map(|(k, v)| {
-                let mut values: Vec<&str> = v.iter().map(|s| s.as_ref()).collect();
+                let mut values: Vec<&str> = v.iter().map(AsRef::as_ref).collect();
                 values.sort();
 
                 (k.as_str(), values)

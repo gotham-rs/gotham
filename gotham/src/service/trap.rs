@@ -36,7 +36,7 @@ where
         // immediately consuming it.
         t.new_handler()
             .into_future()
-            .map_err(|e| e.compat())
+            .map_err(failure::Error::compat)
             .and_then(move |handler| {
                 let AssertUnwindSafe(state) = state;
 

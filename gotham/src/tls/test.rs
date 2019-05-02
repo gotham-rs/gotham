@@ -94,7 +94,7 @@ impl test::Server for TestServer {
     {
         let (tx, rx) = futures::sync::oneshot::channel();
         self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
-        rx.wait().unwrap().map_err(|e| e.into())
+        rx.wait().unwrap().map_err(Into::into)
     }
 }
 
