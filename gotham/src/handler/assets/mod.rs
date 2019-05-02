@@ -208,7 +208,7 @@ fn create_file_response(options: FileOptions, state: State) -> Box<HandlerFuture
 
     let response_future =
         File::open(path)
-            .and_then(|file| file.metadata())
+            .and_then(File::metadata)
             .and_then(move |(file, meta)| {
                 if not_modified(&meta, &headers) {
                     return Ok(http::Response::builder()

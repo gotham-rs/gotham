@@ -2,7 +2,7 @@
 use std::io;
 
 use cookie::{Cookie, CookieJar};
-use hyper::header::{HeaderMap, COOKIE};
+use hyper::header::{HeaderMap, HeaderValue, COOKIE};
 
 use super::{Middleware, NewMiddleware};
 use crate::handler::HandlerFuture;
@@ -23,7 +23,7 @@ impl CookieParser {
         HeaderMap::borrow_from(&state)
             .get_all(COOKIE)
             .iter()
-            .flat_map(|cv| cv.to_str())
+            .flat_map(HeaderValue::to_str)
             .flat_map(|cs| Cookie::parse(cs.to_owned()))
             .fold(CookieJar::new(), |mut jar, cookie| {
                 jar.add_original(cookie);

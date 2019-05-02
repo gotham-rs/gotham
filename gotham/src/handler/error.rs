@@ -137,7 +137,7 @@ impl IntoResponse for HandlerError {
             self.status_code
                 .canonical_reason()
                 .unwrap_or("(unregistered)",),
-            self.source().map(|e| e.description()).unwrap_or("(none)"),
+            self.source().map(Error::description).unwrap_or("(none)"),
         );
 
         create_empty_response(state, self.status_code)

@@ -38,11 +38,10 @@ pub mod state;
 /// Test utilities for Gotham and Gotham consumer apps.
 pub mod test;
 
-/// Functions for creating a Gotham service on plain HTTP.
-/// In general, prefer the tls module.
+/// Functions for creating a Gotham service using HTTP.
 pub mod plain;
 
-/// Functions for creating a Gotham service on HTTPS.
+/// Functions for creating a Gotham service using HTTPS.
 pub mod tls;
 
 use std::net::ToSocketAddrs;
@@ -64,11 +63,11 @@ fn tcp_listener<A>(addr: A) -> TcpListener
 where
     A: ToSocketAddrs + 'static,
 {
-    let addr = match addr.to_socket_addrs().map(|ref mut i| i.next()) {
-        Ok(Some(a)) => a,
-        Ok(_) => panic!("unable to resolve listener address"),
-        Err(_) => panic!("unable to parse listener address"),
-    };
+    let addr = addr
+        .to_socket_addrs()
+        .expect("unable to parse listener address")
+        .next()
+        .expect("unable to resolve listener address");
 
     TcpListener::bind(&addr).expect("unable to open TCP listener")
 }

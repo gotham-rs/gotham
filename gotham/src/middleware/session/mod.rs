@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use base64;
 use bincode;
-use cookie::CookieJar;
+use cookie::{Cookie, CookieJar};
 use futures::{
     future::{self, FutureResult},
     Future,
@@ -802,12 +802,12 @@ where
     {
         // cookies might have been parsed already by middleware
         let cookies = CookieJar::try_borrow_from(&state)
-            .map(|jar| jar.to_owned())
+            .map(ToOwned::to_owned)
             .unwrap_or_else(|| CookieParser::from_state(&state));
 
         let session_identifier = cookies
             .get(&self.cookie_config.name)
-            .map(|cookie| cookie.value())
+            .map(Cookie::value)
             .map(|value| SessionIdentifier {
                 value: value.to_owned(),
             });
