@@ -149,7 +149,7 @@ where
                     Ok(result) => future::ok(result),
                     Err(error) => future::err(error),
                 },
-                Err(_) => panic!("Error running async database task."),
+                Err(e) => panic!(format!("Error running async database task: {:?}", e)),
             },
         )
     }

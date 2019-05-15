@@ -130,6 +130,9 @@ fn main() {
 // In tests `Repo::with_test_transactions` allows queries to run
 // within an isolated test transaction. This means multiple tests
 // can run in parallel without trampling on each other's data.
+// This isn't necessary when using an SQLite in-memory only database
+// as is used here, but is demonstrated here anyway to show how it
+// might be used agaist a real database.
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -137,8 +140,9 @@ mod tests {
     use gotham_middleware_diesel::Repo;
     use hyper::StatusCode;
     use std::str;
+    use tokio::runtime;
 
-    static DATABASE_URL: &'static str = "tests.db";
+    static DATABASE_URL: &'static str = ":memory:";
 
     // For this example, we run migrations automatically in each test.
     // You could also choose to do this separately using something like
@@ -149,7 +153,7 @@ mod tests {
     #[test]
     fn get_empty_products() {
         let repo = Repo::with_test_transactions(DATABASE_URL);
-        repo.run(|conn| embedded_migrations::run(&conn));
+        runtime::run(repo.run(|conn| embedded_migrations::run(&conn).map_err(|_| ())));
         let test_server = TestServer::new(router(repo)).unwrap();
         let response = test_server
             .client()
@@ -168,7 +172,7 @@ mod tests {
     #[test]
     fn create_and_retrieve_product() {
         let repo = Repo::with_test_transactions(DATABASE_URL);
-        repo.run(|conn| embedded_migrations::run(&conn));
+        runtime::run(repo.run(|conn| embedded_migrations::run(&conn).map_err(|_| ())));
         let test_server = TestServer::new(router(repo)).unwrap();
 
         //  First we'll insert something into the DB with a post
