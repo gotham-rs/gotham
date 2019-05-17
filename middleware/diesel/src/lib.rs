@@ -118,7 +118,6 @@ where
             },
             Err(_) => {
                 error!("PANIC: r2d2::Pool::clone caused a panic");
-                eprintln!("PANIC: r2d2::Pool::clone caused a panic");
                 process::abort()
             }
         }
@@ -138,9 +137,6 @@ where
             }),
             Err(_) => {
                 error!(
-                    "PANIC: r2d2::Pool::clone caused a panic, unable to rescue with a HTTP error"
-                );
-                eprintln!(
                     "PANIC: r2d2::Pool::clone caused a panic, unable to rescue with a HTTP error"
                 );
                 process::abort()

@@ -3,6 +3,7 @@ use diesel::Connection;
 use futures::future;
 use futures::future::{poll_fn, Future};
 use gotham_derive::StateData;
+use log::error;
 use r2d2::{CustomizeConnection, Pool, PooledConnection};
 use tokio_threadpool::blocking;
 
@@ -149,7 +150,7 @@ where
                     Ok(result) => future::ok(result),
                     Err(error) => future::err(error),
                 },
-                Err(e) => panic!(format!("Error running async database task: {:?}", e)),
+                Err(e) => panic!("Error running async database task: {:?}", e),
             },
         )
     }
@@ -164,9 +165,9 @@ where
     E: std::error::Error + Sync + Send,
 {
     fn on_acquire(&self, conn: &mut C) -> Result<(), E> {
-        match conn.begin_test_transaction() {
-            Ok(_) => Ok(()),
-            Err(_) => Ok(()),
+        if let Err(e) = conn.begin_test_transaction() {
+            error!("Error beginning test transaction: {}", e);
         }
+        Ok(())
     }
 }
