@@ -15,4 +15,4 @@ mime = "0.3"
 tokio-signal = "0.2"
 
 [target.'cfg(unix)'.dev-dependencies]
-nix = "0.13"
+nix = "0.14"
