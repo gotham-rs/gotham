@@ -7,7 +7,7 @@ members = [
 
     ## Middleware
     "middleware/template",
-    "middleware/under_development/diesel",
+    "middleware/diesel",
     "middleware/jwt",
 
     ## Examples (these crates are not published)
@@ -61,6 +61,9 @@ members = [
 
     # static_assets
     "examples/static_assets",
+
+    # diesel
+    "examples/diesel",
 
     # example_contribution_template
     "examples/example_contribution_template/name"
