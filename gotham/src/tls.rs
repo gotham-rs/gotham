@@ -19,21 +19,21 @@ where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static,
 {
-    start_with_num_threads(tls_config, addr, new_handler, num_cpus::get())
+    start_with_num_threads(addr, new_handler, tls_config, num_cpus::get())
 }
 
 /// Starts a Gotham application with a designated number of threads.
 pub fn start_with_num_threads<NH, A>(
-    tls_config: rustls::ServerConfig,
     addr: A,
     new_handler: NH,
+    tls_config: rustls::ServerConfig,
     threads: usize,
 ) where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static,
 {
     let runtime = new_runtime(threads);
-    start_on_executor(tls_config, addr, new_handler, runtime.executor());
+    start_on_executor(addr, new_handler, tls_config, runtime.executor());
     runtime.shutdown_on_idle().wait().unwrap();
 }
 
@@ -41,15 +41,15 @@ pub fn start_with_num_threads<NH, A>(
 ///
 /// This function can be used to spawn the server on an existing `Runtime`.
 pub fn start_on_executor<NH, A>(
-    tls_config: rustls::ServerConfig,
     addr: A,
     new_handler: NH,
+    tls_config: rustls::ServerConfig,
     executor: TaskExecutor,
 ) where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static,
 {
-    executor.spawn(init_server(tls_config, addr, new_handler));
+    executor.spawn(init_server(addr, new_handler, tls_config));
 }
 
 /// Returns a `Future` used to spawn an Gotham application.
@@ -58,9 +58,9 @@ pub fn start_on_executor<NH, A>(
 /// manual wiring that isn't supported by the Gotham API. It's unlikely that this will
 /// be required in most use cases; it's mainly exposed for shutdown handling.
 pub fn init_server<NH, A>(
-    tls_config: rustls::ServerConfig,
     addr: A,
     new_handler: NH,
+    tls_config: rustls::ServerConfig,
 ) -> impl Future<Item = (), Error = ()>
 where
     NH: NewHandler + 'static,
@@ -75,13 +75,13 @@ where
     addr
     );
 
-    bind_server(tls_config, listener, new_handler)
+    bind_server(listener, new_handler, tls_config)
 }
 
 fn bind_server<NH>(
-    tls_config: rustls::ServerConfig,
     listener: TcpListener,
     new_handler: NH,
+    tls_config: rustls::ServerConfig,
 ) -> impl Future<Item = (), Error = ()>
 where
     NH: NewHandler + 'static,

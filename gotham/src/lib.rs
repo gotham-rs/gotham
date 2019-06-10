@@ -50,6 +50,7 @@ use tokio::net::TcpListener;
 use tokio::runtime::{self, Runtime};
 
 pub use plain::*;
+pub use tls::start as start_with_tls;
 
 fn new_runtime(threads: usize) -> Runtime {
     runtime::Builder::new()
