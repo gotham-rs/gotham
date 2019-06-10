@@ -6,12 +6,10 @@ extern crate mime;
 extern crate tokio_rustls;
 
 use std::io::BufReader;
-use tokio_rustls::{
-    rustls::{
-        self,
-        internal::pemfile::{certs, pkcs8_private_keys},
-        NoClientAuth,
-    },
+use tokio_rustls::rustls::{
+    self,
+    internal::pemfile::{certs, pkcs8_private_keys},
+    NoClientAuth,
 };
 
 use gotham::state::State;
