@@ -84,7 +84,7 @@ use std::{io, marker::PhantomData, panic::RefUnwindSafe};
 /// # }
 /// ```
 pub struct JWTMiddleware<T> {
-    secret: &'static str,
+    secret: String,
     validation: Validation,
     claims: PhantomData<T>,
 }
@@ -95,11 +95,11 @@ where
 {
     /// Creates a JWTMiddleware instance from the provided secret,
     /// which, by default, uses HS256 as the crypto scheme.
-    pub fn new(secret: &'static str) -> Self {
+    pub fn new<S: Into<String>>(secret: S) -> Self {
         let validation = Validation::default();
 
         JWTMiddleware {
-            secret,
+            secret: secret.into(),
             validation,
             claims: PhantomData,
         }
@@ -164,7 +164,7 @@ where
 
     fn new_middleware(&self) -> io::Result<Self::Instance> {
         Ok(JWTMiddleware {
-            secret: self.secret,
+            secret: self.secret.clone(),
             validation: self.validation.clone(),
             claims: PhantomData,
         })
