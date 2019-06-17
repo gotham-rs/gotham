@@ -141,7 +141,7 @@ impl Router {
         &self,
         mut state: State,
         params: SegmentMapping<'a>,
-        route: &Box<Route<ResBody = Body> + Send + Sync>,
+        route: &Box<dyn Route<ResBody = Body> + Send + Sync>,
     ) -> Box<HandlerFuture> {
         match route.extract_request_path(&mut state, params) {
             Ok(()) => {

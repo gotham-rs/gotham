@@ -203,7 +203,7 @@ impl Connect for TestConnect {
     type Transport = TlsStream<TcpStream, ClientSession>;
     type Error = CompatError;
     type Future =
-        Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
+        Box<dyn Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
 
     fn connect(&self, dst: Destination) -> Self::Future {
         let tls = TlsConnector::from(self.config.clone());

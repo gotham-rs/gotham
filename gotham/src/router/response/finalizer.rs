@@ -19,12 +19,12 @@ use crate::router::response::extender::ResponseExtender;
 /// configuring `ResponseExtender` values for each `StatusCode`.
 #[derive(Clone)]
 pub struct ResponseFinalizer {
-    data: Arc<HashMap<StatusCode, Box<ResponseExtender<Body> + Send + Sync>>>,
+    data: Arc<HashMap<StatusCode, Box<dyn ResponseExtender<Body> + Send + Sync>>>,
 }
 
 /// Builds an immutable `ResponseFinalizer`.
 pub struct ResponseFinalizerBuilder {
-    data: HashMap<StatusCode, Box<ResponseExtender<Body> + Send + Sync>>,
+    data: HashMap<StatusCode, Box<dyn ResponseExtender<Body> + Send + Sync>>,
 }
 
 impl ResponseFinalizerBuilder {
@@ -46,7 +46,7 @@ impl ResponseFinalizerBuilder {
     pub fn add(
         &mut self,
         status_code: StatusCode,
-        extender: Box<ResponseExtender<Body> + Send + Sync>,
+        extender: Box<dyn ResponseExtender<Body> + Send + Sync>,
     ) {
         trace!(" adding response extender for {}", status_code);
         self.data.insert(status_code, extender);

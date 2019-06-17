@@ -273,7 +273,7 @@ where
     cookie_state: SessionCookieState,
     state: SessionDataState,
     identifier: SessionIdentifier,
-    backend: Box<Backend + Send>,
+    backend: Box<dyn Backend + Send>,
     cookie_config: Arc<SessionCookieConfig>,
 }
 
@@ -463,7 +463,7 @@ where
     new_backend: B,
     identifier_rng: Arc<Mutex<rng::SessionIdentifierRng>>,
     cookie_config: Arc<SessionCookieConfig>,
-    phantom: PhantomData<SessionTypePhantom<T>>,
+    phantom: PhantomData<dyn SessionTypePhantom<T>>,
 }
 
 /// The per-request value which provides session storage for other middleware and handlers.
