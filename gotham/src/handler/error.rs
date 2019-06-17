@@ -12,7 +12,7 @@ use crate::state::{request_id, State};
 /// `Response`.
 pub struct HandlerError {
     status_code: StatusCode,
-    cause: Box<Error + Send>,
+    cause: Box<dyn Error + Send>,
 }
 
 /// Allows conversion into a HandlerError from an implementing type.
@@ -81,7 +81,7 @@ impl Error for HandlerError {
         "handler failed to process request"
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         Some(&*self.cause)
     }
 }

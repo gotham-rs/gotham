@@ -180,7 +180,7 @@ impl Connect for TestConnect {
     type Transport = TcpStream;
     type Error = CompatError;
     type Future =
-        Box<Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
+        Box<dyn Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
 
     fn connect(&self, _dst: Destination) -> Self::Future {
         Box::new(

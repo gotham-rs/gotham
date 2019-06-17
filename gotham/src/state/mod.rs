@@ -45,7 +45,7 @@ pub(crate) use crate::state::request_id::set_request_id;
 /// # }
 /// ```
 pub struct State {
-    data: HashMap<TypeId, Box<Any + Send>>,
+    data: HashMap<TypeId, Box<dyn Any + Send>>,
 }
 
 impl State {

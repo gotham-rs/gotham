@@ -35,7 +35,7 @@ impl Tree {
     }
 
     /// Adds a `Route` be evaluated by the `Router` when the root of the `Tree` is requested.
-    pub fn add_route(&mut self, route: Box<Route<ResBody = Body> + Send + Sync>) {
+    pub fn add_route(&mut self, route: Box<dyn Route<ResBody = Body> + Send + Sync>) {
         self.root.add_route(route);
     }
 

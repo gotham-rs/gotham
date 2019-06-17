@@ -26,7 +26,7 @@ type CompatError = failure::Compat<failure::Error>;
 pub(super) fn call_handler<'a, T>(
     t: &T,
     state: AssertUnwindSafe<State>,
-) -> Box<Future<Item = Response<Body>, Error = CompatError> + Send + 'a>
+) -> Box<dyn Future<Item = Response<Body>, Error = CompatError> + Send + 'a>
 where
     T: NewHandler + 'a,
 {
@@ -91,7 +91,7 @@ fn finalize_panic_response() -> FutureResult<Response<Body>, CompatError> {
 }
 
 fn finalize_catch_unwind_response(
-    result: Result<Result<Response<Body>, CompatError>, Box<Any + Send>>,
+    result: Result<Result<Response<Body>, CompatError>, Box<dyn Any + Send>>,
 ) -> FutureResult<Response<Body>, CompatError> {
     let response = result
         .unwrap_or_else(|_| {

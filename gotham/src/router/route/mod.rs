@@ -97,7 +97,7 @@ where
     QSE: QueryStringExtractor<Body>,
 {
     matcher: RM,
-    dispatcher: Box<Dispatcher + Send + Sync>,
+    dispatcher: Box<dyn Dispatcher + Send + Sync>,
     _extractors: Extractors<PE, QSE>,
     delegation: Delegation,
 }
@@ -122,7 +122,7 @@ where
     /// Creates a new `RouteImpl` from the provided components.
     pub fn new(
         matcher: RM,
-        dispatcher: Box<Dispatcher + Send + Sync>,
+        dispatcher: Box<dyn Dispatcher + Send + Sync>,
         _extractors: Extractors<PE, QSE>,
         delegation: Delegation,
     ) -> Self {

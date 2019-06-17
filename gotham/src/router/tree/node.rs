@@ -20,7 +20,7 @@ use std::collections::HashMap;
 pub struct Node {
     segment: String,
     segment_type: SegmentType,
-    routes: Vec<Box<Route<ResBody = Body> + Send + Sync>>,
+    routes: Vec<Box<dyn Route<ResBody = Body> + Send + Sync>>,
     children: Vec<Node>,
 }
 
@@ -43,7 +43,7 @@ impl Node {
     }
 
     /// Adds a `Route` to this `Node`, to be potentially evaluated by the `Router`.
-    pub fn add_route(&mut self, route: Box<Route<ResBody = Body> + Send + Sync>) -> &mut Self {
+    pub fn add_route(&mut self, route: Box<dyn Route<ResBody = Body> + Send + Sync>) -> &mut Self {
         self.routes.push(route);
         self
     }
@@ -127,7 +127,7 @@ impl Node {
     pub fn select_route(
         &self,
         state: &State,
-    ) -> Result<&Box<Route<ResBody = Body> + Send + Sync>, RouteNonMatch> {
+    ) -> Result<&Box<dyn Route<ResBody = Body> + Send + Sync>, RouteNonMatch> {
         let mut err = Ok(());
 
         // check for matching routes
@@ -306,7 +306,7 @@ mod tests {
         (state, Response::new(Body::empty()))
     }
 
-    fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<Route<ResBody = Body> + Send + Sync>
+    fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<dyn Route<ResBody = Body> + Send + Sync>
     where
         P: Send + Sync + RefUnwindSafe + 'static,
     {

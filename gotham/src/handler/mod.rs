@@ -27,7 +27,7 @@ pub use self::error::{HandlerError, IntoHandlerError};
 /// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate
 /// an appropriate HTTP error response.
 pub type HandlerFuture =
-    Future<Item = (State, Response<Body>), Error = (State, HandlerError)> + Send;
+    dyn Future<Item = (State, Response<Body>), Error = (State, HandlerError)> + Send;
 
 /// A `Handler` is an asynchronous function, taking a `State` value which represents the request
 /// and related runtime state, and returns a future which resolves to a response.

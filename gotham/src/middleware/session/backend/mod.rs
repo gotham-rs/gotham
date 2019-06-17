@@ -17,7 +17,7 @@ pub trait NewBackend: Sync + Clone + RefUnwindSafe {
 }
 
 /// Type alias for the trait objects returned by `Backend`.
-pub type SessionFuture = Future<Item = Option<Vec<u8>>, Error = SessionError> + Send;
+pub type SessionFuture = dyn Future<Item = Option<Vec<u8>>, Error = SessionError> + Send;
 
 /// A `Backend` receives session data and stores it, and recalls the session data subsequently.
 ///

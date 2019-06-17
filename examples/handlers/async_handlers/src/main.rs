@@ -24,7 +24,7 @@ use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-type ResponseContentFuture = Box<Future<Item = Vec<u8>, Error = hyper::Error> + Send>;
+type ResponseContentFuture = Box<dyn Future<Item = Vec<u8>, Error = hyper::Error> + Send>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {

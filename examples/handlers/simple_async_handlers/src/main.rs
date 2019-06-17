@@ -25,7 +25,7 @@ use gotham::state::{FromState, State};
 
 use tokio::timer::Delay;
 
-type SleepFuture = Box<Future<Item = Vec<u8>, Error = HandlerError> + Send>;
+type SleepFuture = Box<dyn Future<Item = Vec<u8>, Error = HandlerError> + Send>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {

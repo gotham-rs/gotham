@@ -65,7 +65,7 @@ where
     type ReqBody = Body; // required by hyper::server::conn::Http::serve_connection()
     type ResBody = Body; // has to impl Payload...
     type Error = failure::Compat<failure::Error>; // :Into<Box<StdError + Send + Sync>>
-    type Future = Box<Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send>;
+    type Future = Box<dyn Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
         let mut state = State::new();

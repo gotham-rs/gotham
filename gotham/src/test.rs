@@ -232,7 +232,7 @@ impl<TS: Server + 'static, C: Connect + 'static> TestClient<TS, C> {
 ///
 pub struct TestResponse {
     response: Response<Body>,
-    reader: Box<BodyReader>,
+    reader: Box<dyn BodyReader>,
 }
 
 impl Deref for TestResponse {
