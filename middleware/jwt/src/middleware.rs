@@ -69,7 +69,7 @@ use std::{io, marker::PhantomData, panic::RefUnwindSafe};
 ///     let pipelines = new_pipeline_set();
 ///     let (pipelines, defaults) = pipelines.add(
 ///         new_pipeline()
-///             .add(JWTMiddleware::<Claims>::new("secret".as_ref()))
+///             .add(JWTMiddleware::<Claims>::new("secret"))
 ///             .build(),
 ///     );
 ///     let default_chain = (defaults, ());
