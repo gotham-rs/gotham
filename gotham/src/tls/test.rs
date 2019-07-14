@@ -124,7 +124,7 @@ impl TestServer {
         let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
         cfg.set_single_cert(certs, keys.remove(0))?;
 
-        let service_stream = super::bind_server(cfg, listener, new_handler);
+        let service_stream = super::bind_server(listener, new_handler, cfg);
         runtime.spawn(service_stream);
 
         let data = TestServerData {

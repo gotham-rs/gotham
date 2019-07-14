@@ -12,6 +12,7 @@ members = [
 
     ## Examples (these crates are not published)
     "examples/hello_world",
+    "examples/hello_world_tls",
     "examples/hello_world_until",
     "examples/shared_state",
 
