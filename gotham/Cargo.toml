@@ -46,7 +46,7 @@ failure = "0.1"
 tokio-rustls = "0.9"
 
 [dev-dependencies]
-gotham_derive = "0.4.0-dev"
+gotham_derive = "0.4.0"
 
 [badges]
 travis-ci = { repository = "gotham-rs/gotham", branch = "master" }
