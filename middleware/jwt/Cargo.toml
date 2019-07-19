@@ -16,8 +16,8 @@ edition = "2018"
 
 [dependencies]
 futures = "0.1"
-gotham = "0.4.0-dev"
-gotham_derive = "0.4.0-dev"
+gotham = "0.5.0-dev"
+gotham_derive = "0.5.0-dev"
 serde = "1.0"
 serde_derive = "1.0"
 hyper = "0.12"
