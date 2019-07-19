@@ -24,6 +24,7 @@ impl CookieParser {
             .get_all(COOKIE)
             .iter()
             .flat_map(HeaderValue::to_str)
+            .flat_map(|cs| cs.split("; "))
             .flat_map(|cs| Cookie::parse(cs.to_owned()))
             .fold(CookieJar::new(), |mut jar, cookie| {
                 jar.add_original(cookie);
