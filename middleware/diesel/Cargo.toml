@@ -9,7 +9,7 @@ homepage = "https://gotham.rs"
 repository = "https://github.com/gotham-rs/gotham"
 readme = "README.md"
 categories = ["web-programming::http-server"]
-keywords = ["http", "async", "web", "gotham", "diesel"]
+keywords = ["gotham-middleware", "async", "database", "gotham", "diesel"]
 
 [dependencies]
 futures = "0.1"
