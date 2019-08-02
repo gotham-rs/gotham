@@ -125,7 +125,7 @@ pub fn create_empty_response(state: &State, status: StatusCode) -> Response<Body
     built.expect("Response built from a compatible type")
 }
 
-/// Produces a simple empty `Response` with a `Location` header and a 301
+/// Produces a simple empty `Response` with a `Location` header and a 308
 /// status.
 ///
 /// # Examples
@@ -169,7 +169,7 @@ pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
     res
 }
 
-/// Produces a simple empty `Response` with a `Location` header and a 302
+/// Produces a simple empty `Response` with a `Location` header and a 307
 /// status.
 ///
 /// # Examples
