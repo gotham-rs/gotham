@@ -9,3 +9,4 @@ gotham = { path = "../../gotham" }
 
 hyper = "0.12"
 mime = "0.3"
+reqwest = "0.9.19"

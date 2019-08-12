@@ -3,6 +3,7 @@
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
+extern crate reqwest;
 
 use gotham::state::State;
 
@@ -14,6 +15,13 @@ const HELLO_WORLD: &str = "Hello World!";
 /// We've simply implemented the `Handler` trait, for functions that match the signature used here,
 /// within Gotham itself.
 pub fn say_hello(state: State) -> (State, &'static str) {
+    match reqwest::get("https://httpbin.org/ip") {
+        Ok(resp) => println!("{:#?}", resp),
+        Err(e) => {
+            println!("{:#?}", e);
+        }
+    }
+
     (state, HELLO_WORLD)
 }
 
