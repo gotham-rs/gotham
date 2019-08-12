@@ -9,4 +9,4 @@ gotham = { path = "../../gotham" }
 
 hyper = "0.12"
 mime = "0.3"
-tokio-rustls = "0.9"
+tokio-rustls = "0.10"

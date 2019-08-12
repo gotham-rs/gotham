@@ -43,7 +43,7 @@ cookie = "0.12"
 http = "0.1"
 httpdate = "0.3"
 failure = "0.1"
-tokio-rustls = "0.9"
+tokio-rustls = "0.10"
 
 [dev-dependencies]
 gotham_derive = "0.5.0-dev"
