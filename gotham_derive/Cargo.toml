@@ -14,7 +14,7 @@ keywords = ["http", "async", "web", "framework", "gotham"]
 edition = "2018"
 
 [dependencies]
-syn = "0.15"
+syn = "1.0"
 quote = "0.6"
 
 [lib]
