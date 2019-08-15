@@ -15,7 +15,7 @@ use hyper::header::*;
 use hyper::{Body, Chunk, Response, StatusCode};
 use log::debug;
 use mime::{self, Mime};
-use mime_guess::guess_mime_type_opt;
+use mime_guess::from_path;
 use serde_derive::Deserialize;
 use tokio::fs::File;
 use tokio::io::AsyncRead;
@@ -295,7 +295,7 @@ fn get_extension(encoding: &str, options: &FileOptions) -> Option<String> {
 }
 
 fn mime_for_path(path: &Path) -> Mime {
-    guess_mime_type_opt(path).unwrap_or_else(|| mime::APPLICATION_OCTET_STREAM)
+    from_path(path).first().unwrap_or_else(|| mime::APPLICATION_OCTET_STREAM)
 }
 
 fn normalize_path(path: &Path) -> PathBuf {
