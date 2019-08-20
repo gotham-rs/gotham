@@ -100,12 +100,10 @@ mod tests {
     fn form_request() {
         let boundary = "--abcdef1234--";
         let body = format!(
-            "\
-             --{0}\r\n\
+            "--{0}\r\n\
              content-disposition: form-data; name=\"foo\"\r\n\r\n\
              bar\r\n\
-             --{0}--\r\n\
-             ",
+             --{0}--\r\n",
             boundary
         );
 
