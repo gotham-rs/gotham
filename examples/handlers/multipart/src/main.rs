@@ -13,7 +13,7 @@ use gotham::helpers::http::response::create_response;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use hyper::header::{HeaderValue, CONTENT_TYPE};
+use hyper::header::{CONTENT_TYPE};
 use hyper::{Body, HeaderMap, StatusCode};
 use multipart::server::Multipart;
 use std::io::Cursor;
@@ -94,6 +94,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::header::HeaderValue;
 
     #[test]
     fn form_request() {
