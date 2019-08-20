@@ -1,24 +1,22 @@
 # HTML Form Parsing
 
-An example showing how to decode requests from an HTML form element with `Content-Type: application/x-www-form-urlencoded` data.
+An example showing how to decode requests from an HTML form element with `Content-Type: multipart/form-data` data.
 
 ## Running
 
-From the `examples/handlers/form_urlencoded` directory:
+From the `examples/handlers/multipart` directory:
 
 ```
 Terminal 1:
   $ cargo run
-     Compiling handlers/form_urlencoded (file:///.../examples/handlers/form_urlencoded)
+     Compiling handlers/multipart (file:///.../examples/handlers/multipart)
       Finished dev [unoptimized + debuginfo] target(s) in 4.26 secs
-       Running `../handlers/form_urlencoded`
+       Running `../handlers/multipart`
   Listening for requests at http://127.0.0.1:7878
 
 Terminal 2:
-  $ curl -d name=Bob -d address="123 Jersey Ave." -d message="Hello world!" http://127.0.0.1:7878/
-  name: Bob
-  address: 123 Jersey Ave.
-  message: Hello world!
+  $curl -H "Content-Type: multipart/form-data; boundary=--abcdef1234" -d "--abcdef1234\r\nContent-Disposition: form-data; name=foo\r\n\r\nbar\r\n\--abcdef1234--\r\n\" http://127.0.0.1:7878
+  bar
 ```
 
 ## License
