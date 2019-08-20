@@ -14,6 +14,8 @@ use jsonwebtoken::{decode, Validation};
 use serde::de::Deserialize;
 use std::{io, marker::PhantomData, panic::RefUnwindSafe};
 
+const DEFAULT_SCHEME: &str = "Bearer";
+
 /// This middleware verifies that JSON Web Token
 /// credentials, provided via the HTTP `Authorization`
 /// header, are extracted, parsed, and validated
@@ -86,6 +88,7 @@ use std::{io, marker::PhantomData, panic::RefUnwindSafe};
 pub struct JWTMiddleware<T> {
     secret: String,
     validation: Validation,
+    scheme: &'static str,
     claims: PhantomData<T>,
 }
 
@@ -101,6 +104,7 @@ where
         JWTMiddleware {
             secret: secret.into(),
             validation,
+            scheme: DEFAULT_SCHEME,
             claims: PhantomData,
         }
     }
@@ -124,7 +128,7 @@ where
 
         let token = match HeaderMap::borrow_from(&state).get(AUTHORIZATION) {
             Some(h) => match h.to_str() {
-                Ok(hx) => hx.get(8..),
+                Ok(hx) => hx.get((self.scheme.len() + 1)..),
                 _ => None,
             },
             _ => None,
@@ -166,6 +170,7 @@ where
         Ok(JWTMiddleware {
             secret: self.secret.clone(),
             validation: self.validation.clone(),
+            scheme: DEFAULT_SCHEME,
             claims: PhantomData,
         })
     }
@@ -218,13 +223,16 @@ mod tests {
         Box::new(future::ok((state, res)))
     }
 
-    fn router() -> Router {
-        // Create JWTMiddleware with HS256 algorithm (default).
+    fn default_jwt_middleware() -> JWTMiddleware<Claims> {
         let valid = Validation {
             ..Validation::default()
         };
 
-        let middleware = JWTMiddleware::<Claims>::new(SECRET).validation(valid);
+        JWTMiddleware::<Claims>::new(SECRET).validation(valid)
+    }
+
+    fn router(middleware: JWTMiddleware<Claims>) -> Router {
+        // Create JWTMiddleware with HS256 algorithm (default).
 
         let (chain, pipelines) = single_pipeline(new_pipeline().add(middleware).build());
 
@@ -235,7 +243,7 @@ mod tests {
 
     #[test]
     fn jwt_middleware_no_header_test() {
-        let test_server = TestServer::new(router()).unwrap();
+        let test_server = TestServer::new(router(default_jwt_middleware())).unwrap();
         let res = test_server
             .client()
             .get("https://example.com")
@@ -247,7 +255,7 @@ mod tests {
 
     #[test]
     fn jwt_middleware_no_value_test() {
-        let test_server = TestServer::new(router()).unwrap();
+        let test_server = TestServer::new(router(default_jwt_middleware())).unwrap();
         let res = test_server
             .client()
             .get("https://example.com")
@@ -260,7 +268,7 @@ mod tests {
 
     #[test]
     fn jwt_middleware_no_token_test() {
-        let test_server = TestServer::new(router()).unwrap();
+        let test_server = TestServer::new(router(default_jwt_middleware())).unwrap();
         let res = test_server
             .client()
             .get("https://example.com")
@@ -273,7 +281,7 @@ mod tests {
 
     #[test]
     fn jwt_middleware_malformatted_token_test() {
-        let test_server = TestServer::new(router()).unwrap();
+        let test_server = TestServer::new(router(default_jwt_middleware())).unwrap();
         let res = test_server
             .client()
             .get("https://example.com")
@@ -286,7 +294,7 @@ mod tests {
 
     #[test]
     fn jwt_middleware_malformatted_token_no_space_test() {
-        let test_server = TestServer::new(router()).unwrap();
+        let test_server = TestServer::new(router(default_jwt_middleware())).unwrap();
         let res = test_server
             .client()
             .get("https://example.com")
@@ -299,11 +307,11 @@ mod tests {
 
     #[test]
     fn jwt_middleware_invalid_algorithm_token_test() {
-        let test_server = TestServer::new(router()).unwrap();
+        let test_server = TestServer::new(router(default_jwt_middleware())).unwrap();
         let res = test_server
             .client()
             .get("https://example.com")
-            .with_header(AUTHORIZATION, "Bearer: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE1MzA0MDE1MjcsImlhdCI6MTUzMDM5OTcyN30.lhg7K9SK3DXsvimVb6o_h6VcsINtkT-qHR-tvDH1bGI".parse().unwrap())
+            .with_header(AUTHORIZATION, "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE1MzA0MDE1MjcsImlhdCI6MTUzMDM5OTcyN30.lhg7K9SK3DXsvimVb6o_h6VcsINtkT-qHR-tvDH1bGI".parse().unwrap())
             .perform()
             .unwrap();
 
@@ -313,12 +321,27 @@ mod tests {
     #[test]
     fn jwt_middleware_valid_token_test() {
         let token = token(Algorithm::HS256);
-        let test_server = TestServer::new(router()).unwrap();
+        let test_server = TestServer::new(router(default_jwt_middleware())).unwrap();
         println!("Requesting with token... {}", token);
         let res = test_server
             .client()
             .get("https://example.com")
-            .with_header(AUTHORIZATION, format!("Bearer: {}", token).parse().unwrap())
+            .with_header(AUTHORIZATION, format!("Bearer {}", token).parse().unwrap())
+            .perform()
+            .unwrap();
+
+        assert_eq!(res.status(), StatusCode::OK);
+    }
+
+    #[test]
+    fn jwt_middleware_valid_token_custom_scheme() {
+        let token = token(Algorithm::HS256);
+        let test_server = TestServer::new(router(custom_scheme_jwt_middleware())).unwrap();
+        println!("Requesting with token... {}", token);
+        let res = test_server
+            .client()
+            .get("https://example.com")
+            .with_header(AUTHORIZATION, format!("Bearer {}", token).parse().unwrap())
             .perform()
             .unwrap();
 
