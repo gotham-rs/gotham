@@ -13,7 +13,7 @@ use gotham::helpers::http::response::create_response;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use hyper::header::{HeaderValue, CONTENT_LENGTH, CONTENT_TYPE};
+use hyper::header::{HeaderValue, CONTENT_TYPE};
 use hyper::{Body, HeaderMap, StatusCode};
 use multipart::server::Multipart;
 use std::io::Cursor;
@@ -42,7 +42,7 @@ fn form_handler(mut state: State) -> Box<HandlerFuture> {
                         let mut data = Vec::new();
                         field.data.read_to_end(&mut data).expect("can't read");
                         let res_result = String::from_utf8(data);
-                        let mut res_body;
+                        let res_body;
                         match res_result {
                             Ok(r) => res_body = r.to_string(),
                             Err(e) => res_body = format!("{:?}", e),
@@ -109,17 +109,16 @@ mod tests {
         );
 
         let test_server = TestServer::new(router()).unwrap();
-        let response = test_server.client()
-            .post("http://localhost", body, mime::MULTIPART_FORM_DATA)
-            .perform()
-            .unwrap();
-        // let header_map = request.headers_mut();
-        // header_map.insert(CONTENT_LENGTH, HeaderValue::from_str("1").unwrap());
-        // let h = format!("multipart/form-data; boundary={}", boundary);
-        // header_map.insert(CONTENT_TYPE, HeaderValue::from_str(h.as_str()).unwrap());
+        let client = test_server.client();
+        let mut request = client.post("http://localhost", body, mime::MULTIPART_FORM_DATA);
+
+        let headers = request.headers_mut();
+        let content_type_string = format!("multipart/form-data; boundary={}", boundary);
+        headers.insert(CONTENT_TYPE, HeaderValue::from_str(content_type_string.as_str()).unwrap());
+        let response = request.perform().unwrap();
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.read_body().unwrap();
         let r = String::from_utf8(body).unwrap();
-        assert_eq!(r, "foo");
+        assert_eq!(r, "bar");
     }
 }
