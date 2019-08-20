@@ -13,7 +13,7 @@ use gotham::helpers::http::response::create_response;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use hyper::header::{CONTENT_TYPE};
+use hyper::header::CONTENT_TYPE;
 use hyper::{Body, HeaderMap, StatusCode};
 use multipart::server::Multipart;
 use std::io::Cursor;
@@ -113,7 +113,10 @@ mod tests {
 
         let headers = request.headers_mut();
         let content_type_string = format!("multipart/form-data; boundary={}", boundary);
-        headers.insert(CONTENT_TYPE, HeaderValue::from_str(content_type_string.as_str()).unwrap());
+        headers.insert(
+            CONTENT_TYPE,
+            HeaderValue::from_str(content_type_string.as_str()).unwrap(),
+        );
         let response = request.perform().unwrap();
         assert_eq!(response.status(), StatusCode::OK);
         let body = response.read_body().unwrap();
