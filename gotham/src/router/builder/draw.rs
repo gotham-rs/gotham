@@ -5,6 +5,7 @@ use hyper::Method;
 use log::trace;
 
 use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+use crate::helpers::http::request::path::split_path_segments;
 use crate::pipeline::chain::PipelineHandleChain;
 use crate::pipeline::set::PipelineSet;
 use crate::router::builder::{
@@ -875,7 +876,7 @@ fn descend<'n>(node_builder: &'n mut Node, path: &str) -> &'n mut Node {
     if path.is_empty() {
         node_builder
     } else {
-        build_subtree(node_builder, path.split('/'))
+        build_subtree(node_builder, split_path_segments(path))
     }
 }
 

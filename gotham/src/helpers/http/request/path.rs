@@ -12,6 +12,10 @@ pub struct RequestPathSegments {
     segments: Vec<PercentDecoded>,
 }
 
+pub(crate) fn split_path_segments<'a>(path: &'a str) -> impl Iterator<Item = &'a str> {
+    path.split('/').filter(|s| !EXCLUDED_SEGMENTS.contains(s))
+}
+
 impl RequestPathSegments {
     /// Creates a new RequestPathSegments instance by splitting a `Request` URI path.
     ///
@@ -23,9 +27,7 @@ impl RequestPathSegments {
     /// ["/", "some", "path", "to", "my", "handler"]
     /// ```
     pub(crate) fn new(path: &str) -> Self {
-        let segments = path
-            .split('/')
-            .filter(|s| !EXCLUDED_SEGMENTS.contains(s))
+        let segments = split_path_segments(path)
             .filter_map(PercentDecoded::new)
             .collect();
 

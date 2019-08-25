@@ -32,6 +32,12 @@ pub use self::single::DefineSingleRoute;
 /// Builds a `Router` using the provided closure. Routes are defined using the `RouterBuilder`
 /// value passed to the closure, and the `Router` is constructed before returning.
 ///
+///
+/// **Important note**: The `path` passed to the `RouterBuilder` is decomposed
+/// in segments. This means that empty segments and trailing slashes are
+/// removed. Basically `route.get("/foo//bar/baz/")` will have the same effect as
+/// `route.get("/foo/bar/baz")`
+///
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
@@ -411,6 +417,14 @@ mod tests {
                 .unwrap();
             (state, response)
         }
+
+        pub fn trailing_slash(state: State) -> (State, Response<Body>) {
+            let response = Response::builder()
+                .status(StatusCode::OK)
+                .body("Trailing slash!".into())
+                .unwrap();
+            (state, response)
+        }
     }
 
     mod resource {
@@ -516,6 +530,8 @@ mod tests {
             });
 
             route.delegate("/delegated").to_router(delegated_router);
+
+            route.get("/trailing-slash/").to(welcome::trailing_slash);
         });
 
         let new_service = GothamService::new(router);
@@ -589,5 +605,14 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
         assert_eq!(&response_bytes[..], b"It's a resource.");
+
+        let response = call(
+            Request::get("/trailing-slash/")
+                .body(Body::empty())
+                .unwrap(),
+        );
+        assert_eq!(response.status(), StatusCode::OK);
+        let response = call(Request::get("/trailing-slash").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }
