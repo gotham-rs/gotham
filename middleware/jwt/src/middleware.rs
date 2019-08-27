@@ -88,7 +88,7 @@ const DEFAULT_SCHEME: &str = "Bearer";
 pub struct JWTMiddleware<T> {
     secret: String,
     validation: Validation,
-    scheme: &'static str,
+    scheme: String,
     claims: PhantomData<T>,
 }
 
@@ -104,7 +104,7 @@ where
         JWTMiddleware {
             secret: secret.into(),
             validation,
-            scheme: DEFAULT_SCHEME,
+            scheme: DEFAULT_SCHEME.into(),
             claims: PhantomData,
         }
     }
@@ -113,6 +113,14 @@ where
     /// validation constraints.
     pub fn validation(self, validation: Validation) -> Self {
         JWTMiddleware { validation, ..self }
+    }
+
+    /// Create a new instance of the middleware with a custom scheme
+    pub fn scheme<S: Into<String>>(self, scheme: S) -> Self {
+        JWTMiddleware {
+            scheme: scheme.into(),
+            ..self
+        }
     }
 }
 
@@ -170,7 +178,7 @@ where
         Ok(JWTMiddleware {
             secret: self.secret.clone(),
             validation: self.validation.clone(),
-            scheme: DEFAULT_SCHEME,
+            scheme: self.scheme.clone(),
             claims: PhantomData,
         })
     }
@@ -224,11 +232,13 @@ mod tests {
     }
 
     fn default_jwt_middleware() -> JWTMiddleware<Claims> {
-        let valid = Validation {
-            ..Validation::default()
-        };
+        JWTMiddleware::<Claims>::new(SECRET).validation(Validation::default())
+    }
 
-        JWTMiddleware::<Claims>::new(SECRET).validation(valid)
+    fn jwt_middleware_with_scheme(scheme: &str) -> JWTMiddleware<Claims> {
+        JWTMiddleware::<Claims>::new(SECRET)
+            .validation(Validation::default())
+            .scheme(scheme)
     }
 
     fn router(middleware: JWTMiddleware<Claims>) -> Router {
@@ -336,12 +346,13 @@ mod tests {
     #[test]
     fn jwt_middleware_valid_token_custom_scheme() {
         let token = token(Algorithm::HS256);
-        let test_server = TestServer::new(router(custom_scheme_jwt_middleware())).unwrap();
+        let middleware = jwt_middleware_with_scheme("Token");
+        let test_server = TestServer::new(router(middleware)).unwrap();
         println!("Requesting with token... {}", token);
         let res = test_server
             .client()
             .get("https://example.com")
-            .with_header(AUTHORIZATION, format!("Bearer {}", token).parse().unwrap())
+            .with_header(AUTHORIZATION, format!("Token {}", token).parse().unwrap())
             .perform()
             .unwrap();
 
