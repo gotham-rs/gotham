@@ -1,4 +1,4 @@
-//! An example of decoding requests from multipart
+//! An example of decoding multipart form requests
 
 extern crate futures;
 extern crate gotham;

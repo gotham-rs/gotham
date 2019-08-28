@@ -1,8 +1,8 @@
 [package]
 name = "gotham_examples_handlers_multipart"
-description = "An example of decoding requests from an HTML form element"
+description = "An example of decoding multipart form requests"
 version = "0.0.0"
-authors = ["Jacob Budin <self@jacobbudin.com>"]
+authors = ["Paul Zhang <paulzhang5511>"]
 publish = false
 
 [dependencies]
