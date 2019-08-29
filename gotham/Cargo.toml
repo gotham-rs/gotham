@@ -30,7 +30,7 @@ tokio = "0.1"
 bytes = "0.4"
 mio = "0.6"
 borrow-bag = "1.0"
-url = "1.7"
+url = "2.1"
 uuid = { version = "0.7", features = ["v4"] }
 chrono = "0.4"
 base64 = "0.10"
