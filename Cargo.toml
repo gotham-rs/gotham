@@ -59,6 +59,7 @@ members = [
     "examples/handlers/simple_async_handlers",
     "examples/handlers/async_handlers",
     "examples/handlers/form_urlencoded",
+    "examples/handlers/multipart",
 
     # static_assets
     "examples/static_assets",
