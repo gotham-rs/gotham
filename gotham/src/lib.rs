@@ -44,10 +44,16 @@ pub mod plain;
 /// Functions for creating a Gotham service using HTTPS.
 pub mod tls;
 
+use futures::{Future, Stream};
+use hyper::server::conn::Http;
 use std::net::ToSocketAddrs;
-
-use tokio::net::TcpListener;
+use std::sync::Arc;
+use tokio::executor;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{self, Runtime};
+use tokio_io::{AsyncRead, AsyncWrite};
+
+use crate::{handler::NewHandler, service::GothamService};
 
 pub use plain::*;
 pub use tls::start as start_with_tls;
@@ -71,4 +77,48 @@ where
         .expect("unable to resolve listener address");
 
     TcpListener::bind(&addr).expect("unable to open TCP listener")
+}
+
+/// Returns a `Future` used to spawn a Gotham application.
+///
+/// This is used internally, but it's exposed for clients that want to set up their own TLS
+/// support. The wrap argument is a function that will receive a tokio-io TcpStream and should wrap
+/// the socket as necessary. Errors returned by this function will be ignored and the connection
+/// will be dropped if the future returned by the wrapper resolves to an error.
+pub fn bind_server<NH, F, Wrapped, Wrap>(
+    listener: TcpListener,
+    new_handler: NH,
+    mut wrap: Wrap,
+) -> impl Future<Item = (), Error = ()>
+where
+    NH: NewHandler + 'static,
+    F: Future<Item = Wrapped, Error = ()> + Send + 'static,
+    Wrapped: AsyncRead + AsyncWrite + Send + 'static,
+    Wrap: FnMut(TcpStream) -> F,
+{
+    let protocol = Arc::new(Http::new());
+    let gotham_service = GothamService::new(new_handler);
+
+    listener
+        .incoming()
+        .map_err(|e| panic!("socket error = {:?}", e))
+        .for_each(move |socket| {
+            let addr = socket.peer_addr().unwrap();
+            let service = gotham_service.connect(addr);
+            let accepted_protocol = protocol.clone();
+
+            // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
+            // will be dropped).
+            let handler = wrap(socket)
+                .and_then(move |socket| {
+                    accepted_protocol
+                        .serve_connection(socket, service)
+                        .map_err(|_| ())
+                })
+                .map(|_| ());
+
+            executor::spawn(handler);
+
+            Ok(())
+        })
 }

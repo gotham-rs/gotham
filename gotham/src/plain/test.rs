@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use failure;
 use log::info;
 
-use futures::Future;
+use futures::{Future, IntoFuture};
 use hyper::client::{
     connect::{Connect, Connected, Destination},
     Client,
@@ -106,7 +106,7 @@ impl TestServer {
         let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
         let addr = listener.local_addr()?;
 
-        let service_stream = super::bind_server(listener, new_handler);
+        let service_stream = super::bind_server(listener, new_handler, |tcp| Ok(tcp).into_future());
         runtime.spawn(service_stream);
 
         let data = TestServerData {

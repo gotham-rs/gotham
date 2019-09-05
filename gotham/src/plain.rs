@@ -1,14 +1,10 @@
-use futures::{Future, Stream};
-use hyper::server::conn::Http;
+use futures::{Future, IntoFuture};
 use log::info;
 use std::net::ToSocketAddrs;
-use std::sync::Arc;
-use tokio::executor;
-use tokio::net::TcpListener;
 use tokio::runtime::TaskExecutor;
 
-use super::{handler::NewHandler, service::GothamService};
-use super::{new_runtime, tcp_listener};
+use super::handler::NewHandler;
+use super::{bind_server, new_runtime, tcp_listener};
 
 pub mod test;
 
@@ -62,26 +58,5 @@ where
     addr
     );
 
-    bind_server(listener, new_handler)
-}
-
-fn bind_server<NH>(listener: TcpListener, new_handler: NH) -> impl Future<Item = (), Error = ()>
-where
-    NH: NewHandler + 'static,
-{
-    let protocol = Arc::new(Http::new());
-    let gotham_service = GothamService::new(new_handler);
-
-    listener
-        .incoming()
-        .map_err(|e| panic!("socket error = {:?}", e))
-        .for_each(move |socket| {
-            let addr = socket.peer_addr().unwrap();
-            let service = gotham_service.connect(addr);
-            let handler = protocol.serve_connection(socket, service).then(|_| Ok(()));
-
-            executor::spawn(handler);
-
-            Ok(())
-        })
+    bind_server(listener, new_handler, |tcp| Ok(tcp).into_future())
 }
