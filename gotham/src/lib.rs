@@ -42,6 +42,7 @@ pub mod test;
 pub mod plain;
 
 /// Functions for creating a Gotham service using HTTPS.
+#[cfg(feature = "rustls")]
 pub mod tls;
 
 use futures::{Future, Stream};
@@ -56,6 +57,7 @@ use tokio_io::{AsyncRead, AsyncWrite};
 use crate::{handler::NewHandler, service::GothamService};
 
 pub use plain::*;
+#[cfg(feature = "rustls")]
 pub use tls::start as start_with_tls;
 
 fn new_runtime(threads: usize) -> Runtime {
