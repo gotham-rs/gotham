@@ -111,9 +111,8 @@ mod tests {
         let client = test_server.client();
         let mut request = client.post("http://localhost", body, mime::MULTIPART_FORM_DATA);
 
-        let headers = request.headers_mut();
         let content_type_string = format!("multipart/form-data; boundary={}", boundary);
-        headers.insert(
+        request.headers_mut().insert(
             CONTENT_TYPE,
             HeaderValue::from_str(content_type_string.as_str()).unwrap(),
         );

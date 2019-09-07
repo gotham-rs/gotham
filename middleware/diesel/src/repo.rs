@@ -13,10 +13,15 @@ use tokio_threadpool::blocking;
 ///
 /// ```rust
 /// # #[macro_use] extern crate diesel;
+/// # extern crate tokio;
 /// # use diesel::prelude::*;
 /// # use diesel::Queryable;
-/// # let database_url = ":memory:";
 /// # use diesel::sqlite::SqliteConnection;
+/// # use tokio::runtime::Runtime;
+///
+/// # let mut runtime = Runtime::new().unwrap();
+///
+/// # let database_url = ":memory:";
 /// # mod schema {
 /// # table! {
 /// #     users {
@@ -34,16 +39,16 @@ use tokio_threadpool::blocking;
 ///
 /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 /// let repo = Repo::new(database_url);
-/// # repo.run(|conn| {
+/// # runtime.block_on(repo.run(|conn| {
 /// #     conn.execute("CREATE TABLE IF NOT EXISTS users (
 /// #         id INTEGER PRIMARY KEY AUTOINCREMENT,
 /// #         name VARCHAR NOT NULL
 /// #         )")
-/// # });
-/// let result = repo.run(|conn| {
+/// # })).unwrap();
+/// let result = runtime.block_on(repo.run(|conn| {
 ///     use schema::users::dsl::*;
 ///     users.load::<User>(&conn)
-/// });
+/// })).unwrap();
 ///
 /// ```
 #[derive(StateData)]
