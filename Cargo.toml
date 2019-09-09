@@ -67,6 +67,9 @@ members = [
     # diesel
     "examples/diesel",
 
+    # openssl
+    "examples/openssl",
+
     # example_contribution_template
     "examples/example_contribution_template/name"
 ]

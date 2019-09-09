@@ -1,0 +1,16 @@
+[package]
+name = "gotham_examples_openssl"
+description = "An example application for using Gotham with OpenSSL"
+version = "0.0.0"
+publish = false
+
+[dependencies]
+gotham = { path = "../../gotham", default-features = false }
+
+futures = "0.1"
+hyper = "0.12"
+mime = "0.3"
+tokio-openssl = "0.3"
+openssl = "0.10"
+tokio = "0.1"
+failure = "0.1"
