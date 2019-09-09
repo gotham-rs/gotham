@@ -24,3 +24,4 @@ log = "0.4"
 diesel = { version = "1", features = ["sqlite"] }
 mime = "0.3"
 hyper = "0.12"
+tokio = "0.1"
