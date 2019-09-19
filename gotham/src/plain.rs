@@ -78,7 +78,10 @@ where
         .for_each(move |socket| {
             let addr = socket.peer_addr().unwrap();
             let service = gotham_service.connect(addr);
-            let handler = protocol.serve_connection(socket, service).then(|_| Ok(()));
+            let handler = protocol
+                .serve_connection(socket, service)
+                .with_upgrades()
+                .then(|_| Ok(()));
 
             executor::spawn(handler);
 

@@ -103,6 +103,7 @@ where
                 .and_then(move |socket| {
                     accepted_protocol
                         .serve_connection(socket, service)
+                        .with_upgrades()
                         .map_err(|e| panic!("http error = {:?}", e))
                 });
 
