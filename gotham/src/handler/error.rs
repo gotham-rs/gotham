@@ -84,6 +84,10 @@ impl Error for HandlerError {
     fn cause(&self) -> Option<&dyn Error> {
         Some(&*self.cause)
     }
+
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        self.cause.source()
+    }
 }
 
 impl HandlerError {
