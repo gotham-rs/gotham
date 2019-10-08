@@ -134,12 +134,10 @@ fn router() -> Router {
             .get("/sleep")
             .with_query_string_extractor::<QueryStringExtractor>()
             .to(sleep_handler);
-        ;
         route
             .get("/loop")
             .with_query_string_extractor::<QueryStringExtractor>()
             .to(loop_handler);
-        ;
     })
 }
 

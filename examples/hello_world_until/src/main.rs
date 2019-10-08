@@ -105,7 +105,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn signal_self() {
-        let thread_handle = thread::spawn(|| main());
+        let thread_handle = thread::spawn(main);
 
         // Wait until server will be able to answer.
         let mut max_retries = 25;

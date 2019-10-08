@@ -240,17 +240,14 @@ fn router() -> Router {
             .get("/series")
             .with_query_string_extractor::<QueryStringExtractor>()
             .to(series_handler);
-        ;
         route
             .get("/loop")
             .with_query_string_extractor::<QueryStringExtractor>()
             .to(loop_handler);
-        ;
         route
             .get("/parallel")
             .with_query_string_extractor::<QueryStringExtractor>()
             .to(parallel_handler);
-        ;
     })
 }
 
