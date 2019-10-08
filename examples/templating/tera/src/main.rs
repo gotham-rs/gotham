@@ -11,8 +11,8 @@ extern crate tera;
 use gotham::state::State;
 use tera::{Context, Tera};
 
-/// Assuming the Rust file is at the same level as the templates folder
-/// we can get a Tera instance that way:
+// Assuming the Rust file is at the same level as the templates folder
+// we can get a Tera instance that way:
 lazy_static! {
     pub static ref TERA: Tera =
         compile_templates!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*"));

@@ -210,8 +210,7 @@ pub trait DefineSingleRoute {
     /// ```
     fn to_dir<P>(self, options: P)
     where
-        Self: Sized,
-        Self: ReplacePathExtractor<FilePathExtractor>,
+        Self: ReplacePathExtractor<FilePathExtractor> + Sized,
         Self::Output: DefineSingleRoute,
         FileOptions: From<P>,
     {
