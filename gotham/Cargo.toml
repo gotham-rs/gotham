@@ -24,7 +24,7 @@ bincode = "1.0"
 mime = "0.3"
 # Using alpha version of mime_guess until mime crate stabilizes (releases 1.0).
 # see https://github.com/hyperium/mime/issues/52
-mime_guess = "2.0.0-alpha.6"
+mime_guess = "2.0.1"
 futures = "0.1"
 tokio = "0.1"
 bytes = "0.4"
