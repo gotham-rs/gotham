@@ -1,11 +1,12 @@
+use proc_macro;
+use quote::quote;
 use syn;
-use quote;
 
-pub(crate) fn new_middleware(ast: &syn::DeriveInput) -> quote::Tokens {
+pub(crate) fn new_middleware(ast: &syn::DeriveInput) -> proc_macro::TokenStream {
     let name = &ast.ident;
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
-    quote! {
+    let expanded = quote! {
         impl #impl_generics ::gotham::middleware::NewMiddleware for #name #ty_generics
             #where_clause
         {
@@ -22,5 +23,7 @@ pub(crate) fn new_middleware(ast: &syn::DeriveInput) -> quote::Tokens {
                 Ok(new)
             }
         }
-    }
+    };
+
+    expanded.into()
 }

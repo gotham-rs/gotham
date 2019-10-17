@@ -1,19 +1,21 @@
 //! Defines types for passing request state through `Middleware` and `Handler` implementations
 
+pub(crate) mod client_addr;
 mod data;
 mod from_state;
 pub mod request_id;
-pub(crate) mod client_addr;
 
-use std::collections::HashMap;
+use log::trace;
+
 use std::any::{Any, TypeId};
+use std::collections::HashMap;
 
-pub use state::data::StateData;
-pub use state::from_state::FromState;
-pub use state::request_id::request_id;
-pub use state::client_addr::client_addr;
+pub use crate::state::client_addr::client_addr;
+pub use crate::state::data::StateData;
+pub use crate::state::from_state::FromState;
+pub use crate::state::request_id::request_id;
 
-pub(crate) use state::request_id::set_request_id;
+pub(crate) use crate::state::request_id::set_request_id;
 
 /// Provides storage for request state, and stores one item of each type. The types used for
 /// storage must implement the `gotham::state::StateData` trait to allow its storage. The
@@ -43,7 +45,7 @@ pub(crate) use state::request_id::set_request_id;
 /// # }
 /// ```
 pub struct State {
-    data: HashMap<TypeId, Box<Any>>,
+    data: HashMap<TypeId, Box<dyn Any + Send>>,
 }
 
 impl State {

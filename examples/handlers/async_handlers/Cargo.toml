@@ -1,0 +1,17 @@
+[package]
+name = "gotham_examples_handlers_async_handlers"
+description = "An example that does asynchronous work before responding"
+version = "0.0.0"
+authors = ["David Laban <alsuren@gmail.com>"]
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
+
+hyper = "0.12"
+mime = "0.3"
+futures = "0.1"
+serde = "1"
+serde_derive = "1"
+tokio-core = "0.1"

@@ -1,26 +1,18 @@
 //! An introduction to fundamental `Router` and `Router Builder` concepts to create a routing tree.
 
-extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
-
-use gotham::http::response::create_response;
-use gotham::state::State;
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
+use gotham::state::State;
+
+const HELLO_ROUTER: &str = "Hello Router!";
 
 /// Create a `Handler` that is invoked for requests to the path "/"
-pub fn say_hello(state: State) -> (State, Response) {
-    let res = create_response(
-        &state,
-        StatusCode::Ok,
-        Some((String::from("Hello Router!").into_bytes(), mime::TEXT_PLAIN)),
-    );
-
-    (state, res)
+pub fn say_hello(state: State) -> (State, &'static str) {
+    (state, HELLO_ROUTER)
 }
 
 /// Create a `Router`
@@ -51,6 +43,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_router_response() {
@@ -61,7 +54,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         assert_eq!(&body[..], b"Hello Router!");

@@ -1,0 +1,11 @@
+[package]
+name = "gotham_examples_templating_askama"
+version = "0.0.0"
+publish = false
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+
+askama = "0.8.0"
+hyper = "0.12.17"
+mime = "0.3.12"

@@ -1,8 +1,8 @@
 //! Defines the type `AnyRouteMatcher`
 
-use router::non_match::RouteNonMatch;
-use router::route::RouteMatcher;
-use state::State;
+use crate::router::non_match::RouteNonMatch;
+use crate::router::route::RouteMatcher;
+use crate::state::State;
 
 /// Matches any request without restriction (i.e. will accept any request which has already matched
 /// the path to the current route). For example, this matcher is used when delegating a path prefix
@@ -14,8 +14,7 @@ use state::State;
 /// # extern crate gotham;
 /// # fn main() {
 /// #   use gotham::state::State;
-/// #   use gotham::router::route::matcher::RouteMatcher;
-/// #   use gotham::router::route::matcher::any::AnyRouteMatcher;
+/// #   use gotham::router::route::matcher::{AnyRouteMatcher, RouteMatcher};
 /// #
 /// #   State::with_new(|state| {
 /// #
@@ -26,6 +25,7 @@ use state::State;
 /// #   });
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct AnyRouteMatcher {}
 
 impl AnyRouteMatcher {

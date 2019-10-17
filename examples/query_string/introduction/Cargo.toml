@@ -9,8 +9,7 @@ publish = false
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-hyper = "0.11"
-futures = "0.1"
+hyper = "0.12"
 mime = "0.3"
 serde = "1"
 serde_derive = "1"

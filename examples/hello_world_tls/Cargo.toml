@@ -1,0 +1,12 @@
+[package]
+name = "gotham_examples_hello_world_tls"
+description = "A Hello World example application for working with Gotham and TLS."
+version = "0.0.0"
+publish = false
+
+[dependencies]
+gotham = { path = "../../gotham" }
+
+hyper = "0.12"
+mime = "0.3"
+tokio-rustls = "0.9"

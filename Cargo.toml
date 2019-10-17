@@ -7,10 +7,20 @@ members = [
 
     ## Middleware
     "middleware/template",
-    "middleware/under_development/diesel",
+    "middleware/diesel",
+    "middleware/jwt",
 
     ## Examples (these crates are not published)
     "examples/hello_world",
+    "examples/hello_world_tls",
+    "examples/hello_world_until",
+    "examples/shared_state",
+
+    # Tera template
+    "examples/templating/tera",
+
+    # Askama template
+    "examples/templating/askama",
 
     # routing
     "examples/routing/introduction",
@@ -20,24 +30,50 @@ members = [
 
     # path
     "examples/path/introduction",
+    "examples/path/globs",
+    "examples/path/regex",
 
     # query_string
     "examples/query_string/introduction",
 
     # cookies
+    "examples/cookies/introduction",
+
+    # sessions
+    "examples/sessions/introduction",
+    "examples/sessions/custom_data_type",
 
     # headers
     "examples/headers/setting",
 
     # middleware
     "examples/middleware/introduction",
+    "examples/middleware/multiple_pipelines",
 
     # into_response
     "examples/into_response/introduction",
 
     # handlers
     "examples/handlers/request_data",
+    "examples/handlers/stateful",
+    "examples/handlers/simple_async_handlers",
+    "examples/handlers/async_handlers",
+    "examples/handlers/form_urlencoded",
+    "examples/handlers/multipart",
+
+    # static_assets
+    "examples/static_assets",
+
+    # diesel
+    "examples/diesel",
 
     # example_contribution_template
-    "examples/example_contribution_template/name"
+    "examples/example_contribution_template/name",
+
+    "examples/websocket",
 ]
+
+[patch.crates-io]
+gotham = { path = "gotham" }
+gotham_derive = { path = "gotham_derive" }
+borrow-bag = { path = "misc/borrow_bag" }

@@ -11,8 +11,7 @@ publish = false
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-hyper = "0.11"
-futures = "0.1"
+hyper = "0.12"
 mime = "0.3"
 
 # Add other dependencies if necessary

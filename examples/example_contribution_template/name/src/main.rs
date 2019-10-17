@@ -20,20 +20,19 @@
 //! of your specific example i.e. That a 404 is correctly returned for a missing endpoint when
 //! you're writing an example for setting Cookies.
 
-extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use hyper::{Response, StatusCode};
-use gotham::http::response::create_response;
-use gotham::state::State;
-use gotham::router::Router;
+use gotham::helpers::http::response::create_empty_response;
 use gotham::router::builder::*;
+use gotham::router::Router;
+use gotham::state::State;
+use hyper::{Body, Response, StatusCode};
 
 /// Create a `Handler` that ...
-pub fn well_named_function(state: State) -> (State, Response) {
-    let res = create_response(&state, StatusCode::Ok, None);
+pub fn well_named_function(state: State) -> (State, Response<Body>) {
+    let res = create_empty_response(&state, StatusCode::OK);
     (state, res)
 }
 
@@ -61,10 +60,10 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .get("http://localhost")
+            .get("http://localhost/")
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }

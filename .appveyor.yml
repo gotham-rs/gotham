@@ -7,7 +7,6 @@
 environment:
   matrix:
   - TARGET: x86_64-pc-windows-msvc
-  - TARGET: x86_64-pc-windows-gnu
 install:
   - curl -fsS --retry 3 --retry-connrefused -o rustup-init.exe https://win.rustup.rs/
   - rustup-init -yv --default-toolchain stable --default-host %target%

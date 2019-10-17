@@ -1,10 +1,10 @@
 use std::any::Any;
 
-use hyper::{Body, Headers, HttpVersion, Method, Uri};
-use tokio_core::reactor::Handle;
+use cookie::CookieJar;
+use hyper::{Body, HeaderMap, Method, Uri, Version};
 
-use http::request::path::RequestPathSegments;
-use state::request_id::RequestId;
+use crate::helpers::http::request::path::RequestPathSegments;
+use crate::state::request_id::RequestId;
 
 /// A marker trait for types that can be stored in `State`.
 ///
@@ -29,15 +29,14 @@ use state::request_id::RequestId;
 /// #   });
 /// # }
 /// ```
-pub trait StateData: Any {}
+pub trait StateData: Any + Send {}
 
 impl StateData for Body {}
 impl StateData for Method {}
 impl StateData for Uri {}
-impl StateData for HttpVersion {}
-impl StateData for Headers {}
-
-impl StateData for Handle {}
+impl StateData for Version {}
+impl StateData for HeaderMap {}
+impl StateData for CookieJar {}
 
 impl StateData for RequestPathSegments {}
 impl StateData for RequestId {}

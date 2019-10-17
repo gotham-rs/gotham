@@ -31,14 +31,19 @@ information on functionality and ordering.
 | Functionality | Description | Count^ |
 | --- | --- | ---:|
 | [Hello World](hello_world) | The famous Hello World example application. | 1 |
+| [Hello World with shutdown](hello_world_until) | Hello World application with graceful shutdown. | 1 |
 | [Routing](routing) | Dispatching `Requests` to functionality provided by your application. | 4 |
-| [Path](path) | Extracting data from the `Request` path ensuring type safety. | 1 |
+| [Path](path) | Extracting data from the `Request` path ensuring type safety. | 2 |
 | [Query String](query_string) | Extracting data from the `Request` query string whilst ensuring type safety. | 1 |
-| [Cookies](cookies) | Working with Cookies. | 0 |
+| [Cookies](cookies) | Working with Cookies. | 1 |
+| [Sessions](sessions) | Working with Sessions. | 2 |
 | [Headers](headers) | Working with HTTP Headers. | 1 |
-| [Handlers](handlers) | Developing application logic that responds to web requests. | 0 |
+| [Handlers](handlers) | Developing application logic that responds to web requests. | 5 |
 | [Middleware](middleware) | Developing custom middleware for your application. | 1 |
+| [Shared State](shared_state) | Sharing state across your application. | 1 |
 | [Into Response](into_response) | Implementing the Gotham web framework's `IntoResponse` trait. | 1 |
+| [Templating](templating) | An example using various templating engines. | 1 |
+| [Static Assets](static_assets) | Serving static assets. | 1 |
 
 ^ Gotham web framework examples are under active development.
 

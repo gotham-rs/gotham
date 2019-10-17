@@ -1,70 +1,68 @@
+use std::ops::Deref;
+use std::ops::DerefMut;
+
+use http::HttpTryFrom;
+use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
-use hyper::error::UriError;
-use hyper::header::Header;
 
-use handler::NewHandler;
-use test::{TestClient, TestRequestError, TestResponse};
+use super::Server;
+use super::{TestClient, TestResponse};
+use hyper::client::connect::Connect;
 
-/// Builder API for constructing `TestServer` requests. When the request is built,
+use crate::error::*;
+
+/// Builder API for constructing `Server` requests. When the request is built,
 /// `RequestBuilder::perform` will issue the request and provide access to the response.
-#[must_use]
-pub struct RequestBuilder<NH>
-where
-    NH: NewHandler + 'static,
-{
-    client: TestClient<NH>,
-    request: Result<Request, TestRequestError>,
+pub struct TestRequest<'a, S: Server, C: Connect> {
+    client: &'a TestClient<S, C>,
+    request: Request<Body>,
 }
 
-impl<NH> RequestBuilder<NH>
-where
-    NH: NewHandler + 'static,
-{
-    pub(super) fn new(
-        client: TestClient<NH>,
-        method: Method,
-        uri: Result<Uri, UriError>,
-    ) -> RequestBuilder<NH> {
-        let request = match uri {
-            Ok(uri) => Ok(Request::new(method, uri)),
-            Err(e) => Err(e.into()),
-        };
+impl<'a, S: Server, C: Connect> Deref for TestRequest<'a, S, C> {
+    type Target = Request<Body>;
 
-        RequestBuilder { client, request }
+    fn deref(&self) -> &Request<Body> {
+        &self.request
     }
+}
 
-    /// Adds the given header into the underlying `Request`, replacing any existing header of the
-    /// same type.
-    pub fn with_header<H>(self, header: H) -> RequestBuilder<NH>
+impl<'a, S: Server, C: Connect> DerefMut for TestRequest<'a, S, C> {
+    fn deref_mut(&mut self) -> &mut Request<Body> {
+        &mut self.request
+    }
+}
+
+impl<'a, S: Server + 'static, C: Connect + 'static> TestRequest<'a, S, C> {
+    pub(crate) fn new<U>(client: &'a TestClient<S, C>, method: Method, uri: U) -> Self
     where
-        H: Header,
+        Uri: HttpTryFrom<U>,
     {
-        let mut request = self.request;
-
-        if let Ok(ref mut req) = request {
-            req.headers_mut().set(header);
+        TestRequest {
+            client,
+            request: Request::builder()
+                .method(method)
+                .uri(uri)
+                .body(Body::empty())
+                .unwrap(),
         }
-
-        RequestBuilder { request, ..self }
     }
 
-    /// Adds the given body into the underlying `Request`, replacing any existing body.
-    pub fn with_body<T>(self, body: T) -> RequestBuilder<NH>
+    /// Send a constructed request using the `TestClient`, and await the response.
+    pub fn perform(self) -> Result<TestResponse> {
+        self.client.perform(self)
+    }
+
+    /// Extracts the request from this `TestRequest`.
+    pub(crate) fn request(self) -> Request<Body> {
+        self.request
+    }
+
+    /// Adds the given header into the underlying `Request`.
+    pub fn with_header<N>(mut self, name: N, value: HeaderValue) -> Self
     where
-        T: Into<Body>,
+        N: IntoHeaderName,
     {
-        let mut request = self.request;
-
-        if let Ok(ref mut req) = request {
-            req.set_body(body);
-        }
-
-        RequestBuilder { request, ..self }
-    }
-
-    /// Send a constructed request using the `TestClient` used to create this builder, and await
-    /// the response.
-    pub fn perform(self) -> Result<TestResponse, TestRequestError> {
-        self.client.perform(self.request?)
+        self.headers_mut().insert(name, value);
+        self
     }
 }

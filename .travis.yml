@@ -1,32 +1,48 @@
 language: rust
-rust:
-  - stable
-  - beta
-  - nightly
-# dependencies of kcov, used by coverage
+sudo: required
+dist: trusty
 addons:
   apt:
     packages:
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
-      - binutils-dev
-      - cmake
-    sources:
-      - kalakris-cmake
+      - libssl-dev
 env:
   - PATH=$HOME/.cargo/bin:$PATH
-before_script:
-  - cargo install cargo-travis -f
-  - rustup toolchain install nightly
-  - rustup component add --toolchain nightly rustfmt-preview
-  - cargo +nightly install --force rustfmt-nightly
 script:
-  - echo "Checking Gotham codebase with rustfmt release `cargo +nightly fmt --version`."
-  - cargo +nightly fmt --all -- --write-mode=diff
-  - cargo test --all --features ci
-after_success:
-  - cargo coveralls
+  - cargo test -j2 --all
 matrix:
+  fast_finish: true
+  include:
+    - rust: stable
+    - rust: beta
+    - rust: nightly
+    # Run rustfmt in its own shard.
+    - rust: stable
+      env:
+        - SHARD=rustfmt
+      before_script:
+        - rustup component add --toolchain stable rustfmt-preview
+      script:
+        - echo "Checking Gotham codebase with rustfmt release `cargo fmt --version`."
+        - cargo fmt --all -- --check
+    # Run Clippy in its own shard.
+    - rust: stable
+      env:
+        - SHARD=clippy
+      before_script:
+        - rustup component add --toolchain stable clippy
+      script:
+        - echo "Checking Gotham codebase with Clippy release `cargo clippy --version`."
+        - cargo clippy --all --profile test
+    # Run coverage in its own shard.
+    - rust: stable
+      env:
+        - SHARD=coverage
+      before_script:
+        - cargo install -f cargo-tarpaulin
+      script:
+        - cargo tarpaulin --all --forward --out Xml
+        - bash <(curl -s https://codecov.io/bash)
   allow_failures:
     - rust: nightly
+    - env:
+        - SHARD=coverage

@@ -4,22 +4,23 @@
 //! iterate to find the first matching `Route` (indicated by `Route::is_match`). The request will
 //! be dispatched to the first `Route` which matches.
 
-pub mod matcher;
 pub mod dispatch;
+pub mod matcher;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use hyper::{Response, Uri};
+use hyper::{Body, Response, Uri};
+use log::debug;
 
-use handler::HandlerFuture;
-use http::request::query_string;
-use extractor::{self, PathExtractor, QueryStringExtractor};
-use router::non_match::RouteNonMatch;
-use router::route::dispatch::Dispatcher;
-use router::route::matcher::RouteMatcher;
-use router::tree::SegmentMapping;
-use state::{request_id, State};
+use crate::extractor::{self, PathExtractor, QueryStringExtractor};
+use crate::handler::HandlerFuture;
+use crate::helpers::http::request::query_string;
+use crate::router::non_match::RouteNonMatch;
+use crate::router::route::dispatch::Dispatcher;
+use crate::router::route::matcher::RouteMatcher;
+use crate::router::tree::segment::SegmentMapping;
+use crate::state::{request_id, State};
 
 #[derive(Clone, Copy, PartialEq)]
 /// Indicates whether this `Route` will dispatch the request to an inner `Router` instance. To
@@ -49,6 +50,9 @@ pub enum Delegation {
 /// `Route` exists as a trait to allow abstraction over the generic types in `RouteImpl`. This
 /// trait should not be implemented outside of Gotham.
 pub trait Route: RefUnwindSafe {
+    /// The type of the response body. The requirements of Hyper are that this implements `Payload`.
+    /// Almost always, it will want to be `hyper::Body`.
+    type ResBody;
     /// Determines if this `Route` should be invoked, based on the request data in `State.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;
 
@@ -56,20 +60,24 @@ pub trait Route: RefUnwindSafe {
     fn delegation(&self) -> Delegation;
 
     /// Extracts dynamic components of the `Request` path and stores the `PathExtractor` in `State`.
-    fn extract_request_path(
+    fn extract_request_path<'a>(
         &self,
         state: &mut State,
-        segment_mapping: SegmentMapping,
+        params: SegmentMapping<'a>,
     ) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when the `PathExtractor` fails.
-    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response);
+    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response<Self::ResBody>);
 
     /// Extracts the query string parameters and stores the `QueryStringExtractor` in `State`.
     fn extract_query_string(&self, state: &mut State) -> Result<(), ExtractorFailed>;
 
     /// Extends the `Response` object when query string extraction fails.
-    fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response);
+    fn extend_response_on_query_string_error(
+        &self,
+        state: &mut State,
+        res: &mut Response<Self::ResBody>,
+    );
 
     /// Dispatches the request to this `Route`, which will execute the pipelines and the handler
     /// assigned to the `Route.
@@ -85,11 +93,11 @@ pub struct ExtractorFailed;
 pub struct RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
     matcher: RM,
-    dispatcher: Box<Dispatcher + Send + Sync>,
+    dispatcher: Box<dyn Dispatcher + Send + Sync>,
     _extractors: Extractors<PE, QSE>,
     delegation: Delegation,
 }
@@ -98,8 +106,8 @@ where
 /// for use by `Middleware` and `Handler` implementations.
 pub struct Extractors<PE, QSE>
 where
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
     rpe_phantom: PhantomData<PE>,
     qse_phantom: PhantomData<QSE>,
@@ -108,13 +116,13 @@ where
 impl<RM, PE, QSE> RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
     /// Creates a new `RouteImpl` from the provided components.
     pub fn new(
         matcher: RM,
-        dispatcher: Box<Dispatcher + Send + Sync>,
+        dispatcher: Box<dyn Dispatcher + Send + Sync>,
         _extractors: Extractors<PE, QSE>,
         delegation: Delegation,
     ) -> Self {
@@ -129,8 +137,8 @@ where
 
 impl<PE, QSE> Extractors<PE, QSE>
 where
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
     /// Creates a new set of Extractors for use with a `RouteImpl`
     pub fn new() -> Self {
@@ -144,9 +152,11 @@ where
 impl<RM, PE, QSE> Route for RouteImpl<RM, PE, QSE>
 where
     RM: RouteMatcher,
-    PE: PathExtractor,
-    QSE: QueryStringExtractor,
+    PE: PathExtractor<Body>,
+    QSE: QueryStringExtractor<Body>,
 {
+    type ResBody = Body;
+
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         self.matcher.is_match(state)
     }
@@ -159,12 +169,12 @@ where
         self.dispatcher.dispatch(state)
     }
 
-    fn extract_request_path(
+    fn extract_request_path<'a>(
         &self,
         state: &mut State,
-        segment_mapping: SegmentMapping,
+        params: SegmentMapping<'a>,
     ) -> Result<(), ExtractorFailed> {
-        match extractor::internal::from_segment_mapping::<PE>(segment_mapping) {
+        match extractor::internal::from_segment_mapping::<PE>(params) {
             Ok(val) => Ok(state.put(val)),
             Err(e) => {
                 debug!("[{}] path extractor failed: {}", request_id(&state), e);
@@ -173,7 +183,7 @@ where
         }
     }
 
-    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response) {
+    fn extend_response_on_path_error(&self, state: &mut State, res: &mut Response<Self::ResBody>) {
         PE::extend(state, res)
     }
 
@@ -197,7 +207,11 @@ where
         }
     }
 
-    fn extend_response_on_query_string_error(&self, state: &mut State, res: &mut Response) {
+    fn extend_response_on_query_string_error(
+        &self,
+        state: &mut State,
+        res: &mut Response<Self::ResBody>,
+    ) {
         QSE::extend(state, res)
     }
 }
@@ -206,40 +220,41 @@ where
 mod tests {
     use super::*;
 
-    use std::str::FromStr;
     use futures::Async;
-    use hyper::{Headers, Method, StatusCode, Uri};
+    use hyper::{HeaderMap, Method, StatusCode, Uri};
+    use std::str::FromStr;
 
-    use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-    use http::request::path::RequestPathSegments;
-    use http::response::create_response;
-    use pipeline::set::*;
-    use router::builder::*;
-    use router::route::dispatch::DispatcherImpl;
-    use router::route::matcher::MethodOnlyRouteMatcher;
-    use state::set_request_id;
+    use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+    use crate::helpers::http::request::path::RequestPathSegments;
+    use crate::helpers::http::response::create_empty_response;
+    use crate::pipeline::set::*;
+    use crate::router::builder::*;
+    use crate::router::route::dispatch::DispatcherImpl;
+    use crate::router::route::matcher::MethodOnlyRouteMatcher;
+    use crate::state::set_request_id;
 
     #[test]
     fn internal_route_tests() {
-        fn handler(state: State) -> (State, Response) {
-            let res = create_response(&state, StatusCode::Accepted, None);
+        fn handler(state: State) -> (State, Response<Body>) {
+            let res = create_empty_response(&state, StatusCode::ACCEPTED);
             (state, res)
         }
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let methods = vec![Method::Get];
+        let methods = vec![Method::GET];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::Internal);
 
         let mut state = State::new();
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
+        state.put(Method::GET);
         set_request_id(&mut state);
 
         match route.dispatch(state).poll() {
             Ok(Async::Ready((_state, response))) => {
-                assert_eq!(response.status(), StatusCode::Accepted)
+                assert_eq!(response.status(), StatusCode::ACCEPTED)
             }
             Ok(Async::NotReady) => panic!("expected future to be completed already"),
             Err((_state, e)) => panic!("error polling future: {}", e),
@@ -248,8 +263,8 @@ mod tests {
 
     #[test]
     fn external_route_tests() {
-        fn handler(state: State) -> (State, Response) {
-            let res = create_response(&state, StatusCode::Accepted, None);
+        fn handler(state: State) -> (State, Response<Body>) {
+            let res = create_empty_response(&state, StatusCode::ACCEPTED);
             (state, res)
         }
 
@@ -258,22 +273,22 @@ mod tests {
         });
 
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-        let methods = vec![Method::Get];
+        let methods = vec![Method::GET];
         let matcher = MethodOnlyRouteMatcher::new(methods);
         let dispatcher = Box::new(DispatcherImpl::new(secondary_router, (), pipeline_set));
         let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
         let route = RouteImpl::new(matcher, dispatcher, extractors, Delegation::External);
 
         let mut state = State::new();
-        state.put(Method::Get);
+        state.put(Method::GET);
         state.put(Uri::from_str("https://example.com/").unwrap());
-        state.put(Headers::new());
+        state.put(HeaderMap::new());
         state.put(RequestPathSegments::new("/"));
         set_request_id(&mut state);
 
         match route.dispatch(state).poll() {
             Ok(Async::Ready((_state, response))) => {
-                assert_eq!(response.status(), StatusCode::Accepted)
+                assert_eq!(response.status(), StatusCode::ACCEPTED)
             }
             Ok(Async::NotReady) => panic!("expected future to be completed already"),
             Err((_state, e)) => panic!("error polling future: {}", e),

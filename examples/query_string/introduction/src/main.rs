@@ -1,7 +1,6 @@
 //! An introduction to extracting query string name/value pairs, in a type safe way, with the
 //! Gotham web framework
 
-extern crate futures;
 extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
@@ -12,11 +11,8 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-use hyper::{Response, StatusCode};
-
-use gotham::http::response::create_response;
-use gotham::router::Router;
 use gotham::router::builder::*;
+use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 /// Holds data extracted from the Request query string.
@@ -59,7 +55,7 @@ struct Product {
 /// This handler uses the Serde project when generating responses. You don't need to
 /// know about Serde in order to understand the response that is being created here but if you're
 /// interested you can learn more at `http://serde.rs`.
-fn get_product_handler(mut state: State) -> (State, Response) {
+fn get_product_handler(mut state: State) -> (State, (mime::Mime, Vec<u8>)) {
     let res = {
         // Access the `QueryStringExtractor` instance from `state` which was put there for us by the
         // `Router` during request evaluation.
@@ -75,13 +71,10 @@ fn get_product_handler(mut state: State) -> (State, Response) {
         let product = Product {
             name: query_param.name,
         };
-        create_response(
-            &state,
-            StatusCode::Ok,
-            Some((
-                serde_json::to_vec(&product).expect("serialized product"),
-                mime::APPLICATION_JSON,
-            )),
+
+        (
+            mime::APPLICATION_JSON,
+            serde_json::to_vec(&product).expect("serialized product"),
         )
     };
     (state, res)
@@ -112,6 +105,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::test::TestServer;
+    use hyper::StatusCode;
 
     #[test]
     fn product_name_is_extracted() {
@@ -122,7 +116,7 @@ mod tests {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let body = response.read_body().unwrap();
         let expected_product = Product {

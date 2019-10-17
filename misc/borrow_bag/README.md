@@ -17,31 +17,6 @@ back later after moving the collection.
 The Gotham project extracted the implementation into this crate for use in other contexts and
 continues to maintain it.
 
-## Example
-
-```rust
-extern crate borrow_bag;
-
-use borrow_bag::BorrowBag;
-
-struct X(u8);
-struct Y(u8);
-
-fn main() {
-    let bag = BorrowBag::new();
-    let (bag, x_handle) = bag.add(X(1));
-    let (bag, y_handle) = bag.add(Y(2));
-
-    let x: &X = bag.borrow(x_handle);
-    assert_eq!(x.0, 1);
-
-    // Type annotations aren't necessary, the `Handle` carries the necessary
-    // type information.
-    let y = bag.borrow(y_handle);
-    assert_eq!(y.0, 2);
-}
-```
-
 ## License
 
 Licensed under your option of:

@@ -1,23 +1,24 @@
 //! Defines the `GothamService` type which is used to wrap a Gotham application and interface with
 //! Hyper.
 
-use std::thread;
 use std::net::SocketAddr;
-use std::sync::Arc;
 use std::panic::AssertUnwindSafe;
+use std::sync::Arc;
+use std::thread;
 
-use hyper;
-use hyper::server::Service;
-use hyper::{Request, Response};
+use failure;
+
 use futures::Future;
-use tokio_core::reactor::Handle;
+use http::request;
+use hyper::service::Service;
+use hyper::{Body, Request, Response};
+use log::debug;
 
-use handler::NewHandler;
-use state::{request_id, set_request_id, State};
-use state::client_addr::put_client_addr;
-use http::request::path::RequestPathSegments;
+use crate::handler::NewHandler;
+use crate::helpers::http::request::path::RequestPathSegments;
+use crate::state::client_addr::put_client_addr;
+use crate::state::{set_request_id, State};
 
-mod timing;
 mod trap;
 
 /// Wraps a `NewHandler` which will be used to serve requests. Used in `gotham::os::*` to bind
@@ -26,23 +27,23 @@ pub(crate) struct GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    t: Arc<T>,
-    handle: Handle,
+    handler: Arc<T>,
 }
 
 impl<T> GothamService<T>
 where
     T: NewHandler + 'static,
 {
-    pub(crate) fn new(t: Arc<T>, handle: Handle) -> GothamService<T> {
-        GothamService { t, handle }
+    pub(crate) fn new(handler: T) -> GothamService<T> {
+        GothamService {
+            handler: Arc::new(handler),
+        }
     }
 
     pub(crate) fn connect(&self, client_addr: SocketAddr) -> ConnectedGothamService<T> {
         ConnectedGothamService {
-            t: self.t.clone(),
-            handle: self.handle.clone(),
             client_addr,
+            handler: self.handler.clone(),
         }
     }
 }
@@ -53,8 +54,7 @@ pub(crate) struct ConnectedGothamService<T>
 where
     T: NewHandler + 'static,
 {
-    t: Arc<T>,
-    handle: Handle,
+    handler: Arc<T>,
     client_addr: SocketAddr,
 }
 
@@ -62,34 +62,45 @@ impl<T> Service for ConnectedGothamService<T>
 where
     T: NewHandler,
 {
-    type Request = Request;
-    type Response = Response;
-    type Error = hyper::Error;
-    type Future = Box<Future<Item = Self::Response, Error = Self::Error>>;
+    type ReqBody = Body; // required by hyper::server::conn::Http::serve_connection()
+    type ResBody = Body; // has to impl Payload...
+    type Error = failure::Compat<failure::Error>; // :Into<Box<StdError + Send + Sync>>
+    type Future = Box<dyn Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send>;
 
-    fn call(&self, req: Self::Request) -> Self::Future {
+    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
         let mut state = State::new();
 
         put_client_addr(&mut state, self.client_addr);
 
-        let (method, uri, version, headers, body) = req.deconstruct();
+        let (
+            request::Parts {
+                method,
+                uri,
+                version,
+                headers,
+                //extensions?
+                ..
+            },
+            body,
+        ) = req.into_parts();
 
-        state.put(self.handle.clone());
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);
         state.put(version);
         state.put(headers);
         state.put(body);
-        set_request_id(&mut state);
 
-        debug!(
-            "[DEBUG][{}][Thread][{:?}]",
-            request_id(&state),
-            thread::current().id(),
-        );
+        {
+            let request_id = set_request_id(&mut state);
+            debug!(
+                "[DEBUG][{}][Thread][{:?}]",
+                request_id,
+                thread::current().id(),
+            );
+        };
 
-        trap::call_handler(self.t.as_ref(), AssertUnwindSafe(state))
+        trap::call_handler(&*self.handler, AssertUnwindSafe(state))
     }
 }
 
@@ -97,29 +108,29 @@ where
 mod tests {
     use super::*;
 
-    use hyper::{Method, StatusCode};
-    use tokio_core::reactor::Core;
+    use hyper::{Body, StatusCode};
 
-    use http::response::create_response;
-    use router::builder::*;
-    use state::State;
+    use crate::helpers::http::response::create_empty_response;
+    use crate::router::builder::*;
+    use crate::state::State;
 
-    fn handler(state: State) -> (State, Response) {
-        let res = create_response(&state, StatusCode::Accepted, None);
+    fn handler(state: State) -> (State, Response<Body>) {
+        let res = create_empty_response(&state, StatusCode::ACCEPTED);
         (state, res)
     }
 
     #[test]
     fn new_handler_closure() {
-        let mut core = Core::new().unwrap();
-        let service = GothamService::new(Arc::new(|| Ok(handler)), core.handle());
+        let service = GothamService::new(|| Ok(handler));
 
-        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let req = Request::get("http://localhost/")
+            .body(Body::empty())
+            .unwrap();
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = core.run(f).unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        let response = f.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
     #[test]
@@ -128,14 +139,15 @@ mod tests {
             route.get("/").to(handler);
         });
 
-        let mut core = Core::new().unwrap();
-        let service = GothamService::new(Arc::new(router), core.handle());
+        let service = GothamService::new(router);
 
-        let req = Request::new(Method::Get, "http://localhost/".parse().unwrap());
+        let req = Request::get("http://localhost/")
+            .body(Body::empty())
+            .unwrap();
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = core.run(f).unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+        let response = f.wait().unwrap();
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 }

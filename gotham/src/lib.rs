@@ -3,83 +3,72 @@
 //! You can find out more about Gotham, including where to get help, at <https://gotham.rs>.
 //!
 //! We look forward to welcoming you into the Gotham community!
-#![doc(html_root_url = "https://docs.rs/gotham/0.1.2")] // Update when changed in Cargo.toml
+#![doc(html_root_url = "https://docs.rs/gotham/0.4.0")] // Update when changed in Cargo.toml
 #![warn(missing_docs, deprecated)]
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(
+        clippy::needless_lifetimes,
+        clippy::should_implement_trait,
+        clippy::unit_arg,
+        clippy::match_wild_err_arm,
+        clippy::new_without_default,
+        clippy::wrong_self_convention,
+        clippy::mutex_atomic,
+        clippy::borrowed_box,
+        clippy::get_unwrap,
+    )
+)]
 #![doc(test(no_crate_inject, attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 #![deny(private_in_public)]
-
-extern crate base64;
-extern crate bincode;
-extern crate borrow_bag;
-extern crate chrono;
-#[cfg(windows)]
-extern crate crossbeam;
-extern crate futures;
-#[macro_use]
-extern crate hyper;
-extern crate linked_hash_map;
-#[macro_use]
-extern crate log;
-extern crate mime;
-extern crate mio;
-extern crate num_cpus;
-extern crate rand;
-extern crate regex;
-#[macro_use]
-extern crate serde;
-extern crate tokio_core;
-extern crate url;
-extern crate uuid;
-
-#[cfg(test)]
-#[macro_use]
-extern crate serde_derive;
-
+pub mod error;
 pub mod extractor;
 pub mod handler;
+pub mod helpers;
 pub mod middleware;
 pub mod pipeline;
-pub mod http;
 pub mod router;
 mod service;
 pub mod state;
+
+/// Test utilities for Gotham and Gotham consumer apps.
 pub mod test;
-mod os;
 
-pub use os::current::start_with_num_threads;
+/// Functions for creating a Gotham service using HTTP.
+pub mod plain;
 
-use std::net::{SocketAddr, TcpListener, ToSocketAddrs};
-use handler::NewHandler;
+/// Functions for creating a Gotham service using HTTPS.
+pub mod tls;
 
-/// Starts a Gotham application, with the default number of threads (equal to the number of CPUs).
-///
-/// ## Windows
-///
-/// An additional thread is used on Windows to accept connections.
-pub fn start<NH, A>(addr: A, new_handler: NH)
-where
-    NH: NewHandler + 'static,
-    A: ToSocketAddrs,
-{
-    let threads = num_cpus::get();
-    start_with_num_threads(addr, threads, new_handler)
+use std::net::ToSocketAddrs;
+
+use tokio::net::TcpListener;
+use tokio::runtime::{self, Runtime};
+
+pub use plain::*;
+pub use tls::start as start_with_tls;
+
+fn new_runtime(threads: usize) -> Runtime {
+    runtime::Builder::new()
+        .core_threads(threads)
+        .name_prefix("gotham-worker-")
+        .build()
+        .unwrap()
 }
 
-fn tcp_listener<A>(addr: A) -> (TcpListener, SocketAddr)
+fn tcp_listener<A>(addr: A) -> TcpListener
 where
-    A: ToSocketAddrs,
+    A: ToSocketAddrs + 'static,
 {
-    let addr = match addr.to_socket_addrs().map(|ref mut i| i.next()) {
-        Ok(Some(a)) => a,
-        Ok(_) => panic!("unable to resolve listener address"),
-        Err(_) => panic!("unable to parse listener address"),
-    };
+    let addr = addr
+        .to_socket_addrs()
+        .expect("unable to parse listener address")
+        .next()
+        .expect("unable to resolve listener address");
 
-    let listener = TcpListener::bind(addr).expect("unable to open TCP listener");
-
-    (listener, addr)
+    TcpListener::bind(&addr).expect("unable to open TCP listener")
 }

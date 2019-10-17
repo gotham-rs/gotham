@@ -1,11 +1,13 @@
 //! Defines the types for connecting multiple middleware into a "chain" when forming a pipeline.
 
+use log::trace;
+
 use std::io;
 use std::panic::RefUnwindSafe;
 
-use handler::HandlerFuture;
-use middleware::{Middleware, NewMiddleware};
-use state::{request_id, State};
+use crate::handler::HandlerFuture;
+use crate::middleware::{Middleware, NewMiddleware};
+use crate::state::{request_id, State};
 
 /// A recursive type representing a pipeline, which is used to spawn a `MiddlewareChain`.
 ///
@@ -22,7 +24,7 @@ pub unsafe trait NewMiddlewareChain: RefUnwindSafe + Sized {
 unsafe impl<T, U> NewMiddlewareChain for (T, U)
 where
     T: NewMiddleware,
-    T::Instance: 'static,
+    T::Instance: Send + 'static,
     U: NewMiddlewareChain,
 {
     type Instance = (T::Instance, U::Instance);
@@ -58,13 +60,13 @@ pub unsafe trait MiddlewareChain: Sized {
     /// Recursive function for processing middleware and chaining to the given function.
     fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static;
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static;
 }
 
 unsafe impl MiddlewareChain for () {
     fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         // At the last item in the `MiddlewareChain`, the function is invoked to serve the
         // request. `f` is the nested function of all `Middleware` and the `Handler`.
@@ -78,12 +80,12 @@ unsafe impl MiddlewareChain for () {
 
 unsafe impl<T, U> MiddlewareChain for (T, U)
 where
-    T: Middleware + 'static,
+    T: Middleware + Send + 'static,
     U: MiddlewareChain,
 {
     fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
     {
         let (m, p) = self;
         // Construct the function from the inside, out. Starting with a function which calls the

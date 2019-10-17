@@ -3,8 +3,7 @@
 use regex::Regex;
 
 use std::cmp::Ordering;
-use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::process;
+use std::panic::AssertUnwindSafe;
 
 /// A unwind-safe wrapper for Regex that implements PartialEq, Eq, PartialOrd, and Ord.  These
 /// traits are implemented in a potentially error-prone way by comparing the underlying &str
@@ -23,22 +22,21 @@ impl ConstrainedSegmentRegex {
     /// intended.
     pub fn new(regex: &str) -> Self {
         ConstrainedSegmentRegex {
-            regex: AssertUnwindSafe(Regex::new(&format!("^{pattern}$", pattern = regex)).unwrap()),
+            regex: AssertUnwindSafe(Regex::new(&format!("^{}$", regex)).unwrap()),
         }
+    }
+
+    /// Returns the pattern backing this regex as a `&str`.
+    #[inline]
+    pub(crate) fn as_str(&self) -> &str {
+        self.regex.as_str()
     }
 
     /// Wraps `regex::Regex::is_match` to return true if and only if the regex matches the string
     /// given.
+    #[inline]
     pub(crate) fn is_match(&self, s: &str) -> bool {
-        match catch_unwind(|| self.regex.is_match(s)) {
-            Ok(b) => b,
-            Err(_) => {
-                eprintln!(
-                    "PANIC: Regex::is_match caused a panic, unable to rescue with a HTTP error"
-                );
-                process::abort()
-            }
-        }
+        self.regex.is_match(s)
     }
 }
 
@@ -52,23 +50,20 @@ impl Eq for ConstrainedSegmentRegex {}
 
 impl PartialOrd for ConstrainedSegmentRegex {
     fn partial_cmp(&self, other: &ConstrainedSegmentRegex) -> Option<Ordering> {
-        Some(self.regex.as_str().cmp(other.regex.as_str()))
+        Some(self.as_str().cmp(other.as_str()))
     }
 }
 
 impl Ord for ConstrainedSegmentRegex {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.regex.as_str().cmp(other.regex.as_str())
+        self.as_str().cmp(other.as_str())
     }
 }
 
 impl Clone for ConstrainedSegmentRegex {
     fn clone(&self) -> ConstrainedSegmentRegex {
-        let ConstrainedSegmentRegex {
-            regex: AssertUnwindSafe(ref regex),
-        } = *self;
         ConstrainedSegmentRegex {
-            regex: AssertUnwindSafe(regex.clone()),
+            regex: AssertUnwindSafe(self.regex.0.clone()),
         }
     }
 }

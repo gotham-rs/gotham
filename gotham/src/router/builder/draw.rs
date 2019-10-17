@@ -2,18 +2,26 @@ use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
 use hyper::Method;
+use log::trace;
 
-use pipeline::chain::PipelineHandleChain;
-use pipeline::set::PipelineSet;
-use router::route::matcher::MethodOnlyRouteMatcher;
-use extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-use router::builder::{AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder,
-                      SingleRouteBuilder};
-use router::tree::node::{NodeBuilder, SegmentType};
-use router::tree::regex::ConstrainedSegmentRegex;
+use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
+use crate::helpers::http::request::path::split_path_segments;
+use crate::pipeline::chain::PipelineHandleChain;
+use crate::pipeline::set::PipelineSet;
+use crate::router::builder::{
+    AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder,
+};
+use crate::router::route::matcher::{
+    AnyRouteMatcher, IntoRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,
+};
+use crate::router::tree::node::Node;
+use crate::router::tree::regex::ConstrainedSegmentRegex;
+use crate::router::tree::segment::SegmentType;
 
-/// The default type returned when building a single route. See
-/// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
+/// The type returned when building a route that only considers path and http verb(s) when
+/// determining if it matches a request.
+///
+/// See `router::builder::DefineSingleRoute` for an overview of route specification.
 pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     'a,
     MethodOnlyRouteMatcher,
@@ -23,10 +31,16 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     NoopQueryStringExtractor,
 >;
 
+/// The type returned when building a route with explicit matching requirements.
+///
+/// See `router::builder::DefineSingleRoute` for an overview of route specification.
+pub type ExplicitSingleRouteBuilder<'a, M, C, P> =
+    SingleRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
+
 /// The type passed to the function used when building associated routes. See
 /// `AssociatedRouteBuilder` for information about the API available for associated routes.
-pub type DefaultAssociatedRouteBuilder<'a, C, P> =
-    AssociatedRouteBuilder<'a, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
+pub type DefaultAssociatedRouteBuilder<'a, M, C, P> =
+    AssociatedRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
 /// Defines functions used by a builder to determine which request paths will be dispatched to a
 /// route. This trait is implemented by the top-level `RouterBuilder`, and also the `ScopedBuilder`
@@ -43,14 +57,14 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -66,17 +80,17 @@ where
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .head("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn get_or_head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Get, Method::Head], path)
+        self.request(vec![Method::GET, Method::HEAD], path)
     }
 
     /// Creates a route which matches **only** `GET` requests to the given path (ignoring `HEAD`
@@ -88,14 +102,14 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -110,11 +124,11 @@ where
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Get], path)
+        self.request(vec![Method::GET], path)
     }
 
     /// Creates a route which matches `HEAD` requests to the given path.
@@ -125,14 +139,14 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -147,11 +161,11 @@ where
     /// #       .head("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn head<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Head], path)
+        self.request(vec![Method::HEAD], path)
     }
 
     /// Creates a route which matches `POST` requests to the given path.
@@ -163,14 +177,14 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -185,11 +199,11 @@ where
     /// #       .post("https://example.com/request/path", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn post<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Post], path)
+        self.request(vec![Method::POST], path)
     }
 
     /// Creates a route which matches `PUT` requests to the given path.
@@ -201,14 +215,14 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -223,11 +237,11 @@ where
     /// #       .put("https://example.com/request/path", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn put<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Put], path)
+        self.request(vec![Method::PUT], path)
     }
 
     /// Creates a route which matches `PATCH` requests to the given path.
@@ -239,14 +253,14 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -261,11 +275,11 @@ where
     /// #       .patch("https://example.com/request/path", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn patch<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Patch], path)
+        self.request(vec![Method::PATCH], path)
     }
 
     /// Creates a route which matches `DELETE` requests to the given path.
@@ -276,14 +290,14 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -298,11 +312,11 @@ where
     /// #       .delete("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn delete<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Delete], path)
+        self.request(vec![Method::DELETE], path)
     }
 
     /// Creates a route which matches `OPTIONS` requests to the given path.
@@ -313,14 +327,14 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Method, Request, Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -331,16 +345,15 @@ where
     /// #
     /// # fn main() {
     /// #   let test_server = TestServer::new(router()).unwrap();
-    /// #   let request = Request::new(
-    /// #       Method::Options,
-    /// #       "https://example.com/request/path".parse().unwrap()
-    /// #   );
-    /// #   let response = test_server.client().perform(request).unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   let response = test_server.client()
+    /// #       .options("https://example.com/request/path")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn options<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
-        self.request(vec![Method::Options], path)
+        self.request(vec![Method::OPTIONS], path)
     }
 
     /// Creates a single route which matches any requests to the given `path` with one of the
@@ -355,20 +368,20 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
-    /// # use hyper::Method::*;
+    /// # use hyper::{Body, Response, StatusCode};
+    /// # use hyper::Method;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #
-    /// # fn my_handler(state: State) -> (State, Response) {
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
     /// build_simple_router(|route| {
-    ///     route.request(vec![Get, Head], "/request/path").to(my_handler);
+    ///     route.request(vec![Method::GET, Method::HEAD], "/request/path").to(my_handler);
     /// })
     /// # }
     /// #
@@ -379,24 +392,79 @@ where
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .head("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
-    fn request<'b>(
+    ///
+    /// ```
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// # extern crate mime;
+    /// #
+    /// # use hyper::{Body, Response, StatusCode};
+    /// # use hyper::header::ACCEPT;
+    /// # use gotham::state::State;
+    /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// # fn my_handler(state: State) -> (State, Response<Body>) {
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// # }
+    /// #
+    /// # fn router() -> Router {
+    /// build_simple_router(|route| {
+    ///     // All we match on is the Accept header, the method is not considered.
+    ///     let matcher = AcceptHeaderRouteMatcher::new(vec![mime::APPLICATION_JSON]);
+    ///     route.request(matcher, "/request/path").to(my_handler);
+    /// })
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .with_header(ACCEPT, mime::APPLICATION_JSON.to_string().parse().unwrap())
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+    /// #
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .with_header(ACCEPT, mime::TEXT_PLAIN.to_string().parse().unwrap())
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::NOT_ACCEPTABLE);
+    /// #
+    /// #   // No Accept type being provided is valid for the AcceptHeaderRouterMatcher
+    /// #   // Proves the method is not considered
+    /// #   let response = test_server.client()
+    /// #       .delete("https://example.com/request/path")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+    /// # }
+    /// ```
+    fn request<'b, IRM, M>(
         &'b mut self,
-        methods: Vec<Method>,
+        matcher: IRM,
         path: &str,
-    ) -> DefaultSingleRouteBuilder<'b, C, P> {
+    ) -> ExplicitSingleRouteBuilder<'b, M, C, P>
+    where
+        IRM: IntoRouteMatcher<Output = M>,
+        M: RouteMatcher + Send + Sync + 'static,
+    {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
-
-        let matcher = MethodOnlyRouteMatcher::new(methods);
+        let matcher = matcher.into_route_matcher();
 
         SingleRouteBuilder {
             matcher,
@@ -414,8 +482,8 @@ where
     /// ```rust
     /// # extern crate gotham;
     /// # extern crate hyper;
-    /// #
-    /// # use hyper::{Response, StatusCode};
+    ///
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -423,8 +491,8 @@ where
     /// #
     /// # mod api {
     /// #   use super::*;
-    /// #   pub fn list(state: State) -> (State, Response) {
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   pub fn list(state: State) -> (State, Response<Body>) {
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// #   }
     /// # }
     /// #
@@ -443,7 +511,7 @@ where
     /// #       .get("https://example.com/api/list")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn scope<F>(&mut self, path: &str, f: F)
@@ -472,48 +540,78 @@ where
     /// # #[macro_use]
     /// # extern crate serde_derive;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::single_pipeline;
+    /// # use gotham::pipeline::set::{finalize_pipeline_set, new_pipeline_set};
     /// # use gotham::test::TestServer;
     /// #
     /// # #[derive(Default, Serialize, Deserialize)]
     /// # struct Session;
     /// #
+    /// # #[derive(Default, Serialize, Deserialize)]
+    /// # struct AdminSession;
+    /// #
     /// # mod resource {
     /// #   use super::*;
-    /// #   pub fn list(state: State) -> (State, Response) {
+    /// #   pub fn list(state: State) -> (State, Response<Body>) {
     /// #       assert!(state.has::<SessionData<Session>>());
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #       assert!(!state.has::<SessionData<AdminSession>>());
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// #   }
     /// # }
     /// #
-    /// # fn handler(state: State) -> (State, Response) {
+    /// # mod admin {
+    /// #   use super::*;
+    /// #   pub fn handler(state: State) -> (State, Response<Body>) {
+    /// #       assert!(state.has::<SessionData<Session>>());
+    /// #       assert!(state.has::<SessionData<AdminSession>>());
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   }
+    /// # }
+    /// #
+    /// # fn handler(state: State) -> (State, Response<Body>) {
     /// #   assert!(!state.has::<SessionData<Session>>());
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   assert!(!state.has::<SessionData<AdminSession>>());
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
-    /// let (chain, pipelines) = single_pipeline(
+    /// let pipelines = new_pipeline_set();
+    /// let (pipelines, default) = pipelines.add(
     ///     new_pipeline()
     ///         .add(NewSessionMiddleware::default().with_session_type::<Session>())
     ///         .build()
     /// );
+    /// let (pipelines, extended) = pipelines.add(
+    ///     new_pipeline()
+    ///         .add(NewSessionMiddleware::default().with_session_type::<AdminSession>())
+    ///         .build()
+    /// );
+    /// let pipeline_set = finalize_pipeline_set(pipelines);
     ///
-    /// build_router(chain, pipelines, |route| {
+    /// let default_chain = (default, ());
+    /// let extended_chain = (extended, default_chain);
+    ///
+    /// build_router(default_chain, pipeline_set, |route| {
     ///     // Requests for the root handler use an empty set of pipelines, skipping the session
-    ///     // middleware.
+    ///     // middlewares.
     ///     route.with_pipeline_chain((), |route| {
     ///         route.get("/").to(handler);
     ///     });
     ///
-    ///     // Requests dispatched to the rest of the application will invoke the session
-    ///     // middleware as usual.
+    ///     // Requests dispatched to the resource module will only invoke one session
+    ///     // middleware which is the default behavior.
     ///     route.get("/resource/list").to(resource::list);
+    ///
+    ///     // Requests for the admin handler will additionally invoke the admin session
+    ///     // middleware.
+    ///     route.with_pipeline_chain(extended_chain, |route| {
+    ///         route.get("/admin").to(admin::handler);
+    ///     });
     /// })
     /// # }
     /// #
@@ -524,13 +622,13 @@ where
     /// #       .get("https://example.com/")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/resource/list")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn with_pipeline_chain<F, NC>(&mut self, pipeline_chain: NC, f: F)
@@ -557,7 +655,7 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -565,8 +663,8 @@ where
     /// #
     /// fn admin_router() -> Router {
     ///     // Implementation elided
-    /// #   fn handler(state: State) -> (State, Response) {
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   fn handler(state: State) -> (State, Response<Body>) {
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// #   }
     /// #
     /// #   build_simple_router(|route| {
@@ -586,7 +684,7 @@ where
     /// #       .get("https://example.com/admin")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn delegate<'b>(&'b mut self, path: &str) -> DelegateRouteBuilder<'b, C, P> {
@@ -611,7 +709,7 @@ where
     /// # #[macro_use]
     /// # extern crate serde_derive;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::new_pipeline;
@@ -626,18 +724,18 @@ where
     /// // API routes which don't require sessions.
     /// fn api_router() -> Router {
     ///     // Implementation elided
-    /// #   fn handler(state: State) -> (State, Response) {
+    /// #   fn handler(state: State) -> (State, Response<Body>) {
     /// #       assert!(!state.has::<SessionData<Session>>());
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// #   }
     /// #
     /// #   build_simple_router(|route| {
     /// #       route.get("/").to(handler);
     /// #   })
     /// }
-    /// # fn handler(state: State) -> (State, Response) {
+    /// # fn handler(state: State) -> (State, Response<Body>) {
     /// #   assert!(state.has::<SessionData<Session>>());
-    /// #   (state, Response::new().with_status(StatusCode::Accepted))
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// # }
     ///
     /// # fn router() -> Router {
@@ -662,13 +760,13 @@ where
     /// #       .get("https://example.com/")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// #
     /// #   let response = test_server.client()
     /// #       .get("https://example.com/api")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn delegate_without_pipelines<'b>(&'b mut self, path: &str) -> DelegateRouteBuilder<'b, (), P> {
@@ -692,7 +790,7 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Response, StatusCode};
+    /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -700,19 +798,19 @@ where
     /// #
     /// mod resource {
     /// #   use super::*;
-    ///     pub fn show(state: State) -> (State, Response) {
+    ///     pub fn show(state: State) -> (State, Response<Body>) {
     ///         // Implementation elided.
-    /// #       (state, Response::new().with_status(StatusCode::NoContent))
+    /// #       (state, Response::builder().status(StatusCode::NO_CONTENT).body(Body::empty()).unwrap())
     ///     }
     ///
-    ///     pub fn update(state: State) -> (State, Response) {
+    ///     pub fn update(state: State) -> (State, Response<Body>) {
     ///         // Implementation elided.
-    /// #       (state, Response::new().with_status(StatusCode::Created))
+    /// #       (state, Response::builder().status(StatusCode::CREATED).body(Body::empty()).unwrap())
     ///     }
     ///
-    ///     pub fn delete(state: State) -> (State, Response) {
+    ///     pub fn delete(state: State) -> (State, Response<Body>) {
     ///         // Implementation elided.
-    /// #       (state, Response::new().with_status(StatusCode::Accepted))
+    /// #       (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     ///     }
     /// }
     ///
@@ -733,47 +831,43 @@ where
     /// #       .get("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::NoContent);
+    /// #   assert_eq!(response.status(), StatusCode::NO_CONTENT);
     /// #
     /// #   let response = test_server.client()
     /// #       .patch("https://example.com/resource", b"".to_vec(), mime::TEXT_PLAIN)
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Created);
+    /// #   assert_eq!(response.status(), StatusCode::CREATED);
     /// #
     /// #   let response = test_server.client()
     /// #       .delete("https://example.com/resource")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::Accepted);
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
     /// # }
     /// ```
     fn associate<'b, F>(&'b mut self, path: &str, f: F)
     where
-        F: FnOnce(&mut DefaultAssociatedRouteBuilder<'b, C, P>),
+        F: FnOnce(&mut DefaultAssociatedRouteBuilder<'b, AnyRouteMatcher, C, P>),
     {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
 
-        let mut builder = AssociatedRouteBuilder {
-            node_builder,
-            pipeline_chain: *pipeline_chain,
-            pipelines: pipelines.clone(),
-            phantom: PhantomData,
-        };
+        let mut builder =
+            AssociatedRouteBuilder::new(node_builder, *pipeline_chain, pipelines.clone());
 
         f(&mut builder)
     }
 
     /// Return the components that comprise this builder. For internal use only.
     #[doc(hidden)]
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>);
+    fn component_refs(&mut self) -> (&mut Node, &mut C, &PipelineSet<P>);
 }
 
-fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBuilder {
+fn descend<'n>(node_builder: &'n mut Node, path: &str) -> &'n mut Node {
     trace!("[walking to: {}]", path);
 
-    let path = if path.starts_with("/") {
+    let path = if path.starts_with('/') {
         &path[1..]
     } else {
         path
@@ -782,11 +876,11 @@ fn descend<'n>(node_builder: &'n mut NodeBuilder, path: &str) -> &'n mut NodeBui
     if path.is_empty() {
         node_builder
     } else {
-        build_subtree(node_builder, path.split("/"))
+        build_subtree(node_builder, split_path_segments(path))
     }
 }
 
-fn build_subtree<'n, 's, I>(node: &'n mut NodeBuilder, mut i: I) -> &'n mut NodeBuilder
+fn build_subtree<'n, 's, I>(node: &'n mut Node, mut i: I) -> &'n mut Node
 where
     I: Iterator<Item = &'s str>,
 {
@@ -797,7 +891,7 @@ where
             let (segment, segment_type) = match segment.chars().next() {
                 Some(':') => {
                     let segment = &segment[1..];
-                    match segment.find(":") {
+                    match segment.find(':') {
                         Some(n) => {
                             let (segment, pattern) = segment.split_at(n);
                             let regex = ConstrainedSegmentRegex::new(&pattern[1..]);
@@ -812,11 +906,10 @@ where
             };
 
             if !node.has_child(segment, segment_type.clone()) {
-                let node_builder = NodeBuilder::new(segment, segment_type.clone());
-                node.add_child(node_builder);
+                node.add_child(Node::new(segment, segment_type.clone()));
             }
 
-            let child = node.borrow_mut_child(segment, segment_type).unwrap();
+            let child = node.borrow_child_mut(segment, segment_type).unwrap();
             build_subtree(child, i)
         }
         None => {
@@ -831,7 +924,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+    fn component_refs(&mut self) -> (&mut Node, &mut C, &PipelineSet<P>) {
         (
             &mut self.node_builder,
             &mut self.pipeline_chain,
@@ -845,7 +938,7 @@ where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
-    fn component_refs(&mut self) -> (&mut NodeBuilder, &mut C, &PipelineSet<P>) {
+    fn component_refs(&mut self) -> (&mut Node, &mut C, &PipelineSet<P>) {
         (
             &mut self.node_builder,
             &mut self.pipeline_chain,
@@ -858,17 +951,17 @@ where
 mod tests {
     use std::io;
 
-    use hyper::{Response, StatusCode};
     use futures::future;
+    use hyper::{Body, Response, StatusCode};
 
-    use handler::HandlerFuture;
-    use middleware::{Middleware, NewMiddleware};
-    use state::State;
-    use router::builder::*;
-    use pipeline::*;
-    use pipeline::single::*;
-    use http::response::create_response;
-    use test::TestServer;
+    use crate::handler::HandlerFuture;
+    use crate::helpers::http::response::create_empty_response;
+    use crate::middleware::{Middleware, NewMiddleware};
+    use crate::pipeline::single::*;
+    use crate::pipeline::*;
+    use crate::router::builder::*;
+    use crate::state::State;
+    use crate::test::TestServer;
 
     #[derive(Clone, Copy)]
     struct QuickExitMiddleware;
@@ -888,15 +981,18 @@ mod tests {
         {
             let f = future::ok((
                 state,
-                Response::new().with_status(StatusCode::InternalServerError),
+                Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Body::empty())
+                    .unwrap(),
             ));
 
             Box::new(f)
         }
     }
 
-    fn test_handler(state: State) -> (State, Response) {
-        let response = create_response(&state, StatusCode::Accepted, None);
+    fn test_handler(state: State) -> (State, Response<Body>) {
+        let response = create_empty_response(&state, StatusCode::ACCEPTED);
         (state, response)
     }
 
@@ -918,7 +1014,7 @@ mod tests {
             .get("http://localhost/test/")
             .perform()
             .unwrap();
-        assert_eq!(response.status(), StatusCode::InternalServerError);
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[test]
@@ -941,6 +1037,7 @@ mod tests {
             .get("http://localhost/test/")
             .perform()
             .unwrap();
-        assert_eq!(response.status(), StatusCode::Accepted);
+
+        assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 }
