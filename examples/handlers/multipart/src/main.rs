@@ -5,7 +5,6 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 extern crate multipart;
-extern crate url;
 
 use futures::{future, Future, Stream};
 use gotham::handler::{HandlerFuture, IntoHandlerError};
