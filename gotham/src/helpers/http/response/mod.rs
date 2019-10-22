@@ -1,4 +1,8 @@
 //! Helpers for HTTP response generation
+#[cfg(feature = "askama")]
+mod askama;
+#[cfg(feature = "askama")]
+pub use self::askama::try_create_html_response;
 
 use hyper::header::{CONTENT_TYPE, LOCATION};
 use hyper::{Body, Method, Response, StatusCode};
