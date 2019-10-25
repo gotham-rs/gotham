@@ -44,6 +44,7 @@ information on functionality and ordering.
 | [Into Response](into_response) | Implementing the Gotham web framework's `IntoResponse` trait. | 1 |
 | [Templating](templating) | An example using various templating engines. | 1 |
 | [Static Assets](static_assets) | Serving static assets. | 1 |
+| [OpenSSL](openssl) | Using alternative TLS implementations. | 1 |
 
 ^ Gotham web framework examples are under active development.
 

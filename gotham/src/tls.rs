@@ -1,15 +1,14 @@
-use futures::{Future, Stream};
-use hyper::server::conn::Http;
-use log::info;
+use futures::Future;
+use log::{error, info};
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
-use tokio::executor;
 use tokio::net::TcpListener;
 use tokio::runtime::TaskExecutor;
 use tokio_rustls::{rustls, TlsAcceptor};
 
-use super::{handler::NewHandler, service::GothamService};
-use super::{new_runtime, tcp_listener};
+use super::{bind_server, new_runtime, tcp_listener};
+
+use super::handler::NewHandler;
 
 pub mod test;
 
@@ -75,10 +74,10 @@ where
     addr
     );
 
-    bind_server(listener, new_handler, tls_config)
+    bind_server_rustls(listener, new_handler, tls_config)
 }
 
-fn bind_server<NH>(
+fn bind_server_rustls<NH>(
     listener: TcpListener,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
@@ -86,29 +85,11 @@ fn bind_server<NH>(
 where
     NH: NewHandler + 'static,
 {
-    let protocol = Arc::new(Http::new());
-    let gotham_service = GothamService::new(new_handler);
     let tls = TlsAcceptor::from(Arc::new(tls_config));
-
-    listener
-        .incoming()
-        .map_err(|e| panic!("socket error = {:?}", e))
-        .for_each(move |socket| {
-            let addr = socket.peer_addr().unwrap();
-            let service = gotham_service.connect(addr);
-            let accepted_protocol = protocol.clone();
-            let handler = tls
-                .accept(socket)
-                .map_err(|e| panic!("https error = {:?}", e))
-                .and_then(move |socket| {
-                    accepted_protocol
-                        .serve_connection(socket, service)
-                        .with_upgrades()
-                        .map_err(|e| panic!("http error = {:?}", e))
-                });
-
-            executor::spawn(handler);
-
-            Ok(())
+    bind_server(listener, new_handler, move |socket| {
+        tls.accept(socket).map_err(|e| {
+            error!(target: "gotham::tls", "TLS handshake error: {:?}", e);
+            ()
         })
+    })
 }
