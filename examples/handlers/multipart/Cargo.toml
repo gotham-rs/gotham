@@ -11,5 +11,4 @@ gotham = { path = "../../../gotham" }
 hyper = "0.12"
 mime = "0.3"
 futures = "0.1"
-url = "1.6"
 multipart = { version = "0.16", default-features = false, features = ["server"] }

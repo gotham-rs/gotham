@@ -1,6 +1,10 @@
 language: rust
 sudo: required
 dist: trusty
+addons:
+  apt:
+    packages:
+      - libssl-dev
 env:
   - PATH=$HOME/.cargo/bin:$PATH
 script:
@@ -14,9 +18,7 @@ matrix:
     # Run rustfmt in its own shard.
     - rust: stable
       env:
-        # Give a useful display name in the job list.
         - SHARD=rustfmt
-        - PATH=$HOME/.cargo/bin/:$PATH
       before_script:
         - rustup component add --toolchain stable rustfmt-preview
       script:
@@ -26,21 +28,21 @@ matrix:
     - rust: stable
       env:
         - SHARD=clippy
-        - PATH=$HOME/.cargo/bin/:$PATH
       before_script:
         - rustup component add --toolchain stable clippy
       script:
         - echo "Checking Gotham codebase with Clippy release `cargo clippy --version`."
         - cargo clippy --all --profile test
+    # Run coverage in its own shard.
+    - rust: stable
+      env:
+        - SHARD=coverage
+      before_script:
+        - cargo install -f cargo-tarpaulin
+      script:
+        - cargo tarpaulin --all --forward --out Xml
+        - bash <(curl -s https://codecov.io/bash)
   allow_failures:
     - rust: nightly
-addons:
-  apt:
-    packages:
-        - libssl-dev
-after_success: |
-  if [[ "$TRAVIS_RUST_VERSION" == stable && "$SHARD" != rustfmt ]]; then
-    bash <(curl https://raw.githubusercontent.com/xd009642/tarpaulin/master/travis-install.sh)
-    cargo tarpaulin --all --forward --out Xml
-    bash <(curl -s https://codecov.io/bash)
-  fi
+    - env:
+        - SHARD=coverage

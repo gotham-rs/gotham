@@ -29,7 +29,7 @@ use schema::products;
 // For this example, we'll use a static database URL,
 // although one might commonly pass this in via
 // environment variables instead.
-static DATABASE_URL: &'static str = "products.db";
+static DATABASE_URL: &str = "products.db";
 
 // We'll use a file based Sqlite database to keep things simple.
 // Don't forget to run the step in the README to create the database
@@ -142,7 +142,7 @@ mod tests {
     use std::str;
     use tokio::runtime;
 
-    static DATABASE_URL: &'static str = ":memory:";
+    static DATABASE_URL: &str = ":memory:";
 
     // For this example, we run migrations automatically in each test.
     // You could also choose to do this separately using something like

@@ -197,6 +197,7 @@ impl SessionCookieConfig {
 /// # extern crate bincode;
 /// # extern crate mime;
 /// #
+/// # use std::sync::Arc;
 /// # use std::time::Duration;
 /// # use futures::future;
 /// # use gotham::handler::HandlerFuture;
@@ -241,9 +242,12 @@ impl SessionCookieConfig {
 /// #   backend.persist_session(identifier.clone(), &bytes[..]).unwrap();
 /// #
 /// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
+/// #   let nm = Arc::new(nm);
 /// #
 /// #   let new_handler = move || {
-/// #       let handler = |state| {
+/// #       let nm = nm.clone();
+/// #
+/// #       let handler = move |state| {
 /// #           let m = nm.new_middleware().unwrap();
 /// #           let chain = |state| Box::new(future::ok(my_handler(state))) as Box<HandlerFuture>;
 /// #

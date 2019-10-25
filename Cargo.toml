@@ -71,7 +71,9 @@ members = [
     "examples/openssl",
 
     # example_contribution_template
-    "examples/example_contribution_template/name"
+    "examples/example_contribution_template/name",
+
+    "examples/websocket",
 ]
 
 [patch.crates-io]
