@@ -29,7 +29,7 @@ use crate::state::{request_id, FromState, State};
 /// #
 /// #   State::with_new(|state| {
 /// #
-/// let supported_media_types = vec![mime::APPLICATION_JSON, mime::IMAGE_STAR];
+/// let supported_media_types = vec![mime::TEXT_CSV, mime::APPLICATION_JSON, mime::IMAGE_STAR];
 /// let matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///
 /// // No accept header
@@ -66,6 +66,18 @@ use crate::state::{request_id, FromState, State};
 /// headers.insert(ACCEPT, "image/*".parse().unwrap());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
+///
+/// // Accept header of `text/*`
+/// let mut headers = HeaderMap::new();
+/// headers.insert(ACCEPT, "text/*".parse().unwrap());
+/// state.put(headers);
+/// assert!(matcher.is_match(&state).is_ok());
+///
+/// // Accept header of `image/jpeg`
+/// let mut headers = HeaderMap::new();
+/// headers.insert(ACCEPT, "image/jpeg".parse().unwrap());
+/// state.put(headers);
+/// assert!(matcher.is_match(&state).is_ok());
 /// #
 /// #   });
 /// # }
@@ -93,30 +105,127 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         // Request method is valid, ensure valid Accept header
-        match HeaderMap::borrow_from(state).get(ACCEPT) {
-            // The client has not specified an `Accept` header.
-            None => Ok(()),
-
-            // Or the header is any type, so it's fine.
-            Some(header) if header == "*/*" => Ok(()),
-
-            // Otherwise we have to validate the header is a match.
-            Some(mime_header) => parse_mime_type(mime_header)
-                .map_err(|_| RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
-                .and_then(|mime_type| {
-                    if self.supported_media_types.contains(&mime_type) {
-                        return Ok(());
-                    }
-                    trace!(
-                        "[{}] did not provide an Accept with media types supported by this Route",
-                        request_id(&state)
-                    );
-                    Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
-                }),
+        //
+        let mut headers = HeaderMap::borrow_from(state).get_all(ACCEPT).iter().peekable();
+        if headers.peek().is_none() {
+            return Ok(())
         }
+
+        if headers.any(|hv| self.one_match(hv)) {
+            return Ok(())
+        } else {
+            trace!(
+                "[{}] did not provide an Accept with media types supported by this Route",
+                request_id(&state)
+                );
+            Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
+        }
+
+    }
+}
+
+impl AcceptHeaderRouteMatcher {
+    fn one_match(&self, accepted: &HeaderValue) -> bool {
+        parse_mime_type(accepted)
+            .map(|mime_type| {
+                self.supported_media_types.iter().any(|supported| matches(supported, &mime_type))
+            }).unwrap_or(false)
     }
 }
 
 fn parse_mime_type(hv: &HeaderValue) -> error::Result<mime::Mime> {
     Ok(hv.to_str()?.parse()?)
+}
+
+fn matches(provided: &mime::Mime, accepted: &mime::Mime) -> bool {
+    println!("types: {:?} {:?}", provided.type_(), accepted.type_());
+    match (provided.type_(), accepted.type_()) {
+        (mime::STAR, _) | (_, mime::STAR) => true,
+        (p, a) if p == a => {
+            println!("subtypes: {:?} {:?}", provided.subtype(), accepted.subtype());
+            match (provided.subtype(), accepted.subtype()) {
+            (mime::STAR, _) | (_, mime::STAR) => true,
+            (ps, ac) if ps == ac => true,
+            _ => false
+            }
+        },
+        _ => false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use hyper::header::{HeaderMap, ACCEPT};
+
+    fn setup(state: &mut State, supported_media_types: Vec<mime::Mime>, accept_headers: Vec<&str>) -> AcceptHeaderRouteMatcher {
+        println!("---");
+        // Accept header of `text/*`
+        let mut headers = HeaderMap::new();
+        for mime in accept_headers {
+            headers.append(ACCEPT, mime.parse().unwrap());
+        }
+        state.put(headers);
+        AcceptHeaderRouteMatcher::new(supported_media_types)
+    }
+
+    fn matches(supported_media_types: Vec<mime::Mime>, accept_headers: Vec<&str>) -> bool {
+        let mut res = false;
+        State::with_new(|state| {
+            let matcher = setup(state, supported_media_types, accept_headers);
+            res = matcher.is_match(&state).is_ok();
+        });
+        res
+    }
+
+    fn doesnt_match(supported_media_types: Vec<mime::Mime>, accept_headers: Vec<&str>) -> bool {
+        let mut res = false;
+        State::with_new(|state| {
+            let matcher = setup(state, supported_media_types, accept_headers);
+            res = matcher.is_match(&state).is_err()
+        });
+        res
+    }
+
+    #[test]
+    fn matches_empty_accept() {
+        assert!(matches(vec![], vec![]));
+        assert!(matches(vec![mime::STAR_STAR], vec![]));
+        assert!(matches(vec![mime::TEXT_CSV, mime::APPLICATION_JSON, mime::IMAGE_STAR], vec![]));
+    }
+
+    #[test]
+    fn matches_wildcard_accept() {
+        assert!(matches(vec![], vec!["*/*"]));
+        assert!(matches(vec![mime::STAR_STAR], vec!["*/*"]));
+        assert!(matches(vec![mime::TEXT_CSV, mime::APPLICATION_JSON, mime::IMAGE_STAR], vec!["*/*"]));
+    }
+
+    #[test]
+    fn matches_specific_to_star() {
+        assert!(matches(vec![mime::TEXT_CSV], vec!["text/*"]));
+        assert!(matches(vec![mime::APPLICATION_JSON], vec!["application/*"]));
+        assert!(matches(vec![mime::TEXT_CSV, mime::APPLICATION_JSON, mime::IMAGE_STAR], vec!["application/*"]));
+        assert!(matches(vec![mime::TEXT_CSV, mime::APPLICATION_JSON, mime::IMAGE_STAR], vec!["text/*"]));
+
+        assert!(doesnt_match(vec![mime::TEXT_CSV], vec!["application/*"]));
+        assert!(doesnt_match(vec![mime::APPLICATION_JSON], vec!["text/*"]));
+    }
+
+    #[test]
+    fn matches_star_to_specific() {
+        assert!(matches(vec![mime::STAR_STAR], vec!["test/plain"]));
+        assert!(matches(vec![mime::STAR_STAR], vec!["application/json"]));
+    }
+
+
+    #[test]
+    fn matches_intersections() {
+        assert!(matches(vec![mime::TEXT_CSV, mime::APPLICATION_JSON, mime::IMAGE_STAR], vec!["application/*", "text/plain"]));
+        assert!(matches(vec![mime::TEXT_CSV, mime::IMAGE_STAR, mime::APPLICATION_JSON], vec!["application/*", "text/plain"]));
+        assert!(matches(vec![mime::TEXT_CSV, mime::APPLICATION_JSON, mime::IMAGE_STAR], vec!["text/plain", "application/*"]));
+        assert!(matches(vec![mime::TEXT_CSV, mime::APPLICATION_JSON, mime::IMAGE_STAR], vec!["text/csv", "application/flash"]));
+        assert!(matches(vec![mime::TEXT_CSV, mime::APPLICATION_JSON, mime::IMAGE_STAR], vec!["image/png", "application/flash"]));
+        assert!(doesnt_match(vec![mime::TEXT_CSV, mime::APPLICATION_JSON], vec!["image/png", "application/flash"]));
+    }
 }
