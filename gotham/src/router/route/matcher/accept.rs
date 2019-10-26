@@ -147,11 +147,9 @@ fn parse_mime_type(hv: &HeaderValue) -> error::Result<mime::Mime> {
 }
 
 fn matches(provided: &mime::Mime, accepted: &mime::Mime) -> bool {
-    println!("types: {:?} {:?}", provided.type_(), accepted.type_());
     match (provided.type_(), accepted.type_()) {
         (mime::STAR, _) | (_, mime::STAR) => true,
         (p, a) if p == a => {
-            println!("subtypes: {:?} {:?}", provided.subtype(), accepted.subtype());
             match (provided.subtype(), accepted.subtype()) {
             (mime::STAR, _) | (_, mime::STAR) => true,
             (ps, ac) if ps == ac => true,
@@ -168,7 +166,6 @@ mod tests {
     use hyper::header::{HeaderMap, ACCEPT};
 
     fn setup(state: &mut State, supported_media_types: Vec<mime::Mime>, accept_headers: Vec<&str>) -> AcceptHeaderRouteMatcher {
-        println!("---");
         // Accept header of `text/*`
         let mut headers = HeaderMap::new();
         for mime in accept_headers {
