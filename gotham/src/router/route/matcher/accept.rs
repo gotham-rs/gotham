@@ -12,7 +12,7 @@ use crate::state::{request_id, FromState, State};
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with an `Accept` header that
 /// includes one or more supported media types. A missing `Accept` header, or the value of `*/*`
-/// will also positvely match.
+/// will also positively match.
 ///
 /// Quality values within `Accept` header values are not considered by this matcher.
 ///
@@ -57,7 +57,8 @@ use crate::state::{request_id, FromState, State};
 /// // At least one supported accept header
 /// let mut headers = HeaderMap::new();
 /// headers.insert(ACCEPT, "text/plain".parse().unwrap());
-/// headers.insert(ACCEPT, "application/json".parse().unwrap());
+/// headers.append(ACCEPT, "application/json".parse().unwrap());
+/// headers.append(ACCEPT, "text/pdf".parse().unwrap());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
 
@@ -74,6 +75,10 @@ use crate::state::{request_id, FromState, State};
 /// assert!(matcher.is_match(&state).is_ok());
 ///
 /// // Accept header of `image/jpeg`
+/// // This is because IMAGE_STAR was provided as a supported type.
+/// // This might be useful when the available types will only be known at
+/// // request time - the handler itself might still return
+/// // `StatusCode::NOT_ACCEPTABLE`
 /// let mut headers = HeaderMap::new();
 /// headers.insert(ACCEPT, "image/jpeg".parse().unwrap());
 /// state.put(headers);
@@ -105,14 +110,18 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         // Request method is valid, ensure valid Accept header
-        //
+
+        if self.supported_media_types.is_empty() {
+            return Ok(())
+        }
+
         let mut headers = HeaderMap::borrow_from(state).get_all(ACCEPT).iter().peekable();
         if headers.peek().is_none() {
             return Ok(())
         }
 
         if headers.any(|hv| self.one_match(hv)) {
-            return Ok(())
+            Ok(())
         } else {
             trace!(
                 "[{}] did not provide an Accept with media types supported by this Route",
@@ -202,6 +211,12 @@ mod tests {
     }
 
     #[test]
+    fn matches_specific_headers() {
+        assert!(matches(vec![mime::TEXT_PLAIN], vec!["text/plain"]));
+        assert!(matches(vec![mime::APPLICATION_JSON], vec!["application/json"]));
+    }
+
+    #[test]
     fn matches_specific_to_star() {
         assert!(matches(vec![mime::TEXT_CSV], vec!["text/*"]));
         assert!(matches(vec![mime::APPLICATION_JSON], vec!["application/*"]));
@@ -214,10 +229,11 @@ mod tests {
 
     #[test]
     fn matches_star_to_specific() {
-        assert!(matches(vec![mime::STAR_STAR], vec!["test/plain"]));
+        assert!(matches(vec![mime::STAR_STAR], vec!["text/plain"]));
+        assert!(matches(vec![mime::TEXT_STAR], vec!["text/plain"]));
         assert!(matches(vec![mime::STAR_STAR], vec!["application/json"]));
+        assert!(matches(vec![mime::IMAGE_STAR], vec!["image/jpeg"]));
     }
-
 
     #[test]
     fn matches_intersections() {
