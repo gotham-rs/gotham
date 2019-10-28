@@ -37,7 +37,7 @@ borrow-bag = "1.0"
 percent-encoding = "2.1"
 uuid = { version = "0.7", features = ["v4"] }
 chrono = "0.4"
-base64 = "0.10"
+base64 = "0.11"
 rand = "0.6"
 rand_chacha = "0.1"
 linked-hash-map = "0.5"
