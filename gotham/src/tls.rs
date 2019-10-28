@@ -89,7 +89,6 @@ where
     bind_server(listener, new_handler, move |socket| {
         tls.accept(socket).map_err(|e| {
             error!(target: "gotham::tls", "TLS handshake error: {:?}", e);
-            ()
         })
     })
 }

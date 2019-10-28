@@ -124,14 +124,14 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
         }
 
         if headers.any(|hv| self.one_match(hv)) {
-            Ok(())
-        } else {
-            trace!(
-                "[{}] did not provide an Accept with media types supported by this Route",
-                request_id(&state)
-            );
-            Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
+            return Ok(());
         }
+
+        trace!(
+            "[{}] did not provide an Accept with media types supported by this Route",
+            request_id(&state)
+            );
+        Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
     }
 }
 
