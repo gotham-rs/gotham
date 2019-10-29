@@ -130,7 +130,7 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
         trace!(
             "[{}] did not provide an Accept with media types supported by this Route",
             request_id(&state)
-            );
+        );
         Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
     }
 }
