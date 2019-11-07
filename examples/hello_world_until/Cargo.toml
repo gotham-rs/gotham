@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 gotham = { path = "../../gotham" }
 
-futures = "0.1"
+futures = "0.3"
 tokio = "0.1"
 hyper = "0.12"
 mime = "0.3"
