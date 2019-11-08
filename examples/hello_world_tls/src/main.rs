@@ -1,16 +1,16 @@
 //! A Hello World example application for working with Gotham.
 
+extern crate futures_rustls;
 extern crate gotham;
 extern crate hyper;
 extern crate mime;
-extern crate tokio_rustls;
 
-use std::io::BufReader;
-use tokio_rustls::rustls::{
+use futures_rustls::rustls::{
     self,
     internal::pemfile::{certs, pkcs8_private_keys},
     NoClientAuth,
 };
+use std::io::BufReader;
 
 use gotham::state::State;
 

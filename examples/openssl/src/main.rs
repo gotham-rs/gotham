@@ -10,7 +10,7 @@ extern crate tokio;
 extern crate tokio_openssl;
 
 use failure::{err_msg, Error};
-use futures::Future;
+use futures::prelude::*;
 use openssl::{
     pkey::PKey,
     ssl::{SslAcceptor, SslMethod},
@@ -45,7 +45,12 @@ pub fn main() -> Result<(), Error> {
         listener,
         || Ok(say_hello),
         // NOTE: We're ignoring handshake errors here. You can modify to e.g. report them.
-        move |socket| acceptor.accept_async(socket).map_err(|_| ()),
+        move |socket| {
+            acceptor
+                .accept_async(socket)
+                .map_err(|_| ())
+                .map_ok(|socket| futures_tokio_compat::Compat::new(socket))
+        },
     );
 
     let mut runtime = Runtime::new()?;

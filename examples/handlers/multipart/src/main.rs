@@ -6,7 +6,7 @@ extern crate hyper;
 extern crate mime;
 extern crate multipart;
 
-use futures::{future, Future, Stream};
+use futures::prelude::*;
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
@@ -17,9 +17,10 @@ use hyper::{Body, HeaderMap, StatusCode};
 use multipart::server::Multipart;
 use std::io::Cursor;
 use std::io::Read;
+use std::pin::Pin;
 
 /// Extracts the elements of the POST request and responds with the form keys and values
-fn form_handler(mut state: State) -> Box<HandlerFuture> {
+fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     const BOUNDARY: &str = "boundary=";
     let header_map = HeaderMap::take_from(&mut state);
     let boundary = header_map
@@ -31,8 +32,8 @@ fn form_handler(mut state: State) -> Box<HandlerFuture> {
         })
         .unwrap();
 
-    let f = Body::take_from(&mut state)
-        .concat2()
+    Body::take_from(&mut state)
+        .try_concat()
         .then(|full_body| match full_body {
             Ok(valid_body) => {
                 let mut m = Multipart::with_body(Cursor::new(valid_body), boundary);
@@ -71,8 +72,8 @@ fn form_handler(mut state: State) -> Box<HandlerFuture> {
                 }
             }
             Err(e) => future::err((state, e.into_handler_error())),
-        });
-    Box::new(f)
+        })
+        .boxed()
 }
 
 /// Create a `Router`

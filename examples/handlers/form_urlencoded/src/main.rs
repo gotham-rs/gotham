@@ -6,8 +6,9 @@ extern crate hyper;
 extern crate mime;
 extern crate url;
 
-use futures::{future, Future, Stream};
+use futures::prelude::*;
 use hyper::{Body, StatusCode};
+use std::pin::Pin;
 use url::form_urlencoded;
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
@@ -17,9 +18,9 @@ use gotham::router::Router;
 use gotham::state::{FromState, State};
 
 /// Extracts the elements of the POST request and responds with the form keys and values
-fn form_handler(mut state: State) -> Box<HandlerFuture> {
+fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let f = Body::take_from(&mut state)
-        .concat2()
+        .try_concat()
         .then(|full_body| match full_body {
             Ok(valid_body) => {
                 let body_content = valid_body.into_bytes();
@@ -37,7 +38,7 @@ fn form_handler(mut state: State) -> Box<HandlerFuture> {
             Err(e) => future::err((state, e.into_handler_error())),
         });
 
-    Box::new(f)
+    f.boxed()
 }
 
 /// Create a `Router`

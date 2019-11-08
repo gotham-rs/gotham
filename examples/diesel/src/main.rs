@@ -9,7 +9,7 @@ extern crate diesel_migrations;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::{future, Future, Stream};
+use futures::prelude::*;
 use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
 use gotham::pipeline::{new_pipeline, single::single_pipeline};
@@ -43,9 +43,9 @@ struct RowsUpdated {
     rows: usize,
 }
 
-fn create_product_handler(mut state: State) -> Box<HandlerFuture> {
+fn create_product_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let repo = Repo::borrow_from(&state).clone();
-    let f = extract_json::<NewProduct>(&mut state)
+    extract_json::<NewProduct>(&mut state)
         .and_then(move |product| {
             repo.run(move |conn| {
                 // Insert the `NewProduct` in the DB
@@ -64,16 +64,15 @@ fn create_product_handler(mut state: State) -> Box<HandlerFuture> {
                 future::ok((state, res))
             }
             Err(e) => future::err((state, e)),
-        });
-    Box::new(f)
+        })
+        .boxed()
 }
 
-fn get_products_handler(state: State) -> Box<HandlerFuture> {
+fn get_products_handler(state: State) -> Pin<Box<HandlerFuture>> {
     use crate::schema::products::dsl::*;
 
     let repo = Repo::borrow_from(&state).clone();
-    let f = repo
-        .run(move |conn| products.load::<Product>(&conn))
+    repo.run(move |conn| products.load::<Product>(&conn))
         .then(|result| match result {
             Ok(users) => {
                 let body = serde_json::to_string(&users).expect("Failed to serialize users.");
@@ -81,8 +80,8 @@ fn get_products_handler(state: State) -> Box<HandlerFuture> {
                 future::ok((state, res))
             }
             Err(e) => future::err((state, e.into_handler_error())),
-        });
-    Box::new(f)
+        })
+        .boxed()
 }
 
 fn router(repo: Repo) -> Router {
@@ -104,7 +103,7 @@ where
     e.into_handler_error().with_status(StatusCode::BAD_REQUEST)
 }
 
-fn extract_json<T>(state: &mut State) -> impl Future<Item = T, Error = HandlerError>
+fn extract_json<T>(state: &mut State) -> impl Future<Output = Result<T, HandlerError>>
 where
     T: serde::de::DeserializeOwned,
 {

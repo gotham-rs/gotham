@@ -5,8 +5,9 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use futures::{future, Future, Stream};
+use futures::prelude::*;
 use hyper::{Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
+use std::pin::Pin;
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_empty_response;
@@ -27,10 +28,10 @@ fn print_request_elements(state: &State) {
 }
 
 /// Extracts the elements of the POST request and prints them
-fn post_handler(mut state: State) -> Box<HandlerFuture> {
+fn post_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     print_request_elements(&state);
     let f = Body::take_from(&mut state)
-        .concat2()
+        .try_concat()
         .then(|full_body| match full_body {
             Ok(valid_body) => {
                 let body_content = String::from_utf8(valid_body.to_vec()).unwrap();
@@ -41,7 +42,7 @@ fn post_handler(mut state: State) -> Box<HandlerFuture> {
             Err(e) => future::err((state, e.into_handler_error())),
         });
 
-    Box::new(f)
+    f.boxed()
 }
 
 /// Show the GET request components by printing them.

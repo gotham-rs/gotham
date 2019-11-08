@@ -1,5 +1,5 @@
 use base64;
-use futures::Future;
+use futures::prelude::*;
 use hyper::header::{HeaderValue, CONNECTION, UPGRADE};
 use hyper::{upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
 use sha1::Sha1;
@@ -27,7 +27,7 @@ pub fn accept(
 ) -> Result<
     (
         Response<Body>,
-        impl Future<Item = WebSocketStream<Upgraded>, Error = hyper::Error>,
+        impl Future<Output = Result<WebSocketStream<Upgraded>, hyper::Error>>,
     ),
     (),
 > {

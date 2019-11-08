@@ -7,7 +7,9 @@ extern crate gotham_derive;
 extern crate hyper;
 extern crate mime;
 
-use futures::{future, Future};
+use futures::prelude::*;
+use std::pin::Pin;
+
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_empty_response;
 use gotham::middleware::Middleware;
@@ -49,9 +51,9 @@ pub struct ExampleMiddleware;
 /// ^Later examples will show how Middlewares in a pipeline can work with each other in a similar
 /// manner.
 impl Middleware for ExampleMiddleware {
-    fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
         let user_agent = match HeaderMap::borrow_from(&state).get(USER_AGENT) {
             Some(ua) => ua.to_str().unwrap().to_string(),
@@ -97,7 +99,7 @@ impl Middleware for ExampleMiddleware {
             future::ok((state, response))
         });
 
-        Box::new(f)
+        f.boxed()
     }
 }
 

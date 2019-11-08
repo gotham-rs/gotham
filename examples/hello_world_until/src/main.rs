@@ -4,7 +4,7 @@
 #[cfg(all(test, unix))]
 extern crate nix;
 
-use futures::{Future, Stream};
+use futures::prelude::*;
 use hyper::{Body, Response, StatusCode};
 
 use gotham::helpers::http::response::create_response;
