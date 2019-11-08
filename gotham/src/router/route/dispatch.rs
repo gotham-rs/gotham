@@ -1,8 +1,9 @@
 //! Defines the route `Dispatcher` and supporting types.
 
-use futures::future;
+use futures::prelude::*;
 use log::trace;
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
 use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
 use crate::pipeline::chain::PipelineHandleChain;
@@ -12,7 +13,7 @@ use crate::state::{request_id, State};
 /// Used by `Router` to dispatch requests via pipelines and finally into the configured `Handler`.
 pub trait Dispatcher: RefUnwindSafe {
     /// Dispatches a request via pipelines and `Handler` represented by this `Dispatcher`.
-    fn dispatch(&self, state: State) -> Box<HandlerFuture>;
+    fn dispatch(&self, state: State) -> Pin<Box<HandlerFuture>>;
 }
 
 /// Default implementation of the `Dispatcher` trait.
@@ -57,7 +58,7 @@ where
     C: PipelineHandleChain<P>,
     P: RefUnwindSafe,
 {
-    fn dispatch(&self, state: State) -> Box<HandlerFuture> {
+    fn dispatch(&self, state: State) -> Pin<Box<HandlerFuture>> {
         match self.new_handler.new_handler() {
             Ok(h) => {
                 trace!("[{}] cloning handler", request_id(&state));
@@ -66,7 +67,7 @@ where
             }
             Err(e) => {
                 trace!("[{}] error cloning handler", request_id(&state));
-                Box::new(future::err((state, e.compat().into_handler_error())))
+                future::err((state, e.compat().into_handler_error())).boxed()
             }
         }
     }
@@ -111,9 +112,9 @@ mod tests {
     }
 
     impl Middleware for Number {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+            Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
             Self: Sized,
         {
             state.put(self.clone());
@@ -136,9 +137,9 @@ mod tests {
     }
 
     impl Middleware for Addition {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+            Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value += self.value;
@@ -159,9 +160,9 @@ mod tests {
     }
 
     impl Middleware for Multiplication {
-        fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+            Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
             Self: Sized,
         {
             state.borrow_mut::<Number>().value *= self.value;

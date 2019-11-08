@@ -5,11 +5,12 @@
 //! [Common Log Format](https://en.wikipedia.org/wiki/Common_Log_Format) (CLF).
 //!
 //! There is also a `SimpleLogger` which emits only basic request logs.
-use futures::{future, Future};
+use futures::prelude::*;
 use hyper::{header::CONTENT_LENGTH, Method, Uri, Version};
 use log::Level;
 use log::{log, log_enabled};
 use std::io;
+use std::pin::Pin;
 
 use crate::handler::HandlerFuture;
 use crate::helpers::timing::Timer;
@@ -49,9 +50,9 @@ impl NewMiddleware for RequestLogger {
 /// Implementing `gotham::middleware::Middleware` allows us to hook into the request chain
 /// in order to correctly log out after a request has executed.
 impl Middleware for RequestLogger {
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
         // skip everything if logging is disabled
         if !log_enabled!(self.level) {
@@ -103,7 +104,7 @@ impl Middleware for RequestLogger {
         });
 
         // box it up
-        Box::new(f)
+        f.boxed()
     }
 }
 
@@ -139,9 +140,9 @@ impl NewMiddleware for SimpleLogger {
 /// Implementing `gotham::middleware::Middleware` allows us to hook into the request chain
 /// in order to correctly log out after a request has executed.
 impl Middleware for SimpleLogger {
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
         // skip everything if logging is disabled
         if !log_enabled!(self.level) {
@@ -165,6 +166,6 @@ impl Middleware for SimpleLogger {
             future::ok((state, response))
         });
 
-        Box::new(f)
+        f.boxed()
     }
 }

@@ -1,10 +1,10 @@
-use futures::Future;
+use futures::prelude::*;
+use futures_rustls::{rustls, TlsAcceptor};
 use log::{error, info};
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::runtime::TaskExecutor;
-use tokio_rustls::{rustls, TlsAcceptor};
 
 use super::{bind_server, new_runtime, tcp_listener};
 
@@ -33,7 +33,7 @@ pub fn start_with_num_threads<NH, A>(
 {
     let runtime = new_runtime(threads);
     start_on_executor(addr, new_handler, tls_config, runtime.executor());
-    runtime.shutdown_on_idle().wait().unwrap();
+    runtime.shutdown_on_idle();
 }
 
 /// Starts a Gotham application with a designated backing `TaskExecutor`.
@@ -60,36 +60,41 @@ pub fn init_server<NH, A>(
     addr: A,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> impl Future<Item = (), Error = ()>
+) -> impl Future<Output = ()>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static,
 {
-    let listener = tcp_listener(addr);
-    let addr = listener.local_addr().unwrap();
+    tcp_listener(addr)
+        .map_err(|_| ())
+        .and_then(|listener| {
+            let addr = listener.local_addr().unwrap();
 
-    info!(
-    target: "gotham::start",
-    " Gotham listening on http://{}",
-    addr
-    );
+            info!(
+            target: "gotham::start",
+            " Gotham listening on http://{}",
+            addr
+            );
 
-    bind_server_rustls(listener, new_handler, tls_config)
+            bind_server_rustls(listener, new_handler, tls_config).map_err(|_| ())
+        })
+        .then(|_| future::ready(())) // Ignore the result
 }
 
 fn bind_server_rustls<NH>(
     listener: TcpListener,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> impl Future<Item = (), Error = ()>
+) -> impl Future<Output = Result<(), ()>>
 where
     NH: NewHandler + 'static,
 {
     let tls = TlsAcceptor::from(Arc::new(tls_config));
     bind_server(listener, new_handler, move |socket| {
-        tls.accept(socket).map_err(|e| {
-            error!(target: "gotham::tls", "TLS handshake error: {:?}", e);
-            ()
-        })
+        tls.accept(futures_tokio_compat::Compat::new(socket))
+            .map_ok(futures_tokio_compat::Compat::new)
+            .map_err(|e| {
+                error!(target: "gotham::tls", "TLS handshake error: {:?}", e);
+            })
     })
 }

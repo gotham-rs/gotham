@@ -1,4 +1,4 @@
-use futures::{Future, IntoFuture};
+use futures::prelude::*;
 use log::info;
 use std::net::ToSocketAddrs;
 use tokio::runtime::TaskExecutor;
@@ -25,7 +25,7 @@ where
 {
     let runtime = new_runtime(threads);
     start_on_executor(addr, new_handler, runtime.executor());
-    runtime.shutdown_on_idle().wait().unwrap();
+    runtime.shutdown_on_idle();
 }
 
 /// Starts a Gotham application with a designated backing `TaskExecutor`.
@@ -44,19 +44,23 @@ where
 /// This is used internally, but exposed in case the developer intends on doing any
 /// manual wiring that isn't supported by the Gotham API. It's unlikely that this will
 /// be required in most use cases; it's mainly exposed for shutdown handling.
-pub fn init_server<NH, A>(addr: A, new_handler: NH) -> impl Future<Item = (), Error = ()>
+pub fn init_server<NH, A>(addr: A, new_handler: NH) -> impl Future<Output = ()>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static,
 {
-    let listener = tcp_listener(addr);
-    let addr = listener.local_addr().unwrap();
+    tcp_listener(addr)
+        .map_err(|_| ())
+        .and_then(|listener| {
+            let addr = listener.local_addr().unwrap();
 
-    info!(
-    target: "gotham::start",
-    " Gotham listening on http://{}",
-    addr
-    );
+            info!(
+            target: "gotham::start",
+            " Gotham listening on http://{}",
+            addr
+            );
 
-    bind_server(listener, new_handler, |tcp| Ok(tcp).into_future())
+            bind_server(listener, new_handler, future::ok)
+        })
+        .map(|_| ()) // Ignore the result
 }

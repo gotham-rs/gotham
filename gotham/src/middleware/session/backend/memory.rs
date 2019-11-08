@@ -1,8 +1,9 @@
+use std::pin::Pin;
 use std::sync::{Arc, Mutex, PoisonError, Weak};
 use std::time::{Duration, Instant};
 use std::{io, thread};
 
-use futures::future;
+use futures::prelude::*;
 use linked_hash_map::LinkedHashMap;
 use log::trace;
 
@@ -93,14 +94,14 @@ impl Backend for MemoryBackend {
         }
     }
 
-    fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture> {
+    fn read_session(&self, identifier: SessionIdentifier) -> Pin<Box<SessionFuture>> {
         match self.storage.lock() {
             Ok(mut storage) => match storage.get_refresh(&identifier.value) {
                 Some(&mut (ref mut instant, ref value)) => {
                     *instant = Instant::now();
-                    Box::new(future::ok(Some(value.clone())))
+                    future::ok(Some(value.clone())).boxed()
                 }
-                None => Box::new(future::ok(None)),
+                None => future::ok(None).boxed(),
             },
             Err(PoisonError { .. }) => {
                 unreachable!("session memory backend lock poisoned, HashMap panicked?")
@@ -192,7 +193,6 @@ fn cleanup_once(
 mod tests {
     use super::*;
 
-    use futures::Future;
     use rand;
 
     #[test]
@@ -233,13 +233,14 @@ mod tests {
             .persist_session(identifier.clone(), &bytes[..])
             .expect("failed to persist");
 
-        let received = new_backend
-            .new_backend()
-            .expect("can't create backend for read")
-            .read_session(identifier.clone())
-            .wait()
-            .expect("no response from backend")
-            .expect("session data missing");
+        let received = futures::executor::block_on(
+            new_backend
+                .new_backend()
+                .expect("can't create backend for read")
+                .read_session(identifier.clone()),
+        )
+        .expect("no response from backend")
+        .expect("session data missing");
 
         assert_eq!(bytes, received);
     }
@@ -281,9 +282,7 @@ mod tests {
             );
         }
 
-        backend
-            .read_session(identifier.clone())
-            .wait()
+        futures::executor::block_on(backend.read_session(identifier.clone()))
             .expect("failed to read session");
 
         {

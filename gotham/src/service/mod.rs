@@ -3,18 +3,21 @@
 
 use std::net::SocketAddr;
 use std::panic::AssertUnwindSafe;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::thread;
 
 use failure;
 
-use futures::Future;
+use futures::prelude::*;
+use futures::task::{self, Poll};
 use http::request;
-use hyper::service::Service;
 use hyper::{Body, Request, Response};
 use log::debug;
+use tower_service::Service as TowerService;
 
 use crate::handler::NewHandler;
+
 use crate::helpers::http::request::path::RequestPathSegments;
 use crate::state::client_addr::put_client_addr;
 use crate::state::{set_request_id, State};
@@ -58,16 +61,22 @@ where
     client_addr: SocketAddr,
 }
 
-impl<T> Service for ConnectedGothamService<T>
+impl<T> TowerService<Request<Body>> for ConnectedGothamService<T>
 where
     T: NewHandler,
 {
-    type ReqBody = Body; // required by hyper::server::conn::Http::serve_connection()
-    type ResBody = Body; // has to impl Payload...
+    type Response = Response<Body>;
     type Error = failure::Compat<failure::Error>; // :Into<Box<StdError + Send + Sync>>
-    type Future = Box<dyn Future<Item = Response<Self::ResBody>, Error = Self::Error> + Send>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
-    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
+    fn poll_ready(
+        &mut self,
+        _cx: &mut task::Context<'_>,
+    ) -> Poll<std::result::Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         let mut state = State::new();
 
         put_client_addr(&mut state, self.client_addr);
@@ -129,7 +138,7 @@ mod tests {
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = f.wait().unwrap();
+        let response = futures::executor::block_on(f).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
@@ -147,7 +156,7 @@ mod tests {
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = f.wait().unwrap();
+        let response = futures::executor::block_on(f).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 }

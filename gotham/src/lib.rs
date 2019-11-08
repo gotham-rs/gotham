@@ -45,14 +45,14 @@ pub mod plain;
 #[cfg(feature = "rustls")]
 pub mod tls;
 
-use futures::{Future, Stream};
+use futures::prelude::*;
 use hyper::server::conn::Http;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use tokio::executor;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{self, Runtime};
-use tokio_io::{AsyncRead, AsyncWrite};
 
 use crate::{handler::NewHandler, service::GothamService};
 
@@ -68,7 +68,7 @@ fn new_runtime(threads: usize) -> Runtime {
         .unwrap()
 }
 
-fn tcp_listener<A>(addr: A) -> TcpListener
+fn tcp_listener<A>(addr: A) -> impl Future<Output = std::io::Result<TcpListener>>
 where
     A: ToSocketAddrs + 'static,
 {
@@ -78,7 +78,7 @@ where
         .next()
         .expect("unable to resolve listener address");
 
-    TcpListener::bind(&addr).expect("unable to open TCP listener")
+    TcpListener::bind(addr)
 }
 
 /// Returns a `Future` used to spawn a Gotham application.
@@ -91,11 +91,11 @@ pub fn bind_server<NH, F, Wrapped, Wrap>(
     listener: TcpListener,
     new_handler: NH,
     mut wrap: Wrap,
-) -> impl Future<Item = (), Error = ()>
+) -> impl Future<Output = Result<(), ()>>
 where
     NH: NewHandler + 'static,
-    F: Future<Item = Wrapped, Error = ()> + Send + 'static,
-    Wrapped: AsyncRead + AsyncWrite + Send + 'static,
+    F: Future<Output = Result<Wrapped, ()>> + Unpin + Send + 'static,
+    Wrapped: Unpin + AsyncRead + AsyncWrite + Send + 'static,
     Wrap: FnMut(TcpStream) -> F,
 {
     let protocol = Arc::new(Http::new());
@@ -104,7 +104,7 @@ where
     listener
         .incoming()
         .map_err(|e| panic!("socket error = {:?}", e))
-        .for_each(move |socket| {
+        .try_for_each(move |socket| {
             let addr = socket.peer_addr().unwrap();
             let service = gotham_service.connect(addr);
             let accepted_protocol = protocol.clone();
@@ -121,6 +121,6 @@ where
 
             executor::spawn(handler);
 
-            Ok(())
+            future::ok(())
         })
 }

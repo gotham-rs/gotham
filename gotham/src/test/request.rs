@@ -2,12 +2,12 @@ use std::ops::Deref;
 use std::ops::DerefMut;
 
 use http::HttpTryFrom;
+use hyper::client::connect::Connect;
 use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
 
 use super::Server;
 use super::{TestClient, TestResponse};
-use hyper::client::connect::Connect;
 
 use crate::error::*;
 

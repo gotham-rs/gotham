@@ -950,8 +950,9 @@ where
 #[cfg(test)]
 mod tests {
     use std::io;
+    use std::pin::Pin;
 
-    use futures::future;
+    use futures::prelude::*;
     use hyper::{Body, Response, StatusCode};
 
     use crate::handler::HandlerFuture;
@@ -975,9 +976,9 @@ mod tests {
     }
 
     impl Middleware for QuickExitMiddleware {
-        fn call<Chain>(self, state: State, _chain: Chain) -> Box<HandlerFuture>
+        fn call<Chain>(self, state: State, _chain: Chain) -> Pin<Box<HandlerFuture>>
         where
-            Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+            Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + 'static,
         {
             let f = future::ok((
                 state,
@@ -987,7 +988,7 @@ mod tests {
                     .unwrap(),
             ));
 
-            Box::new(f)
+            f.boxed()
         }
     }
 

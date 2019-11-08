@@ -7,13 +7,15 @@ members = [
 
     ## Middleware
     "middleware/template",
-    "middleware/diesel",
-    "middleware/jwt",
+    # TODO: Re-enable middleware when their dependencies are updated
+    # "middleware/diesel",
+    # "middleware/jwt",
 
     ## Examples (these crates are not published)
     "examples/hello_world",
     "examples/hello_world_tls",
-    "examples/hello_world_until",
+    # TODO: Re-enable when the tokio-signal dependency is updated
+    # "examples/hello_world_until",
     "examples/shared_state",
 
     # Tera template
@@ -65,15 +67,18 @@ members = [
     "examples/static_assets",
 
     # diesel
-    "examples/diesel",
+    # TODO: Re-enable when the middleware is updated
+    # "examples/diesel",
 
     # openssl
-    "examples/openssl",
+    # TODO: Re-enable when this example is updated
+    # "examples/openssl",
 
     # example_contribution_template
     "examples/example_contribution_template/name",
 
-    "examples/websocket",
+    # TODO: Re-enable when tokio-tungstenite is updated
+    # "examples/websocket",
 ]
 
 [patch.crates-io]

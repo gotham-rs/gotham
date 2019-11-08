@@ -4,31 +4,33 @@
 
 use std::io::BufReader;
 use std::net::{self, IpAddr, SocketAddr};
+use std::panic::UnwindSafe;
+use std::pin::Pin;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use failure;
+use failure::Fail;
 use log::info;
 
-use futures::Future;
+use futures::prelude::*;
 use hyper::client::{
     connect::{Connect, Connected, Destination},
     Client,
 };
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tokio::timer::Delay;
+use tokio::timer::{delay, Delay};
 
 use tokio::net::TcpStream;
 
-use tokio_rustls::{
+use futures_rustls::{
     rustls::{
         self,
         internal::pemfile::{certs, pkcs8_private_keys},
-        ClientSession, NoClientAuth,
+        NoClientAuth,
     },
     webpki::DNSNameRef,
-    TlsConnector, TlsStream,
+    TlsConnector,
 };
 
 use crate::handler::NewHandler;
@@ -83,18 +85,29 @@ impl Clone for TestServer {
 
 impl test::Server for TestServer {
     fn request_expiry(&self) -> Delay {
-        Delay::new(Instant::now() + Duration::from_secs(self.data.timeout))
+        delay(Instant::now() + Duration::from_secs(self.data.timeout))
     }
 
     fn run_future<F, R, E>(&self, future: F) -> Result<R>
     where
-        F: Send + 'static + Future<Item = R, Error = E>,
+        F: Send + 'static + Future<Output = std::result::Result<R, E>>,
         R: Send + 'static,
         E: failure::Fail,
     {
-        let (tx, rx) = futures::sync::oneshot::channel();
-        self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
-        rx.wait().unwrap().map_err(Into::into)
+        let (tx, rx) = futures::channel::oneshot::channel();
+        self.spawn(
+            future
+                .then(move |r| future::ready(tx.send(r).map_err(|_| unreachable!())))
+                .then(|_| future::ready(())), // ignore the result for spawn
+        );
+
+        self.data
+            .runtime
+            .write()
+            .expect("unable to acquire write lock")
+            .block_on(rx)
+            .unwrap()
+            .map_err(Into::into)
     }
 }
 
@@ -104,7 +117,10 @@ impl TestServer {
     /// for each connection.
     ///
     /// Timeout will be set to 10 seconds.
-    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> Result<TestServer> {
+    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> Result<TestServer>
+    where
+        NH::Instance: UnwindSafe,
+    {
         TestServer::with_timeout(new_handler, 10)
     }
 
@@ -112,9 +128,17 @@ impl TestServer {
     pub fn with_timeout<NH: NewHandler + 'static>(
         new_handler: NH,
         timeout: u64,
-    ) -> Result<TestServer> {
-        let mut runtime = Runtime::new()?;
-        let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
+    ) -> Result<TestServer>
+    where
+        NH::Instance: UnwindSafe,
+    {
+        let runtime = Runtime::new()?;
+        // TODO: Fix this into an async flow
+        let listener = runtime.block_on(TcpListener::bind(
+            "127.0.0.1:0"
+                .parse::<SocketAddr>()
+                .map_err(|e| e.compat())?,
+        ))?;
         let addr = listener.local_addr()?;
 
         let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
@@ -125,7 +149,7 @@ impl TestServer {
         cfg.set_single_cert(certs, keys.remove(0))?;
 
         let service_stream = super::bind_server_rustls(listener, new_handler, cfg);
-        runtime.spawn(service_stream);
+        runtime.spawn(service_stream.then(|_| future::ready(()))); // Ignore the result
 
         let data = TestServerData {
             addr,
@@ -150,7 +174,7 @@ impl TestServer {
     /// tests.
     pub fn spawn<F>(&self, fut: F)
     where
-        F: Future<Item = (), Error = ()> + Send + 'static,
+        F: Future<Output = ()> + Send + 'static,
     {
         self.data
             .runtime
@@ -194,32 +218,39 @@ impl TestServer {
 
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
+#[derive(Clone)]
 pub struct TestConnect {
     pub(crate) addr: SocketAddr,
     config: Arc<rustls::ClientConfig>,
 }
 
 impl Connect for TestConnect {
-    type Transport = TlsStream<TcpStream, ClientSession>;
+    type Transport = futures_tokio_compat::Compat<
+        futures_rustls::client::TlsStream<futures_tokio_compat::Compat<TcpStream>>,
+    >;
     type Error = CompatError;
-    type Future =
-        Box<dyn Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
-
+    type Future = Pin<
+        Box<
+            dyn Future<Output = std::result::Result<(Self::Transport, Connected), Self::Error>>
+                + Send,
+        >,
+    >;
     fn connect(&self, dst: Destination) -> Self::Future {
         let tls = TlsConnector::from(self.config.clone());
-        Box::new(
-            TcpStream::connect(&self.addr)
-                .and_then(move |stream| {
-                    let domain = DNSNameRef::try_from_ascii_str(dst.host()).unwrap();
-                    tls.connect(domain, stream)
-                })
-                .inspect(|s| info!("Client TcpStream connected: {:?}", s))
-                .map(|s| (s, Connected::new()))
-                .map_err(|e| {
-                    info!("TLS TestClient error: {:?}", e);
-                    Error::from(e).compat()
-                }),
-        )
+
+        TcpStream::connect(self.addr)
+            .and_then(move |stream: TcpStream| {
+                let domain = DNSNameRef::try_from_ascii_str(dst.host()).unwrap();
+                tls.connect(domain, futures_tokio_compat::Compat::new(stream))
+                    .map_ok(futures_tokio_compat::Compat::new)
+            })
+            .inspect(|s| info!("Client TcpStream connected: {:?}", s))
+            .map_ok(|s| (s, Connected::new()))
+            .map_err(|e| {
+                info!("TLS TestClient error: {:?}", e);
+                Error::from(e).compat()
+            })
+            .boxed()
     }
 }
 
@@ -236,7 +267,6 @@ mod tests {
     use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
-    use futures::{future, Stream};
     use http::header::CONTENT_TYPE;
     use log::info;
 
@@ -246,7 +276,7 @@ mod tests {
     }
 
     impl Handler for TestHandler {
-        fn handle(self, state: State) -> Box<HandlerFuture> {
+        fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
             let path = Uri::borrow_from(&state).path().to_owned();
             match path.as_str() {
                 "/" => {
@@ -256,12 +286,19 @@ mod tests {
                         .body(self.response.clone().into())
                         .unwrap();
 
-                    Box::new(future::ok((state, response)))
+                    future::ok((state, response)).boxed()
                 }
                 "/timeout" => {
+                    // TODO: What is this supposed to return?  It previously returned nothing which isn't a timeout
+                    let response = Response::builder()
+                        .status(StatusCode::REQUEST_TIMEOUT)
+                        .body(Body::default())
+                        .unwrap();
+
                     info!("TestHandler responding to /timeout");
-                    Box::new(future::empty())
+                    future::ok((state, response)).boxed()
                 }
+
                 "/myaddr" => {
                     info!("TestHandler responding to /myaddr");
                     let response = Response::builder()
@@ -269,7 +306,7 @@ mod tests {
                         .body(format!("{}", client_addr(&state).unwrap()).into())
                         .unwrap();
 
-                    Box::new(future::ok((state, response)))
+                    future::ok((state, response)).boxed()
                 }
                 _ => unreachable!(),
             }
@@ -366,21 +403,26 @@ mod tests {
 
     #[test]
     fn async_echo() {
-        fn handler(mut state: State) -> Box<HandlerFuture> {
-            let f = Body::take_from(&mut state)
-                .concat2()
-                .then(move |full_body| match full_body {
-                    Ok(body) => {
-                        let resp_data = body.to_vec();
-                        let res =
-                            create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, resp_data);
-                        future::ok((state, res))
-                    }
+        fn handler(mut state: State) -> Pin<Box<HandlerFuture>> {
+            let f =
+                Body::take_from(&mut state)
+                    .try_concat()
+                    .then(move |full_body| match full_body {
+                        Ok(body) => {
+                            let resp_data = body.to_vec();
+                            let res = create_response(
+                                &state,
+                                StatusCode::OK,
+                                mime::TEXT_PLAIN,
+                                resp_data,
+                            );
+                            future::ok((state, res))
+                        }
 
-                    Err(e) => future::err((state, e.into_handler_error())),
-                });
+                        Err(e) => future::err((state, e.into_handler_error())),
+                    });
 
-            Box::new(f)
+            f.boxed()
         }
 
         let server = TestServer::new(|| Ok(handler)).unwrap();

@@ -4,6 +4,7 @@ use log::trace;
 
 use std::io;
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
 use crate::handler::HandlerFuture;
 use crate::middleware::{Middleware, NewMiddleware};
@@ -58,15 +59,15 @@ unsafe impl NewMiddlewareChain for () {
 #[doc(hidden)]
 pub unsafe trait MiddlewareChain: Sized {
     /// Recursive function for processing middleware and chaining to the given function.
-    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, f: F) -> Pin<Box<HandlerFuture>>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static;
+        F: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static;
 }
 
 unsafe impl MiddlewareChain for () {
-    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, f: F) -> Pin<Box<HandlerFuture>>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+        F: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
     {
         // At the last item in the `MiddlewareChain`, the function is invoked to serve the
         // request. `f` is the nested function of all `Middleware` and the `Handler`.
@@ -83,9 +84,9 @@ where
     T: Middleware + Send + 'static,
     U: MiddlewareChain,
 {
-    fn call<F>(self, state: State, f: F) -> Box<HandlerFuture>
+    fn call<F>(self, state: State, f: F) -> Pin<Box<HandlerFuture>>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+        F: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
     {
         let (m, p) = self;
         // Construct the function from the inside, out. Starting with a function which calls the
