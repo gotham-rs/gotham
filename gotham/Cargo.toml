@@ -12,7 +12,7 @@ homepage = "https://gotham.rs"
 repository = "https://github.com/gotham-rs/gotham"
 readme = "README.md"
 categories = ["web-programming::http-server"]
-keywords = ["http", "async", "web", "framework", "blockchain"]
+keywords = ["http", "async", "web", "framework", "server"]
 edition = "2018"
 
 [features]
