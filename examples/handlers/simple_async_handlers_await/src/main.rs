@@ -11,7 +11,10 @@ extern crate serde;
 extern crate serde_derive;
 extern crate tokio;
 
-use futures::{stream, Future, Stream};
+use futures::compat::Future01CompatExt;
+use futures::{FutureExt, TryFutureExt};
+use legacy_futures::Future as LegacyFuture;
+
 use std::time::{Duration, Instant};
 
 use hyper::StatusCode;
@@ -25,7 +28,7 @@ use gotham::state::{FromState, State};
 
 use tokio::timer::Delay;
 
-type SleepFuture = Box<dyn Future<Item = Vec<u8>, Error = HandlerError> + Send>;
+type SleepFuture = Box<dyn LegacyFuture<Item = Vec<u8>, Error = HandlerError> + Send>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
@@ -55,6 +58,14 @@ fn get_duration(seconds: u64) -> Duration {
 /// web apis) can be coerced into returning futures that yield useful data,
 /// so the patterns that you learn in this example should be applicable to
 /// real world problems.
+///
+/// This function returns a LegacyFuture (a Future from the 0.1.x branch of
+/// the `futures` crate rather than a std::future::Future that we can .await).
+/// This is partly to keep it the same as the simple_async_handlers example,
+/// and partly to show you how to use the .compat() combinators (because you
+/// will probably be using them a lot while the ecosystem stabilises). For a
+/// better explanation of .compat(), please read this blog post:
+/// https://rust-lang-nursery.github.io/futures-rs/blog/2019/04/18/compatibility-layer.html
 fn sleep(seconds: u64) -> SleepFuture {
     let when = Instant::now() + get_duration(seconds);
     let delay = Delay::new(when)
@@ -71,60 +82,92 @@ fn sleep(seconds: u64) -> SleepFuture {
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
 /// helper method, above.
 fn sleep_handler(mut state: State) -> Box<HandlerFuture> {
-    let seconds = QueryStringExtractor::take_from(&mut state).seconds;
-    println!("sleep for {} seconds once: starting", seconds);
+    let async_block_future = async move {
+        let seconds = QueryStringExtractor::take_from(&mut state).seconds;
+        println!("sleep for {} seconds once: starting", seconds);
+        // Here, we call the sleep function and turn its old-style future into
+        // a new-style future. Note that this step doesn't block: it just sets
+        // up the timer so that we can use it later.
+        let sleep_future = sleep(seconds).compat();
 
-    // Here, we call our helper function that returns a future.
-    let sleep_future = sleep(seconds);
+        // Here is where the serious sleeping happens. We yield execution of
+        // this block until sleep_future is resolved.
+        // The Ok("slept for x seconds") value is stored in result.
+        let result = sleep_future.await;
 
-    // Here, we convert the future from `sleep()` into the form that Gotham expects.
-    // We have to use .then() rather than .and_then() because we need to coerce both
-    // the success and error cases into the right shape.
-    // `state` is moved in, so that we can return it, and we convert any errors
-    // that we have into the form that Hyper expects, using the helper from
-    // IntoHandlerError.
-    Box::new(sleep_future.then(move |result| match result {
-        Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
-            println!("sleep for {} seconds once: finished", seconds);
-            Ok((state, res))
+        // Here, we convert the result from `sleep()` into the form that Gotham
+        // expects: `state` is owned by this block so we need to return it.
+        // We also convert any errors that we have into the form that Hyper
+        // expects, using the helper from IntoHandlerError.
+        match result {
+            Ok(data) => {
+                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+                println!("sleep for {} seconds once: finished", seconds);
+                Ok((state, res))
+            }
+            Err(err) => Err((state, err.into_handler_error())),
         }
-        Err(err) => Err((state, err.into_handler_error())),
-    }))
+    };
+    // Here, we convert the new-style future produced by the async block into
+    // an old-style future that gotham can understand. There are a couple of
+    // layers of boxes, which is a bit sad, but these will go away once the
+    // ecosystem settles and we can return std::future::Future from Handler
+    // functions. Think of it as a temporary wart.
+    Box::new(async_block_future.boxed().compat())
 }
 
-/// This example uses a `future::Stream` to implement a `for` loop. It calls sleep(1)
-/// as many times as needed to make the requested duration.
+/// It calls sleep(1) as many times as needed to make the requested duration.
 ///
-/// https://github.com/alexcrichton/futures-await has a more readable syntax for
-/// async for loops, if you are using nightly Rust.
+/// Notice how much easier it is to read than the version in
+/// `simple_async_handlers`.
 fn loop_handler(mut state: State) -> Box<HandlerFuture> {
-    let seconds = QueryStringExtractor::take_from(&mut state).seconds;
-    println!("sleep for one second {} times: starting", seconds);
+    let async_block_future = async move {
+        let seconds = QueryStringExtractor::take_from(&mut state).seconds;
+        println!("sleep for one second {} times: starting", seconds);
 
-    // Here, we create a stream of Ok(_) that's as long as we need, and use fold
-    // to loop over it asyncronously, accumulating the return values from sleep().
-    let sleep_future: SleepFuture = Box::new(stream::iter_ok(0..seconds).fold(
-        Vec::new(),
-        move |mut accumulator, _| {
-            // Do the sleep(), and append the result to the accumulator so that it can
-            // be returned.
-            sleep(1).and_then(move |body| {
-                accumulator.extend(body);
-                Ok(accumulator)
-            })
-        },
-    ));
-
-    // This bit is the same as the bit in the first example.
-    Box::new(sleep_future.then(move |result| match result {
-        Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
-            println!("sleep for one second {} times: finished", seconds);
-            Ok((state, res))
+        // We can't use the ? operator in the outermost async block, because we
+        // need to need to return ownership of the State object back to gotham.
+        // I quite like using ?, so I often find myself writing `async {}.await`
+        // to get around this problem when I'm feeling lazy. Think of this
+        // self-awaiting-block as a bit like a try block.
+        //
+        // In real code, you probably shouldn't be writing business logic in
+        // your Handler functions anyway. Instead, you should be
+        // unpacking everything you need from State in the Handler function
+        // and then calling your business logic with only the dependencies that
+        // they need. That way your business logic can use new-style futures
+        // and ? as much as it likes, and you will only need to update your
+        // handler functions (which don't contain any business logic) when you
+        // upgrade your gotham.
+        let result = async {
+            // The code within this block reads exactly like syncronous code.
+            // This is the style that you should aim to write your business
+            // logic in.
+            let mut accumulator = Vec::new();
+            for _ in 0..seconds {
+                let body = sleep(1).compat().await?;
+                accumulator.extend(body)
+            }
+            // ? does type coercion for us, so we need to use a turbofish to
+            // tell the compiler that we have a HandlerError. See this section
+            // of the rust async book for more details:
+            // https://rust-lang.github.io/async-book/07_workarounds/03_err_in_async_blocks.html
+            Ok::<_, HandlerError>(accumulator)
         }
-        Err(err) => Err((state, err.into_handler_error())),
-    }))
+            .await;
+
+        // This bit is the same boilerplate as the bit in the first example.
+        // Nothing to see here.
+        match result {
+            Ok(data) => {
+                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+                println!("sleep for one second {} times: finished", seconds);
+                Ok((state, res))
+            }
+            Err(err) => Err((state, err.into_handler_error())),
+        }
+    };
+    Box::new(async_block_future.boxed().compat())
 }
 
 /// Create a `Router`.

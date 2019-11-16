@@ -1,28 +1,15 @@
-# Async Request Handlers
+# Async Request Handlers (.await version)
 
 The idea of async handlers has already been introduced by the post_handler example in
 [Request Data](../request_data), which waits for the POST body asyncronously, and resolves
-the response future once it has processed the body.
+the response future once it has processed the body. The combinator-based version
+of this example can be found at [Async Request Handlers](../simple_async_handlers).
 
-This example contains a pair of endpoints that sleep for a number of seconds,
-in different ways. Note that we never call `std::thread::sleep` in this example,
-so none of our request handlers block the thread from handling other requests
-in parallel. Instead, in each case, we return a future, which will resolve when
-the requested time has elapsed, and cause Gotham to respond to the http request.
-
-The approach of using futures to track the status of long-running operations
-is significantly lower overhead than that of spawning a new thread per request.
-In our case, the long-running operations are sleeps, but in
-[Async Handlers](../async_handlers), the long-running operations are http
-requests.
-
-You will often find that most of the time that a web server spends dealing
-with a web request, it is waiting on another service (e.g. a database, or an
-external api). If you can track these operations using futures, you should end
-up with a very lightweight and performant web server. On the other hand, if you
-find yourself doing lots of CPU/memory intensive operations on the web server,
-then futures are probably not going to help your performance, and you might be
-better off spawning a new thread per request.
+This example has exactly the same behavior and API as the combinator-based version,
+and it can be used as a reference when converting your code to use async/await.
+It also leaves the versions of gotham, tokio and hyper the same, and uses the
+compatibility helpers from the `futures` crate to convert things at the
+interface boundaries.
 
 ## Running
 

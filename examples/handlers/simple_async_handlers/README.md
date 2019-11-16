@@ -24,6 +24,9 @@ find yourself doing lots of CPU/memory intensive operations on the web server,
 then futures are probably not going to help your performance, and you might be
 better off spawning a new thread per request.
 
+If you came here looking for an example that uses async/.await, please read
+[Async Request Handlers (.await version)](../simple_async_handlers).
+
 ## Running
 
 From the `examples/handlers/async_handlers` directory:
