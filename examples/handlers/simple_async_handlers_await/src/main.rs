@@ -60,11 +60,12 @@ fn get_duration(seconds: u64) -> Duration {
 /// real world problems.
 ///
 /// This function returns a LegacyFuture (a Future from the 0.1.x branch of
-/// the `futures` crate rather than a std::future::Future that we can .await).
+/// the `futures` crate, rather than a std::future::Future that we can .await).
 /// This is partly to keep it the same as the simple_async_handlers example,
 /// and partly to show you how to use the .compat() combinators (because you
-/// will probably be using them a lot while the ecosystem stabilises). For a
-/// better explanation of .compat(), please read this blog post:
+/// will probably be using them a lot while the ecosystem stabilises).
+/// 
+/// For a better explanation of .compat(), please read this blog post:
 /// https://rust-lang-nursery.github.io/futures-rs/blog/2019/04/18/compatibility-layer.html
 fn sleep(seconds: u64) -> SleepFuture {
     let when = Instant::now() + get_duration(seconds);
