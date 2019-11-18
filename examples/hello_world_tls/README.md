@@ -4,7 +4,7 @@ A simple introduction to working with TLS in Gotham.
 
 ## Running
 
-From the `examples/hello_world` directory:
+From the `examples/hello_world_tls` directory:
 ```
 Terminal 1:
 $ cargo run
