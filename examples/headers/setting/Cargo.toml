@@ -8,5 +8,5 @@ publish = false
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-hyper = { version = "0.13.0-alpha.4", features = ["unstable-stream"] }
+hyper = "0.13.1"
 mime = "0.3"

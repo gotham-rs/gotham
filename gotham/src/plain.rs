@@ -1,7 +1,7 @@
 use futures::prelude::*;
 use log::info;
+
 use std::net::ToSocketAddrs;
-use tokio::runtime::TaskExecutor;
 
 use super::handler::NewHandler;
 use super::{bind_server, new_runtime, tcp_listener};
@@ -12,7 +12,7 @@ pub mod test;
 pub fn start<NH, A>(addr: A, new_handler: NH)
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs + 'static,
+    A: ToSocketAddrs + 'static + Send,
 {
     start_with_num_threads(addr, new_handler, num_cpus::get())
 }
@@ -21,22 +21,10 @@ where
 pub fn start_with_num_threads<NH, A>(addr: A, new_handler: NH, threads: usize)
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs + 'static,
+    A: ToSocketAddrs + 'static + Send,
 {
-    let runtime = new_runtime(threads);
-    start_on_executor(addr, new_handler, runtime.executor());
-    runtime.shutdown_on_idle();
-}
-
-/// Starts a Gotham application with a designated backing `TaskExecutor`.
-///
-/// This function can be used to spawn the server on an existing `Runtime`.
-pub fn start_on_executor<NH, A>(addr: A, new_handler: NH, executor: TaskExecutor)
-where
-    NH: NewHandler + 'static,
-    A: ToSocketAddrs + 'static,
-{
-    executor.spawn(init_server(addr, new_handler));
+    let mut runtime = new_runtime(threads);
+    runtime.block_on(async { init_server(addr, new_handler).await });
 }
 
 /// Returns a `Future` used to spawn an Gotham application.
@@ -47,11 +35,11 @@ where
 pub fn init_server<NH, A>(addr: A, new_handler: NH) -> impl Future<Output = ()>
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs + 'static,
+    A: ToSocketAddrs + 'static + Send,
 {
     tcp_listener(addr)
         .map_err(|_| ())
-        .and_then(|listener| {
+        .and_then(move |listener| {
             let addr = listener.local_addr().unwrap();
 
             info!(

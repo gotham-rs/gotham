@@ -15,11 +15,11 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
-futures-preview = "0.3.0-alpha.19"
+futures = "0.3.1"
 gotham = "0.5.0-dev"
 gotham_derive = "0.5.0-dev"
 serde = "1.0"
 serde_derive = "1.0"
-hyper = { version = "0.13.0-alpha.4", features = ["unstable-stream"] }
+hyper = "0.13.1"
 jsonwebtoken = "6.0"
 log = "0.4"

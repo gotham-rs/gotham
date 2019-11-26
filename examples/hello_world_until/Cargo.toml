@@ -8,9 +8,9 @@ edition = "2018"
 [dependencies]
 gotham = { path = "../../gotham" }
 
-futures-preview = "0.3.0-alpha.19"
-tokio = "=0.2.0-alpha.6"
-hyper = { version = "0.13.0-alpha.4", features = ["unstable-stream"] }
+futures = "0.3.1"
+tokio = { version = "0.2.6", features = ["full"] }
+hyper = "0.13.1"
 mime = "0.3"
 tokio-signal = "0.2"
 

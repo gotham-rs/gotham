@@ -112,14 +112,12 @@ where
 /// ```
 pub fn create_empty_response(state: &State, status: StatusCode) -> Response<Body> {
     // new builder for the response
-    let mut builder = Response::builder();
-
-    // always add status and req-id
-    builder.status(status);
-    builder.header(X_REQUEST_ID, request_id(state));
-
-    // attach an empty body by default
-    let built = builder.body(Body::empty());
+    let built = Response::builder()
+        // always add status and req-id
+        .status(status)
+        .header(X_REQUEST_ID, request_id(state))
+        // attach an empty body by default
+        .body(Body::empty());
 
     // this expect should be safe due to generic bounds
     built.expect("Response built from a compatible type")

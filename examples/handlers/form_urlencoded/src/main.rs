@@ -7,7 +7,7 @@ extern crate mime;
 extern crate url;
 
 use futures::prelude::*;
-use hyper::{Body, StatusCode};
+use hyper::{body, Body, StatusCode};
 use std::pin::Pin;
 use url::form_urlencoded;
 
@@ -19,24 +19,21 @@ use gotham::state::{FromState, State};
 
 /// Extracts the elements of the POST request and responds with the form keys and values
 fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
-    let f = Body::take_from(&mut state)
-        .try_concat()
-        .then(|full_body| match full_body {
-            Ok(valid_body) => {
-                let body_content = valid_body.into_bytes();
-                // Perform decoding on request body
-                let form_data = form_urlencoded::parse(&body_content).into_owned();
-                // Add form keys and values to response body
-                let mut res_body = String::new();
-                for (key, value) in form_data {
-                    let res_body_line = format!("{}: {}\n", key, value);
-                    res_body.push_str(&res_body_line);
-                }
-                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, res_body);
-                future::ok((state, res))
+    let f = body::to_bytes(Body::take_from(&mut state)).then(|full_body| match full_body {
+        Ok(body_content) => {
+            // Perform decoding on request body
+            let form_data = form_urlencoded::parse(&body_content).into_owned();
+            // Add form keys and values to response body
+            let mut res_body = String::new();
+            for (key, value) in form_data {
+                let res_body_line = format!("{}: {}\n", key, value);
+                res_body.push_str(&res_body_line);
             }
-            Err(e) => future::err((state, e.into_handler_error())),
-        });
+            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, res_body);
+            future::ok((state, res))
+        }
+        Err(e) => future::err((state, e.into_handler_error())),
+    });
 
     f.boxed()
 }

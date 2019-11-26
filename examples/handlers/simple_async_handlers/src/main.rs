@@ -24,7 +24,7 @@ use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-use tokio::timer::delay;
+use tokio::time::delay_until;
 
 type SleepFuture = Pin<Box<dyn Future<Output = Vec<u8>> + Send>>;
 
@@ -58,7 +58,7 @@ fn get_duration(seconds: u64) -> Duration {
 /// real world problems.
 fn sleep(seconds: u64) -> SleepFuture {
     let when = Instant::now() + get_duration(seconds);
-    let delay = delay(when).map(move |_| {
+    let delay = delay_until(when.into()).map(move |_| {
         format!("slept for {} seconds\n", seconds)
             .as_bytes()
             .to_vec()

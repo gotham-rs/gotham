@@ -9,9 +9,9 @@ publish = false
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-hyper = { version = "0.13.0-alpha.4", features = ["unstable-stream"] }
+hyper = "0.13.1"
 mime = "0.3"
-futures-preview = "0.3.0-alpha.19"
+futures = "0.3.1"
 serde = "1.0"
 serde_derive = "1.0"
-tokio = "=0.2.0-alpha.6"
+tokio = { version = "0.2.6", features = ["full"] }

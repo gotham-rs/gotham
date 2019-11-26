@@ -7,6 +7,7 @@
 mod accepted_encoding;
 
 use crate::error::Result;
+use bytes::Bytes;
 use bytes::{BufMut, BytesMut};
 use futures::prelude::*;
 use futures::ready;
@@ -14,7 +15,7 @@ use futures::task::Poll;
 use http;
 use httpdate::parse_http_date;
 use hyper::header::*;
-use hyper::{Body, Chunk, Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 use log::debug;
 use mime::{self, Mime};
 use mime_guess::from_path;
@@ -223,17 +224,17 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
 
             let stream = file_stream(file, buf_size, len);
             let body = Body::wrap_stream(stream.into_stream());
-            let mut response = http::Response::builder();
-            response.status(StatusCode::OK);
-            response.header(CONTENT_LENGTH, len);
-            response.header(CONTENT_TYPE, mime_type.as_ref());
-            response.header(CACHE_CONTROL, options.cache_control);
+            let mut response = http::Response::builder()
+                .status(StatusCode::OK)
+                .header(CONTENT_LENGTH, len)
+                .header(CONTENT_TYPE, mime_type.as_ref())
+                .header(CACHE_CONTROL, options.cache_control);
 
             if let Some(etag) = entity_tag(&meta) {
-                response.header(ETAG, etag);
+                response = response.header(ETAG, etag);
             }
             if let Some(content_encoding) = encoding {
-                response.header(CONTENT_ENCODING, content_encoding);
+                response = response.header(CONTENT_ENCODING, content_encoding);
             }
 
             Ok(response.body(body).unwrap())
@@ -376,7 +377,7 @@ fn file_stream(
     mut f: File,
     buf_size: usize,
     mut len: u64,
-) -> impl TryStream<Ok = Chunk, Error = io::Error> + Send {
+) -> impl TryStream<Ok = Bytes, Error = io::Error> + Send {
     let mut buf = BytesMut::with_capacity(buf_size);
     stream::poll_fn(move |cx| {
         if len == 0 {
@@ -400,15 +401,16 @@ fn file_stream(
             ))));
         }
 
-        let mut chunk = buf.take().freeze();
-        if n > len {
-            chunk = chunk.split_to(len as usize);
+        let chunk = if n > len {
+            let chunk = buf.split_to(len as usize);
             len = 0;
+            chunk
         } else {
             len -= n;
-        }
+            buf.split()
+        };
 
-        Poll::Ready(Some(Ok(Chunk::from(chunk))))
+        Poll::Ready(Some(Ok(chunk.freeze())))
     })
 }
 

@@ -11,8 +11,8 @@ publish = false
 gotham = { path = "../../gotham/"}
 gotham_derive = { path = "../../gotham_derive/" }
 gotham_middleware_diesel = { path = "../../middleware/diesel"}
-hyper = { version = "0.13.0-alpha.4", features = ["unstable-stream"] }
-futures-preview = "0.3.0-alpha.19"
+hyper = "0.13.1"
+futures = "0.3.1"
 mime = "0.3"
 log = "0.4"
 diesel = { version = "1.4", features = ["sqlite", "extras"] }
@@ -25,4 +25,4 @@ serde_derive = "1.0"
 
 [dev-dependencies]
 diesel_migrations = "1.4.0"
-tokio = "=0.2.0-alpha.6"
+tokio = { version = "0.2.6", features = ["full"] }

@@ -7,5 +7,5 @@ publish = false
 gotham = { path = "../../../gotham" }
 
 askama = "0.8.0"
-hyper = { version = "0.13.0-alpha.4", features = ["unstable-stream"] }
+hyper = "0.13.1"
 mime = "0.3.12"

@@ -1,5 +1,4 @@
 //! An example of decoding multipart form requests
-
 extern crate futures;
 extern crate gotham;
 extern crate hyper;
@@ -13,7 +12,7 @@ use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 use hyper::header::CONTENT_TYPE;
-use hyper::{Body, HeaderMap, StatusCode};
+use hyper::{body, Body, HeaderMap, StatusCode};
 use multipart::server::Multipart;
 use std::io::Cursor;
 use std::io::Read;
@@ -32,8 +31,7 @@ fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
         })
         .unwrap();
 
-    Body::take_from(&mut state)
-        .try_concat()
+    body::to_bytes(Body::take_from(&mut state))
         .then(|full_body| match full_body {
             Ok(valid_body) => {
                 let mut m = Multipart::with_body(Cursor::new(valid_body), boundary);

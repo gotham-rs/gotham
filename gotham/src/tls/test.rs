@@ -2,28 +2,31 @@
 //!
 //! See the `TestServer` type for example usage.
 
+use http::Uri;
+use hyper::client::connect::{Connected, Connection};
 use std::io::BufReader;
 use std::net::{self, IpAddr, SocketAddr};
 use std::panic::UnwindSafe;
 use std::pin::Pin;
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
+use std::task::{Context, Poll};
+use std::time::Duration;
 
 use failure::Fail;
 use log::info;
 
 use futures::prelude::*;
-use hyper::client::{
-    connect::{Connect, Connected, Destination},
-    Client,
-};
+use hyper::client::Client;
+use hyper::service::Service;
+use pin_project::pin_project;
+use rustls::Session;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
-use tokio::runtime::Runtime;
-use tokio::timer::{delay, Delay};
-
 use tokio::net::TcpStream;
-
-use futures_rustls::{
+use tokio::runtime::Runtime;
+use tokio::time::{delay_for, Delay};
+use tokio_rustls::client::TlsStream;
+use tokio_rustls::{
     rustls::{
         self,
         internal::pemfile::{certs, pkcs8_private_keys},
@@ -85,7 +88,9 @@ impl Clone for TestServer {
 
 impl test::Server for TestServer {
     fn request_expiry(&self) -> Delay {
-        delay(Instant::now() + Duration::from_secs(self.data.timeout))
+        let runtime = self.data.runtime.write().unwrap();
+        runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
+        // delay_for(Duration::from_secs(self.data.timeout))
     }
 
     fn run_future<F, R, E>(&self, future: F) -> Result<R>
@@ -132,7 +137,7 @@ impl TestServer {
     where
         NH::Instance: UnwindSafe,
     {
-        let runtime = Runtime::new()?;
+        let mut runtime = Runtime::new()?;
         // TODO: Fix this into an async flow
         let listener = runtime.block_on(TcpListener::bind(
             "127.0.0.1:0"
@@ -216,6 +221,62 @@ impl TestServer {
     }
 }
 
+#[allow(missing_docs)]
+#[pin_project]
+pub struct TlsConnectionStream<IO>(#[pin] TlsStream<IO>);
+
+impl<IO: AsyncRead + AsyncWrite + Connection + Unpin> Connection for TlsConnectionStream<IO> {
+    fn connected(&self) -> Connected {
+        let (tcp, tls) = self.0.get_ref();
+        if tls.get_alpn_protocol() == Some(b"h2") {
+            tcp.connected().negotiated_h2()
+        } else {
+            tcp.connected()
+        }
+    }
+}
+
+impl<IO> AsyncRead for TlsConnectionStream<IO>
+where
+    IO: AsyncRead + AsyncWrite + Unpin,
+{
+    #[inline]
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context,
+        buf: &mut [u8],
+    ) -> Poll<std::result::Result<usize, std::io::Error>> {
+        self.project().0.poll_read(cx, buf)
+    }
+}
+
+impl<IO: AsyncRead + AsyncWrite + Unpin> AsyncWrite for TlsConnectionStream<IO> {
+    #[inline]
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<std::result::Result<usize, std::io::Error>> {
+        self.project().0.poll_write(cx, buf)
+    }
+
+    #[inline]
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<std::result::Result<(), std::io::Error>> {
+        self.project().0.poll_flush(cx)
+    }
+
+    #[inline]
+    fn poll_shutdown(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<std::result::Result<(), std::io::Error>> {
+        self.project().0.poll_shutdown(cx)
+    }
+}
+
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
 #[derive(Clone)]
@@ -224,31 +285,30 @@ pub struct TestConnect {
     config: Arc<rustls::ClientConfig>,
 }
 
-impl Connect for TestConnect {
-    type Transport = futures_tokio_compat::Compat<
-        futures_rustls::client::TlsStream<futures_tokio_compat::Compat<TcpStream>>,
-    >;
+impl Service<Uri> for TestConnect {
+    type Response = TlsConnectionStream<TcpStream>;
     type Error = CompatError;
-    type Future = Pin<
-        Box<
-            dyn Future<Output = std::result::Result<(Self::Transport, Connected), Self::Error>>
-                + Send,
-        >,
-    >;
-    fn connect(&self, dst: Destination) -> Self::Future {
+    type Future =
+        Pin<Box<dyn Future<Output = std::result::Result<Self::Response, Self::Error>> + Send>>;
+
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<std::result::Result<(), Self::Error>> {
+        Ok(()).into()
+    }
+
+    fn call(&mut self, req: Uri) -> Self::Future {
         let tls = TlsConnector::from(self.config.clone());
 
         TcpStream::connect(self.addr)
-            .and_then(move |stream: TcpStream| {
-                let domain = DNSNameRef::try_from_ascii_str(dst.host()).unwrap();
-                tls.connect(domain, futures_tokio_compat::Compat::new(stream))
-                    .map_ok(futures_tokio_compat::Compat::new)
-            })
-            .inspect(|s| info!("Client TcpStream connected: {:?}", s))
-            .map_ok(|s| (s, Connected::new()))
-            .map_err(|e| {
-                info!("TLS TestClient error: {:?}", e);
-                Error::from(e).compat()
+            .map_err(|e| Error::from(e).compat())
+            .and_then(move |stream| {
+                let domain = DNSNameRef::try_from_ascii_str(req.host().unwrap()).unwrap();
+                tls.connect(domain, stream)
+                    .inspect(|s| info!("Client TcpStream connected: {:?}", s))
+                    .map_ok(TlsConnectionStream)
+                    .map_err(|e| {
+                        info!("TLS TestClient error: {:?}", e);
+                        Error::from(e).compat()
+                    })
             })
             .boxed()
     }
@@ -261,7 +321,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use hyper::header::CONTENT_LENGTH;
-    use hyper::{Body, Response, StatusCode, Uri};
+    use hyper::{body, Body, Response, StatusCode, Uri};
     use mime;
 
     use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
@@ -405,9 +465,8 @@ mod tests {
     fn async_echo() {
         fn handler(mut state: State) -> Pin<Box<HandlerFuture>> {
             let f =
-                Body::take_from(&mut state)
-                    .try_concat()
-                    .then(move |full_body| match full_body {
+                body::to_bytes(Body::take_from(&mut state)).then(
+                    move |full_body| match full_body {
                         Ok(body) => {
                             let resp_data = body.to_vec();
                             let res = create_response(
@@ -420,7 +479,8 @@ mod tests {
                         }
 
                         Err(e) => future::err((state, e.into_handler_error())),
-                    });
+                    },
+                );
 
             f.boxed()
         }

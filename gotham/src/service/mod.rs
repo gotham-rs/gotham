@@ -12,9 +12,9 @@ use failure;
 use futures::prelude::*;
 use futures::task::{self, Poll};
 use http::request;
+use hyper::service::Service;
 use hyper::{Body, Request, Response};
 use log::debug;
-use tower_service::Service as TowerService;
 
 use crate::handler::NewHandler;
 
@@ -61,7 +61,7 @@ where
     client_addr: SocketAddr,
 }
 
-impl<T> TowerService<Request<Body>> for ConnectedGothamService<T>
+impl<T> Service<Request<Body>> for ConnectedGothamService<T>
 where
     T: NewHandler,
 {

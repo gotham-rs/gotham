@@ -1,7 +1,7 @@
+use std::convert::TryFrom;
 use std::ops::Deref;
 use std::ops::DerefMut;
 
-use http::HttpTryFrom;
 use hyper::client::connect::Connect;
 use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
@@ -32,10 +32,11 @@ impl<'a, S: Server, C: Connect> DerefMut for TestRequest<'a, S, C> {
     }
 }
 
-impl<'a, S: Server + 'static, C: Connect + 'static> TestRequest<'a, S, C> {
+impl<'a, S: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestRequest<'a, S, C> {
     pub(crate) fn new<U>(client: &'a TestClient<S, C>, method: Method, uri: U) -> Self
     where
-        Uri: HttpTryFrom<U>,
+        Uri: TryFrom<U>,
+        <Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
         TestRequest {
             client,

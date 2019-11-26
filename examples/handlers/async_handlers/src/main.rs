@@ -1,5 +1,4 @@
 //! A basic example showing the request components
-
 extern crate futures;
 extern crate gotham;
 #[macro_use]
@@ -15,7 +14,7 @@ use std::pin::Pin;
 
 use hyper::StatusCode;
 #[cfg(not(test))]
-use hyper::{Client, Uri};
+use hyper::{body, Client, Uri};
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
@@ -40,10 +39,7 @@ fn http_get(url_str: &str) -> ResponseContentFuture {
     let client = Client::new();
     let url: Uri = url_str.parse().unwrap();
     let f = client.get(url).and_then(|response| {
-        response
-            .into_body()
-            .try_concat()
-            .and_then(|full_body| future::ok(full_body.to_vec()))
+        body::to_bytes(response.into_body()).and_then(|full_body| future::ok(full_body.to_vec()))
     });
 
     f.boxed()

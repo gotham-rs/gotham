@@ -9,7 +9,7 @@ use std::pin::Pin;
 
 use bytes::Bytes;
 use futures::prelude::*;
-use hyper::{Body, Chunk, Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 use mime::{self, Mime};
 
 use crate::helpers::http::response;
@@ -417,7 +417,6 @@ macro_rules! derive_into_response {
 // can't impl IntoResponse for Into<Body> due to Response<T>
 // and the potential it will add Into<Body> in the future
 derive_into_response!(Bytes);
-derive_into_response!(Chunk);
 derive_into_response!(String);
 derive_into_response!(Vec<u8>);
 derive_into_response!(&'static str);

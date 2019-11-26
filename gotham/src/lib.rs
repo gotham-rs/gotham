@@ -49,9 +49,9 @@ use futures::prelude::*;
 use hyper::server::conn::Http;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
-use tokio::executor;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
+
 use tokio::runtime::{self, Runtime};
 
 use crate::{handler::NewHandler, service::GothamService};
@@ -62,8 +62,10 @@ pub use tls::start as start_with_tls;
 
 fn new_runtime(threads: usize) -> Runtime {
     runtime::Builder::new()
+        .threaded_scheduler()
         .core_threads(threads)
-        .name_prefix("gotham-worker-")
+        .thread_name("gotham-worker")
+        .enable_all()
         .build()
         .unwrap()
 }
@@ -87,16 +89,16 @@ where
 /// support. The wrap argument is a function that will receive a tokio-io TcpStream and should wrap
 /// the socket as necessary. Errors returned by this function will be ignored and the connection
 /// will be dropped if the future returned by the wrapper resolves to an error.
-pub fn bind_server<NH, F, Wrapped, Wrap>(
-    listener: TcpListener,
+pub async fn bind_server<'a, NH, F, Wrapped, Wrap>(
+    mut listener: TcpListener,
     new_handler: NH,
-    mut wrap: Wrap,
-) -> impl Future<Output = Result<(), ()>>
+    wrap: Wrap,
+) -> Result<(), ()>
 where
     NH: NewHandler + 'static,
     F: Future<Output = Result<Wrapped, ()>> + Unpin + Send + 'static,
     Wrapped: Unpin + AsyncRead + AsyncWrite + Send + 'static,
-    Wrap: FnMut(TcpStream) -> F,
+    Wrap: Fn(TcpStream) -> F,
 {
     let protocol = Arc::new(Http::new());
     let gotham_service = GothamService::new(new_handler);
@@ -104,23 +106,23 @@ where
     listener
         .incoming()
         .map_err(|e| panic!("socket error = {:?}", e))
-        .try_for_each(move |socket| {
+        .try_for_each_concurrent(None, |socket| {
             let addr = socket.peer_addr().unwrap();
             let service = gotham_service.connect(addr);
             let accepted_protocol = protocol.clone();
+            let wrapper = wrap(socket);
 
-            // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
-            // will be dropped).
-            let handler = wrap(socket)
-                .and_then(move |socket| {
-                    accepted_protocol
-                        .serve_connection(socket, service)
-                        .map_err(|_| ())
-                })
-                .map(|_| ());
+            async move {
+                // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
+                // will be dropped).
+                let socket = wrapper.await?;
+                accepted_protocol
+                    .serve_connection(socket, service)
+                    .map_err(|_| ())
+                    .await?;
 
-            executor::spawn(handler);
-
-            future::ok(())
+                Ok(())
+            }
         })
+        .await
 }
