@@ -30,7 +30,7 @@ mime = "0.3"
 # see https://github.com/hyperium/mime/issues/52
 mime_guess = "2.0.1"
 futures = "0.1"
-tokio = "0.1"
+tokio = "0.2"
 bytes = "0.4"
 mio = "0.6"
 borrow-bag = "1.0"

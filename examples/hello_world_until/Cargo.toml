@@ -9,7 +9,7 @@ edition = "2018"
 gotham = { path = "../../gotham" }
 
 futures = "0.1"
-tokio = "0.1"
+tokio = "0.2"
 hyper = "0.12"
 mime = "0.3"
 tokio-signal = "0.2"
