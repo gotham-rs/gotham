@@ -64,7 +64,7 @@ fn get_duration(seconds: u64) -> Duration {
 /// This is partly to keep it the same as the simple_async_handlers example,
 /// and partly to show you how to use the .compat() combinators (because you
 /// will probably be using them a lot while the ecosystem stabilises).
-/// 
+///
 /// For a better explanation of .compat(), please read this blog post:
 /// https://rust-lang-nursery.github.io/futures-rs/blog/2019/04/18/compatibility-layer.html
 fn sleep(seconds: u64) -> SleepFuture {
