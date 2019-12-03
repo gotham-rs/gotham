@@ -296,8 +296,7 @@ fn get_extension(encoding: &str, options: &FileOptions) -> Option<String> {
 
 fn mime_for_path(path: &Path) -> Mime {
     from_path(path)
-        .first()
-        .unwrap_or_else(|| mime::APPLICATION_OCTET_STREAM)
+        .first_or_octet_stream()
 }
 
 fn normalize_path(path: &Path) -> PathBuf {
