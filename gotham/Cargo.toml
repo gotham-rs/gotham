@@ -44,7 +44,7 @@ linked-hash-map = "0.5"
 num_cpus = "1.8"
 regex = "1.0"
 cookie = "0.12"
-http = "0.1"
+http = "0.2"
 httpdate = "0.3"
 failure = "0.1"
 tokio-rustls = {version = "0.9", optional = true }
