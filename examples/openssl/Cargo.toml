@@ -8,7 +8,7 @@ publish = false
 gotham = { path = "../../gotham", default-features = false }
 
 futures = "0.1"
-hyper = "0.12"
+hyper = "0.13"
 mime = "0.3"
 tokio-openssl = "0.3"
 openssl = "0.10"

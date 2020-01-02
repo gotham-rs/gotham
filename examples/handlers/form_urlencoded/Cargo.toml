@@ -8,7 +8,7 @@ publish = false
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-hyper = "0.12"
+hyper = "0.13"
 mime = "0.3"
 futures = "0.1"
 url = "2.1"
