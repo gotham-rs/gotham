@@ -14,8 +14,7 @@ members = [
     ## Examples (these crates are not published)
     "examples/hello_world",
     "examples/hello_world_tls",
-    # TODO: Re-enable when the tokio-signal dependency is updated
-    # "examples/hello_world_until",
+    "examples/hello_world_until",
     "examples/shared_state",
 
     # Tera template
