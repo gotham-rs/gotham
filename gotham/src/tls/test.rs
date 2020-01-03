@@ -90,7 +90,6 @@ impl test::Server for TestServer {
     fn request_expiry(&self) -> Delay {
         let runtime = self.data.runtime.write().unwrap();
         runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
-        // delay_for(Duration::from_secs(self.data.timeout))
     }
 
     fn run_future<F, R, E>(&self, future: F) -> Result<R>
