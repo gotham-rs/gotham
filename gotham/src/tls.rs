@@ -32,7 +32,7 @@ pub fn start_with_num_threads<NH, A>(
     A: ToSocketAddrs + 'static + Send,
 {
     let mut runtime = new_runtime(threads);
-    runtime.block_on(async { init_server(addr, new_handler, tls_config).await });
+    let _ = runtime.block_on(async { init_server(addr, new_handler, tls_config).await });
 }
 
 /// Returns a `Future` used to spawn an Gotham application.
@@ -40,36 +40,34 @@ pub fn start_with_num_threads<NH, A>(
 /// This is used internally, but exposed in case the developer intends on doing any
 /// manual wiring that isn't supported by the Gotham API. It's unlikely that this will
 /// be required in most use cases; it's mainly exposed for shutdown handling.
-pub fn init_server<NH, A>(
+pub async fn init_server<NH, A>(
     addr: A,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> impl Future<Output = ()>
+) -> Result<(), ()>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
 {
-    tcp_listener(addr)
+    let listener = tcp_listener(addr).map_err(|_| ()).await?;
+    let addr = listener.local_addr().unwrap();
+
+    info!(
+    target: "gotham::start",
+    " Gotham listening on http://{}",
+    addr
+    );
+
+    bind_server_rustls(listener, new_handler, tls_config)
         .map_err(|_| ())
-        .and_then(move |listener| {
-            let addr = listener.local_addr().unwrap();
-
-            info!(
-            target: "gotham::start",
-            " Gotham listening on http://{}",
-            addr
-            );
-
-            bind_server_rustls(listener, new_handler, tls_config).map_err(|_| ())
-        })
-        .then(|_| future::ready(())) // Ignore the result
+        .await
 }
 
-fn bind_server_rustls<NH>(
+async fn bind_server_rustls<NH>(
     listener: TcpListener,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> impl Future<Output = Result<(), ()>>
+) -> Result<(), ()>
 where
     NH: NewHandler + 'static,
 {
@@ -79,4 +77,5 @@ where
             error!(target: "gotham::tls", "TLS handshake error: {:?}", e);
         })
     })
+    .await
 }

@@ -70,7 +70,7 @@ fn new_runtime(threads: usize) -> Runtime {
         .unwrap()
 }
 
-fn tcp_listener<A>(addr: A) -> impl Future<Output = std::io::Result<TcpListener>>
+async fn tcp_listener<A>(addr: A) -> std::io::Result<TcpListener>
 where
     A: ToSocketAddrs + 'static,
 {
@@ -80,7 +80,7 @@ where
         .next()
         .expect("unable to resolve listener address");
 
-    TcpListener::bind(addr)
+    TcpListener::bind(addr).await
 }
 
 /// Returns a `Future` used to spawn a Gotham application.
