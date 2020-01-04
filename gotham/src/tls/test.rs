@@ -98,19 +98,11 @@ impl test::Server for TestServer {
         R: Send + 'static,
         E: failure::Fail,
     {
-        let (tx, rx) = futures::channel::oneshot::channel();
-        self.spawn(
-            future
-                .then(move |r| future::ready(tx.send(r).map_err(|_| unreachable!())))
-                .then(|_| future::ready(())), // ignore the result for spawn
-        );
-
         self.data
             .runtime
             .write()
             .expect("unable to acquire write lock")
-            .block_on(rx)
-            .unwrap()
+            .block_on(future)
             .map_err(Into::into)
     }
 }
@@ -153,7 +145,7 @@ impl TestServer {
         cfg.set_single_cert(certs, keys.remove(0))?;
 
         let service_stream = super::bind_server_rustls(listener, new_handler, cfg);
-        runtime.spawn(service_stream.then(|_| future::ready(()))); // Ignore the result
+        runtime.spawn(service_stream); // Ignore the result
 
         let data = TestServerData {
             addr,

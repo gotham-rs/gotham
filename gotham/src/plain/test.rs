@@ -74,7 +74,6 @@ impl Clone for TestServer {
 
 impl test::Server for TestServer {
     fn request_expiry(&self) -> Delay {
-        // println!("{:?}", self.data.runtime.write().unwrap());
         let runtime = self.data.runtime.write().unwrap();
         runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
     }
@@ -85,21 +84,11 @@ impl test::Server for TestServer {
         R: Send + 'static,
         E: failure::Fail,
     {
-        let rx = future;
-        // let (tx, rx) = futures::channel::oneshot::channel();
-        // self.spawn(
-        //     future
-        //         .then(move |r| future::ready(tx.send(r).map_err(|_| unreachable!())))
-        //         .then(|_| future::ready(())), // ignore the result for spawn
-        // );
-
         self.data
             .runtime
             .write()
             .expect("unable to acquire write lock")
-            .block_on(rx)
-            // .map(|r| r.compat())
-            // .unwrap()
+            .block_on(future)
             .map_err(Into::into)
     }
 }
@@ -133,7 +122,7 @@ impl TestServer {
         let addr = listener.local_addr()?;
 
         let service_stream = super::bind_server(listener, new_handler, future::ok);
-        runtime.spawn(service_stream.then(|_| future::ready(()))); // Ignore the result
+        runtime.spawn(service_stream); // Ignore the result
 
         let data = TestServerData {
             addr,
