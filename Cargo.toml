@@ -7,8 +7,8 @@ members = [
 
     ## Middleware
     "middleware/template",
+    "middleware/diesel",
     # TODO: Re-enable middleware when their dependencies are updated
-    # "middleware/diesel",
     # "middleware/jwt",
 
     ## Examples (these crates are not published)
@@ -66,8 +66,7 @@ members = [
     "examples/static_assets",
 
     # diesel
-    # TODO: Re-enable when the middleware is updated
-    # "examples/diesel",
+    "examples/diesel",
 
     # openssl
     # TODO: Re-enable when this example is updated
