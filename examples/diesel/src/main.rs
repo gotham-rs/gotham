@@ -52,14 +52,15 @@ fn create_product_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
             Err(e) => return Err((state, e)),
         };
 
-        let rows = match repo
+        let query_result = repo
             .run(move |conn| {
                 diesel::insert_into(products::table)
                     .values(&product)
                     .execute(&conn)
             })
-            .await
-        {
+            .await;
+
+        let rows = match query_result {
             Ok(rows) => rows,
             Err(e) => return Err((state, e.into_handler_error())),
         };

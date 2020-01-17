@@ -7,8 +7,7 @@
 mod accepted_encoding;
 
 use crate::error::Result;
-use bytes::Bytes;
-use bytes::{BufMut, BytesMut};
+use bytes::{BufMut, Bytes, BytesMut};
 use futures::prelude::*;
 use futures::ready;
 use futures::task::Poll;

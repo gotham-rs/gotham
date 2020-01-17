@@ -41,8 +41,6 @@ pub fn main() -> Result<(), Error> {
 
     let listener = TcpListener::bind(&addr)?;
 
-    let mut runtime = Runtime::new()?;
-
     let server = bind_server(
         listener,
         || Ok(say_hello),
@@ -50,6 +48,7 @@ pub fn main() -> Result<(), Error> {
         move |socket| acceptor.accept_async(socket).map_err(|_| ()),
     );
 
+    let mut runtime = Runtime::new()?;
     runtime
         .block_on(server)
         .map_err(|()| err_msg("Server failed"))
