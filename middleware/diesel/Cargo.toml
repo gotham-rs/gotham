@@ -23,5 +23,4 @@ log = "0.4"
 [dev-dependencies]
 diesel = { version = "1", features = ["sqlite"] }
 mime = "0.3"
-hyper = "0.13.1"
 tokio = { version = "0.2.6", features = ["full"] }

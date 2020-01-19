@@ -6,8 +6,6 @@
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 #![deny(private_in_public)]
 
-extern crate futures;
-extern crate gotham;
 #[macro_use]
 extern crate log;
 

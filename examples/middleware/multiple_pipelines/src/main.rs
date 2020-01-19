@@ -10,19 +10,14 @@
 //! Our app also has some admin functionality, so we'll also override admin paths
 //! to require an additional admin session.
 //! Finally, our app exposes an JSON endpoint, which needs its own middleware.
-extern crate futures;
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-
 #[macro_use]
 extern crate serde_derive;
-extern crate hyper;
-extern crate mime;
 
 use futures::prelude::*;
-use hyper::header::{HeaderMap, ACCEPT};
-use hyper::{Body, Response, StatusCode};
+use gotham::hyper::header::{HeaderMap, ACCEPT};
+use gotham::hyper::{Body, Response, StatusCode};
 use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
@@ -183,8 +178,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::header::HeaderValue;
     use gotham::test::TestServer;
-    use hyper::header::HeaderValue;
 
     #[test]
     fn no_middleware_on_base_path() {

@@ -1,18 +1,12 @@
 //! An example of decoding multipart form requests
-extern crate futures;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-extern crate multipart;
-
 use futures::prelude::*;
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
+use gotham::hyper::header::CONTENT_TYPE;
+use gotham::hyper::{body, Body, HeaderMap, StatusCode};
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use hyper::header::CONTENT_TYPE;
-use hyper::{body, Body, HeaderMap, StatusCode};
 use multipart::server::Multipart;
 use std::io::Cursor;
 use std::io::Read;
@@ -91,8 +85,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::header::HeaderValue;
     use gotham::test::TestServer;
-    use hyper::header::HeaderValue;
 
     #[test]
     fn form_request() {

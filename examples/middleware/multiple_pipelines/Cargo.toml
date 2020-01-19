@@ -3,12 +3,12 @@ name = "gotham_examples_middleware_multiple_pipelines"
 description = "Provides examples of using multiple middleware pipelines for different routes."
 version = "0.0.0"
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-hyper = "0.13.1"
 futures = "0.3.1"
 mime = "0.3"
 serde = "1.0"

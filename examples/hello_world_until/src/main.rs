@@ -6,8 +6,8 @@ extern crate nix;
 
 use futures::prelude::*;
 use gotham::helpers::http::response::create_response;
+use gotham::hyper::{Body, Response, StatusCode};
 use gotham::state::State;
-use hyper::{Body, Response, StatusCode};
 use tokio::signal;
 
 /// Create a `Handler` which is invoked when responding to a `Request`.
@@ -46,9 +46,9 @@ pub async fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gotham::test::TestServer;
     #[cfg(unix)]
-    use hyper::Client;
+    use gotham::hyper::Client;
+    use gotham::test::TestServer;
     #[cfg(unix)]
     use nix::sys::signal::{kill, Signal};
     use std::thread;

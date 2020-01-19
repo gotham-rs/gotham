@@ -7,6 +7,7 @@ description = "A template for creating custom Gotham middlewares"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 publish = false
+edition = "2018"
 
 [dependencies]
 log = "0.4"

@@ -4,12 +4,12 @@ description = "An introduction to extracting query string name/value pairs, in a
 version = "0.0.0"
 authors = ["Nicolas Pochet <npochet@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-hyper = "0.13.1"
 mime = "0.3"
 serde = "1"
 serde_derive = "1"

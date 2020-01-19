@@ -1,13 +1,6 @@
 //! An example of decoding requests from an HTML form element
-
-extern crate futures;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-extern crate url;
-
 use futures::prelude::*;
-use hyper::{body, Body, StatusCode};
+use gotham::hyper::{body, Body, StatusCode};
 use std::pin::Pin;
 use url::form_urlencoded;
 

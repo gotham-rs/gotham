@@ -2,10 +2,6 @@
 //! web framework.
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::get_unwrap))]
-extern crate cookie;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
 
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
@@ -69,9 +65,9 @@ pub fn main() {
 mod tests {
     use super::*;
     use cookie::Cookie;
+    use gotham::hyper::header::{COOKIE, SET_COOKIE};
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::header::{COOKIE, SET_COOKIE};
-    use hyper::StatusCode;
 
     #[test]
     fn cookie_is_set_and_counter_increments() {

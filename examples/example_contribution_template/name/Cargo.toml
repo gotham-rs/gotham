@@ -7,11 +7,11 @@ name = "gotham_examples_functionality_name"
 description = "<describe the example and what readers can learn"
 version = "0.0.0"
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-hyper = "0.13.1"
 mime = "0.3"
 
 # Add other dependencies if necessary

@@ -4,12 +4,12 @@ description = "Storing and retrieving session data with a custom data type, in a
 version = "0.0.0"
 authors = ["Daniel Wagner-Hall <dawagner@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-hyper = "0.13.1"
 mime = "0.3"
 serde = "1"
 serde_derive = "1"

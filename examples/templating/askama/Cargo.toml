@@ -2,10 +2,10 @@
 name = "gotham_examples_templating_askama"
 version = "0.0.0"
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 
 askama = "0.8.0"
-hyper = "0.13.1"
 mime = "0.3.12"
