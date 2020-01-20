@@ -4,7 +4,7 @@ use std::panic::RefUnwindSafe;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
 use crate::handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
-use crate::handler::{Handler, NewHandler};
+use crate::handler::{Handler, HandlerError, NewHandler};
 use crate::pipeline::chain::PipelineHandleChain;
 use crate::router::builder::{
     ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
@@ -12,6 +12,10 @@ use crate::router::builder::{
 use crate::router::route::dispatch::DispatcherImpl;
 use crate::router::route::matcher::RouteMatcher;
 use crate::router::route::{Delegation, Extractors, RouteImpl};
+use crate::state::State;
+use core::future::Future;
+use futures::FutureExt;
+use hyper::Response;
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
@@ -106,6 +110,18 @@ pub trait DefineSingleRoute {
     where
         H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static;
 
+    /// Similar to `to`, but accepts an `async fn`
+    fn to_async<F, Fut>(self, handler: F)
+    where
+        Self: Sized,
+        F: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
+        Fut: Future<Output = std::result::Result<(State, Response<Body>), (State, HandlerError)>>
+            + Send
+            + 'static,
+        Self: Sized,
+    {
+        self.to_new_handler(move || Ok(move |s: State| handler(s).boxed()))
+    }
     /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
     /// values are constructed.
     ///

@@ -17,7 +17,7 @@ use std::time::{Duration, Instant};
 
 use hyper::{Body, StatusCode};
 
-use gotham::handler::HandlerFuture;
+use gotham::handler::HandlerResult;
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
@@ -69,61 +69,53 @@ fn sleep(seconds: u64) -> SleepFuture {
 
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
 /// helper method, above.
-fn sleep_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
-    let async_block_future = async move {
-        let seconds = QueryStringExtractor::take_from(&mut state).seconds;
-        println!("sleep for {} seconds once: starting", seconds);
-        // Here, we call the sleep function and turn its old-style future into
-        // a new-style future. Note that this step doesn't block: it just sets
-        // up the timer so that we can use it later.
-        let sleep_future = sleep(seconds);
+async fn sleep_handler(mut state: State) -> HandlerResult {
+    let seconds = QueryStringExtractor::take_from(&mut state).seconds;
+    println!("sleep for {} seconds once: starting", seconds);
+    // Here, we call the sleep function and turn its old-style future into
+    // a new-style future. Note that this step doesn't block: it just sets
+    // up the timer so that we can use it later.
+    let sleep_future = sleep(seconds);
 
-        // Here is where the serious sleeping happens. We yield execution of
-        // this block until sleep_future is resolved.
-        // The Ok("slept for x seconds") value is stored in result.
-        let data = sleep_future.await;
+    // Here is where the serious sleeping happens. We yield execution of
+    // this block until sleep_future is resolved.
+    // The Ok("slept for x seconds") value is stored in result.
+    let data = sleep_future.await;
 
-        // Here, we convert the result from `sleep()` into the form that Gotham
-        // expects: `state` is owned by this block so we need to return it.
-        // We also convert any errors that we have into the form that Hyper
-        // expects, using the helper from IntoHandlerError.
-        let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
-        println!("sleep for {} seconds once: finished", seconds);
-        Ok((state, res))
-    };
-    // Here, we move the future from the async block onto the heap so that
-    // gotham can use it later.
-    async_block_future.boxed()
+    // Here, we convert the result from `sleep()` into the form that Gotham
+    // expects: `state` is owned by this block so we need to return it.
+    // We also convert any errors that we have into the form that Hyper
+    // expects, using the helper from IntoHandlerError.
+    let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+    println!("sleep for {} seconds once: finished", seconds);
+    Ok((state, res))
 }
 
 /// It calls sleep(1) as many times as needed to make the requested duration.
 ///
 /// Notice how much easier it is to read than the version in
 /// `simple_async_handlers`.
-fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
-    let async_block_future = async move {
-        let seconds = QueryStringExtractor::take_from(&mut state).seconds;
-        println!("sleep for one second {} times: starting", seconds);
+async fn loop_handler(mut state: State) -> HandlerResult {
+    let seconds = QueryStringExtractor::take_from(&mut state).seconds;
+    println!("sleep for one second {} times: starting", seconds);
 
-        // The code within this block reads exactly like syncronous code.
-        // This is the style that you should aim to write your business
-        // logic in.
-        let mut accumulator = Vec::new();
-        for _ in 0..seconds {
-            let body = sleep(1).await;
-            accumulator.extend(body)
-        }
+    // The code within this block reads exactly like syncronous code.
+    // This is the style that you should aim to write your business
+    // logic in.
+    let mut accumulator = Vec::new();
+    for _ in 0..seconds {
+        let body = sleep(1).await;
+        accumulator.extend(body)
+    }
 
-        let res = create_response(
-            &state,
-            StatusCode::OK,
-            mime::TEXT_PLAIN,
-            Body::from(accumulator),
-        );
-        println!("sleep for one second {} times: finished", seconds);
-        Ok((state, res))
-    };
-    async_block_future.boxed()
+    let res = create_response(
+        &state,
+        StatusCode::OK,
+        mime::TEXT_PLAIN,
+        Body::from(accumulator),
+    );
+    println!("sleep for one second {} times: finished", seconds);
+    Ok((state, res))
 }
 
 /// Create a `Router`.
@@ -132,11 +124,11 @@ fn router() -> Router {
         route
             .get("/sleep")
             .with_query_string_extractor::<QueryStringExtractor>()
-            .to(sleep_handler);
+            .to_async(sleep_handler);
         route
             .get("/loop")
             .with_query_string_extractor::<QueryStringExtractor>()
-            .to(loop_handler);
+            .to_async(loop_handler);
     })
 }
 
