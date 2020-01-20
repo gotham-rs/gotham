@@ -11,10 +11,8 @@ extern crate serde;
 extern crate serde_derive;
 extern crate tokio;
 
-use futures::compat::Future01CompatExt;
-use futures::{FutureExt, TryFutureExt};
-use legacy_futures::Future as LegacyFuture;
-
+use futures::prelude::*;
+use std::pin::Pin;
 use std::time::{Duration, Instant};
 
 use hyper::StatusCode;
@@ -26,9 +24,9 @@ use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-use tokio::timer::Delay;
+use tokio::time::delay_until;
 
-type SleepFuture = Box<dyn LegacyFuture<Item = Vec<u8>, Error = HandlerError> + Send>;
+type SleepFuture = Pin<Box<dyn Future<Output = Vec<u8>> + Send>>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
@@ -58,70 +56,51 @@ fn get_duration(seconds: u64) -> Duration {
 /// web apis) can be coerced into returning futures that yield useful data,
 /// so the patterns that you learn in this example should be applicable to
 /// real world problems.
-///
-/// This function returns a LegacyFuture (a Future from the 0.1.x branch of
-/// the `futures` crate, rather than a std::future::Future that we can .await).
-/// This is partly to keep it the same as the simple_async_handlers example,
-/// and partly to show you how to use the .compat() combinators (because you
-/// will probably be using them a lot while the ecosystem stabilises).
-///
-/// For a better explanation of .compat(), please read this blog post:
-/// https://rust-lang-nursery.github.io/futures-rs/blog/2019/04/18/compatibility-layer.html
 fn sleep(seconds: u64) -> SleepFuture {
     let when = Instant::now() + get_duration(seconds);
-    let delay = Delay::new(when)
-        .map_err(|e| panic!("timer failed; err={:?}", e))
-        .and_then(move |_| {
-            Ok(format!("slept for {} seconds\n", seconds)
-                .as_bytes()
-                .to_vec())
-        });
+    let delay = delay_until(when.into()).map(move |_| {
+        format!("slept for {} seconds\n", seconds)
+            .as_bytes()
+            .to_vec()
+    });
 
-    Box::new(delay)
+    delay.boxed()
 }
 
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
 /// helper method, above.
-fn sleep_handler(mut state: State) -> Box<HandlerFuture> {
+fn sleep_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let async_block_future = async move {
         let seconds = QueryStringExtractor::take_from(&mut state).seconds;
         println!("sleep for {} seconds once: starting", seconds);
         // Here, we call the sleep function and turn its old-style future into
         // a new-style future. Note that this step doesn't block: it just sets
         // up the timer so that we can use it later.
-        let sleep_future = sleep(seconds).compat();
+        let sleep_future = sleep(seconds);
 
         // Here is where the serious sleeping happens. We yield execution of
         // this block until sleep_future is resolved.
         // The Ok("slept for x seconds") value is stored in result.
-        let result = sleep_future.await;
+        let data = sleep_future.await;
 
         // Here, we convert the result from `sleep()` into the form that Gotham
         // expects: `state` is owned by this block so we need to return it.
         // We also convert any errors that we have into the form that Hyper
         // expects, using the helper from IntoHandlerError.
-        match result {
-            Ok(data) => {
-                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
-                println!("sleep for {} seconds once: finished", seconds);
-                Ok((state, res))
-            }
-            Err(err) => Err((state, err.into_handler_error())),
-        }
+        let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+        println!("sleep for {} seconds once: finished", seconds);
+        Ok((state, res))
     };
-    // Here, we convert the new-style future produced by the async block into
-    // an old-style future that gotham can understand. There are a couple of
-    // layers of boxes, which is a bit sad, but these will go away once the
-    // ecosystem settles and we can return std::future::Future from Handler
-    // functions. Think of it as a temporary wart.
-    Box::new(async_block_future.boxed().compat())
+    // Here, we move the future from the async block onto the heap so that
+    // gotham can use it later.
+    async_block_future.boxed()
 }
 
 /// It calls sleep(1) as many times as needed to make the requested duration.
 ///
 /// Notice how much easier it is to read than the version in
 /// `simple_async_handlers`.
-fn loop_handler(mut state: State) -> Box<HandlerFuture> {
+fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let async_block_future = async move {
         let seconds = QueryStringExtractor::take_from(&mut state).seconds;
         println!("sleep for one second {} times: starting", seconds);
@@ -146,7 +125,7 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
             // logic in.
             let mut accumulator = Vec::new();
             for _ in 0..seconds {
-                let body = sleep(1).compat().await?;
+                let body = sleep(1).await;
                 accumulator.extend(body)
             }
             // ? does type coercion for us, so we need to use a turbofish to
@@ -168,7 +147,7 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
             Err(err) => Err((state, err.into_handler_error())),
         }
     };
-    Box::new(async_block_future.boxed().compat())
+    async_block_future.boxed()
 }
 
 /// Create a `Router`.
