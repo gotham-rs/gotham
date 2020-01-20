@@ -15,9 +15,9 @@ use futures::prelude::*;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
 
-use hyper::StatusCode;
+use hyper::{Body, StatusCode};
 
-use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
+use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
@@ -105,47 +105,23 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
         let seconds = QueryStringExtractor::take_from(&mut state).seconds;
         println!("sleep for one second {} times: starting", seconds);
 
-        // We can't use the ? operator in the outermost async block, because we
-        // need to need to return ownership of the State object back to gotham.
-        // I quite like using ?, so I often find myself writing `async {}.await`
-        // to get around this problem when I'm feeling lazy. Think of this
-        // self-awaiting-block as a bit like a try block.
-        //
-        // In real code, you probably shouldn't be writing business logic in
-        // your Handler functions anyway. Instead, you should be
-        // unpacking everything you need from State in the Handler function
-        // and then calling your business logic with only the dependencies that
-        // they need. That way your business logic can use new-style futures
-        // and ? as much as it likes, and you will only need to update your
-        // handler functions (which don't contain any business logic) when you
-        // upgrade your gotham.
-        let result = async {
-            // The code within this block reads exactly like syncronous code.
-            // This is the style that you should aim to write your business
-            // logic in.
-            let mut accumulator = Vec::new();
-            for _ in 0..seconds {
-                let body = sleep(1).await;
-                accumulator.extend(body)
-            }
-            // ? does type coercion for us, so we need to use a turbofish to
-            // tell the compiler that we have a HandlerError. See this section
-            // of the rust async book for more details:
-            // https://rust-lang.github.io/async-book/07_workarounds/03_err_in_async_blocks.html
-            Ok::<_, HandlerError>(accumulator)
+        // The code within this block reads exactly like syncronous code.
+        // This is the style that you should aim to write your business
+        // logic in.
+        let mut accumulator = Vec::new();
+        for _ in 0..seconds {
+            let body = sleep(1).await;
+            accumulator.extend(body)
         }
-            .await;
 
-        // This bit is the same boilerplate as the bit in the first example.
-        // Nothing to see here.
-        match result {
-            Ok(data) => {
-                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
-                println!("sleep for one second {} times: finished", seconds);
-                Ok((state, res))
-            }
-            Err(err) => Err((state, err.into_handler_error())),
-        }
+        let res = create_response(
+            &state,
+            StatusCode::OK,
+            mime::TEXT_PLAIN,
+            Body::from(accumulator),
+        );
+        println!("sleep for one second {} times: finished", seconds);
+        Ok((state, res))
     };
     async_block_future.boxed()
 }
