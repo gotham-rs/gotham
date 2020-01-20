@@ -16,8 +16,9 @@ extern crate log;
 //extern crate gotham_derive;
 
 use std::io;
+use std::pin::Pin;
 
-use futures::{future, Future};
+use futures::prelude::*;
 
 use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
@@ -45,9 +46,9 @@ impl NewMiddleware for MyMiddleware {
 }
 
 impl Middleware for MyMiddleware {
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
         debug!("[{}] pre chain", request_id(&state));
         // Do things prior to passing the request on to other middleware and the eventual Handler
@@ -55,16 +56,17 @@ impl Middleware for MyMiddleware {
         // For example store something in State
         // state.put(MyData { my_value: "abcdefg".to_owned() });
 
-        let f = chain(state).and_then(move |(state, response)| {
-            {
-                debug!("[{}] post chain", request_id(&state));
-                // Do things once a response has come back
-                // ..
-                // For example get our data back from State
-                // let data = state.borrow::<MyData>().unwrap();
-            }
-            future::ok((state, response))
-        });
-        Box::new(f)
+        chain(state)
+            .and_then(move |(state, response)| {
+                {
+                    debug!("[{}] post chain", request_id(&state));
+                    // Do things once a response has come back
+                    // ..
+                    // For example get our data back from State
+                    // let data = state.borrow::<MyData>().unwrap();
+                }
+                future::ok((state, response))
+            })
+            .boxed()
     }
 }

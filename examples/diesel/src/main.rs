@@ -9,15 +9,16 @@ extern crate diesel_migrations;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::{future, Future, Stream};
+use futures::prelude::*;
 use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
 use gotham::pipeline::{new_pipeline, single::single_pipeline};
 use gotham::router::{builder::*, Router};
 use gotham::state::{FromState, State};
 use gotham_middleware_diesel::DieselMiddleware;
-use hyper::{Body, StatusCode};
+use hyper::{body, Body, StatusCode};
 use serde_derive::Serialize;
+use std::pin::Pin;
 use std::str::from_utf8;
 
 mod models;
@@ -43,46 +44,51 @@ struct RowsUpdated {
     rows: usize,
 }
 
-fn create_product_handler(mut state: State) -> Box<HandlerFuture> {
+fn create_product_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let repo = Repo::borrow_from(&state).clone();
-    let f = extract_json::<NewProduct>(&mut state)
-        .and_then(move |product| {
-            repo.run(move |conn| {
-                // Insert the `NewProduct` in the DB
+    async move {
+        let product = match extract_json::<NewProduct>(&mut state).await {
+            Ok(product) => product,
+            Err(e) => return Err((state, e)),
+        };
+
+        let query_result = repo
+            .run(move |conn| {
                 diesel::insert_into(products::table)
                     .values(&product)
                     .execute(&conn)
             })
-            .map_err(|e| e.into_handler_error())
-        })
-        .then(|result| match result {
-            Ok(rows) => {
-                let body = serde_json::to_string(&RowsUpdated { rows })
-                    .expect("Failed to serialise to json");
-                let res =
-                    create_response(&state, StatusCode::CREATED, mime::APPLICATION_JSON, body);
-                future::ok((state, res))
-            }
-            Err(e) => future::err((state, e)),
-        });
-    Box::new(f)
+            .await;
+
+        let rows = match query_result {
+            Ok(rows) => rows,
+            Err(e) => return Err((state, e.into_handler_error())),
+        };
+
+        let body =
+            serde_json::to_string(&RowsUpdated { rows }).expect("Failed to serialise to json");
+        let res = create_response(&state, StatusCode::CREATED, mime::APPLICATION_JSON, body);
+        Ok((state, res))
+    }
+    .boxed()
 }
 
-fn get_products_handler(state: State) -> Box<HandlerFuture> {
+fn get_products_handler(state: State) -> Pin<Box<HandlerFuture>> {
     use crate::schema::products::dsl::*;
 
     let repo = Repo::borrow_from(&state).clone();
-    let f = repo
-        .run(move |conn| products.load::<Product>(&conn))
-        .then(|result| match result {
+    async move {
+        let result = repo.run(move |conn| products.load::<Product>(&conn)).await;
+        match result {
             Ok(users) => {
                 let body = serde_json::to_string(&users).expect("Failed to serialize users.");
                 let res = create_response(&state, StatusCode::OK, mime::APPLICATION_JSON, body);
-                future::ok((state, res))
+                Ok((state, res))
             }
-            Err(e) => future::err((state, e.into_handler_error())),
-        });
-    Box::new(f)
+            Err(e) => Err((state, e.into_handler_error())),
+        }
+    }
+    .boxed()
 }
 
 fn router(repo: Repo) -> Router {
@@ -104,19 +110,17 @@ where
     e.into_handler_error().with_status(StatusCode::BAD_REQUEST)
 }
 
-fn extract_json<T>(state: &mut State) -> impl Future<Item = T, Error = HandlerError>
+async fn extract_json<T>(state: &mut State) -> Result<T, HandlerError>
 where
     T: serde::de::DeserializeOwned,
 {
-    Body::take_from(state)
-        .concat2()
+    let body = body::to_bytes(Body::take_from(state))
         .map_err(bad_request)
-        .and_then(|body| {
-            let b = body.to_vec();
-            from_utf8(&b)
-                .map_err(bad_request)
-                .and_then(|s| serde_json::from_str::<T>(s).map_err(bad_request))
-        })
+        .await?;
+    let b = body.to_vec();
+    from_utf8(&b)
+        .map_err(bad_request)
+        .and_then(|s| serde_json::from_str::<T>(s).map_err(bad_request))
 }
 
 /// Start a server and use a `Router` to dispatch requests
@@ -136,11 +140,11 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use failure::Fail;
     use gotham::test::TestServer;
     use gotham_middleware_diesel::Repo;
     use hyper::StatusCode;
     use std::str;
-    use tokio::runtime;
 
     static DATABASE_URL: &str = ":memory:";
 
@@ -153,7 +157,9 @@ mod tests {
     #[test]
     fn get_empty_products() {
         let repo = Repo::with_test_transactions(DATABASE_URL);
-        runtime::run(repo.run(|conn| embedded_migrations::run(&conn).map_err(|_| ())));
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let _ = runtime
+            .block_on(repo.run(|conn| embedded_migrations::run(&conn).map_err(|e| e.compat())));
         let test_server = TestServer::new(router(repo)).unwrap();
         let response = test_server
             .client()
@@ -172,7 +178,9 @@ mod tests {
     #[test]
     fn create_and_retrieve_product() {
         let repo = Repo::with_test_transactions(DATABASE_URL);
-        runtime::run(repo.run(|conn| embedded_migrations::run(&conn).map_err(|_| ())));
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let _ = runtime
+            .block_on(repo.run(|conn| embedded_migrations::run(&conn).map_err(|e| e.compat())));
         let test_server = TestServer::new(router(repo)).unwrap();
 
         //  First we'll insert something into the DB with a post

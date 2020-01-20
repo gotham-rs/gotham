@@ -4,7 +4,9 @@ use crate::helpers::http::header::X_RUNTIME_DURATION;
 use crate::helpers::timing::Timer;
 use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::State;
-use futures::{future, Future};
+use futures::prelude::*;
+use std::pin::Pin;
+
 use std::io;
 
 /// Middleware binding to attach request execution times inside headers.
@@ -17,9 +19,9 @@ pub struct RequestTimer;
 /// `Middleware` trait implementation.
 impl Middleware for RequestTimer {
     /// Attaches the request execution time to the response headers.
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
         // start the timer
         let timer = Timer::new();
@@ -35,7 +37,7 @@ impl Middleware for RequestTimer {
             future::ok((state, response))
         });
 
-        Box::new(f)
+        f.boxed()
     }
 }
 

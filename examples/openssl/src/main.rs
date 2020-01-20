@@ -10,7 +10,7 @@ extern crate tokio;
 extern crate tokio_openssl;
 
 use failure::{err_msg, Error};
-use futures::Future;
+use futures::prelude::*;
 use openssl::{
     pkey::PKey,
     ssl::{SslAcceptor, SslMethod},
@@ -49,7 +49,6 @@ pub fn main() -> Result<(), Error> {
     );
 
     let mut runtime = Runtime::new()?;
-
     runtime
         .block_on(server)
         .map_err(|()| err_msg("Server failed"))

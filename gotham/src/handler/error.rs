@@ -25,14 +25,15 @@ pub struct HandlerError {
 /// # extern crate futures;
 /// #
 /// # use std::fs::File;
+/// # use std::pin::Pin;
 /// # use gotham::state::State;
 /// # use gotham::handler::{IntoHandlerError, HandlerFuture};
-/// # use futures::future;
+/// # use futures::prelude::*;
 /// #
 /// # #[allow(dead_code)]
-/// fn my_handler(state: State) -> Box<HandlerFuture> {
+/// fn my_handler(state: State) -> Pin<Box<HandlerFuture>> {
 ///     match File::open("config.toml") {
-///         Err(e) => Box::new(future::err((state, e.into_handler_error()))),
+///         Err(e) => future::err((state, e.into_handler_error())).boxed(),
 ///         Ok(_) => // Create and return a response
 /// #                unimplemented!(),
 ///     }
@@ -95,13 +96,15 @@ impl HandlerError {
     /// # extern crate hyper;
     /// # extern crate futures;
     /// #
-    /// # use futures::future;
+    /// # use std::pin::Pin;
+    /// #
+    /// # use futures::prelude::*;
     /// # use hyper::StatusCode;
     /// # use gotham::state::State;
     /// # use gotham::handler::{IntoHandlerError, HandlerFuture};
     /// # use gotham::test::TestServer;
     /// #
-    /// fn handler(state: State) -> Box<HandlerFuture> {
+    /// fn handler(state: State) -> Pin<Box<HandlerFuture>> {
     ///     // It's OK if this is bogus, we just need something to convert into a `HandlerError`.
     ///     let io_error = std::io::Error::last_os_error();
     ///
@@ -109,7 +112,7 @@ impl HandlerError {
     ///         .into_handler_error()
     ///         .with_status(StatusCode::IM_A_TEAPOT);
     ///
-    ///     Box::new(future::err((state, handler_error)))
+    ///     future::err((state, handler_error)).boxed()
     /// }
     ///
     /// # fn main() {

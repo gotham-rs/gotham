@@ -6,7 +6,8 @@ extern crate gotham;
 extern crate hyper;
 extern crate mime;
 
-use futures::future;
+use futures::prelude::*;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
@@ -38,7 +39,7 @@ impl CountingHandler {
 }
 
 impl Handler for CountingHandler {
-    fn handle(self, state: State) -> Box<HandlerFuture> {
+    fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
         let uptime = SystemTime::now().duration_since(self.started_at).unwrap();
 
         // Create a short scope so that self.visits will only be locked for long enough to
@@ -57,7 +58,7 @@ impl Handler for CountingHandler {
 
         let response = response_text.into_response(&state);
 
-        Box::new(future::ok((state, response)))
+        future::ok((state, response)).boxed()
     }
 }
 

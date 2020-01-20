@@ -1,4 +1,4 @@
-use futures::{Future, Sink, Stream};
+use futures::prelude::*;
 use gotham::state::{request_id, FromState, State};
 use hyper::{Body, HeaderMap, Response, StatusCode};
 
@@ -36,7 +36,7 @@ fn handler(mut state: State) -> (State, Response<Body>) {
     }
 }
 
-fn connected<S>(req_id: String, stream: S) -> impl Future<Item = (), Error = ()>
+fn connected<S>(req_id: String, stream: S) -> impl Future<Output = Result<(), ()>>
 where
     S: Stream<Item = ws::Message, Error = ws::Error>
         + Sink<SinkItem = ws::Message, SinkError = ws::Error>,

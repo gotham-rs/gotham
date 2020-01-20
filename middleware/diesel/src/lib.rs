@@ -19,8 +19,9 @@
 //! # use gotham_middleware_diesel::{self, DieselMiddleware};
 //! # use diesel::{RunQueryDsl, SqliteConnection};
 //! # use hyper::StatusCode;
-//! # use futures::future::Future;
+//! # use futures::prelude::*;
 //! # use gotham::test::TestServer;
+//! # use std::pin::Pin;
 //!
 //! pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 //!
@@ -37,24 +38,25 @@
 //!     })
 //! }
 //!
-//! fn handler(state: State) -> Box<HandlerFuture> {
+//! fn handler(state: State) -> Pin<Box<HandlerFuture>> {
 //!     let repo = Repo::borrow_from(&state).clone();
 //!     // As an example, we perform the query:
 //!     // `SELECT 1`
-//!     let f = repo
-//!         .run(move |conn| {
+//!     async move {
+//!         let result = repo.run(move |conn| {
 //!             diesel::select(diesel::dsl::sql("1"))
 //!             .load::<i64>(&conn)
 //!             .map(|v| v.into_iter().next().expect("no results"))
-//!         }).then(|result| match result {
-//!            Ok(n) => {
-//!                let body = format!("result: {}", n);
-//!                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, body);
-//!                Ok((state, res))
-//!            },
-//!            Err(e) => Err((state, e.into_handler_error())),
-//!         });
-//!    Box::new(f)
+//!         }).await;
+//!         match result {
+//!             Ok(n) => {
+//!                 let body = format!("result: {}", n);
+//!                 let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, body);
+//!                 Ok((state, res))
+//!             },
+//!             Err(e) => Err((state, e.into_handler_error())),
+//!         }
+//!     }.boxed()
 //! }
 //!
 //! # fn main() {
@@ -72,10 +74,11 @@
 #![doc(test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
 use diesel::Connection;
-use futures::future::{self, Future};
+use futures::prelude::*;
 use log::{error, trace};
 use std::io;
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::pin::Pin;
 use std::process;
 
 use gotham::handler::HandlerFuture;
@@ -149,9 +152,9 @@ impl<T> Middleware for DieselMiddleware<T>
 where
     T: Connection + 'static,
 {
-    fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + 'static,
         Self: Sized,
     {
         trace!("[{}] pre chain", request_id(&state));
@@ -163,6 +166,6 @@ where
             }
             future::ok((state, response))
         });
-        Box::new(f)
+        f.boxed()
     }
 }

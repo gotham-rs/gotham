@@ -8,8 +8,8 @@ edition = "2018"
 
 [dependencies]
 gotham = { path = "../../gotham" }
-hyper = "0.12"
-futures = "0.1"
+hyper = "0.13.1"
+futures = "0.3.1"
 tokio-tungstenite = "0.9"
 pretty_env_logger = "0.3"
 sha1 = "*"

@@ -2,8 +2,9 @@ pub(super) mod memory;
 
 use std::io;
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
-use futures::Future;
+use futures::prelude::*;
 
 use crate::middleware::session::{SessionError, SessionIdentifier};
 
@@ -17,7 +18,7 @@ pub trait NewBackend: Sync + Clone + RefUnwindSafe {
 }
 
 /// Type alias for the trait objects returned by `Backend`.
-pub type SessionFuture = dyn Future<Item = Option<Vec<u8>>, Error = SessionError> + Send;
+pub type SessionFuture = dyn Future<Output = Result<Option<Vec<u8>>, SessionError>> + Send;
 
 /// A `Backend` receives session data and stores it, and recalls the session data subsequently.
 ///
@@ -36,7 +37,7 @@ pub trait Backend: Send {
     /// The returned future will resolve to an `Option<Vec<u8>>` on success, where a value of
     /// `None` indicates that the session is not available for use and a new session should be
     /// established.
-    fn read_session(&self, identifier: SessionIdentifier) -> Box<SessionFuture>;
+    fn read_session(&self, identifier: SessionIdentifier) -> Pin<Box<SessionFuture>>;
 
     /// Drops a session from the underlying storage.
     fn drop_session(&self, identifier: SessionIdentifier) -> Result<(), SessionError>;

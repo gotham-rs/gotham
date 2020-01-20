@@ -15,7 +15,9 @@
 use crate::handler::HandlerFuture;
 use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::State;
-use futures::{future, Future};
+use futures::prelude::*;
+use std::pin::Pin;
+
 use hyper::header::{HeaderValue, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
 use std::io;
 
@@ -34,9 +36,9 @@ pub struct SecurityMiddleware;
 /// `Middleware` trait implementation.
 impl Middleware for SecurityMiddleware {
     /// Attaches security headers to the response.
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
         let f = chain(state).and_then(|(state, mut response)| {
             {
@@ -49,7 +51,7 @@ impl Middleware for SecurityMiddleware {
             future::ok((state, response))
         });
 
-        Box::new(f)
+        f.boxed()
     }
 }
 

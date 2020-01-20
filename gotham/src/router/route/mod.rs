@@ -9,6 +9,7 @@ pub mod matcher;
 
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
 use hyper::{Body, Response, Uri};
 use log::debug;
@@ -50,7 +51,7 @@ pub enum Delegation {
 /// `Route` exists as a trait to allow abstraction over the generic types in `RouteImpl`. This
 /// trait should not be implemented outside of Gotham.
 pub trait Route: RefUnwindSafe {
-    /// The type of the response body. The requirements of Hyper are that this implements `Payload`.
+    /// The type of the response body. The requirements of Hyper are that this implements `HttpBody`.
     /// Almost always, it will want to be `hyper::Body`.
     type ResBody;
     /// Determines if this `Route` should be invoked, based on the request data in `State.
@@ -81,7 +82,7 @@ pub trait Route: RefUnwindSafe {
 
     /// Dispatches the request to this `Route`, which will execute the pipelines and the handler
     /// assigned to the `Route.
-    fn dispatch(&self, state: State) -> Box<HandlerFuture>;
+    fn dispatch(&self, state: State) -> Pin<Box<HandlerFuture>>;
 }
 
 /// Returned in the `Err` variant from `extract_query_string` or `extract_request_path`, this
@@ -165,7 +166,7 @@ where
         self.delegation
     }
 
-    fn dispatch(&self, state: State) -> Box<HandlerFuture> {
+    fn dispatch(&self, state: State) -> Pin<Box<HandlerFuture>> {
         self.dispatcher.dispatch(state)
     }
 
@@ -220,7 +221,7 @@ where
 mod tests {
     use super::*;
 
-    use futures::Async;
+    use futures::prelude::*;
     use hyper::{HeaderMap, Method, StatusCode, Uri};
     use std::str::FromStr;
 
@@ -252,12 +253,10 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        match route.dispatch(state).poll() {
-            Ok(Async::Ready((_state, response))) => {
-                assert_eq!(response.status(), StatusCode::ACCEPTED)
-            }
-            Ok(Async::NotReady) => panic!("expected future to be completed already"),
-            Err((_state, e)) => panic!("error polling future: {}", e),
+        match route.dispatch(state).now_or_never() {
+            Some(Ok((_state, response))) => assert_eq!(response.status(), StatusCode::ACCEPTED),
+            Some(Err((_state, e))) => panic!("error polling future: {}", e),
+            None => panic!("expected future to be completed already"),
         }
     }
 
@@ -286,12 +285,10 @@ mod tests {
         state.put(RequestPathSegments::new("/"));
         set_request_id(&mut state);
 
-        match route.dispatch(state).poll() {
-            Ok(Async::Ready((_state, response))) => {
-                assert_eq!(response.status(), StatusCode::ACCEPTED)
-            }
-            Ok(Async::NotReady) => panic!("expected future to be completed already"),
-            Err((_state, e)) => panic!("error polling future: {}", e),
+        match route.dispatch(state).now_or_never() {
+            Some(Ok((_state, response))) => assert_eq!(response.status(), StatusCode::ACCEPTED),
+            Some(Err((_state, e))) => panic!("error polling future: {}", e),
+            None => panic!("expected future to be completed already"),
         }
     }
 }

@@ -2,33 +2,38 @@
 //!
 //! See the `TestServer` type for example usage.
 
+use http::Uri;
+use hyper::client::connect::{Connected, Connection};
 use std::io::BufReader;
 use std::net::{self, IpAddr, SocketAddr};
+use std::panic::UnwindSafe;
+use std::pin::Pin;
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
+use std::task::{Context, Poll};
+use std::time::Duration;
 
-use failure;
+use failure::Fail;
 use log::info;
 
-use futures::Future;
-use hyper::client::{
-    connect::{Connect, Connected, Destination},
-    Client,
-};
+use futures::prelude::*;
+use hyper::client::Client;
+use hyper::service::Service;
+use pin_project::pin_project;
+use rustls::Session;
+use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
-use tokio::runtime::Runtime;
-use tokio::timer::Delay;
-
 use tokio::net::TcpStream;
-
+use tokio::runtime::Runtime;
+use tokio::time::{delay_for, Delay};
+use tokio_rustls::client::TlsStream;
 use tokio_rustls::{
     rustls::{
         self,
         internal::pemfile::{certs, pkcs8_private_keys},
-        ClientSession, NoClientAuth,
+        NoClientAuth,
     },
     webpki::DNSNameRef,
-    TlsConnector, TlsStream,
+    TlsConnector,
 };
 
 use crate::handler::NewHandler;
@@ -83,18 +88,22 @@ impl Clone for TestServer {
 
 impl test::Server for TestServer {
     fn request_expiry(&self) -> Delay {
-        Delay::new(Instant::now() + Duration::from_secs(self.data.timeout))
+        let runtime = self.data.runtime.write().unwrap();
+        runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
     }
 
     fn run_future<F, R, E>(&self, future: F) -> Result<R>
     where
-        F: Send + 'static + Future<Item = R, Error = E>,
+        F: Send + 'static + Future<Output = std::result::Result<R, E>>,
         R: Send + 'static,
         E: failure::Fail,
     {
-        let (tx, rx) = futures::sync::oneshot::channel();
-        self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
-        rx.wait().unwrap().map_err(Into::into)
+        self.data
+            .runtime
+            .write()
+            .expect("unable to acquire write lock")
+            .block_on(future)
+            .map_err(Into::into)
     }
 }
 
@@ -104,7 +113,10 @@ impl TestServer {
     /// for each connection.
     ///
     /// Timeout will be set to 10 seconds.
-    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> Result<TestServer> {
+    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> Result<TestServer>
+    where
+        NH::Instance: UnwindSafe,
+    {
         TestServer::with_timeout(new_handler, 10)
     }
 
@@ -112,9 +124,17 @@ impl TestServer {
     pub fn with_timeout<NH: NewHandler + 'static>(
         new_handler: NH,
         timeout: u64,
-    ) -> Result<TestServer> {
+    ) -> Result<TestServer>
+    where
+        NH::Instance: UnwindSafe,
+    {
         let mut runtime = Runtime::new()?;
-        let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
+        // TODO: Fix this into an async flow
+        let listener = runtime.block_on(TcpListener::bind(
+            "127.0.0.1:0"
+                .parse::<SocketAddr>()
+                .map_err(|e| e.compat())?,
+        ))?;
         let addr = listener.local_addr()?;
 
         let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
@@ -125,7 +145,7 @@ impl TestServer {
         cfg.set_single_cert(certs, keys.remove(0))?;
 
         let service_stream = super::bind_server_rustls(listener, new_handler, cfg);
-        runtime.spawn(service_stream);
+        runtime.spawn(service_stream); // Ignore the result
 
         let data = TestServerData {
             addr,
@@ -150,7 +170,7 @@ impl TestServer {
     /// tests.
     pub fn spawn<F>(&self, fut: F)
     where
-        F: Future<Item = (), Error = ()> + Send + 'static,
+        F: Future<Output = ()> + Send + 'static,
     {
         self.data
             .runtime
@@ -192,34 +212,96 @@ impl TestServer {
     }
 }
 
+#[allow(missing_docs)]
+#[pin_project]
+pub struct TlsConnectionStream<IO>(#[pin] TlsStream<IO>);
+
+impl<IO: AsyncRead + AsyncWrite + Connection + Unpin> Connection for TlsConnectionStream<IO> {
+    fn connected(&self) -> Connected {
+        let (tcp, tls) = self.0.get_ref();
+        if tls.get_alpn_protocol() == Some(b"h2") {
+            tcp.connected().negotiated_h2()
+        } else {
+            tcp.connected()
+        }
+    }
+}
+
+impl<IO> AsyncRead for TlsConnectionStream<IO>
+where
+    IO: AsyncRead + AsyncWrite + Unpin,
+{
+    #[inline]
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context,
+        buf: &mut [u8],
+    ) -> Poll<std::result::Result<usize, std::io::Error>> {
+        self.project().0.poll_read(cx, buf)
+    }
+}
+
+impl<IO: AsyncRead + AsyncWrite + Unpin> AsyncWrite for TlsConnectionStream<IO> {
+    #[inline]
+    fn poll_write(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<std::result::Result<usize, std::io::Error>> {
+        self.project().0.poll_write(cx, buf)
+    }
+
+    #[inline]
+    fn poll_flush(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<std::result::Result<(), std::io::Error>> {
+        self.project().0.poll_flush(cx)
+    }
+
+    #[inline]
+    fn poll_shutdown(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<std::result::Result<(), std::io::Error>> {
+        self.project().0.poll_shutdown(cx)
+    }
+}
+
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
+#[derive(Clone)]
 pub struct TestConnect {
     pub(crate) addr: SocketAddr,
     config: Arc<rustls::ClientConfig>,
 }
 
-impl Connect for TestConnect {
-    type Transport = TlsStream<TcpStream, ClientSession>;
+impl Service<Uri> for TestConnect {
+    type Response = TlsConnectionStream<TcpStream>;
     type Error = CompatError;
     type Future =
-        Box<dyn Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
+        Pin<Box<dyn Future<Output = std::result::Result<Self::Response, Self::Error>> + Send>>;
 
-    fn connect(&self, dst: Destination) -> Self::Future {
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<std::result::Result<(), Self::Error>> {
+        Ok(()).into()
+    }
+
+    fn call(&mut self, req: Uri) -> Self::Future {
         let tls = TlsConnector::from(self.config.clone());
-        Box::new(
-            TcpStream::connect(&self.addr)
-                .and_then(move |stream| {
-                    let domain = DNSNameRef::try_from_ascii_str(dst.host()).unwrap();
-                    tls.connect(domain, stream)
-                })
-                .inspect(|s| info!("Client TcpStream connected: {:?}", s))
-                .map(|s| (s, Connected::new()))
-                .map_err(|e| {
-                    info!("TLS TestClient error: {:?}", e);
-                    Error::from(e).compat()
-                }),
-        )
+
+        TcpStream::connect(self.addr)
+            .map_err(|e| Error::from(e).compat())
+            .and_then(move |stream| {
+                let domain = DNSNameRef::try_from_ascii_str(req.host().unwrap()).unwrap();
+                tls.connect(domain, stream)
+                    .inspect(|s| info!("Client TcpStream connected: {:?}", s))
+                    .map_ok(TlsConnectionStream)
+                    .map_err(|e| {
+                        info!("TLS TestClient error: {:?}", e);
+                        Error::from(e).compat()
+                    })
+            })
+            .boxed()
     }
 }
 
@@ -230,13 +312,12 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use hyper::header::CONTENT_LENGTH;
-    use hyper::{Body, Response, StatusCode, Uri};
+    use hyper::{body, Body, Response, StatusCode, Uri};
     use mime;
 
     use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
-    use futures::{future, Stream};
     use http::header::CONTENT_TYPE;
     use log::info;
 
@@ -246,7 +327,7 @@ mod tests {
     }
 
     impl Handler for TestHandler {
-        fn handle(self, state: State) -> Box<HandlerFuture> {
+        fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
             let path = Uri::borrow_from(&state).path().to_owned();
             match path.as_str() {
                 "/" => {
@@ -256,12 +337,19 @@ mod tests {
                         .body(self.response.clone().into())
                         .unwrap();
 
-                    Box::new(future::ok((state, response)))
+                    future::ok((state, response)).boxed()
                 }
                 "/timeout" => {
+                    // TODO: What is this supposed to return?  It previously returned nothing which isn't a timeout
+                    let response = Response::builder()
+                        .status(StatusCode::REQUEST_TIMEOUT)
+                        .body(Body::default())
+                        .unwrap();
+
                     info!("TestHandler responding to /timeout");
-                    Box::new(future::empty())
+                    future::ok((state, response)).boxed()
                 }
+
                 "/myaddr" => {
                     info!("TestHandler responding to /myaddr");
                     let response = Response::builder()
@@ -269,7 +357,7 @@ mod tests {
                         .body(format!("{}", client_addr(&state).unwrap()).into())
                         .unwrap();
 
-                    Box::new(future::ok((state, response)))
+                    future::ok((state, response)).boxed()
                 }
                 _ => unreachable!(),
             }
@@ -366,21 +454,26 @@ mod tests {
 
     #[test]
     fn async_echo() {
-        fn handler(mut state: State) -> Box<HandlerFuture> {
-            let f = Body::take_from(&mut state)
-                .concat2()
-                .then(move |full_body| match full_body {
-                    Ok(body) => {
-                        let resp_data = body.to_vec();
-                        let res =
-                            create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, resp_data);
-                        future::ok((state, res))
-                    }
+        fn handler(mut state: State) -> Pin<Box<HandlerFuture>> {
+            let f =
+                body::to_bytes(Body::take_from(&mut state)).then(
+                    move |full_body| match full_body {
+                        Ok(body) => {
+                            let resp_data = body.to_vec();
+                            let res = create_response(
+                                &state,
+                                StatusCode::OK,
+                                mime::TEXT_PLAIN,
+                                resp_data,
+                            );
+                            future::ok((state, res))
+                        }
 
-                    Err(e) => future::err((state, e.into_handler_error())),
-                });
+                        Err(e) => future::err((state, e.into_handler_error())),
+                    },
+                );
 
-            Box::new(f)
+            f.boxed()
         }
 
         let server = TestServer::new(|| Ok(handler)).unwrap();
