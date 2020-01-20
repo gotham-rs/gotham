@@ -1,16 +1,5 @@
 //! A basic example showing the request components
 
-extern crate futures;
-extern crate gotham;
-#[macro_use]
-extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate tokio;
-
 use futures::prelude::*;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
@@ -23,6 +12,8 @@ use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
+use gotham_derive::{StateData, StaticResponseExtender};
+use serde_derive::Deserialize;
 
 use tokio::time::delay_until;
 
