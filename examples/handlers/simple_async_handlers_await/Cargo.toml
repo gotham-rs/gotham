@@ -10,8 +10,8 @@ edition = "2018"
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-mime = "0.3.16"
+mime = "0.3"
 futures = "0.3.1"
-serde = "1.0.104"
-serde_derive = "1.0.104"
+serde = "1.0"
+serde_derive = "1.0"
 tokio = "0.2.9"
