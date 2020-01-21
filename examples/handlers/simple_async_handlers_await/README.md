@@ -7,9 +7,6 @@ of this example can be found at [Async Request Handlers](../simple_async_handler
 
 This example has exactly the same behavior and API as the combinator-based version,
 and it can be used as a reference when converting your code to use async/await.
-It also leaves the versions of gotham, tokio and hyper the same, and uses the
-compatibility helpers from the `futures` crate to convert things at the
-interface boundaries.
 
 ## Running
 
