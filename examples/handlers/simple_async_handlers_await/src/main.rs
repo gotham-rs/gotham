@@ -4,7 +4,7 @@ use futures::prelude::*;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
 
-use hyper::{Body, StatusCode};
+use gotham::hyper::{Body, StatusCode};
 
 use gotham::handler::HandlerResult;
 use gotham::helpers::http::response::create_response;
