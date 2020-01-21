@@ -1,13 +1,7 @@
 //! An introduction to storing and retrieving cookie data, with the Gotham
 //! web framework.
-
-extern crate cookie;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-
-use hyper::header::SET_COOKIE;
-use hyper::{Body, Response, StatusCode};
+use gotham::hyper::header::SET_COOKIE;
+use gotham::hyper::{Body, Response, StatusCode};
 
 use cookie::{Cookie, CookieJar};
 
@@ -68,8 +62,8 @@ pub fn main() {
 mod tests {
     use super::*;
     use cookie::Cookie;
+    use gotham::hyper::header::COOKIE;
     use gotham::test::TestServer;
-    use hyper::header::COOKIE;
 
     #[test]
     fn cookie_is_set_and_counter_increments() {

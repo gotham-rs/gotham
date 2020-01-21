@@ -1,20 +1,15 @@
 //! A basic example showing the request components
-extern crate futures;
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
 use futures::prelude::*;
 use std::pin::Pin;
 
-use hyper::StatusCode;
+use gotham::hyper::StatusCode;
 #[cfg(not(test))]
-use hyper::{body, Client, Uri};
+use gotham::hyper::{body, Client, Uri};
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
@@ -23,7 +18,8 @@ use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-type ResponseContentFuture = Pin<Box<dyn Future<Output = Result<Vec<u8>, hyper::Error>> + Send>>;
+type ResponseContentFuture =
+    Pin<Box<dyn Future<Output = Result<Vec<u8>, gotham::hyper::Error>> + Send>>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {

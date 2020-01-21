@@ -16,10 +16,9 @@ edition = "2018"
 
 [dependencies]
 futures = "0.3.1"
-gotham = "0.5.0-dev"
-gotham_derive = "0.5.0-dev"
+gotham = { path = "../../gotham", version = "0.5.0-dev" }
+gotham_derive = { path = "../../gotham_derive", version = "0.5.0-dev" }
 serde = "1.0"
 serde_derive = "1.0"
-hyper = "0.13.1"
 jsonwebtoken = "6.0"
 log = "0.4"

@@ -4,10 +4,10 @@ description = "An introduction to storing and retrieving cookies with the Gotham
 version = "0.0.0"
 authors = ["Daniel Wagner-Hall <dawagner@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-hyper = "0.13.1"
 mime = "0.3"
 cookie = "0.12"

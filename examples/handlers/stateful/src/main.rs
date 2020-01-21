@@ -1,10 +1,6 @@
 //! An example of using stateful handlers with the Gotahm web framework.
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
-extern crate futures;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
 
 use futures::prelude::*;
 use std::pin::Pin;
@@ -85,8 +81,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::StatusCode;
 
     #[test]
     fn counter_increments_per_request() {

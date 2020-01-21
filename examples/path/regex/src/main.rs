@@ -1,11 +1,6 @@
 //! An example of the Gotham web framework `Router` that shows how to use Regex patterns in path segments.
-
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
@@ -58,8 +53,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_router_response() {

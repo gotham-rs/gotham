@@ -11,7 +11,6 @@ publish = false
 gotham = { path = "../../gotham/"}
 gotham_derive = { path = "../../gotham_derive/" }
 gotham_middleware_diesel = { path = "../../middleware/diesel"}
-hyper = "0.13.1"
 failure = "0.1"
 futures = "0.3.1"
 mime = "0.3"

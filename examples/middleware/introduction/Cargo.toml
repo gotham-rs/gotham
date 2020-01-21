@@ -3,11 +3,11 @@ name = "gotham_examples_middleware_introduction"
 description = "Introduces the Middleware and Pipeline concepts provided by the Gotham web framework"
 version = "0.0.0"
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-hyper = "0.13.1"
 futures = "0.3.1"
 mime = "0.3"

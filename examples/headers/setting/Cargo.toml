@@ -4,9 +4,9 @@ description = "Setting a header value for a Gotham web framework response"
 version = "0.0.0"
 authors = ["Eren Güven <erenguven0@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-hyper = "0.13.1"
 mime = "0.3"

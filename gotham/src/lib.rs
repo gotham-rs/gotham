@@ -45,6 +45,9 @@ pub mod plain;
 #[cfg(feature = "rustls")]
 pub mod tls;
 
+/// Re-export hyper
+pub use hyper;
+
 use futures::prelude::*;
 use hyper::server::conn::Http;
 use std::net::ToSocketAddrs;

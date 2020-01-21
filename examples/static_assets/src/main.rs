@@ -1,7 +1,4 @@
 //! An example of serving static assets with Gotham.
-
-extern crate gotham;
-
 use gotham::handler::assets::FileOptions;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 

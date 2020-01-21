@@ -10,7 +10,6 @@ gotham = { path = "../../gotham" }
 
 futures = "0.3.1"
 tokio = { version = "0.2.6", features = ["full"] }
-hyper = "0.13.1"
 mime = "0.3"
 
 [target.'cfg(unix)'.dev-dependencies]

@@ -1,6 +1,6 @@
 use futures::prelude::*;
+use gotham::hyper::{Body, HeaderMap, Response, StatusCode};
 use gotham::state::{request_id, FromState, State};
-use hyper::{Body, HeaderMap, Response, StatusCode};
 
 mod ws;
 
@@ -70,7 +70,7 @@ const INDEX_HTML: &str = r#"
 <h1>Websocket Echo Server</h1>
 <form id="ws" onsubmit="return send(this.message);">
     <input name="message">
-    <input type="submit" value="Send">    
+    <input type="submit" value="Send">
 </form>
 <script>
     var sock = new WebSocket("ws://" + window.location.host);

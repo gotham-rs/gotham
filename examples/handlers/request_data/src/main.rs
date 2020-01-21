@@ -1,12 +1,6 @@
 //! A basic example showing the request components
-
-extern crate futures;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-
 use futures::prelude::*;
-use hyper::{body, Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
+use gotham::hyper::{body, Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
 use std::pin::Pin;
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};

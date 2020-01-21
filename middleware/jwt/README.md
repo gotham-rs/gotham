@@ -13,11 +13,6 @@ Second, create a struct you wish to deserialize into. For our example below,
 we've used `Claims`:
 
 ```rust
-extern crate futures;
-extern crate gotham;
-extern crate gotham_middleware_jwt;
-extern crate hyper;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
@@ -33,7 +28,7 @@ use gotham::{
   state::{State, FromState},
 };
 use gotham_middleware_jwt::{JWTMiddleware, AuthorizationToken};
-use hyper::{Response, StatusCode};
+use gotham::hyper::{Response, StatusCode};
 
 #[derive(Deserialize, Debug)]
 struct Claims {

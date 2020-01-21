@@ -1,21 +1,14 @@
 //! A basic example showing the request components
-
-extern crate futures;
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate tokio;
 
 use futures::prelude::*;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
 
-use hyper::StatusCode;
+use gotham::hyper::StatusCode;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;

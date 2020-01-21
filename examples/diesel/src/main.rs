@@ -12,11 +12,11 @@ use diesel::sqlite::SqliteConnection;
 use futures::prelude::*;
 use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
+use gotham::hyper::{body, Body, StatusCode};
 use gotham::pipeline::{new_pipeline, single::single_pipeline};
 use gotham::router::{builder::*, Router};
 use gotham::state::{FromState, State};
 use gotham_middleware_diesel::DieselMiddleware;
-use hyper::{body, Body, StatusCode};
 use serde_derive::Serialize;
 use std::pin::Pin;
 use std::str::from_utf8;
@@ -141,9 +141,9 @@ fn main() {
 mod tests {
     use super::*;
     use failure::Fail;
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
     use gotham_middleware_diesel::Repo;
-    use hyper::StatusCode;
     use std::str;
 
     static DATABASE_URL: &str = ":memory:";

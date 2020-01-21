@@ -1,9 +1,4 @@
 //! An introduction to fundamental `Router` and `Router Builder` concepts to create a routing tree.
-
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::State;
@@ -42,8 +37,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_router_response() {

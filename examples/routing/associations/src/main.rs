@@ -1,13 +1,8 @@
 //! An example of the Gotham web framework `Router` that shows how to associate multiple handlers
 //! to a single path.
-
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-
+use gotham::hyper::Method;
 use gotham::router::builder::*;
 use gotham::router::Router;
-use hyper::Method;
 
 mod handlers;
 use self::handlers::*;
@@ -80,8 +75,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::StatusCode;
 
     #[test]
     fn index_get() {

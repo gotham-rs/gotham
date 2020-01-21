@@ -1,14 +1,4 @@
 //! A Hello World example application for working with Gotham.
-
-extern crate failure;
-extern crate futures;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-extern crate openssl;
-extern crate tokio;
-extern crate tokio_openssl;
-
 use failure::{err_msg, Error};
 use futures::prelude::*;
 use openssl::{

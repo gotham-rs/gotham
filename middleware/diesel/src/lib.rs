@@ -18,7 +18,7 @@
 //! # use gotham::handler::{HandlerFuture, IntoHandlerError};
 //! # use gotham_middleware_diesel::{self, DieselMiddleware};
 //! # use diesel::{RunQueryDsl, SqliteConnection};
-//! # use hyper::StatusCode;
+//! # use gotham::hyper::StatusCode;
 //! # use futures::prelude::*;
 //! # use gotham::test::TestServer;
 //! # use std::pin::Pin;
