@@ -209,35 +209,33 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
 
     let (path, encoding) = check_compressed_options(&options, &headers);
 
-    let response_future = File::open(path).and_then(|file| {
-        async move {
-            let meta = file.metadata().await?;
-            if not_modified(&meta, &headers) {
-                return Ok(http::Response::builder()
-                    .status(StatusCode::NOT_MODIFIED)
-                    .body(Body::empty())
-                    .unwrap());
-            }
-            let len = meta.len();
-            let buf_size = optimal_buf_size(&meta);
-
-            let stream = file_stream(file, buf_size, len);
-            let body = Body::wrap_stream(stream.into_stream());
-            let mut response = http::Response::builder()
-                .status(StatusCode::OK)
-                .header(CONTENT_LENGTH, len)
-                .header(CONTENT_TYPE, mime_type.as_ref())
-                .header(CACHE_CONTROL, options.cache_control);
-
-            if let Some(etag) = entity_tag(&meta) {
-                response = response.header(ETAG, etag);
-            }
-            if let Some(content_encoding) = encoding {
-                response = response.header(CONTENT_ENCODING, content_encoding);
-            }
-
-            Ok(response.body(body).unwrap())
+    let response_future = File::open(path).and_then(|file| async move {
+        let meta = file.metadata().await?;
+        if not_modified(&meta, &headers) {
+            return Ok(http::Response::builder()
+                .status(StatusCode::NOT_MODIFIED)
+                .body(Body::empty())
+                .unwrap());
         }
+        let len = meta.len();
+        let buf_size = optimal_buf_size(&meta);
+
+        let stream = file_stream(file, buf_size, len);
+        let body = Body::wrap_stream(stream.into_stream());
+        let mut response = http::Response::builder()
+            .status(StatusCode::OK)
+            .header(CONTENT_LENGTH, len)
+            .header(CONTENT_TYPE, mime_type.as_ref())
+            .header(CACHE_CONTROL, options.cache_control);
+
+        if let Some(etag) = entity_tag(&meta) {
+            response = response.header(ETAG, etag);
+        }
+        if let Some(content_encoding) = encoding {
+            response = response.header(CONTENT_ENCODING, content_encoding);
+        }
+
+        Ok(response.body(body).unwrap())
     });
 
     response_future
