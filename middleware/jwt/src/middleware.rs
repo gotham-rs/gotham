@@ -1,17 +1,18 @@
 use crate::state_data::AuthorizationToken;
-use futures::{future, Future};
+use futures::prelude::*;
+use gotham::hyper::{
+    header::{HeaderMap, AUTHORIZATION},
+    StatusCode,
+};
 use gotham::{
     handler::HandlerFuture,
     helpers::http::response::create_empty_response,
     middleware::{Middleware, NewMiddleware},
     state::{request_id, FromState, State},
 };
-use hyper::{
-    header::{HeaderMap, AUTHORIZATION},
-    StatusCode,
-};
-use jsonwebtoken::{decode, Validation};
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::de::Deserialize;
+use std::pin::Pin;
 use std::{io, marker::PhantomData, panic::RefUnwindSafe};
 
 const DEFAULT_SCHEME: &str = "Bearer";
@@ -128,9 +129,10 @@ impl<T> Middleware for JWTMiddleware<T>
 where
     T: for<'de> Deserialize<'de> + Send + Sync + 'static,
 {
-    fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + 'static,
+        Self: Sized,
     {
         trace!("[{}] pre-chain jwt middleware", request_id(&state));
 
@@ -145,10 +147,14 @@ where
         if token.is_none() {
             trace!("[{}] bad request jwt middleware", request_id(&state));
             let res = create_empty_response(&state, StatusCode::BAD_REQUEST);
-            return Box::new(future::ok((state, res)));
+            return future::ok((state, res)).boxed();
         }
 
-        match decode::<T>(&token.unwrap(), self.secret.as_ref(), &self.validation) {
+        match decode::<T>(
+            &token.unwrap(),
+            &DecodingKey::from_secret(self.secret.as_ref()),
+            &self.validation,
+        ) {
             Ok(token) => {
                 state.put(AuthorizationToken(token));
 
@@ -157,12 +163,12 @@ where
                     future::ok((state, res))
                 });
 
-                Box::new(res)
+                res.boxed()
             }
             Err(e) => {
                 trace!("[{}] error jwt middleware", e);
                 let res = create_empty_response(&state, StatusCode::UNAUTHORIZED);
-                Box::new(future::ok((state, res)))
+                future::ok((state, res)).boxed()
             }
         }
     }
@@ -195,7 +201,7 @@ mod tests {
         state::State,
         test::TestServer,
     };
-    use jsonwebtoken::{encode, Algorithm, Header};
+    use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 
     const SECRET: &str = "some-secret";
 
@@ -216,19 +222,19 @@ mod tests {
         header.kid = Some("signing-key".to_owned());
         header.alg = alg;
 
-        match encode(&header, &claims, SECRET.as_ref()) {
+        match encode(&header, &claims, &EncodingKey::from_secret(SECRET.as_ref())) {
             Ok(t) => t,
             Err(_) => panic!(),
         }
     }
 
-    fn handler(state: State) -> Box<HandlerFuture> {
+    fn handler(state: State) -> Pin<Box<HandlerFuture>> {
         {
             // If this compiles, the token is available.
             let _ = AuthorizationToken::<Claims>::borrow_from(&state);
         }
         let res = create_empty_response(&state, StatusCode::OK);
-        Box::new(future::ok((state, res)))
+        future::ok((state, res)).boxed()
     }
 
     fn default_jwt_middleware() -> JWTMiddleware<Claims> {
