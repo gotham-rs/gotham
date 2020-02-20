@@ -31,15 +31,10 @@ const DEFAULT_SCHEME: &str = "Bearer";
 ///
 /// Example:
 /// ```rust
-/// extern crate futures;
-/// extern crate gotham;
-/// extern crate gotham_middleware_jwt;
-/// extern crate hyper;
-/// extern crate serde;
 /// #[macro_use]
 /// extern crate serde_derive;
 ///
-/// use futures::future;
+/// use futures::prelude::*;
 /// use gotham::{
 ///     helpers::http::response::create_empty_response,
 ///     handler::HandlerFuture,
@@ -51,7 +46,8 @@ const DEFAULT_SCHEME: &str = "Bearer";
 ///     state::{State, FromState},
 /// };
 /// use gotham_middleware_jwt::{JWTMiddleware, AuthorizationToken};
-/// use hyper::{Response, StatusCode};
+/// use gotham::hyper::{Response, StatusCode};
+/// use std::pin::Pin;
 ///
 /// #[derive(Deserialize, Debug)]
 /// struct Claims {
@@ -59,13 +55,13 @@ const DEFAULT_SCHEME: &str = "Bearer";
 ///     exp: usize,
 /// }
 ///
-/// fn handler(state: State) -> Box<HandlerFuture> {
+/// fn handler(state: State) -> Pin<Box<HandlerFuture>> {
 ///     {
 ///         let token = AuthorizationToken::<Claims>::borrow_from(&state);
 ///         // token -> TokenData
 ///     }
 ///     let res = create_empty_response(&state, StatusCode::OK);
-///     Box::new(future::ok((state, res)))
+///     future::ok((state, res)).boxed()
 /// }
 ///
 /// fn router() -> Router {
@@ -150,11 +146,8 @@ where
             return future::ok((state, res)).boxed();
         }
 
-        match decode::<T>(
-            &token.unwrap(),
-            &DecodingKey::from_secret(self.secret.as_ref()),
-            &self.validation,
-        ) {
+        let decoding_key = DecodingKey::from_secret(self.secret.as_ref());
+        match decode::<T>(&token.unwrap(), &decoding_key, &self.validation) {
             Ok(token) => {
                 state.put(AuthorizationToken(token));
 
