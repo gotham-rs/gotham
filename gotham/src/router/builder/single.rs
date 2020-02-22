@@ -156,10 +156,7 @@ pub trait DefineSingleRoute {
     where
         Self: Sized,
         H: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
-        Fut: Future<Output = HandlerResult> + Send + 'static,
-    {
-        self.to_new_handler(move || Ok(move |s: State| handler(s).boxed()))
-    }
+        Fut: Future<Output = HandlerResult> + Send + 'static;
     /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
     /// values are constructed.
     ///
@@ -523,6 +520,15 @@ where
         H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static,
     {
         self.to_new_handler(move || Ok(handler))
+    }
+
+    fn to_async<H, Fut>(self, handler: H)
+    where
+        Self: Sized,
+        H: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
+        Fut: Future<Output = HandlerResult> + Send + 'static,
+    {
+        self.to_new_handler(move || Ok(move |s: State| handler(s).boxed()))
     }
 
     fn to_new_handler<NH>(self, new_handler: NH)
