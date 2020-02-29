@@ -186,14 +186,33 @@ impl Node {
             return Some(self);
         }
 
+        let (segment, remaining) = next_segment.unwrap();
+
         // check for external delegates, and stop
         if let Some(route) = self.routes.first() {
             if route.delegation() == Delegation::External {
+                // give priority to children static delegations
+                for child in &self.children {
+                    match child.segment_type {
+                        SegmentType::Static => {
+                            if child.segment != segment.as_ref() {
+                                continue;
+                            }
+                        }
+                        _ => continue,
+                    }
+
+                    if let Some(route) = child.routes.first() {
+                        if route.delegation() == Delegation::External {
+                            *processed += 1;
+                            return Some(child);
+                        }
+                    }
+                }
+
                 return Some(self);
             }
         }
-
-        let (segment, remaining) = next_segment.unwrap();
 
         *processed += 1;
 

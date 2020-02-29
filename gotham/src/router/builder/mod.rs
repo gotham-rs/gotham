@@ -663,11 +663,11 @@ mod tests {
     #[test]
     fn test_delegated_priority_after_delegated_children() {
         let delegated_router = build_simple_router(|route| {
-            route.get("/b").to(welcome::delegated);
+            route.get("/b/a").to(welcome::delegated);
         });
 
         let child_delegated_router = build_simple_router(|route| {
-            route.get("/").to(welcome::index);
+            route.get("/a").to(welcome::index);
         });
 
         let router = build_simple_router(|route| {
@@ -678,7 +678,7 @@ mod tests {
 
         let call = get_call(router);
 
-        let response = call(Request::get("/b").body(Body::empty()).unwrap());
+        let response = call(Request::get("/b/a").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
         let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
             .unwrap()
