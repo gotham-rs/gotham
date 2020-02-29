@@ -474,6 +474,15 @@ mod tests {
         }
     }
 
+    fn get_call(router: Router) -> impl Fn(Request<Body>) -> Response<Body> {
+        let new_service = GothamService::new(router);
+
+        move |req| {
+            let mut service = new_service.connect("127.0.0.1:10000".parse().unwrap());
+            futures::executor::block_on(service.call(req)).unwrap()
+        }
+    }
+
     #[test]
     fn build_router_test() {
         let pipelines = new_pipeline_set();
@@ -487,10 +496,6 @@ mod tests {
         let pipelines = finalize_pipeline_set(pipelines);
 
         let default_pipeline_chain = (default, ());
-
-        let delegated_router = build_simple_router(|route| {
-            route.get("/b").to(welcome::delegated);
-        });
 
         let router = build_router(default_pipeline_chain, pipelines, |route| {
             route.get("/").to(welcome::index);
@@ -528,17 +533,10 @@ mod tests {
                 route.get_or_head().to(resource::show);
             });
 
-            route.delegate("/delegated").to_router(delegated_router);
-
             route.get("/trailing-slash/").to(welcome::trailing_slash);
         });
 
-        let new_service = GothamService::new(router);
-
-        let call = move |req| {
-            let mut service = new_service.connect("127.0.0.1:10000".parse().unwrap());
-            futures::executor::block_on(service.call(req)).unwrap()
-        };
+        let call = get_call(router);
 
         let response = call(Request::get("/").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
@@ -563,13 +561,6 @@ mod tests {
             .unwrap()
             .to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Globbed");
-
-        let response = call(Request::get("/delegated/b").body(Body::empty()).unwrap());
-        assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
-            .unwrap()
-            .to_vec();
-        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
 
         let response = call(Request::get("/goodbye/world").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
@@ -625,5 +616,73 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let response = call(Request::get("/trailing-slash").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[test]
+    fn test_delegated() {
+        let delegated_router = build_simple_router(|route| {
+            route.get("/b").to(welcome::delegated);
+        });
+
+        let router = build_simple_router(|route| {
+            route.delegate("/delegated").to_router(delegated_router);
+        });
+
+        let call = get_call(router);
+
+        let response = call(Request::get("/delegated/b").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
+            .unwrap()
+            .to_vec();
+        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
+    }
+
+    #[test]
+    fn test_delegated_priority_over_normal_children() {
+        let delegated_router = build_simple_router(|route| {
+            route.get("/b").to(welcome::delegated);
+        });
+
+        let router = build_simple_router(|route| {
+            route.delegate("/").to_router(delegated_router);
+
+            route.get("/b").to(welcome::index);
+        });
+
+        let call = get_call(router);
+
+        let response = call(Request::get("/b").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
+            .unwrap()
+            .to_vec();
+        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
+    }
+
+    #[test]
+    fn test_delegated_priority_after_delegated_children() {
+        let delegated_router = build_simple_router(|route| {
+            route.get("/b").to(welcome::delegated);
+        });
+
+        let child_delegated_router = build_simple_router(|route| {
+            route.get("/").to(welcome::index);
+        });
+
+        let router = build_simple_router(|route| {
+            route.delegate("/").to_router(delegated_router);
+
+            route.delegate("/b").to_router(child_delegated_router);
+        });
+
+        let call = get_call(router);
+
+        let response = call(Request::get("/b").body(Body::empty()).unwrap());
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
+            .unwrap()
+            .to_vec();
+        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "");
     }
 }
