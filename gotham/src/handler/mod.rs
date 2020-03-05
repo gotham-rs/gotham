@@ -5,10 +5,11 @@
 //! `Handler` trait for some examples of valid handlers.
 use std::borrow::Cow;
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
 use bytes::Bytes;
-use futures::{future, Future};
-use hyper::{Body, Chunk, Response, StatusCode};
+use futures::prelude::*;
+use hyper::{Body, Response, StatusCode};
 use mime::{self, Mime};
 
 use crate::helpers::http::response;
@@ -27,7 +28,7 @@ pub use self::error::{HandlerError, IntoHandlerError};
 /// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate
 /// an appropriate HTTP error response.
 pub type HandlerFuture =
-    dyn Future<Item = (State, Response<Body>), Error = (State, HandlerError)> + Send;
+    dyn Future<Output = std::result::Result<(State, Response<Body>), (State, HandlerError)>> + Send;
 
 /// A `Handler` is an asynchronous function, taking a `State` value which represents the request
 /// and related runtime state, and returns a future which resolves to a response.
@@ -72,11 +73,13 @@ pub type HandlerFuture =
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// # use std::pin::Pin;
+/// #
 /// # use gotham::handler::{Handler, HandlerFuture};
 /// # use gotham::state::State;
 /// #
 /// # fn main() {
-/// fn async_handler(_state: State) -> Box<HandlerFuture> {
+/// fn async_handler(_state: State) -> Pin<Box<HandlerFuture>> {
 ///     // Implementation elided.
 /// #   unimplemented!()
 /// }
@@ -95,15 +98,17 @@ pub type HandlerFuture =
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
-/// # use gotham::handler::{HandlerFuture, NewHandler};
+/// # use gotham::handler::{NewHandler, IntoHandlerFuture};
+/// # use gotham::helpers::http::response::create_empty_response;
 /// # use gotham::state::State;
-/// # use futures::future;
+/// # use hyper::StatusCode;
 /// #
 /// # fn main() {
 /// let new_handler = || {
-///     let handler = |_state: State| {
+///     let handler = |state: State| {
 ///         // Implementation elided.
-/// #       Box::new(future::empty()) as Box<HandlerFuture>
+/// #       let res = create_empty_response(&state, StatusCode::OK);
+/// #       (state, res).into_handler_future()
 ///     };
 ///     Ok(handler)
 /// };
@@ -122,6 +127,8 @@ pub type HandlerFuture =
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// # use std::pin::Pin;
+/// #
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
 /// # use gotham::error::*;
@@ -139,7 +146,7 @@ pub type HandlerFuture =
 /// }
 ///
 /// impl Handler for MyCustomHandler {
-///     fn handle(self, _state: State) -> Box<HandlerFuture> {
+///     fn handle(self, _state: State) -> Pin<Box<HandlerFuture>> {
 ///         // Implementation elided.
 /// #       unimplemented!()
 ///     }
@@ -151,7 +158,7 @@ pub type HandlerFuture =
 /// ```
 pub trait Handler: Send {
     /// Handles the request, returning a boxed future which resolves to a response.
-    fn handle(self, state: State) -> Box<HandlerFuture>;
+    fn handle(self, state: State) -> Pin<Box<HandlerFuture>>;
 }
 
 impl<F, R> Handler for F
@@ -159,7 +166,7 @@ where
     F: FnOnce(State) -> R + Send,
     R: IntoHandlerFuture,
 {
-    fn handle(self, state: State) -> Box<HandlerFuture> {
+    fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
         self(state).into_handler_future()
     }
 }
@@ -178,6 +185,8 @@ where
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
+/// # use std::pin::Pin;
+/// #
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
 /// # use gotham::error::*;
@@ -195,7 +204,7 @@ where
 /// }
 ///
 /// impl Handler for MyCustomHandler {
-///     fn handle(self, _state: State) -> Box<HandlerFuture> {
+///     fn handle(self, _state: State) -> Pin<Box<HandlerFuture>> {
 ///         // Implementation elided.
 /// #       unimplemented!()
 ///     }
@@ -211,6 +220,8 @@ where
 /// ```rust
 /// # extern crate gotham;
 /// # extern crate hyper;
+/// #
+/// # use std::pin::Pin;
 /// #
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
@@ -231,7 +242,7 @@ where
 /// struct MyHandler;
 ///
 /// impl Handler for MyHandler {
-///     fn handle(self, _state: State) -> Box<HandlerFuture> {
+///     fn handle(self, _state: State) -> Pin<Box<HandlerFuture>> {
 ///         // Implementation elided.
 /// #       unimplemented!()
 ///     }
@@ -267,22 +278,22 @@ where
 /// bound via the generic function implementation.
 pub trait IntoHandlerFuture {
     /// Converts this value into a boxed future resolving to a state and response.
-    fn into_handler_future(self) -> Box<HandlerFuture>;
+    fn into_handler_future(self) -> Pin<Box<HandlerFuture>>;
 }
 
 impl<T> IntoHandlerFuture for (State, T)
 where
     T: IntoResponse,
 {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
+    fn into_handler_future(self) -> Pin<Box<HandlerFuture>> {
         let (state, t) = self;
         let response = t.into_response(&state);
-        Box::new(future::ok((state, response)))
+        future::ok((state, response)).boxed()
     }
 }
 
-impl IntoHandlerFuture for Box<HandlerFuture> {
-    fn into_handler_future(self) -> Box<HandlerFuture> {
+impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
+    fn into_handler_future(self) -> Pin<Box<HandlerFuture>> {
         self
     }
 }
@@ -406,7 +417,6 @@ macro_rules! derive_into_response {
 // can't impl IntoResponse for Into<Body> due to Response<T>
 // and the potential it will add Into<Body> in the future
 derive_into_response!(Bytes);
-derive_into_response!(Chunk);
 derive_into_response!(String);
 derive_into_response!(Vec<u8>);
 derive_into_response!(&'static str);

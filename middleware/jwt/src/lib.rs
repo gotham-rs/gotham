@@ -7,13 +7,8 @@
 //! validation cause the middleware to return Status Code
 //! `401: Unauthorized`.
 #![warn(missing_docs, deprecated)]
-extern crate futures;
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate jsonwebtoken;
-extern crate serde;
 #[macro_use]
 extern crate log;
 #[cfg(test)]

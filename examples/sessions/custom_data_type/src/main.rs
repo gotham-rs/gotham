@@ -1,16 +1,9 @@
 //! Storing and retrieving session data with a custom data type, in a type safe
 //! way, with the Gotham web framework.
-
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate cookie;
-extern crate time;
 
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
@@ -80,9 +73,9 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::header::{COOKIE, SET_COOKIE};
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::header::{COOKIE, SET_COOKIE};
-    use hyper::StatusCode;
 
     #[test]
     fn cookie_is_set_and_updates_response() {

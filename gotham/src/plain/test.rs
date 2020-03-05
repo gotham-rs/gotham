@@ -2,27 +2,29 @@
 //!
 //! See the `TestServer` type for example usage.
 
+use http::Uri;
 use std::net::{self, IpAddr, SocketAddr};
+use std::panic::UnwindSafe;
+use std::pin::Pin;
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
+use std::task::{Context, Poll};
+use std::time::Duration;
 
 use failure;
+use failure::ResultExt;
 use log::info;
 
-use futures::Future;
-use hyper::client::{
-    connect::{Connect, Connected, Destination},
-    Client,
-};
+use futures::prelude::*;
+use hyper::client::Client;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tokio::timer::Delay;
+use tokio::time::{delay_for, Delay};
 
+use hyper::service::Service;
 use tokio::net::TcpStream;
 
-use crate::handler::NewHandler;
-
 use crate::error::*;
+use crate::handler::NewHandler;
 
 use crate::test::{self, TestClient};
 
@@ -72,18 +74,22 @@ impl Clone for TestServer {
 
 impl test::Server for TestServer {
     fn request_expiry(&self) -> Delay {
-        Delay::new(Instant::now() + Duration::from_secs(self.data.timeout))
+        let runtime = self.data.runtime.write().unwrap();
+        runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
     }
 
     fn run_future<F, R, E>(&self, future: F) -> Result<R>
     where
-        F: Send + 'static + Future<Item = R, Error = E>,
+        F: Send + 'static + Future<Output = std::result::Result<R, E>>,
         R: Send + 'static,
         E: failure::Fail,
     {
-        let (tx, rx) = futures::sync::oneshot::channel();
-        self.spawn(future.then(move |r| tx.send(r).map_err(|_| unreachable!())));
-        rx.wait().unwrap().map_err(Into::into)
+        self.data
+            .runtime
+            .write()
+            .expect("unable to acquire write lock")
+            .block_on(future)
+            .map_err(Into::into)
     }
 }
 
@@ -93,7 +99,10 @@ impl TestServer {
     /// for each connection.
     ///
     /// Timeout will be set to 10 seconds.
-    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> Result<TestServer> {
+    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> Result<TestServer>
+    where
+        NH::Instance: UnwindSafe,
+    {
         TestServer::with_timeout(new_handler, 10)
     }
 
@@ -101,13 +110,19 @@ impl TestServer {
     pub fn with_timeout<NH: NewHandler + 'static>(
         new_handler: NH,
         timeout: u64,
-    ) -> Result<TestServer> {
+    ) -> Result<TestServer>
+    where
+        NH::Instance: UnwindSafe,
+    {
         let mut runtime = Runtime::new()?;
-        let listener = TcpListener::bind(&"127.0.0.1:0".parse()?)?;
+        // TODO: Fix this into an async flow
+        let listener = runtime.block_on(TcpListener::bind(
+            "127.0.0.1:0".parse::<SocketAddr>().compat()?,
+        ))?;
         let addr = listener.local_addr()?;
 
-        let service_stream = super::bind_server(listener, new_handler);
-        runtime.spawn(service_stream);
+        let service_stream = super::bind_server(listener, new_handler, future::ok);
+        runtime.spawn(service_stream); // Ignore the result
 
         let data = TestServerData {
             addr,
@@ -132,7 +147,7 @@ impl TestServer {
     /// tests.
     pub fn spawn<F>(&self, fut: F)
     where
-        F: Future<Item = (), Error = ()> + Send + 'static,
+        F: Future<Output = ()> + Send + 'static,
     {
         self.data
             .runtime
@@ -172,23 +187,26 @@ impl TestServer {
 
 /// `TestConnect` represents the connection between a test client and the `TestServer` instance
 /// that created it. This type should never be used directly.
+#[derive(Clone)]
 pub struct TestConnect {
     pub(crate) addr: SocketAddr,
 }
 
-impl Connect for TestConnect {
-    type Transport = TcpStream;
+impl Service<Uri> for TestConnect {
+    type Response = TcpStream;
     type Error = CompatError;
     type Future =
-        Box<dyn Future<Item = (Self::Transport, Connected), Error = Self::Error> + Send + Sync>;
+        Pin<Box<dyn Future<Output = std::result::Result<Self::Response, Self::Error>> + Send>>;
 
-    fn connect(&self, _dst: Destination) -> Self::Future {
-        Box::new(
-            TcpStream::connect(&self.addr)
-                .inspect(|s| info!("Client TcpStream connected: {:?}", s))
-                .map(|s| (s, Connected::new()))
-                .map_err(|e| Error::from(e).compat()),
-        )
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<std::result::Result<(), Self::Error>> {
+        Ok(()).into()
+    }
+
+    fn call(&mut self, _req: Uri) -> Self::Future {
+        TcpStream::connect(self.addr)
+            .inspect(|s| info!("Client TcpStream connected: {:?}", s))
+            .map_err(|e| Error::from(e).compat())
+            .boxed()
     }
 }
 
@@ -196,16 +214,14 @@ impl Connect for TestConnect {
 mod tests {
     use super::*;
 
-    use std::time::{SystemTime, UNIX_EPOCH};
-
     use hyper::header::CONTENT_LENGTH;
-    use hyper::{Body, Response, StatusCode, Uri};
+    use hyper::{body, Body, Response, StatusCode, Uri};
     use mime;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
-    use futures::{future, Stream};
     use http::header::CONTENT_TYPE;
     use log::info;
 
@@ -215,7 +231,7 @@ mod tests {
     }
 
     impl Handler for TestHandler {
-        fn handle(self, state: State) -> Box<HandlerFuture> {
+        fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
             let path = Uri::borrow_from(&state).path().to_owned();
             match path.as_str() {
                 "/" => {
@@ -225,11 +241,17 @@ mod tests {
                         .body(self.response.clone().into())
                         .unwrap();
 
-                    Box::new(future::ok((state, response)))
+                    future::ok((state, response)).boxed()
                 }
                 "/timeout" => {
+                    // TODO: What is this supposed to return?  It previously returned nothing which isn't a timeout
+                    let response = Response::builder()
+                        .status(StatusCode::REQUEST_TIMEOUT)
+                        .body(Body::default())
+                        .unwrap();
+
                     info!("TestHandler responding to /timeout");
-                    Box::new(future::empty())
+                    future::ok((state, response)).boxed()
                 }
                 "/myaddr" => {
                     info!("TestHandler responding to /myaddr");
@@ -238,7 +260,7 @@ mod tests {
                         .body(format!("{}", client_addr(&state).unwrap()).into())
                         .unwrap();
 
-                    Box::new(future::ok((state, response)))
+                    future::ok((state, response)).boxed()
                 }
                 _ => unreachable!(),
             }
@@ -334,9 +356,8 @@ mod tests {
 
     #[test]
     fn async_echo() {
-        fn handler(mut state: State) -> Box<HandlerFuture> {
-            let f = Body::take_from(&mut state)
-                .concat2()
+        fn handler(mut state: State) -> Pin<Box<HandlerFuture>> {
+            body::to_bytes(Body::take_from(&mut state))
                 .then(move |full_body| match full_body {
                     Ok(body) => {
                         let resp_data = body.to_vec();
@@ -346,9 +367,8 @@ mod tests {
                     }
 
                     Err(e) => future::err((state, e.into_handler_error())),
-                });
-
-            Box::new(f)
+                })
+                .boxed()
         }
 
         let server = TestServer::new(|| Ok(handler)).unwrap();

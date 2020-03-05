@@ -4,15 +4,13 @@ use std::io;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use base64;
 use bincode;
 use cookie::{Cookie, CookieJar};
-use futures::{
-    future::{self, FutureResult},
-    Future,
-};
+use futures::prelude::*;
 use hyper::header::SET_COOKIE;
 use hyper::{Body, Response, StatusCode};
 use log::{error, trace, warn};
@@ -199,8 +197,7 @@ impl SessionCookieConfig {
 /// #
 /// # use std::sync::Arc;
 /// # use std::time::Duration;
-/// # use futures::future;
-/// # use gotham::handler::HandlerFuture;
+/// # use futures::prelude::*;
 /// # use gotham::state::{State, FromState};
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
@@ -249,7 +246,7 @@ impl SessionCookieConfig {
 /// #
 /// #       let handler = move |state| {
 /// #           let m = nm.new_middleware().unwrap();
-/// #           let chain = |state| Box::new(future::ok(my_handler(state))) as Box<HandlerFuture>;
+/// #           let chain = |state| future::ok(my_handler(state)).boxed();
 /// #
 /// #           m.call(state, chain)
 /// #       };
@@ -799,9 +796,9 @@ where
     B: Backend + Send + 'static,
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
         Self: Sized,
     {
         // cookies might have been parsed already by middleware
@@ -824,14 +821,12 @@ where
                     id.value
                 );
 
-                let f = self
-                    .backend
+                self.backend
                     .read_session(id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
-                    .and_then(chain)
-                    .and_then(persist_session::<T>);
-
-                Box::new(f)
+                    .and_then(move |state| chain(state))
+                    .and_then(persist_session::<T>)
+                    .boxed()
             }
             None => {
                 trace!(
@@ -839,12 +834,11 @@ where
                     state::request_id(&state),
                 );
 
-                let f = self
-                    .new_session(state)
+                self.new_session(state)
+                    .boxed()
                     .and_then(chain)
-                    .and_then(persist_session::<T>);
-
-                Box::new(f)
+                    .and_then(persist_session::<T>)
+                    .boxed()
             }
         }
     }
@@ -871,7 +865,7 @@ where
 
 fn persist_session<T>(
     (mut state, mut response): (State, Response<Body>),
-) -> FutureResult<(State, Response<Body>), (State, HandlerError)>
+) -> impl Future<Output = Result<(State, Response<Body>), (State, HandlerError)>>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
@@ -882,7 +876,7 @@ where
                 state::request_id(&state)
             );
             reset_cookie(&mut response, session_drop_data);
-            return future::ok((state, response));
+            return future::ok((state, response)).right_future();
         }
         None => {
             trace!(
@@ -899,12 +893,14 @@ where
             }
 
             match session_data.state {
-                SessionDataState::Dirty => write_session(state, response, session_data),
-                SessionDataState::Clean => future::ok((state, response)),
+                SessionDataState::Dirty => {
+                    write_session(state, response, session_data).left_future()
+                }
+                SessionDataState::Clean => future::ok((state, response)).right_future(),
             }
         }
         // Session was discarded with `SessionData::discard`, or otherwise removed
-        None => future::ok((state, response)),
+        None => future::ok((state, response)).right_future(),
     }
 }
 
@@ -939,7 +935,7 @@ fn write_session<T>(
     state: State,
     response: Response<Body>,
     session_data: SessionData<T>,
-) -> future::FutureResult<(State, Response<Body>), (State, HandlerError)>
+) -> impl Future<Output = Result<(State, Response<Body>), (State, HandlerError)>>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
@@ -993,7 +989,7 @@ where
         mut state: State,
         identifier: SessionIdentifier,
         result: Result<Option<Vec<u8>>, SessionError>,
-    ) -> future::FutureResult<State, (State, HandlerError)> {
+    ) -> impl Future<Output = Result<State, (State, HandlerError)>> {
         match result {
             Ok(v) => {
                 trace!(
@@ -1026,7 +1022,10 @@ where
         }
     }
 
-    fn new_session(self, mut state: State) -> future::FutureResult<State, (State, HandlerError)> {
+    fn new_session(
+        self,
+        mut state: State,
+    ) -> impl Future<Output = Result<State, (State, HandlerError)>> {
         let session_data = SessionData::<T>::new(self);
 
         trace!(
@@ -1188,13 +1187,14 @@ mod tests {
                 session_data.val += 1;
             }
 
-            Box::new(future::ok((
+            future::ok((
                 state,
                 Response::builder()
                     .status(StatusCode::ACCEPTED)
                     .body(Body::empty())
                     .unwrap(),
-            ))) as Box<HandlerFuture>
+            ))
+            .boxed()
         };
 
         let mut state = State::new();
@@ -1203,8 +1203,8 @@ mod tests {
         headers.insert(COOKIE, cookie.to_string().parse().unwrap());
         state.put(headers);
 
-        let r: Box<HandlerFuture> = m.call(state, handler);
-        match r.wait() {
+        let r = m.call(state, handler);
+        match futures::executor::block_on(r) {
             Ok(_) => {
                 let guard = received.lock().unwrap();
                 if let Some(value) = *guard {
@@ -1217,7 +1217,9 @@ mod tests {
         }
 
         let m = nm.new_middleware().unwrap();
-        let bytes = m.backend.read_session(identifier).wait().unwrap().unwrap();
+        let bytes = futures::executor::block_on(m.backend.read_session(identifier))
+            .unwrap()
+            .unwrap();
         let updated = bincode::deserialize::<TestSession>(&bytes[..]).unwrap();
 
         assert_eq!(updated.val, session.val + 1);

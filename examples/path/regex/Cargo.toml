@@ -3,12 +3,12 @@ name = "gotham_examples_path_regex"
 description = "Shows how to match against Regex patterns in path segments."
 version = "0.0.0"
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-hyper = "0.12"
 mime = "0.3"
 serde = "1"
 serde_derive = "1"

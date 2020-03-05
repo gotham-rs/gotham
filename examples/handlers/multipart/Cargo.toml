@@ -4,12 +4,11 @@ description = "An example of decoding multipart form requests"
 version = "0.0.0"
 authors = ["Paul Zhang <paulzhang5511>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-hyper = "0.12"
 mime = "0.3"
-futures = "0.1"
-url = "1.6"
+futures = "0.3.1"
 multipart = { version = "0.16", default-features = false, features = ["server"] }

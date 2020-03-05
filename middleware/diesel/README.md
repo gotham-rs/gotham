@@ -4,7 +4,7 @@ The gotham diesel middleware provides offers a convenient API for interacting wi
 
 ## Usage:
 This middleware introduces a Repo struct, which is used as a layer between Diesel and Gotham to ensure that database interaction can be easily chained alongside other asynchronous operations. This structure is fairly straightfoward and offers an easy way to interact with Diesel from inside Gotham:
-```
+```rust
 // create a new repo, in this case just using a SQLite setup
 let repo: Repo<SqliteConnection> = Repo::new("products.db");
 
@@ -20,7 +20,7 @@ gotham::start("127.0.0.1:7878", build_router(chain, pipelines, |route| {
 }))
 ```
 From there you gain simple access to Repo on the request state, just like when using other middlewares. You can then use the Repo to execute database calls:
-```
+```rust
 // borrow the repo from the state
 let repo = Repo::borrow_from(&state);
 
@@ -37,7 +37,7 @@ For a complete example, see the [example in the main repository](https://github.
 
 ## Configuration
 To customize aspects of the connection pool, you can construct a repo from an `r2d2::Builder`, setting any attributes available on there:
-```
+```rust
 let repo = Repo::from_pool_builder(database_url,
     Pool::builder()
         .connection_timeout(Duration::from_secs(120))

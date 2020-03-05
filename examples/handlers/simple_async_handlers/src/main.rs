@@ -1,31 +1,25 @@
 //! A basic example showing the request components
-
-extern crate futures;
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate tokio;
 
-use futures::{stream, Future, Stream};
+use futures::prelude::*;
+use std::pin::Pin;
 use std::time::{Duration, Instant};
 
-use hyper::StatusCode;
+use gotham::hyper::StatusCode;
 
-use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
+use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-use tokio::timer::Delay;
+use tokio::time::delay_until;
 
-type SleepFuture = Box<dyn Future<Item = Vec<u8>, Error = HandlerError> + Send>;
+type SleepFuture = Pin<Box<dyn Future<Output = Vec<u8>> + Send>>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
@@ -57,20 +51,18 @@ fn get_duration(seconds: u64) -> Duration {
 /// real world problems.
 fn sleep(seconds: u64) -> SleepFuture {
     let when = Instant::now() + get_duration(seconds);
-    let delay = Delay::new(when)
-        .map_err(|e| panic!("timer failed; err={:?}", e))
-        .and_then(move |_| {
-            Ok(format!("slept for {} seconds\n", seconds)
-                .as_bytes()
-                .to_vec())
-        });
+    let delay = delay_until(when.into()).map(move |_| {
+        format!("slept for {} seconds\n", seconds)
+            .as_bytes()
+            .to_vec()
+    });
 
-    Box::new(delay)
+    delay.boxed()
 }
 
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
 /// helper method, above.
-fn sleep_handler(mut state: State) -> Box<HandlerFuture> {
+fn sleep_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let seconds = QueryStringExtractor::take_from(&mut state).seconds;
     println!("sleep for {} seconds once: starting", seconds);
 
@@ -83,14 +75,13 @@ fn sleep_handler(mut state: State) -> Box<HandlerFuture> {
     // `state` is moved in, so that we can return it, and we convert any errors
     // that we have into the form that Hyper expects, using the helper from
     // IntoHandlerError.
-    Box::new(sleep_future.then(move |result| match result {
-        Ok(data) => {
+    sleep_future
+        .map(move |data| {
             let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
             println!("sleep for {} seconds once: finished", seconds);
             Ok((state, res))
-        }
-        Err(err) => Err((state, err.into_handler_error())),
-    }))
+        })
+        .boxed()
 }
 
 /// This example uses a `future::Stream` to implement a `for` loop. It calls sleep(1)
@@ -98,33 +89,31 @@ fn sleep_handler(mut state: State) -> Box<HandlerFuture> {
 ///
 /// https://github.com/alexcrichton/futures-await has a more readable syntax for
 /// async for loops, if you are using nightly Rust.
-fn loop_handler(mut state: State) -> Box<HandlerFuture> {
+fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let seconds = QueryStringExtractor::take_from(&mut state).seconds;
     println!("sleep for one second {} times: starting", seconds);
 
     // Here, we create a stream of Ok(_) that's as long as we need, and use fold
     // to loop over it asyncronously, accumulating the return values from sleep().
-    let sleep_future: SleepFuture = Box::new(stream::iter_ok(0..seconds).fold(
-        Vec::new(),
-        move |mut accumulator, _| {
+    let sleep_future: SleepFuture = futures::stream::iter(0..seconds)
+        .fold(Vec::new(), move |mut accumulator, _| {
             // Do the sleep(), and append the result to the accumulator so that it can
             // be returned.
-            sleep(1).and_then(move |body| {
+            sleep(1).map(move |body| {
                 accumulator.extend(body);
-                Ok(accumulator)
+                accumulator
             })
-        },
-    ));
+        })
+        .boxed();
 
     // This bit is the same as the bit in the first example.
-    Box::new(sleep_future.then(move |result| match result {
-        Ok(data) => {
+    sleep_future
+        .map(move |data| {
             let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
             println!("sleep for one second {} times: finished", seconds);
             Ok((state, res))
-        }
-        Err(err) => Err((state, err.into_handler_error())),
-    }))
+        })
+        .boxed()
 }
 
 /// Create a `Router`.

@@ -1,8 +1,4 @@
 //! An example usage of Tera template engine working with Gotham.
-
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -40,8 +36,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_world_response() {

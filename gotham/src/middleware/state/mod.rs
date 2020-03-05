@@ -9,6 +9,7 @@ use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::{State, StateData};
 use std::io;
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
 /// Middleware binding for generic types to enable easy shared state.
 ///
@@ -45,9 +46,9 @@ where
     /// Attaches the inner generic value to the request state.
     ///
     /// This will enable the `Handler` to borrow the value directly from the state.
-    fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
         state.put(self.t);
         chain(state)

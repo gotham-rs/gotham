@@ -5,8 +5,8 @@ pub mod request;
 pub mod response;
 
 use log::trace;
+use percent_encoding::percent_decode;
 use std;
-use url::percent_encoding::percent_decode;
 
 /// Represents data that has been successfully percent decoded and is valid UTF-8
 #[derive(Clone, PartialEq, Debug)]

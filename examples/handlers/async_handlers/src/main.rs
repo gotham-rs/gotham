@@ -1,21 +1,15 @@
 //! A basic example showing the request components
-
-extern crate futures;
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate tokio_core;
 
-use futures::{future, stream, Future, Stream};
+use futures::prelude::*;
+use std::pin::Pin;
 
-use hyper::StatusCode;
+use gotham::hyper::StatusCode;
 #[cfg(not(test))]
-use hyper::{Client, Uri};
+use gotham::hyper::{body, Client, Uri};
 
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
@@ -24,7 +18,8 @@ use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-type ResponseContentFuture = Box<dyn Future<Item = Vec<u8>, Error = hyper::Error> + Send>;
+type ResponseContentFuture =
+    Pin<Box<dyn Future<Output = Result<Vec<u8>, gotham::hyper::Error>> + Send>>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
@@ -40,13 +35,10 @@ fn http_get(url_str: &str) -> ResponseContentFuture {
     let client = Client::new();
     let url: Uri = url_str.parse().unwrap();
     let f = client.get(url).and_then(|response| {
-        response
-            .into_body()
-            .concat2()
-            .and_then(|full_body| Ok(full_body.to_vec()))
+        body::to_bytes(response.into_body()).and_then(|full_body| future::ok(full_body.to_vec()))
     });
 
-    Box::new(f)
+    f.boxed()
 }
 
 /// The other advantage of using a helper function is that you can easily patch it out for testing.
@@ -58,7 +50,7 @@ fn http_get(url_str: &str) -> ResponseContentFuture {
 fn http_get(_url_str: &str) -> ResponseContentFuture {
     // We make the test version return something different from what a real view would, to make
     // it easier to spot in the tests.
-    Box::new(future::ok(b"y".to_vec()))
+    future::ok(b"y".to_vec()).boxed()
 }
 
 /// Now we come to the business end of the example.
@@ -73,7 +65,7 @@ fn http_get(_url_str: &str) -> ResponseContentFuture {
 /// to the next, our code drifts to the right. If you are using nightly, you can avoid this by
 /// using something like:
 /// https://github.com/alexcrichton/futures-await
-fn series_handler(mut state: State) -> Box<HandlerFuture> {
+fn series_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let length = QueryStringExtractor::take_from(&mut state).length;
     println!("series length: {} starting", length);
 
@@ -81,9 +73,9 @@ fn series_handler(mut state: State) -> Box<HandlerFuture> {
     // Note that we pick a signature for our future that makes lives easier for our business logic,
     // and then convert it into a `Box<HandlerFuture>` in the end.
     let data_future: ResponseContentFuture = if length == 0 {
-        Box::new(future::ok(Vec::new()))
+        future::ok(Vec::new()).boxed()
     } else if length == 1 {
-        Box::new(future::ok(b"z".to_vec()))
+        future::ok(b"z".to_vec()).boxed()
     } else {
         // These are the two URLs we're going to request. We're just splitting the length into
         // two roughly equal parts and calling ourselves. In a real application, these might
@@ -100,23 +92,25 @@ fn series_handler(mut state: State) -> Box<HandlerFuture> {
         let f = http_get(&url_a).and_then(move |mut body_a| {
             http_get(&url_b).and_then(move |body_b| {
                 body_a.extend(body_b);
-                Ok(body_a)
+                future::ok(body_a)
             })
         });
 
-        Box::new(f)
+        f.boxed()
     };
 
     // Here, we convert the future from our handler into the form that Gotham expects.
     // All we do is move `state` in, to return it, and convert any errors that we have.
-    Box::new(data_future.then(move |result| match result {
-        Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
-            println!("series length: {} finished", length);
-            Ok((state, res))
-        }
-        Err(err) => Err((state, err.into_handler_error())),
-    }))
+    data_future
+        .then(move |result| match result {
+            Ok(data) => {
+                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+                println!("series length: {} finished", length);
+                future::ok((state, res))
+            }
+            Err(err) => future::err((state, err.into_handler_error())),
+        })
+        .boxed()
 }
 
 /// This example uses a `future::Stream` to implement a `for` loop. This example only has two urls
@@ -127,15 +121,15 @@ fn series_handler(mut state: State) -> Box<HandlerFuture> {
 ///
 /// https://github.com/alexcrichton/futures-await has a more readable syntax for this as
 /// well, if you are using nightly Rust.
-fn loop_handler(mut state: State) -> Box<HandlerFuture> {
+fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let length = QueryStringExtractor::take_from(&mut state).length;
     println!("loop length: {} starting", length);
 
     // The structure is the same as `series_handler`, above.
     let data_future: ResponseContentFuture = if length == 0 {
-        Box::new(future::ok(Vec::new()))
+        future::ok(Vec::new()).boxed()
     } else if length == 1 {
-        Box::new(future::ok(b"z".to_vec()))
+        future::ok(b"z".to_vec()).boxed()
     } else {
         let url_a = format!("http://127.0.0.1:7878/loop?length={}", length / 2);
         let url_b = format!(
@@ -146,27 +140,31 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
         // Here, we create a stream that contains our two URLs, and call fold to loop over all URLs
         // and get the urls, concatenating the results into the accumulator (which starts off as the
         // empty `Vec`).
-        let f =
-            stream::iter_ok(vec![url_a, url_b]).fold(Vec::new(), move |mut accumulator, url| {
+        let f = futures::stream::iter(vec![url_a, url_b]).map(Ok).try_fold(
+            Vec::new(),
+            move |mut accumulator, url| {
                 // Do the http_get(), and append the result to the accumulator so that it can
                 // be returned.
                 http_get(&url).and_then(move |body| {
                     accumulator.extend(body);
-                    Ok(accumulator)
+                    future::ok(accumulator)
                 })
-            });
+            },
+        );
 
-        Box::new(f)
+        f.boxed()
     };
 
-    Box::new(data_future.then(move |result| match result {
-        Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
-            println!("loop length: {} finished", length);
-            Ok((state, res))
-        }
-        Err(err) => Err((state, err.into_handler_error())),
-    }))
+    data_future
+        .then(move |result| match result {
+            Ok(data) => {
+                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+                println!("loop length: {} finished", length);
+                future::ok((state, res))
+            }
+            Err(err) => future::err((state, err.into_handler_error())),
+        })
+        .boxed()
 }
 
 /// This example does the same thing as `series_handler`, but doesn't wait for the first request
@@ -196,15 +194,15 @@ fn loop_handler(mut state: State) -> Box<HandlerFuture> {
 /// In summary:
 ///     Don't do this at home kids. It is only included as a cautionary tale.
 ///
-fn parallel_handler(mut state: State) -> Box<HandlerFuture> {
+fn parallel_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let length = QueryStringExtractor::take_from(&mut state).length;
     println!("parallel length: {} starting", length);
 
     // The structure is the same as in `series_handler`, above.
     let data_future: ResponseContentFuture = if length == 0 {
-        Box::new(future::ok(Vec::new()))
+        future::ok(Vec::new()).boxed()
     } else if length == 1 {
-        Box::new(future::ok(b"z".to_vec()))
+        future::ok(b"z".to_vec()).boxed()
     } else {
         let url_a = format!("http://127.0.0.1:7878/parallel?length={}", length / 2);
         let url_b = format!(
@@ -217,20 +215,24 @@ fn parallel_handler(mut state: State) -> Box<HandlerFuture> {
         let f1 = http_get(&url_a);
         let f2 = http_get(&url_b);
 
-        Box::new(f1.join(f2).and_then(|(mut body_a, body_b)| {
-            body_a.extend(body_b);
-            Ok(body_a)
-        }))
+        future::try_join(f1, f2)
+            .and_then(|(mut body_a, body_b)| {
+                body_a.extend(body_b);
+                future::ok(body_a)
+            })
+            .boxed()
     };
 
-    Box::new(data_future.then(move |result| match result {
-        Ok(data) => {
-            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
-            println!("parallel length: {} finished", length);
-            Ok((state, res))
-        }
-        Err(err) => Err((state, err.into_handler_error())),
-    }))
+    data_future
+        .then(move |result| match result {
+            Ok(data) => {
+                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+                println!("parallel length: {} finished", length);
+                future::ok((state, res))
+            }
+            Err(err) => future::err((state, err.into_handler_error())),
+        })
+        .boxed()
 }
 
 /// Create a `Router`.

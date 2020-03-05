@@ -10,19 +10,15 @@
 //! Our app also has some admin functionality, so we'll also override admin paths
 //! to require an additional admin session.
 //! Finally, our app exposes an JSON endpoint, which needs its own middleware.
-extern crate futures;
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-
 #[macro_use]
 extern crate serde_derive;
-extern crate hyper;
-extern crate mime;
 
-use futures::future;
-use hyper::header::{HeaderMap, ACCEPT};
-use hyper::{Body, Response, StatusCode};
+use futures::prelude::*;
+use gotham::hyper::header::{HeaderMap, ACCEPT};
+use gotham::hyper::{Body, Response, StatusCode};
+use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
@@ -54,9 +50,9 @@ pub struct ApiMiddleware;
 /// Our example API middleware will reject any requests that
 /// don't accept JSON as the response content type.
 impl Middleware for ApiMiddleware {
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture> + 'static,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + 'static,
     {
         let accepts = HeaderMap::borrow_from(&state)
             .get(ACCEPT)
@@ -73,7 +69,7 @@ impl Middleware for ApiMiddleware {
                     mime::APPLICATION_JSON,
                     body,
                 );
-                Box::new(future::ok((state, response)))
+                future::ok((state, response)).boxed()
             }
         }
     }
@@ -182,8 +178,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::header::HeaderValue;
     use gotham::test::TestServer;
-    use hyper::header::HeaderValue;
 
     #[test]
     fn no_middleware_on_base_path() {

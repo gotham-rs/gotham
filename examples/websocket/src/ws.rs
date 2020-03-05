@@ -1,7 +1,7 @@
 use base64;
-use futures::Future;
-use hyper::header::{HeaderValue, CONNECTION, UPGRADE};
-use hyper::{upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
+use futures::prelude::*;
+use gotham::hyper::header::{HeaderValue, CONNECTION, UPGRADE};
+use gotham::hyper::{upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
 use sha1::Sha1;
 use tokio_tungstenite::{tungstenite, WebSocketStream};
 
@@ -27,7 +27,7 @@ pub fn accept(
 ) -> Result<
     (
         Response<Body>,
-        impl Future<Item = WebSocketStream<Upgraded>, Error = hyper::Error>,
+        impl Future<Output = Result<WebSocketStream<Upgraded>, hyper::Error>>,
     ),
     (),
 > {

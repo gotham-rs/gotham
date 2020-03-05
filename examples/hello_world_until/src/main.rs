@@ -4,11 +4,11 @@
 #[cfg(all(test, unix))]
 extern crate nix;
 
-use futures::{Future, Stream};
-use hyper::{Body, Response, StatusCode};
-
+use futures::prelude::*;
 use gotham::helpers::http::response::create_response;
+use gotham::hyper::{Body, Response, StatusCode};
 use gotham::state::State;
+use tokio::signal;
 
 /// Create a `Handler` which is invoked when responding to a `Request`.
 ///
@@ -27,36 +27,28 @@ pub fn say_hello(state: State) -> (State, Response<Body>) {
 }
 
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.
-pub fn main() {
+#[tokio::main]
+pub async fn main() {
     let addr = "127.0.0.1:7878";
 
     let server = gotham::init_server(addr, || Ok(say_hello));
     // Future to wait for Ctrl+C.
-    let signal = tokio_signal::ctrl_c()
-        .flatten_stream()
-        .map_err(|error| panic!("Error listening for signal: {}", error))
-        .take(1)
-        .for_each(|()| {
-            println!("Ctrl+C pressed");
-            Ok(())
-        });
+    let signal = async {
+        signal::ctrl_c().map_err(|_| ()).await?;
+        println!("Ctrl+C pressed");
+        Ok::<(), ()>(())
+    };
 
-    let serve_until = signal
-        .select(server)
-        .map(|(res, _)| res)
-        .map_err(|(error, _)| error);
-
-    tokio::run(serve_until);
-
+    future::select(server.boxed(), signal.boxed()).await;
     println!("Shutting down gracefully");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gotham::test::TestServer;
     #[cfg(unix)]
-    use hyper::Client;
+    use gotham::hyper::Client;
+    use gotham::test::TestServer;
     #[cfg(unix)]
     use nix::sys::signal::{kill, Signal};
     use std::thread;

@@ -4,10 +4,10 @@ description = "An introduction to storing and retrieving session data, in a type
 version = "0.0.0"
 authors = ["Daniel Wagner-Hall <dawagner@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-hyper = "0.12"
 mime = "0.3"
-cookie = "0.11"
+cookie = "0.13"

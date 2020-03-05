@@ -3,9 +3,9 @@ name = "gotham_examples_hello_world"
 description = "A Hello World example application for working with Gotham."
 version = "0.0.0"
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../gotham" }
 
-hyper = "0.12"
 mime = "0.3"

@@ -1,23 +1,20 @@
 //! Introduces the Middleware and Pipeline concepts provided by the Gotham web framework.
-
-extern crate futures;
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
 
-use futures::{future, Future};
+use futures::prelude::*;
+use std::pin::Pin;
+
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_empty_response;
+use gotham::hyper::header::{HeaderMap, USER_AGENT};
+use gotham::hyper::{Body, Response, StatusCode};
 use gotham::middleware::Middleware;
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use hyper::header::{HeaderMap, USER_AGENT};
-use hyper::{Body, Response, StatusCode};
 
 /// A simple struct which holds an identifier for the user agent which made the request.
 ///
@@ -49,9 +46,9 @@ pub struct ExampleMiddleware;
 /// ^Later examples will show how Middlewares in a pipeline can work with each other in a similar
 /// manner.
 impl Middleware for ExampleMiddleware {
-    fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
         let user_agent = match HeaderMap::borrow_from(&state).get(USER_AGENT) {
             Some(ua) => ua.to_str().unwrap().to_string(),
@@ -97,7 +94,7 @@ impl Middleware for ExampleMiddleware {
             future::ok((state, response))
         });
 
-        Box::new(f)
+        f.boxed()
     }
 }
 

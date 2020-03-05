@@ -1,14 +1,14 @@
 //! Defines functionality for extending a Response.
 
 use crate::state::{request_id, State};
-use hyper::{body::Payload, Body, Response};
+use hyper::{body::HttpBody, Body, Response};
 use log::trace;
 use std::panic::RefUnwindSafe;
 
 /// Extend the `Response` based on current `State` and `Response` data.
 pub trait StaticResponseExtender: RefUnwindSafe {
     /// The type of the response body. Almost always `hyper::Body`.
-    type ResBody: Payload;
+    type ResBody: HttpBody;
 
     /// Extend the response.
     fn extend(state: &mut State, response: &mut Response<Self::ResBody>);

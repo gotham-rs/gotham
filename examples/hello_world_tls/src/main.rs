@@ -1,16 +1,10 @@
 //! A Hello World example application for working with Gotham.
-
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-extern crate tokio_rustls;
-
-use std::io::BufReader;
-use tokio_rustls::rustls::{
+use futures_rustls::rustls::{
     self,
     internal::pemfile::{certs, pkcs8_private_keys},
     NoClientAuth,
 };
+use std::io::BufReader;
 
 use gotham::state::State;
 
@@ -46,8 +40,8 @@ fn build_config() -> Result<rustls::ServerConfig, rustls::TLSError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::StatusCode;
 
     #[test]
     fn receive_hello_world_response() {

@@ -6,9 +6,11 @@ pub mod response;
 pub mod route;
 pub mod tree;
 
+use std::pin::Pin;
 use std::sync::Arc;
 
-use futures::{future, Future};
+use futures::prelude::*;
+
 use hyper::header::ALLOW;
 use hyper::{Body, Response, StatusCode};
 use log::{error, trace};
@@ -67,7 +69,7 @@ impl NewHandler for Router {
 impl Handler for Router {
     /// Handles the `Request` by determining the correct `Route` from the internal `Tree`, storing
     /// any path related variables in `State` and dispatching to the associated `Handler`.
-    fn handle(self, mut state: State) -> Box<HandlerFuture> {
+    fn handle(self, mut state: State) -> Pin<Box<HandlerFuture>> {
         trace!("[{}] starting", request_id(&state));
 
         let future = match state.try_take::<RequestPathSegments>() {
@@ -99,19 +101,19 @@ impl Handler for Router {
                                     );
                                 }
                             }
-                            Box::new(future::ok((state, res)))
+                            future::ok((state, res)).boxed()
                         }
                     }
                 } else {
                     trace!("[{}] did not find routable node", request_id(&state));
                     let res = create_empty_response(&state, StatusCode::NOT_FOUND);
-                    Box::new(future::ok((state, res)))
+                    future::ok((state, res)).boxed()
                 }
             }
             None => {
                 trace!("[{}] invalid request path segments", request_id(&state));
                 let res = create_empty_response(&state, StatusCode::INTERNAL_SERVER_ERROR);
-                Box::new(future::ok((state, res)))
+                future::ok((state, res)).boxed()
             }
         };
 
@@ -142,7 +144,7 @@ impl Router {
         mut state: State,
         params: SegmentMapping<'a>,
         route: &Box<dyn Route<ResBody = Body> + Send + Sync>,
-    ) -> Box<HandlerFuture> {
+    ) -> Pin<Box<HandlerFuture>> {
         match route.extract_request_path(&mut state, params) {
             Ok(()) => {
                 trace!("[{}] extracted request path", request_id(&state));
@@ -158,7 +160,7 @@ impl Router {
 
                         let mut res = Response::new(Body::empty());
                         route.extend_response_on_query_string_error(&mut state, &mut res);
-                        Box::new(future::ok((state, res)))
+                        future::ok((state, res)).boxed()
                     }
                 }
             }
@@ -169,14 +171,14 @@ impl Router {
                 );
                 let mut res = Response::new(Body::empty());
                 route.extend_response_on_path_error(&mut state, &mut res);
-                Box::new(future::ok((state, res)))
+                future::ok((state, res)).boxed()
             }
         }
     }
 
-    fn finalize_response(&self, result: Box<HandlerFuture>) -> Box<HandlerFuture> {
+    fn finalize_response(&self, result: Pin<Box<HandlerFuture>>) -> Pin<Box<HandlerFuture>> {
         let response_finalizer = self.data.response_finalizer.clone();
-        let f = result
+        result
             .or_else(|(state, err)| {
                 trace!(
                     "[{}] converting error into http response \
@@ -190,9 +192,8 @@ impl Router {
             .and_then(move |(state, res)| {
                 trace!("[{}] handler complete", request_id(&state));
                 response_finalizer.finalize(state, res)
-            });
-
-        Box::new(f)
+            })
+            .boxed()
     }
 }
 
@@ -233,7 +234,7 @@ mod tests {
         state.put(HeaderMap::new());
         set_request_id(&mut state);
 
-        r.handle(state).wait()
+        futures::executor::block_on(r.handle(state))
     }
 
     #[test]
@@ -251,7 +252,7 @@ mod tests {
         state.put(HeaderMap::new());
         set_request_id(&mut state);
 
-        match router.handle(state).wait() {
+        match futures::executor::block_on(router.handle(state)) {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
             }

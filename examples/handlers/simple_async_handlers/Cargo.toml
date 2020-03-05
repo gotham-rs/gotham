@@ -4,14 +4,14 @@ description = "An example that does asynchronous work before responding"
 version = "0.0.0"
 authors = ["David Laban <alsuren@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-hyper = "0.12"
 mime = "0.3"
-futures = "0.1"
+futures = "0.3.1"
 serde = "1.0"
 serde_derive = "1.0"
-tokio = "0.1"
+tokio = { version = "0.2.6", features = ["full"] }
