@@ -7,12 +7,14 @@
 mod accepted_encoding;
 
 use crate::error::Result;
-use bytes::{BufMut, BytesMut};
-use futures::{stream, try_ready, Future, Stream};
+use bytes::{BufMut, Bytes, BytesMut};
+use futures::prelude::*;
+use futures::ready;
+use futures::task::Poll;
 use http;
 use httpdate::parse_http_date;
 use hyper::header::*;
-use hyper::{Body, Chunk, Response, StatusCode};
+use hyper::{Body, Response, StatusCode};
 use log::debug;
 use mime::{self, Mime};
 use mime_guess::from_path;
@@ -31,6 +33,7 @@ use std::fs::Metadata;
 use std::io;
 use std::iter::FromIterator;
 use std::path::{Component, Path, PathBuf};
+use std::pin::Pin;
 use std::time::UNIX_EPOCH;
 
 /// Represents a handler for any files under a directory.
@@ -176,7 +179,7 @@ impl NewHandler for DirHandler {
 }
 
 impl Handler for DirHandler {
-    fn handle(self, state: State) -> Box<HandlerFuture> {
+    fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
         let path = {
             let mut base_path = self.options.path;
             let file_path = PathBuf::from_iter(&FilePathExtractor::borrow_from(&state).parts);
@@ -194,59 +197,60 @@ impl Handler for DirHandler {
 }
 
 impl Handler for FileHandler {
-    fn handle(self, state: State) -> Box<HandlerFuture> {
+    fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
         create_file_response(self.options, state)
     }
 }
 
 // Creates the `HandlerFuture` response based on the given `FileOptions`.
-fn create_file_response(options: FileOptions, state: State) -> Box<HandlerFuture> {
+fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFuture>> {
     let mime_type = mime_for_path(&options.path);
     let headers = HeaderMap::borrow_from(&state).clone();
 
     let (path, encoding) = check_compressed_options(&options, &headers);
 
-    let response_future =
-        File::open(path)
-            .and_then(File::metadata)
-            .and_then(move |(file, meta)| {
-                if not_modified(&meta, &headers) {
-                    return Ok(http::Response::builder()
-                        .status(StatusCode::NOT_MODIFIED)
-                        .body(Body::empty())
-                        .unwrap());
-                }
-                let len = meta.len();
-                let buf_size = optimal_buf_size(&meta);
-
-                let stream = file_stream(file, buf_size, len);
-                let body = Body::wrap_stream(stream);
-                let mut response = http::Response::builder();
-                response.status(StatusCode::OK);
-                response.header(CONTENT_LENGTH, len);
-                response.header(CONTENT_TYPE, mime_type.as_ref());
-                response.header(CACHE_CONTROL, options.cache_control);
-
-                if let Some(etag) = entity_tag(&meta) {
-                    response.header(ETAG, etag);
-                }
-                if let Some(content_encoding) = encoding {
-                    response.header(CONTENT_ENCODING, content_encoding);
-                }
-
-                Ok(response.body(body).unwrap())
-            });
-    Box::new(response_future.then(|result| match result {
-        Ok(response) => Ok((state, response)),
-        Err(err) => {
-            let status = match err.kind() {
-                io::ErrorKind::NotFound => StatusCode::NOT_FOUND,
-                io::ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
-                _ => StatusCode::INTERNAL_SERVER_ERROR,
-            };
-            Err((state, err.into_handler_error().with_status(status)))
+    let response_future = File::open(path).and_then(|file| async move {
+        let meta = file.metadata().await?;
+        if not_modified(&meta, &headers) {
+            return Ok(http::Response::builder()
+                .status(StatusCode::NOT_MODIFIED)
+                .body(Body::empty())
+                .unwrap());
         }
-    }))
+        let len = meta.len();
+        let buf_size = optimal_buf_size(&meta);
+
+        let stream = file_stream(file, buf_size, len);
+        let body = Body::wrap_stream(stream.into_stream());
+        let mut response = http::Response::builder()
+            .status(StatusCode::OK)
+            .header(CONTENT_LENGTH, len)
+            .header(CONTENT_TYPE, mime_type.as_ref())
+            .header(CACHE_CONTROL, options.cache_control);
+
+        if let Some(etag) = entity_tag(&meta) {
+            response = response.header(ETAG, etag);
+        }
+        if let Some(content_encoding) = encoding {
+            response = response.header(CONTENT_ENCODING, content_encoding);
+        }
+
+        Ok(response.body(body).unwrap())
+    });
+
+    response_future
+        .map(|result| match result {
+            Ok(response) => Ok((state, response)),
+            Err(err) => {
+                let status = match err.kind() {
+                    io::ErrorKind::NotFound => StatusCode::NOT_FOUND,
+                    io::ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                };
+                Err((state, err.into_handler_error().with_status(status)))
+            }
+        })
+        .boxed()
 }
 
 // Checks for existence of compressed files if `FileOptions` and
@@ -295,9 +299,7 @@ fn get_extension(encoding: &str, options: &FileOptions) -> Option<String> {
 }
 
 fn mime_for_path(path: &Path) -> Mime {
-    from_path(path)
-        .first()
-        .unwrap_or_else(|| mime::APPLICATION_OCTET_STREAM)
+    from_path(path).first_or_octet_stream()
 }
 
 fn normalize_path(path: &Path) -> PathBuf {
@@ -370,34 +372,40 @@ fn file_stream(
     mut f: File,
     buf_size: usize,
     mut len: u64,
-) -> impl Stream<Item = Chunk, Error = io::Error> + Send {
-    let mut buf = BytesMut::new();
-    stream::poll_fn(move || {
+) -> impl TryStream<Ok = Bytes, Error = io::Error> + Send {
+    let mut buf = BytesMut::with_capacity(buf_size);
+    stream::poll_fn(move |cx| {
         if len == 0 {
-            return Ok(None.into());
+            return Poll::Ready(None);
         }
         if buf.remaining_mut() < buf_size {
             buf.reserve(buf_size);
         }
-        let n = try_ready!(f.read_buf(&mut buf).map_err(|err| {
+
+        let read = Pin::new(&mut f).poll_read_buf(cx, &mut buf);
+        let n = ready!(read).map_err(|err| {
             debug!("file read error: {}", err);
             err
-        })) as u64;
+        })? as u64;
 
         if n == 0 {
             debug!("file read found EOF before expected length");
-            return Ok(None.into());
+            return Poll::Ready(Some(Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "file read found EOF before expected length",
+            ))));
         }
 
-        let mut chunk = buf.take().freeze();
-        if n > len {
-            chunk = chunk.split_to(len as usize);
+        let chunk = if n > len {
+            let chunk = buf.split_to(len as usize);
             len = 0;
+            chunk
         } else {
             len -= n;
-        }
+            buf.split()
+        };
 
-        Ok(Some(Chunk::from(chunk)).into())
+        Poll::Ready(Some(Ok(chunk.freeze())))
     })
 }
 

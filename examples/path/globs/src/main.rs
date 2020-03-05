@@ -1,11 +1,6 @@
 //! Shows how to match arbitrarily many path segments.
-
-extern crate gotham;
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
@@ -61,8 +56,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::StatusCode;
 
     #[test]
     fn empty_glob_does_not_match() {

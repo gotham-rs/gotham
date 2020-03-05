@@ -1,5 +1,6 @@
 //! Defines a cookie parsing middleware to be attach cookies on requests.
 use std::io;
+use std::pin::Pin;
 
 use cookie::{Cookie, CookieJar};
 use hyper::header::{HeaderMap, HeaderValue, COOKIE};
@@ -36,9 +37,9 @@ impl CookieParser {
 /// `Middleware` trait implementation.
 impl Middleware for CookieParser {
     /// Attaches a set of parsed cookies to the request state.
-    fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture>,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
         let cookies = { CookieParser::from_state(&state) };
         state.put(cookies);

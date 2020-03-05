@@ -316,9 +316,8 @@ where
 mod tests {
     use super::*;
 
-    use futures::{Future, Stream};
     use hyper::service::Service;
-    use hyper::{Body, Request, Response, StatusCode};
+    use hyper::{body, Body, Request, Response, StatusCode};
     use serde_derive::Deserialize;
 
     use crate::middleware::cookie::CookieParser;
@@ -538,7 +537,7 @@ mod tests {
 
         let call = move |req| {
             let mut service = new_service.connect("127.0.0.1:10000".parse().unwrap());
-            service.call(req).wait().unwrap()
+            futures::executor::block_on(service.call(req)).unwrap()
         };
 
         let response = call(Request::get("/").body(Body::empty()).unwrap());
@@ -549,7 +548,9 @@ mod tests {
 
         let response = call(Request::get("/hello/world").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
+        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
+            .unwrap()
+            .to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Hello, world!");
 
         let response = call(
@@ -558,17 +559,23 @@ mod tests {
                 .unwrap(),
         );
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
+        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
+            .unwrap()
+            .to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Globbed");
 
         let response = call(Request::get("/delegated/b").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
+        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
+            .unwrap()
+            .to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
 
         let response = call(Request::get("/goodbye/world").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
+        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
+            .unwrap()
+            .to_vec();
         assert_eq!(
             &String::from_utf8(response_bytes).unwrap(),
             "Goodbye, world!"
@@ -589,7 +596,9 @@ mod tests {
 
         let response = call(Request::get("/add?x=16&y=71").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
+        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
+            .unwrap()
+            .to_vec();
         assert_eq!(&String::from_utf8(response_bytes).unwrap(), "16 + 71 = 87");
 
         let response = call(Request::post("/resource").body(Body::empty()).unwrap());
@@ -603,7 +612,9 @@ mod tests {
 
         let response = call(Request::get("/resource").body(Body::empty()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = response.into_body().concat2().wait().unwrap().to_vec();
+        let response_bytes = futures::executor::block_on(body::to_bytes(response.into_body()))
+            .unwrap()
+            .to_vec();
         assert_eq!(&response_bytes[..], b"It's a resource.");
 
         let response = call(

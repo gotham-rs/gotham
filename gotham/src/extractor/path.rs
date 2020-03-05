@@ -1,4 +1,4 @@
-use hyper::{body::Payload, Body, Response};
+use hyper::{body::HttpBody, Body, Response};
 use serde::{Deserialize, Deserializer};
 
 use crate::router::response::extender::StaticResponseExtender;
@@ -78,13 +78,13 @@ use crate::state::{State, StateData};
 pub trait PathExtractor<B>:
     for<'de> Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData
 where
-    B: Payload,
+    B: HttpBody,
 {
 }
 
 impl<T, B> PathExtractor<B> for T
 where
-    B: Payload,
+    B: HttpBody,
     for<'de> T: Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData,
 {
 }

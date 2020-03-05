@@ -1,9 +1,9 @@
-use futures::Future;
+use futures::prelude::*;
 use log::{error, info};
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
+
 use tokio::net::TcpListener;
-use tokio::runtime::TaskExecutor;
 use tokio_rustls::{rustls, TlsAcceptor};
 
 use super::{bind_server, new_runtime, tcp_listener};
@@ -16,7 +16,7 @@ pub mod test;
 pub fn start<NH, A>(addr: A, new_handler: NH, tls_config: rustls::ServerConfig)
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs + 'static,
+    A: ToSocketAddrs + 'static + Send,
 {
     start_with_num_threads(addr, new_handler, tls_config, num_cpus::get())
 }
@@ -29,26 +29,10 @@ pub fn start_with_num_threads<NH, A>(
     threads: usize,
 ) where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs + 'static,
+    A: ToSocketAddrs + 'static + Send,
 {
-    let runtime = new_runtime(threads);
-    start_on_executor(addr, new_handler, tls_config, runtime.executor());
-    runtime.shutdown_on_idle().wait().unwrap();
-}
-
-/// Starts a Gotham application with a designated backing `TaskExecutor`.
-///
-/// This function can be used to spawn the server on an existing `Runtime`.
-pub fn start_on_executor<NH, A>(
-    addr: A,
-    new_handler: NH,
-    tls_config: rustls::ServerConfig,
-    executor: TaskExecutor,
-) where
-    NH: NewHandler + 'static,
-    A: ToSocketAddrs + 'static,
-{
-    executor.spawn(init_server(addr, new_handler, tls_config));
+    let mut runtime = new_runtime(threads);
+    let _ = runtime.block_on(async { init_server(addr, new_handler, tls_config).await });
 }
 
 /// Returns a `Future` used to spawn an Gotham application.
@@ -56,16 +40,16 @@ pub fn start_on_executor<NH, A>(
 /// This is used internally, but exposed in case the developer intends on doing any
 /// manual wiring that isn't supported by the Gotham API. It's unlikely that this will
 /// be required in most use cases; it's mainly exposed for shutdown handling.
-pub fn init_server<NH, A>(
+pub async fn init_server<NH, A>(
     addr: A,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> impl Future<Item = (), Error = ()>
+) -> Result<(), ()>
 where
     NH: NewHandler + 'static,
-    A: ToSocketAddrs + 'static,
+    A: ToSocketAddrs + 'static + Send,
 {
-    let listener = tcp_listener(addr);
+    let listener = tcp_listener(addr).map_err(|_| ()).await?;
     let addr = listener.local_addr().unwrap();
 
     info!(
@@ -75,13 +59,15 @@ where
     );
 
     bind_server_rustls(listener, new_handler, tls_config)
+        .map_err(|_| ())
+        .await
 }
 
-fn bind_server_rustls<NH>(
+async fn bind_server_rustls<NH>(
     listener: TcpListener,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> impl Future<Item = (), Error = ()>
+) -> Result<(), ()>
 where
     NH: NewHandler + 'static,
 {
@@ -89,7 +75,7 @@ where
     bind_server(listener, new_handler, move |socket| {
         tls.accept(socket).map_err(|e| {
             error!(target: "gotham::tls", "TLS handshake error: {:?}", e);
-            ()
         })
     })
+    .await
 }

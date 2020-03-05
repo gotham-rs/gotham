@@ -2,9 +2,10 @@
 //! and internal extenders have completed.
 
 use std::collections::HashMap;
+use std::pin::Pin;
 use std::sync::Arc;
 
-use futures::future;
+use futures::prelude::*;
 use hyper::{Body, Response, StatusCode};
 use log::trace;
 
@@ -63,7 +64,7 @@ impl ResponseFinalizerBuilder {
 impl ResponseFinalizer {
     /// Finalize the `Response` if a `ResponseFinalizer` has been supplied for the
     /// status code assigned to the `Response`.
-    pub fn finalize(&self, mut state: State, mut res: Response<Body>) -> Box<HandlerFuture> {
+    pub fn finalize(&self, mut state: State, mut res: Response<Body>) -> Pin<Box<HandlerFuture>> {
         match self.data.get(&res.status()) {
             Some(extender) => {
                 trace!(
@@ -82,6 +83,6 @@ impl ResponseFinalizer {
             }
         }
 
-        Box::new(future::ok((state, res)))
+        future::ok((state, res)).boxed()
     }
 }

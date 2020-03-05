@@ -1,6 +1,6 @@
-use futures::{Future, Sink, Stream};
+use futures::prelude::*;
+use gotham::hyper::{Body, HeaderMap, Response, StatusCode};
 use gotham::state::{request_id, FromState, State};
-use hyper::{Body, HeaderMap, Response, StatusCode};
 
 mod ws;
 
@@ -36,7 +36,7 @@ fn handler(mut state: State) -> (State, Response<Body>) {
     }
 }
 
-fn connected<S>(req_id: String, stream: S) -> impl Future<Item = (), Error = ()>
+fn connected<S>(req_id: String, stream: S) -> impl Future<Output = Result<(), ()>>
 where
     S: Stream<Item = ws::Message, Error = ws::Error>
         + Sink<SinkItem = ws::Message, SinkError = ws::Error>,
@@ -70,7 +70,7 @@ const INDEX_HTML: &str = r#"
 <h1>Websocket Echo Server</h1>
 <form id="ws" onsubmit="return send(this.message);">
     <input name="message">
-    <input type="submit" value="Send">    
+    <input type="submit" value="Send">
 </form>
 <script>
     var sock = new WebSocket("ws://" + window.location.host);

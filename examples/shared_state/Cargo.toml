@@ -3,10 +3,10 @@ name = "gotham_examples_shared_state"
 description = "An introduction to shared state across Gotham handlers"
 version = "0.0.0"
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../gotham" }
 gotham_derive = { path = "../../gotham_derive" }
 
-hyper = "0.12"
 mime = "0.3"

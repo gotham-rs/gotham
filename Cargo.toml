@@ -8,7 +8,8 @@ members = [
     ## Middleware
     "middleware/template",
     "middleware/diesel",
-    "middleware/jwt",
+    # TODO: Re-enable middleware when their dependencies are updated
+    # "middleware/jwt",
 
     ## Examples (these crates are not published)
     "examples/hello_world",
@@ -68,12 +69,19 @@ members = [
     "examples/diesel",
 
     # openssl
-    "examples/openssl",
+    # TODO: Re-enable when this example is updated
+    # "examples/openssl",
 
     # example_contribution_template
     "examples/example_contribution_template/name",
 
-    "examples/websocket",
+    # TODO: Re-enable when tokio-tungstenite is updated
+    # "examples/websocket",
+
+    # finalizer
+    "examples/finalizers/",
+
+
 ]
 
 [patch.crates-io]

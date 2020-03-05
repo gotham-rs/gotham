@@ -5,11 +5,9 @@
 //! requests sent to the backend.
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
-extern crate gotham;
+
 #[macro_use]
 extern crate gotham_derive;
-extern crate hyper;
-extern crate mime;
 
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::single::single_pipeline;
@@ -101,8 +99,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
-    use hyper::StatusCode;
 
     #[test]
     fn receive_incrementing_hello_response() {

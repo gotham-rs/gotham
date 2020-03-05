@@ -116,8 +116,10 @@ pub trait DefineSingleRoute {
     /// # extern crate hyper;
     /// # extern crate futures;
     /// #
+    /// # use std::pin::Pin;
+    /// #
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use futures::future;
+    /// # use futures::prelude::*;
     /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -140,10 +142,10 @@ pub trait DefineSingleRoute {
     /// }
     ///
     /// impl Handler for MyHandler {
-    ///     fn handle(self, state: State) -> Box<HandlerFuture> {
+    ///     fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
     ///         // Handler implementation elided.
     /// #       let response = Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap();
-    /// #       Box::new(future::ok((state, response)))
+    /// #       future::ok((state, response)).boxed()
     ///     }
     /// }
     /// #

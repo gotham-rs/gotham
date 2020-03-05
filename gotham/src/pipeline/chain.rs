@@ -2,9 +2,10 @@
 //! dispatcher for a route.
 
 use borrow_bag::{Handle, Lookup};
-use futures::future;
+use futures::prelude::*;
 use log::trace;
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
 use crate::handler::{HandlerFuture, IntoHandlerError};
 use crate::middleware::chain::NewMiddlewareChain;
@@ -28,9 +29,9 @@ use crate::state::{request_id, State};
 pub trait PipelineHandleChain<P>: RefUnwindSafe {
     /// Invokes this part of the `PipelineHandleChain`, with requests being passed through to `f`
     /// once all `Middleware` in the `Pipeline` have passed the request through.
-    fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
+    fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Pin<Box<HandlerFuture>>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static;
+        F: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static;
 }
 
 /// Part of a `PipelineHandleChain` which references a `Pipeline` and continues with a tail element.
@@ -42,16 +43,16 @@ where
     P: Lookup<Pipeline<T>, N>,
     N: RefUnwindSafe,
 {
-    fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
+    fn call<F>(&self, pipelines: &PipelineSet<P>, state: State, f: F) -> Pin<Box<HandlerFuture>>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+        F: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
     {
         let (handle, ref chain) = *self;
         match pipelines.borrow(handle).construct() {
             Ok(p) => chain.call(pipelines, state, move |state| p.call(state, f)),
             Err(e) => {
                 trace!("[{}] error borrowing pipeline", request_id(&state));
-                Box::new(future::err((state, e.into_handler_error())))
+                future::err((state, e.into_handler_error())).boxed()
             }
         }
     }
@@ -59,9 +60,9 @@ where
 
 /// The marker for the end of a `PipelineHandleChain`.
 impl<P> PipelineHandleChain<P> for () {
-    fn call<F>(&self, _: &PipelineSet<P>, state: State, f: F) -> Box<HandlerFuture>
+    fn call<F>(&self, _: &PipelineSet<P>, state: State, f: F) -> Pin<Box<HandlerFuture>>
     where
-        F: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+        F: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
     {
         trace!("[{}] start pipeline", request_id(&state));
         f(state)

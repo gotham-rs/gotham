@@ -1,14 +1,8 @@
 //! An introduction to the Gotham web framework's `IntoResponse` trait.
-
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
 
-use hyper::{Body, Response, StatusCode};
+use gotham::hyper::{Body, Response, StatusCode};
 
 use gotham::handler::IntoResponse;
 use gotham::helpers::http::response::create_response;

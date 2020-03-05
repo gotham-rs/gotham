@@ -4,10 +4,10 @@ description = "A basic application showing the request components available"
 version = "0.0.0"
 authors = ["Nicolas Pochet <npochet@gmail.com>"]
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-hyper = "0.12"
 mime = "0.3"
-futures = "0.1"
+futures = "0.3.1"

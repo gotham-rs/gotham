@@ -1,12 +1,7 @@
-extern crate askama;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-
 use askama::Template;
 use gotham::helpers::http::response::{create_empty_response, create_response};
+use gotham::hyper::{Body, Response, StatusCode};
 use gotham::state::State;
-use hyper::{Body, Response, StatusCode};
 
 pub const MESSAGE: &str = "Hello, Gotham!";
 

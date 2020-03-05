@@ -1,25 +1,19 @@
 //! An example of decoding multipart form requests
-
-extern crate futures;
-extern crate gotham;
-extern crate hyper;
-extern crate mime;
-extern crate multipart;
-
-use futures::{future, Future, Stream};
+use futures::prelude::*;
 use gotham::handler::{HandlerFuture, IntoHandlerError};
 use gotham::helpers::http::response::create_response;
+use gotham::hyper::header::CONTENT_TYPE;
+use gotham::hyper::{body, Body, HeaderMap, StatusCode};
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use hyper::header::CONTENT_TYPE;
-use hyper::{Body, HeaderMap, StatusCode};
 use multipart::server::Multipart;
 use std::io::Cursor;
 use std::io::Read;
+use std::pin::Pin;
 
 /// Extracts the elements of the POST request and responds with the form keys and values
-fn form_handler(mut state: State) -> Box<HandlerFuture> {
+fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     const BOUNDARY: &str = "boundary=";
     let header_map = HeaderMap::take_from(&mut state);
     let boundary = header_map
@@ -31,8 +25,7 @@ fn form_handler(mut state: State) -> Box<HandlerFuture> {
         })
         .unwrap();
 
-    let f = Body::take_from(&mut state)
-        .concat2()
+    body::to_bytes(Body::take_from(&mut state))
         .then(|full_body| match full_body {
             Ok(valid_body) => {
                 let mut m = Multipart::with_body(Cursor::new(valid_body), boundary);
@@ -71,8 +64,8 @@ fn form_handler(mut state: State) -> Box<HandlerFuture> {
                 }
             }
             Err(e) => future::err((state, e.into_handler_error())),
-        });
-    Box::new(f)
+        })
+        .boxed()
 }
 
 /// Create a `Router`
@@ -92,8 +85,8 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::hyper::header::HeaderValue;
     use gotham::test::TestServer;
-    use hyper::header::HeaderValue;
 
     #[test]
     fn form_request() {

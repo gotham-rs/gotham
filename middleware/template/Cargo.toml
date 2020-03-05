@@ -7,10 +7,11 @@ description = "A template for creating custom Gotham middlewares"
 license = "MIT/Apache-2.0"
 readme = "README.md"
 publish = false
+edition = "2018"
 
 [dependencies]
 log = "0.4"
-futures = "0.1"
+futures = "0.3.1"
 
 # Middlewares should reference the semantic versions of Gotham that are they compatible with
 # and not use relative references such as shown here.

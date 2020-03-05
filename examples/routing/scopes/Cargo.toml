@@ -3,10 +3,10 @@ name = "gotham_examples_routing_scopes"
 description = "An example of the Gotham web framework `Router` that shows how to combine `Routes` under a common root using scopes."
 version = "0.0.0"
 publish = false
+edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
-hyper = "0.12"
 mime = "0.3"

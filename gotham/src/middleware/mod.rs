@@ -3,6 +3,7 @@
 
 use std::io;
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
 use crate::handler::HandlerFuture;
 use crate::state::State;
@@ -34,6 +35,8 @@ pub mod timer;
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// #
+/// # use std::pin::Pin;
+/// #
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
@@ -47,8 +50,8 @@ pub mod timer;
 /// struct NoopMiddleware;
 ///
 /// impl Middleware for NoopMiddleware {
-///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
+///     fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
+///         where Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static
 ///     {
 ///         chain(state)
 ///     }
@@ -83,6 +86,8 @@ pub mod timer;
 /// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// #
+/// # use std::pin::Pin;
+/// #
 /// # use hyper::{Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
@@ -101,8 +106,8 @@ pub mod timer;
 /// }
 ///
 /// impl Middleware for MiddlewareWithStateData {
-///     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
+///     fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
+///         where Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static
 ///     {
 ///         state.put(MiddlewareStateData { i: 10 });
 ///         chain(state)
@@ -145,7 +150,9 @@ pub mod timer;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
-/// # use futures::Future;
+/// # use std::pin::Pin;
+/// #
+/// # use futures::prelude::*;
 /// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::WARNING;
 /// # use gotham::handler::HandlerFuture;
@@ -160,16 +167,15 @@ pub mod timer;
 /// struct MiddlewareAddingResponseHeader;
 ///
 /// impl Middleware for MiddlewareAddingResponseHeader {
-///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
+///     fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
+///         where Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static
 ///     {
-///         let f = chain(state)
-///             .map(|(state, mut response)| {
+///         chain(state)
+///             .map_ok(|(state, mut response)| {
 ///                 response.headers_mut().insert(WARNING, "299 example.com Deprecated".parse().unwrap());
 ///                 (state, response)
-///             });
-///
-///         Box::new(f)
+///             })
+///             .boxed()
 ///     }
 /// }
 /// #
@@ -208,8 +214,10 @@ pub mod timer;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
+/// # use std::pin::Pin;
+/// #
 /// # use hyper::{Body, Response, Method, StatusCode};
-/// # use futures::future;
+/// # use futures::prelude::*;
 /// # use gotham::helpers::http::response::create_empty_response;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
@@ -223,14 +231,14 @@ pub mod timer;
 /// struct ConditionalMiddleware;
 ///
 /// impl Middleware for ConditionalMiddleware {
-///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
+///     fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
+///         where Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static
 ///     {
 ///         if *Method::borrow_from(&state) == Method::GET {
 ///             chain(state)
 ///         } else {
 ///             let response = create_empty_response(&state, StatusCode::METHOD_NOT_ALLOWED);
-///             Box::new(future::ok((state, response)))
+///             future::ok((state, response)).boxed()
 ///         }
 ///     }
 /// }
@@ -269,7 +277,9 @@ pub mod timer;
 /// # extern crate hyper;
 /// # extern crate futures;
 /// #
-/// # use futures::{future, Future};
+/// # use std::pin::Pin;
+/// #
+/// # use futures::prelude::*;
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
@@ -283,13 +293,13 @@ pub mod timer;
 /// struct AsyncMiddleware;
 ///
 /// impl Middleware for AsyncMiddleware {
-///     fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
-///         where Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static
+///     fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
+///         where Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static
 ///     {
 ///         // This could be any asynchronous action. `future::lazy(_)` defers a function
 ///         // until the next cycle of tokio's event loop.
-///         let f = future::lazy(|| future::ok(()));
-///         Box::new(f.and_then(move |_| chain(state)))
+///         let f = future::lazy(|_| Ok(()));
+///         f.and_then(move |_| chain(state)).boxed()
 ///     }
 /// }
 /// #
@@ -322,9 +332,9 @@ pub trait Middleware {
     /// * Not modify any request components added to `State` by Gotham.
     /// * Avoid modifying parts of the `State` that don't strictly need to be modified to perform
     ///   its function.
-    fn call<Chain>(self, state: State, chain: Chain) -> Box<HandlerFuture>
+    fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
-        Chain: FnOnce(State) -> Box<HandlerFuture> + Send + 'static,
+        Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
         Self: Sized;
 }
 
@@ -338,6 +348,8 @@ pub trait Middleware {
 /// # extern crate gotham;
 /// #
 /// # use std::io;
+/// # use std::pin::Pin;
+/// #
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::pipeline::new_pipeline;
@@ -356,8 +368,8 @@ pub trait Middleware {
 /// }
 /// #
 /// # impl Middleware for MyMiddleware {
-/// #   fn call<Chain>(self, _state: State, _chain: Chain) -> Box<HandlerFuture>
-/// #       where Chain: FnOnce(State) -> Box<HandlerFuture> + 'static
+/// #   fn call<Chain>(self, _state: State, _chain: Chain) -> Pin<Box<HandlerFuture>>
+/// #       where Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + 'static
 /// #   {
 /// #       unimplemented!()
 /// #   }
