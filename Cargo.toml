@@ -77,6 +77,11 @@ members = [
 
     # TODO: Re-enable when tokio-tungstenite is updated
     # "examples/websocket",
+
+    # finalizer
+    "examples/finalizers/",
+
+
 ]
 
 [patch.crates-io]
