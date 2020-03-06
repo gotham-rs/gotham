@@ -108,24 +108,33 @@ where
 
     listener
         .incoming()
-        .map_err(|e| panic!("socket error = {:?}", e))
-        .try_for_each_concurrent(None, |socket| {
+        .filter_map(|sock| match sock {
+            Ok(sock) => future::ready(Some(sock)),
+            Err(e) => {
+                panic!("socket error = {:?}", e);
+            }
+        })
+        .for_each_concurrent(None, |socket| {
             let addr = socket.peer_addr().unwrap();
             let service = gotham_service.connect(addr);
             let accepted_protocol = protocol.clone();
             let wrapper = wrap(socket);
 
+            // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
+            // will be dropped).
             async move {
-                // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
-                // will be dropped).
                 let socket = wrapper.await?;
+
                 accepted_protocol
                     .serve_connection(socket, service)
                     .map_err(|_| ())
                     .await?;
 
-                Ok(())
+                Result::<_, ()>::Ok(())
             }
+            .map(|_| ())
         })
-        .await
+        .await;
+
+    Ok(())
 }
