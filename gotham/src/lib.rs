@@ -114,7 +114,7 @@ where
                 panic!("socket error = {:?}", e);
             }
         })
-        .for_each_concurrent(None, |socket| {
+        .for_each(|socket| {
             let addr = socket.peer_addr().unwrap();
             let service = gotham_service.connect(addr);
             let accepted_protocol = protocol.clone();
@@ -122,7 +122,7 @@ where
 
             // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
             // will be dropped).
-            async move {
+            let task = async move {
                 let socket = wrapper.await?;
 
                 accepted_protocol
@@ -131,8 +131,11 @@ where
                     .await?;
 
                 Result::<_, ()>::Ok(())
-            }
-            .map(|_| ())
+            };
+
+            tokio::spawn(task);
+
+            future::ready(())
         })
         .await;
 
