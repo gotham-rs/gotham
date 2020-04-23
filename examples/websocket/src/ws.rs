@@ -1,7 +1,7 @@
 use base64;
 use futures::prelude::*;
 use gotham::hyper::header::{HeaderValue, CONNECTION, UPGRADE};
-use gotham::hyper::{upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
+use gotham::hyper::{self, upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
 use sha1::Sha1;
 use tokio_tungstenite::{tungstenite, WebSocketStream};
 
@@ -32,9 +32,9 @@ pub fn accept(
     (),
 > {
     let res = response(headers)?;
-    let ws = body
-        .on_upgrade()
-        .map(|upgraded| WebSocketStream::from_raw_socket(upgraded, Role::Server, None));
+    let ws = body.on_upgrade().and_then(|upgraded| {
+        WebSocketStream::from_raw_socket(upgraded, Role::Server, None).map(Ok)
+    });
 
     Ok((res, ws))
 }

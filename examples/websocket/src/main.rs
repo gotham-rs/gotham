@@ -28,7 +28,7 @@ fn handler(mut state: State) -> (State, Response<Body>) {
             .map_err(|err| eprintln!("websocket init error: {}", err))
             .and_then(move |ws| connected(req_id, ws));
 
-        hyper::rt::spawn(ws);
+        tokio::spawn(ws);
 
         (state, response)
     } else {
@@ -36,24 +36,34 @@ fn handler(mut state: State) -> (State, Response<Body>) {
     }
 }
 
-fn connected<S>(req_id: String, stream: S) -> impl Future<Output = Result<(), ()>>
+async fn connected<S>(req_id: String, stream: S) -> Result<(), ()>
 where
-    S: Stream<Item = ws::Message, Error = ws::Error>
-        + Sink<SinkItem = ws::Message, SinkError = ws::Error>,
+    S: Stream<Item = Result<ws::Message, ws::Error>> + Sink<ws::Message, Error = ws::Error>,
 {
-    let (sink, stream) = stream.split();
+    let (mut sink, mut stream) = stream.split();
 
     println!("Client {} connected", req_id);
 
-    sink.send_all(stream.map({
-        let req_id = req_id.clone();
-        move |msg| {
-            println!("{}: {:?}", req_id, msg);
-            msg
+    while let Some(message) = stream
+        .next()
+        .await
+        .transpose()
+        .map_err(|error| println!("Websocket receive error: {}", error))?
+    {
+        println!("{}: {:?}", req_id, message);
+        match sink.send(message).await {
+            Ok(()) => (),
+            // this error indicates a successfully closed connection
+            Err(ws::Error::ConnectionClosed) => break,
+            Err(error) => {
+                println!("Websocket send error: {}", error);
+                return Err(());
+            }
         }
-    }))
-    .map_err(|err| println!("Websocket error: {}", err))
-    .map(move |_| println!("Client {} disconnected", req_id))
+    }
+
+    println!("Client {} disconnected", req_id);
+    Ok(())
 }
 
 fn bad_request(state: State) -> (State, Response<Body>) {

@@ -76,7 +76,7 @@ members = [
     "examples/example_contribution_template/name",
 
     # TODO: Re-enable when tokio-tungstenite is updated
-    # "examples/websocket",
+    "examples/websocket",
 
     # finalizer
     "examples/finalizers/",
