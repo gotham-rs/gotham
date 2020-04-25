@@ -8,6 +8,10 @@ pub mod content_type;
 pub use self::accept::AcceptHeaderRouteMatcher;
 pub use self::and::AndRouteMatcher;
 pub use self::any::AnyRouteMatcher;
+pub use self::content_type::ContentTypeHeaderRouteMatcher;
+
+mod lookup_table;
+use self::lookup_table::{LookupTable, LookupTableFromTypes};
 
 use std::panic::RefUnwindSafe;
 

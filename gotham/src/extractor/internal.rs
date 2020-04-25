@@ -114,12 +114,12 @@ macro_rules! single_value_type {
     ($trait_fn:ident, $visitor_fn:ident) => {
         fn $trait_fn<V>(self, visitor: V) -> Result<V::Value, Self::Error>
         where
-            V: Visitor<'de>
+            V: Visitor<'de>,
         {
             let v = parse_single_value(self.values)?;
             visitor.$visitor_fn(v)
         }
-    }
+    };
 }
 
 /// Implements one `Deserializer` function (`$trait_fn`) to return the error defined by the `$err`
