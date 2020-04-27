@@ -21,6 +21,7 @@ use crate::error::*;
 
 pub use crate::plain::test::TestServer;
 pub use request::TestRequest;
+use futures::TryFutureExt;
 
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
@@ -31,11 +32,10 @@ pub(crate) trait BodyReader {
 /// An in memory server for testing purposes.
 pub trait Server: Clone {
     /// Runs a Future until it resolves.
-    fn run_future<F, R, E>(&self, future: F) -> Result<R>
+    fn run_future<F, O>(&self, future: F) -> O
     where
-        F: Send + 'static + Future<Output = std::result::Result<R, E>>,
-        R: Send + 'static,
-        E: failure::Fail;
+        F: Send + Future<Output = O>,
+        O: Send;
 
     /// Returns a Delay that will expire when a request should.
     fn request_expiry(&self) -> Delay;
@@ -64,7 +64,7 @@ pub trait Server: Clone {
                 })
                 .into_future()
                 // Finally, make the fail error compatible
-                .map(|result| result.compat()),
+                .map_err(|error| error.into()),
         )
     }
 }
@@ -72,7 +72,7 @@ pub trait Server: Clone {
 impl<T: Server> BodyReader for T {
     fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>> {
         let f = body::to_bytes(response.into_body()).and_then(|b| future::ok(b.to_vec()));
-        self.run_future(f)
+        self.run_future(f).map_err(|error| error.into())
     }
 }
 
