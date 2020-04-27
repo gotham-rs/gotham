@@ -94,8 +94,7 @@ impl test::Server for TestServer {
 
     fn run_future<F, O>(&self, future: F) -> O
     where
-        F: Send + Future<Output = O>,
-        O: Send,
+        F: Future<Output = O>,
     {
         self.data
             .runtime

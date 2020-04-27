@@ -34,8 +34,7 @@ pub trait Server: Clone {
     /// Runs a Future until it resolves.
     fn run_future<F, O>(&self, future: F) -> O
     where
-        F: Send + Future<Output = O>,
-        O: Send;
+        F: Future<Output = O>;
 
     /// Returns a Delay that will expire when a request should.
     fn request_expiry(&self) -> Delay;
