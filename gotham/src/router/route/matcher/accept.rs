@@ -160,7 +160,8 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
 
                         // check that the candidates have the same suffix - this is not included in the
                         // essence string
-                        if candidate.suffix() != qmime.mime.suffix() {
+                        if candidate.suffix() != qmime.mime.suffix() && qmime.mime.subtype() != "*"
+                        {
                             continue;
                         }
 
@@ -232,6 +233,17 @@ mod test {
     fn image_star() {
         let matcher = AcceptHeaderRouteMatcher::new(vec![mime::IMAGE_PNG]);
         with_state(Some("image/*"), |state| {
+            assert!(matcher.is_match(&state).is_ok())
+        });
+    }
+
+    #[test]
+    fn suffix_matched_by_wildcard() {
+        let matcher = AcceptHeaderRouteMatcher::new(vec!["application/rss+xml".parse().unwrap()]);
+        with_state(Some("*/*"), |state| {
+            assert!(matcher.is_match(&state).is_ok())
+        });
+        with_state(Some("application/*"), |state| {
             assert!(matcher.is_match(&state).is_ok())
         });
     }
