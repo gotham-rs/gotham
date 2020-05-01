@@ -58,3 +58,15 @@ fn accept_key(key: &[u8]) -> String {
     sha1.update(WS_GUID);
     base64::encode(&sha1.digest().bytes())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_accept_key_from_rfc6455() {
+        // From https://tools.ietf.org/html/rfc6455#section-1.2
+        let key = accept_key("dGhlIHNhbXBsZSBub25jZQ==".as_bytes());
+        assert_eq!(key, "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
+    }
+}
