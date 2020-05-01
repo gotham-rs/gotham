@@ -10,7 +10,7 @@
     sock.onopen = recv.bind(window, "Connected");
     sock.onclose = recv.bind(window, "Disconnected");
     sock.onmessage = function(msg) { recv(msg.data) };
-    sock.onerror = function(err) { recv("Error: " + e); };
+    sock.onerror = function(err) { recv("Error: " + err); };
 
     function recv(msg) {
         var e = document.createElement("PRE");
