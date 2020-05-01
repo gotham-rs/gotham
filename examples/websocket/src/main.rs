@@ -20,7 +20,7 @@ fn handler(mut state: State) -> (State, Response<Body>) {
     if ws::requested(&headers) {
         let (response, ws) = match ws::accept(&headers, body) {
             Ok(res) => res,
-            Err(_) => return bad_request(state),
+            Err(_) => return (state, bad_request()),
         };
 
         let req_id = request_id(&state).to_owned();
@@ -66,12 +66,11 @@ where
     Ok(())
 }
 
-fn bad_request(state: State) -> (State, Response<Body>) {
-    let response = Response::builder()
+fn bad_request() -> Response<Body> {
+    Response::builder()
         .status(StatusCode::BAD_REQUEST)
         .body(Body::empty())
-        .unwrap();
-    (state, response)
+        .unwrap()
 }
 
 const INDEX_HTML: &str = include_str!("index.html");
@@ -168,9 +167,31 @@ mod test {
                     .expect("Socket was closed")
                     .expect("Failed to receive response");
                 assert_eq!(message, response);
+
+                websocket_stream
+                    .send(Message::Close(None))
+                    .await
+                    .expect("Failed to send close message");
+
                 Ok::<(), DummyError>(())
             })
             .unwrap();
+    }
+
+    #[test]
+    fn should_respond_with_bad_request_if_the_request_is_bad() {
+        let server = create_test_server();
+        let client = server.client();
+
+        let mut request = client.get("ws://127.0.0.1:10000");
+        let headers = request.headers_mut();
+        headers.insert(UPGRADE, HeaderValue::from_static("websocket"));
+
+        let response = request.perform().expect("Failed to perform request.");
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+        let body = response.read_body().expect("Failed to read response body");
+        assert!(body.is_empty());
     }
 
     #[derive(Debug)]
