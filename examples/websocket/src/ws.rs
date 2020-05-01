@@ -1,6 +1,6 @@
 use base64;
 use futures::prelude::*;
-use gotham::hyper::header::{HeaderValue, CONNECTION, UPGRADE};
+use gotham::hyper::header::{HeaderValue, CONNECTION, UPGRADE, SEC_WEBSOCKET_KEY, SEC_WEBSOCKET_ACCEPT};
 use gotham::hyper::{self, upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
 use sha1::Sha1;
 use tokio_tungstenite::{tungstenite, WebSocketStream};
@@ -9,8 +9,6 @@ pub use tungstenite::protocol::{Message, Role};
 pub use tungstenite::Error;
 
 const PROTO_WEBSOCKET: &str = "websocket";
-const SEC_WEBSOCKET_KEY: &str = "Sec-WebSocket-Key";
-const SEC_WEBSOCKET_ACCEPT: &str = "Sec-WebSocket-Accept";
 
 /// Check if a WebSocket upgrade was requested.
 pub fn requested(headers: &HeaderMap) -> bool {
