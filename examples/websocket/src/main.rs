@@ -1,6 +1,5 @@
 use futures::prelude::*;
 use gotham::hyper::{Body, HeaderMap, Response, StatusCode};
-use gotham::hyper::header::{HeaderValue, UPGRADE, SEC_WEBSOCKET_KEY};
 use gotham::state::{request_id, FromState, State};
 
 mod ws;
@@ -87,6 +86,7 @@ mod test {
     use crate::ws::{Role, Message};
     use std::fmt::{Display, Formatter};
     use std::error::Error;
+    use gotham::hyper::header::{HeaderValue, CONNECTION, UPGRADE, SEC_WEBSOCKET_KEY, SEC_WEBSOCKET_ACCEPT};
 
     fn create_test_server() -> TestServer {
         TestServer::new(|| Ok(handler)).expect("Failed to create TestServer")
@@ -114,6 +114,15 @@ mod test {
         headers.insert(SEC_WEBSOCKET_KEY, HeaderValue::from_static("QmF0bWFu"));
 
         let mut response = client.perform(request).expect("Failed to request websocket upgrade");
+
+        let connection_header = response.headers().get(CONNECTION).expect("Missing connection header");
+        assert_eq!(connection_header.as_bytes(), "upgrade".as_bytes());
+        let upgrade_header = response.headers().get(UPGRADE).expect("Missing upgrade header");
+        assert_eq!(upgrade_header.as_bytes(), "websocket".as_bytes());
+        let websocket_accept_header = response.headers().get(SEC_WEBSOCKET_ACCEPT).expect("Missing websocket accept header");
+        assert_eq!(websocket_accept_header.as_bytes(), "hRHWRk+NDTj5O2GjSexJZg8ImzI=".as_bytes());
+
+
         // This will be used to swap out the body from the TestResponse because it only implements `DerefMut` but not `Into<Response>`
         let mut body = Body::empty();
         std::mem::swap(&mut body, response.deref_mut().body_mut());
