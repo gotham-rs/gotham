@@ -1,6 +1,8 @@
 use base64;
 use futures::prelude::*;
-use gotham::hyper::header::{HeaderValue, CONNECTION, UPGRADE, SEC_WEBSOCKET_KEY, SEC_WEBSOCKET_ACCEPT};
+use gotham::hyper::header::{
+    HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
+};
 use gotham::hyper::{self, upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
 use sha1::Sha1;
 use tokio_tungstenite::{tungstenite, WebSocketStream};

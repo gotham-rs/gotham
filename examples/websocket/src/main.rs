@@ -79,14 +79,16 @@ const INDEX_HTML: &str = include_str!("index.html");
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::ws::{Message, Role};
+    use gotham::hyper::header::{
+        HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
+    };
     use gotham::plain::test::TestServer;
-    use std::ops::DerefMut;
     use gotham::test::Server;
-    use tokio_tungstenite::WebSocketStream;
-    use crate::ws::{Role, Message};
-    use std::fmt::{Display, Formatter};
     use std::error::Error;
-    use gotham::hyper::header::{HeaderValue, CONNECTION, UPGRADE, SEC_WEBSOCKET_KEY, SEC_WEBSOCKET_ACCEPT};
+    use std::fmt::{Display, Formatter};
+    use std::ops::DerefMut;
+    use tokio_tungstenite::WebSocketStream;
 
     fn create_test_server() -> TestServer {
         TestServer::new(|| Ok(handler)).expect("Failed to create TestServer")
@@ -97,8 +99,13 @@ mod test {
         let server = create_test_server();
         let client = server.client();
 
-        let response = client.get("http://localhost:10000").perform().expect("Failed to request HTML");
-        let body = response.read_utf8_body().expect("Failed to read response body.");
+        let response = client
+            .get("http://localhost:10000")
+            .perform()
+            .expect("Failed to request HTML");
+        let body = response
+            .read_utf8_body()
+            .expect("Failed to read response body.");
 
         assert_eq!(body, INDEX_HTML);
     }
@@ -113,31 +120,57 @@ mod test {
         headers.insert(UPGRADE, HeaderValue::from_static("websocket"));
         headers.insert(SEC_WEBSOCKET_KEY, HeaderValue::from_static("QmF0bWFu"));
 
-        let mut response = client.perform(request).expect("Failed to request websocket upgrade");
+        let mut response = client
+            .perform(request)
+            .expect("Failed to request websocket upgrade");
 
-        let connection_header = response.headers().get(CONNECTION).expect("Missing connection header");
+        let connection_header = response
+            .headers()
+            .get(CONNECTION)
+            .expect("Missing connection header");
         assert_eq!(connection_header.as_bytes(), "upgrade".as_bytes());
-        let upgrade_header = response.headers().get(UPGRADE).expect("Missing upgrade header");
+        let upgrade_header = response
+            .headers()
+            .get(UPGRADE)
+            .expect("Missing upgrade header");
         assert_eq!(upgrade_header.as_bytes(), "websocket".as_bytes());
-        let websocket_accept_header = response.headers().get(SEC_WEBSOCKET_ACCEPT).expect("Missing websocket accept header");
-        assert_eq!(websocket_accept_header.as_bytes(), "hRHWRk+NDTj5O2GjSexJZg8ImzI=".as_bytes());
-
+        let websocket_accept_header = response
+            .headers()
+            .get(SEC_WEBSOCKET_ACCEPT)
+            .expect("Missing websocket accept header");
+        assert_eq!(
+            websocket_accept_header.as_bytes(),
+            "hRHWRk+NDTj5O2GjSexJZg8ImzI=".as_bytes()
+        );
 
         // This will be used to swap out the body from the TestResponse because it only implements `DerefMut` but not `Into<Response>`
         let mut body = Body::empty();
         std::mem::swap(&mut body, response.deref_mut().body_mut());
 
-        server.run_future(async move {
-            let upgraded = body.on_upgrade().await.expect("Failed to upgrade client websocket.");
-            let mut websocket_stream = WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await;
+        server
+            .run_future(async move {
+                let upgraded = body
+                    .on_upgrade()
+                    .await
+                    .expect("Failed to upgrade client websocket.");
+                let mut websocket_stream =
+                    WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await;
 
-            let message = Message::Text("Hello".to_string());
-            websocket_stream.send(message.clone()).await.expect("Failed to send text message.");
+                let message = Message::Text("Hello".to_string());
+                websocket_stream
+                    .send(message.clone())
+                    .await
+                    .expect("Failed to send text message.");
 
-            let response = websocket_stream.next().await.expect("Socket was closed").expect("Failed to receive response");
-            assert_eq!(message, response);
-            Ok::<(), DummyError>(())
-        }).unwrap();
+                let response = websocket_stream
+                    .next()
+                    .await
+                    .expect("Socket was closed")
+                    .expect("Failed to receive response");
+                assert_eq!(message, response);
+                Ok::<(), DummyError>(())
+            })
+            .unwrap();
     }
 
     #[derive(Debug)]
@@ -150,5 +183,4 @@ mod test {
     }
 
     impl Error for DummyError {}
-
 }
