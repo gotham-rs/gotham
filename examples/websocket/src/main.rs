@@ -74,35 +74,7 @@ fn bad_request(state: State) -> (State, Response<Body>) {
     (state, response)
 }
 
-const INDEX_HTML: &str = r#"
-<!DOCTYPE html>
-<body>
-<h1>Websocket Echo Server</h1>
-<form id="ws" onsubmit="return send(this.message);">
-    <input name="message">
-    <input type="submit" value="Send">
-</form>
-<script>
-    var sock = new WebSocket("ws://" + window.location.host);
-    sock.onopen = recv.bind(window, "Connected");
-    sock.onclose = recv.bind(window, "Disconnected");
-    sock.onmessage = function(msg) { recv(msg.data) };
-    sock.onerror = function(err) { recv("Error: " + e); };
-
-    function recv(msg) {
-        var e = document.createElement("PRE");
-        e.innerText = msg;
-        document.body.appendChild(e);
-    }
-
-    function send(msg) {
-        sock.send(msg.value);
-        msg.value = "";
-        return false;
-    }
-</script>
-</body>
-"#;
+const INDEX_HTML: &str = include_str!("index.html");
 
 #[cfg(test)]
 mod test {
