@@ -103,3 +103,24 @@ const INDEX_HTML: &str = r#"
 </script>
 </body>
 "#;
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use gotham::plain::test::TestServer;
+
+    fn create_test_server() -> TestServer {
+        TestServer::new(|| Ok(handler)).expect("Failed to create TestServer")
+    }
+
+    #[test]
+    fn server_should_respond_with_html_if_no_websocket_was_requested() {
+        let server = create_test_server();
+        let client = server.client();
+
+        let response = client.get("http://localhost:10000").perform().expect("Failed to request HTML");
+        let body = response.read_utf8_body().expect("Failed to read response body.");
+
+        assert_eq!(body, INDEX_HTML);
+    }
+}
