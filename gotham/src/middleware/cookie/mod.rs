@@ -1,5 +1,5 @@
 //! Defines a cookie parsing middleware to be attach cookies on requests.
-use std::io;
+use std::convert::Infallible;
 use std::pin::Pin;
 
 use cookie::{Cookie, CookieJar};
@@ -50,9 +50,10 @@ impl Middleware for CookieParser {
 /// `NewMiddleware` trait implementation.
 impl NewMiddleware for CookieParser {
     type Instance = Self;
+    type Err = Infallible;
 
     /// Clones the current middleware to a new instance.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self, Infallible> {
         Ok(*self)
     }
 }

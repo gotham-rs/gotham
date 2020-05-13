@@ -5,7 +5,6 @@ pub mod set;
 pub mod single;
 
 use log::trace;
-use std::io;
 use std::pin::Pin;
 
 use crate::handler::HandlerFuture;
@@ -142,7 +141,7 @@ where
 {
     /// Constructs an instance of this `Pipeline` by creating all `Middleware` instances required
     /// to serve a request. If any middleware fails creation, its error will be returned.
-    fn construct(&self) -> io::Result<PipelineInstance<T::Instance>> {
+    fn construct(&self) -> Result<PipelineInstance<T::Instance>, T::Err> {
         Ok(PipelineInstance {
             chain: self.chain.construct()?,
         })
@@ -292,6 +291,8 @@ where
 mod tests {
     use super::*;
 
+    use std::convert::Infallible;
+
     use futures::prelude::*;
     use hyper::{Body, Response, StatusCode};
 
@@ -318,8 +319,9 @@ mod tests {
 
     impl NewMiddleware for Number {
         type Instance = Number;
+        type Err = Infallible;
 
-        fn new_middleware(&self) -> io::Result<Number> {
+        fn new_middleware(&self) -> Result<Number, Infallible> {
             Ok(self.clone())
         }
     }
@@ -343,8 +345,9 @@ mod tests {
 
     impl NewMiddleware for Addition {
         type Instance = Addition;
+        type Err = Infallible;
 
-        fn new_middleware(&self) -> io::Result<Addition> {
+        fn new_middleware(&self) -> Result<Addition, Infallible> {
             Ok(Addition { ..*self })
         }
     }
@@ -366,8 +369,9 @@ mod tests {
 
     impl NewMiddleware for Multiplication {
         type Instance = Multiplication;
+        type Err = Infallible;
 
-        fn new_middleware(&self) -> io::Result<Multiplication> {
+        fn new_middleware(&self) -> Result<Multiplication, Infallible> {
             Ok(Multiplication { ..*self })
         }
     }

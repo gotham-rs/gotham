@@ -76,7 +76,7 @@
 use diesel::Connection;
 use futures::prelude::*;
 use log::{error, trace};
-use std::io;
+use std::convert::Infallible;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::pin::Pin;
 use std::process;
@@ -132,8 +132,9 @@ where
     T: Connection + 'static,
 {
     type Instance = DieselMiddleware<T>;
+    type Err = Infallible;
 
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self::Instance, Infallible> {
         match catch_unwind(|| self.repo.clone()) {
             Ok(repo) => Ok(DieselMiddleware {
                 repo: AssertUnwindSafe(repo),

@@ -9,7 +9,7 @@ use futures::prelude::*;
 use hyper::{header::CONTENT_LENGTH, Method, Uri, Version};
 use log::Level;
 use log::{log, log_enabled};
-use std::io;
+use std::convert::Infallible;
 use std::pin::Pin;
 
 use crate::handler::HandlerFuture;
@@ -40,9 +40,10 @@ impl RequestLogger {
 /// which will clone the structure - should be cheaper for repeated calls.
 impl NewMiddleware for RequestLogger {
     type Instance = Self;
+    type Err = Infallible;
 
     /// Returns a new middleware to be used to serve a request.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self, Infallible> {
         Ok(*self)
     }
 }
@@ -130,9 +131,10 @@ impl SimpleLogger {
 /// which will clone the structure - should be cheaper for repeated calls.
 impl NewMiddleware for SimpleLogger {
     type Instance = Self;
+    type Err = Infallible;
 
     /// Returns a new middleware to be used to serve a request.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self::Instance, Infallible> {
         Ok(*self)
     }
 }

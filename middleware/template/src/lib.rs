@@ -13,7 +13,7 @@ extern crate log;
 //#[macro_use]
 //extern crate gotham_derive;
 
-use std::io;
+use std::convert::Infallible;
 use std::pin::Pin;
 
 use futures::prelude::*;
@@ -37,8 +37,9 @@ pub struct MyMiddleware {}
 
 impl NewMiddleware for MyMiddleware {
     type Instance = MyMiddleware;
+    type Err = Infallible;
 
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self::Instance, Infallible> {
         Ok(MyMiddleware {})
     }
 }

@@ -11,8 +11,9 @@ pub(crate) fn new_middleware(ast: &syn::DeriveInput) -> proc_macro::TokenStream 
             #where_clause
         {
             type Instance = Self;
+            type Err = ::std::convert::Infallible;
 
-            fn new_middleware(&self) -> ::std::io::Result<Self> {
+            fn new_middleware(&self) -> Result<Self, ::std::convert::Infallible> {
                 // Calling it this way makes the error look like this:
                 //
                 // | #[derive(NewMiddleware)]

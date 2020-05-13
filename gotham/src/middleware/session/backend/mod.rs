@@ -1,6 +1,6 @@
 pub(super) mod memory;
 
-use std::io;
+use std::error::Error;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
@@ -12,9 +12,11 @@ use crate::middleware::session::{SessionError, SessionIdentifier};
 pub trait NewBackend: Sync + Clone + RefUnwindSafe {
     /// The type of `Backend` created by the `NewBackend`.
     type Instance: Backend + Send + 'static;
+    /// The type of error that might occur creating a new backend.
+    type Err: Error + Send + 'static;
 
     /// Create and return a new `Backend` value.
-    fn new_backend(&self) -> io::Result<Self::Instance>;
+    fn new_backend(&self) -> Result<Self::Instance, Self::Err>;
 }
 
 /// Type alias for the trait objects returned by `Backend`.

@@ -7,7 +7,7 @@
 use crate::handler::HandlerFuture;
 use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::{State, StateData};
-use std::io;
+use std::convert::Infallible;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
@@ -61,9 +61,10 @@ where
     T: Clone + RefUnwindSafe + StateData + Sync,
 {
     type Instance = Self;
+    type Err = Infallible;
 
     /// Clones the current middleware to a new instance.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self, Infallible> {
         Ok(self.clone())
     }
 }

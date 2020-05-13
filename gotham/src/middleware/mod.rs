@@ -1,7 +1,7 @@
 //! Defines types for `Middleware`, a reusable unit of logic that can apply to a group of requests
 //! by being added to the `Pipeline` in a `Router`.
 
-use std::io;
+use std::error::Error;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
@@ -347,7 +347,7 @@ pub trait Middleware {
 /// ```rust
 /// # extern crate gotham;
 /// #
-/// # use std::io;
+/// # use std::convert::Infallible;
 /// # use std::pin::Pin;
 /// #
 /// # use gotham::middleware::{NewMiddleware, Middleware};
@@ -361,8 +361,9 @@ pub trait Middleware {
 ///
 /// impl NewMiddleware for MyMiddleware {
 ///     type Instance = Self;
+///     type Err = Infallible;
 ///
-///     fn new_middleware(&self) -> io::Result<Self::Instance> {
+///     fn new_middleware(&self) -> Result<Self, Infallible> {
 ///         Ok(self.clone())
 ///     }
 /// }
@@ -382,7 +383,9 @@ pub trait Middleware {
 pub trait NewMiddleware: Sync + RefUnwindSafe {
     /// The type of `Middleware` created by the `NewMiddleware`.
     type Instance: Middleware;
+    /// The error that can occur when creating a new middleware.
+    type Err: Error + Send + 'static;
 
     /// Create and return a new `Middleware` value.
-    fn new_middleware(&self) -> io::Result<Self::Instance>;
+    fn new_middleware(&self) -> Result<Self::Instance, Self::Err>;
 }

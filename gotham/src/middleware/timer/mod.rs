@@ -5,9 +5,8 @@ use crate::helpers::timing::Timer;
 use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::State;
 use futures::prelude::*;
+use std::convert::Infallible;
 use std::pin::Pin;
-
-use std::io;
 
 /// Middleware binding to attach request execution times inside headers.
 ///
@@ -44,9 +43,10 @@ impl Middleware for RequestTimer {
 /// `NewMiddleware` trait implementation.
 impl NewMiddleware for RequestTimer {
     type Instance = Self;
+    type Err = Infallible;
 
     /// Clones the current middleware to a new instance.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self, Infallible> {
         Ok(self.clone())
     }
 }

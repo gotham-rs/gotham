@@ -16,10 +16,10 @@ use crate::handler::HandlerFuture;
 use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::State;
 use futures::prelude::*;
+use std::convert::Infallible;
 use std::pin::Pin;
 
 use hyper::header::{HeaderValue, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
-use std::io;
 
 // constant strings to be used as header values
 const XFO_VALUE: &str = "DENY";
@@ -58,9 +58,10 @@ impl Middleware for SecurityMiddleware {
 /// `NewMiddleware` trait implementation.
 impl NewMiddleware for SecurityMiddleware {
     type Instance = Self;
+    type Err = Infallible;
 
     /// Clones the current middleware to a new instance.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self, Infallible> {
         Ok(self.clone())
     }
 }

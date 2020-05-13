@@ -1,6 +1,5 @@
 //! Defines a session middleware with a pluggable backend.
 
-use std::io;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic::RefUnwindSafe;
@@ -16,6 +15,7 @@ use hyper::{Body, Response, StatusCode};
 use log::{error, trace, warn};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use super::cookie::CookieParser;
 use super::{Middleware, NewMiddleware};
@@ -40,14 +40,17 @@ pub struct SessionIdentifier {
 }
 
 /// The kind of failure which occurred trying to perform a session operation.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum SessionError {
     /// The backend failed, and the included message describes the problem.
+    #[error("The backend failed to return a session: {0}")]
     Backend(String),
     /// The session was unable to be deserialized.
+    #[error("The backend failed to deserialize the session")]
     Deserialize,
     /// Exhaustive match against this enum is unsupported.
     #[doc(hidden)]
+    #[error("__NonExhaustive")]
     __NonExhaustive,
 }
 
@@ -487,8 +490,9 @@ where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
     type Instance = SessionMiddleware<B::Instance, T>;
+    type Err = B::Err;
 
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self::Instance, Self::Err> {
         self.new_backend
             .new_backend()
             .map(|backend| SessionMiddleware {
@@ -1006,15 +1010,10 @@ where
             }
             Err(e) => {
                 error!(
-                    "[{}] failed to retrieve session ({}) from backend: {:?}",
+                    "[{}] failed to retrieve session ({}) from backend: {}",
                     state::request_id(&state),
                     identifier.value,
                     e
-                );
-
-                let e = io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("backend failed to return session: {:?}", e),
                 );
 
                 future::err((state, e.into_handler_error()))
