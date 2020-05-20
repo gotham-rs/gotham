@@ -12,8 +12,7 @@ use gotham::{
 };
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::de::Deserialize;
-use std::pin::Pin;
-use std::{io, marker::PhantomData, panic::RefUnwindSafe};
+use std::{convert::Infallible, marker::PhantomData, panic::RefUnwindSafe, pin::Pin};
 
 const DEFAULT_SCHEME: &str = "Bearer";
 
@@ -172,8 +171,9 @@ where
     T: for<'de> Deserialize<'de> + RefUnwindSafe + Send + Sync + 'static,
 {
     type Instance = JWTMiddleware<T>;
+    type Err = Infallible;
 
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> Result<Self::Instance, Infallible> {
         Ok(JWTMiddleware {
             secret: self.secret.clone(),
             validation: self.validation.clone(),
