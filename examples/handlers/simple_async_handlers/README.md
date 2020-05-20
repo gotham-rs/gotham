@@ -25,7 +25,7 @@ then futures are probably not going to help your performance, and you might be
 better off spawning a new thread per request.
 
 If you came here looking for an example that uses async/.await, please read
-[Async Request Handlers (.await version)](../simple_async_handlers).
+[Async Request Handlers (.await version)](../simple_async_handlers_await).
 
 ## Running
 
