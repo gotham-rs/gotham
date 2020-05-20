@@ -1,6 +1,6 @@
 [package]
 name = "gotham"
-version = "0.5.0-rc.0" # Alter html_root_url in lib.rs also
+version = "0.5.0-rc.1" # Alter html_root_url in lib.rs also
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
           "Colin Bankier <colinbankier@gmail.com>",
           "Isaac Whitfield <iw@whitfin.io>",
