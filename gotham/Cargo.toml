@@ -49,7 +49,7 @@ http = "0.2"
 httpdate = "0.3"
 failure = "0.1"
 itertools = "0.9.0"
-tokio-rustls = { version = "0.12.1", optional = true }
+tokio-rustls = { version = "0.13.1", optional = true }
 
 [dev-dependencies]
 gotham_derive = { path = "../gotham_derive" }
