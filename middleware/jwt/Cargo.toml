@@ -1,6 +1,6 @@
 [package]
 name = "gotham_middleware_jwt"
-version = "0.3.3"
+version = "0.4.0"
 authors = ["Nicholas Young <nyoung@uptime.ventures>",
           "Colin Bankier <colinbankier@gmail.com>",
           "Isaac Whitfield <iw@whitfin.io>",
@@ -20,5 +20,5 @@ gotham = { path = "../../gotham", version = "0.5.0-dev" }
 gotham_derive = { path = "../../gotham_derive", version = "0.5.0-dev" }
 serde = "1.0"
 serde_derive = "1.0"
-jsonwebtoken = "6.0"
+jsonwebtoken = "7.0"
 log = "0.4"

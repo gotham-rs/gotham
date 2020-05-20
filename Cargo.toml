@@ -8,8 +8,7 @@ members = [
     ## Middleware
     "middleware/template",
     "middleware/diesel",
-    # TODO: Re-enable middleware when their dependencies are updated
-    # "middleware/jwt",
+    "middleware/jwt",
 
     ## Examples (these crates are not published)
     "examples/hello_world",
