@@ -1,10 +1,12 @@
 //! Defines the Gotham `Router` and supporting types.
 
 pub mod builder;
-pub mod non_match;
 pub mod response;
 pub mod route;
 pub mod tree;
+
+pub mod non_match;
+pub use self::non_match::RouteNonMatch;
 
 use std::pin::Pin;
 use std::sync::Arc;
