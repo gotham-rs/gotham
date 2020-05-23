@@ -82,8 +82,3 @@ members = [
 
 
 ]
-
-[patch.crates-io]
-gotham = { path = "gotham" }
-gotham_derive = { path = "gotham_derive" }
-borrow-bag = { path = "misc/borrow_bag" }

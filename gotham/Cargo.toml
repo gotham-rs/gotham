@@ -25,7 +25,7 @@ hyper = "0.13.1"
 serde = "1.0"
 serde_derive = "1.0"
 bincode = "1.0"
-mime = "0.3"
+mime = "0.3.15"
 # Using alpha version of mime_guess until mime crate stabilizes (releases 1.0).
 # see https://github.com/hyperium/mime/issues/52
 mime_guess = "2.0.1"
@@ -33,7 +33,7 @@ futures = "0.3.1"
 tokio = { version = "0.2.6", features = ["full"] }
 bytes = "0.5"
 mio = "0.7"
-borrow-bag = "1.0"
+borrow-bag = { path = "../misc/borrow_bag", version = "1.0" }
 percent-encoding = "2.1"
 pin-project = "0.4.2"
 uuid = { version = "0.7", features = ["v4"] }

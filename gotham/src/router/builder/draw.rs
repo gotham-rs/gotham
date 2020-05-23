@@ -901,6 +901,7 @@ where
                     }
                 }
                 Some('*') if segment.len() == 1 => (segment, SegmentType::Glob),
+                Some('*') => (&segment[1..], SegmentType::Glob),
                 Some('\\') => (&segment[1..], SegmentType::Static),
                 _ => (segment, SegmentType::Static),
             };
