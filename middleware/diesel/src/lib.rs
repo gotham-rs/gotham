@@ -76,11 +76,11 @@
 use diesel::Connection;
 use futures::prelude::*;
 use log::{error, trace};
-use std::io;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::pin::Pin;
 use std::process;
 
+use gotham::anyhow;
 use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::state::{request_id, State};
@@ -133,7 +133,7 @@ where
 {
     type Instance = DieselMiddleware<T>;
 
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         match catch_unwind(|| self.repo.clone()) {
             Ok(repo) => Ok(DieselMiddleware {
                 repo: AssertUnwindSafe(repo),

@@ -7,7 +7,6 @@
 use crate::handler::HandlerFuture;
 use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::{State, StateData};
-use std::io;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
@@ -63,7 +62,7 @@ where
     type Instance = Self;
 
     /// Clones the current middleware to a new instance.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         Ok(self.clone())
     }
 }

@@ -5,7 +5,6 @@ pub mod set;
 pub mod single;
 
 use log::trace;
-use std::io;
 use std::pin::Pin;
 
 use crate::handler::HandlerFuture;
@@ -142,7 +141,7 @@ where
 {
     /// Constructs an instance of this `Pipeline` by creating all `Middleware` instances required
     /// to serve a request. If any middleware fails creation, its error will be returned.
-    fn construct(&self) -> io::Result<PipelineInstance<T::Instance>> {
+    fn construct(&self) -> anyhow::Result<PipelineInstance<T::Instance>> {
         Ok(PipelineInstance {
             chain: self.chain.construct()?,
         })
@@ -319,7 +318,7 @@ mod tests {
     impl NewMiddleware for Number {
         type Instance = Number;
 
-        fn new_middleware(&self) -> io::Result<Number> {
+        fn new_middleware(&self) -> anyhow::Result<Number> {
             Ok(self.clone())
         }
     }
@@ -344,7 +343,7 @@ mod tests {
     impl NewMiddleware for Addition {
         type Instance = Addition;
 
-        fn new_middleware(&self) -> io::Result<Addition> {
+        fn new_middleware(&self) -> anyhow::Result<Addition> {
             Ok(Addition { ..*self })
         }
     }
@@ -367,7 +366,7 @@ mod tests {
     impl NewMiddleware for Multiplication {
         type Instance = Multiplication;
 
-        fn new_middleware(&self) -> io::Result<Multiplication> {
+        fn new_middleware(&self) -> anyhow::Result<Multiplication> {
             Ok(Multiplication { ..*self })
         }
     }

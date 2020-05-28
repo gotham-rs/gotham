@@ -76,7 +76,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io;
     use std::sync::Arc;
 
     use hyper::{Body, Response, StatusCode};
@@ -106,7 +105,7 @@ mod tests {
     impl NewMiddleware for Number {
         type Instance = Number;
 
-        fn new_middleware(&self) -> io::Result<Number> {
+        fn new_middleware(&self) -> anyhow::Result<Number> {
             Ok(self.clone())
         }
     }
@@ -131,7 +130,7 @@ mod tests {
     impl NewMiddleware for Addition {
         type Instance = Addition;
 
-        fn new_middleware(&self) -> io::Result<Addition> {
+        fn new_middleware(&self) -> anyhow::Result<Addition> {
             Ok(Addition { ..*self })
         }
     }
@@ -154,7 +153,7 @@ mod tests {
     impl NewMiddleware for Multiplication {
         type Instance = Multiplication;
 
-        fn new_middleware(&self) -> io::Result<Multiplication> {
+        fn new_middleware(&self) -> anyhow::Result<Multiplication> {
             Ok(Multiplication { ..*self })
         }
     }

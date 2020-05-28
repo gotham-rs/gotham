@@ -5,6 +5,7 @@ use gotham::hyper::{
     StatusCode,
 };
 use gotham::{
+    anyhow,
     handler::HandlerFuture,
     helpers::http::response::create_empty_response,
     middleware::{Middleware, NewMiddleware},
@@ -13,7 +14,7 @@ use gotham::{
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::de::Deserialize;
 use std::pin::Pin;
-use std::{io, marker::PhantomData, panic::RefUnwindSafe};
+use std::{marker::PhantomData, panic::RefUnwindSafe};
 
 const DEFAULT_SCHEME: &str = "Bearer";
 
@@ -173,7 +174,7 @@ where
 {
     type Instance = JWTMiddleware<T>;
 
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         Ok(JWTMiddleware {
             secret: self.secret.clone(),
             validation: self.validation.clone(),

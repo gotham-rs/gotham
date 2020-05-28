@@ -19,7 +19,6 @@ use futures::prelude::*;
 use std::pin::Pin;
 
 use hyper::header::{HeaderValue, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
-use std::io;
 
 // constant strings to be used as header values
 const XFO_VALUE: &str = "DENY";
@@ -60,7 +59,7 @@ impl NewMiddleware for SecurityMiddleware {
     type Instance = Self;
 
     /// Clones the current middleware to a new instance.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         Ok(self.clone())
     }
 }

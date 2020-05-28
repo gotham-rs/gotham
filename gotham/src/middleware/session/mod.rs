@@ -488,7 +488,7 @@ where
 {
     type Instance = SessionMiddleware<B::Instance, T>;
 
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         self.new_backend
             .new_backend()
             .map(|backend| SessionMiddleware {
