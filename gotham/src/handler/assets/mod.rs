@@ -6,7 +6,6 @@
 
 mod accepted_encoding;
 
-use crate::error::Result;
 use bytes::{BufMut, Bytes, BytesMut};
 use futures::prelude::*;
 use futures::ready;
@@ -165,7 +164,7 @@ impl DirHandler {
 impl NewHandler for FileHandler {
     type Instance = Self;
 
-    fn new_handler(&self) -> Result<Self::Instance> {
+    fn new_handler(&self) -> anyhow::Result<Self::Instance> {
         Ok(self.clone())
     }
 }
@@ -173,7 +172,7 @@ impl NewHandler for FileHandler {
 impl NewHandler for DirHandler {
     type Instance = Self;
 
-    fn new_handler(&self) -> Result<Self::Instance> {
+    fn new_handler(&self) -> anyhow::Result<Self::Instance> {
         Ok(self.clone())
     }
 }

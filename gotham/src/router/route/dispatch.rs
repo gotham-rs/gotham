@@ -5,7 +5,7 @@ use log::trace;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
-use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+use crate::handler::{Handler, HandlerFuture, NewHandler};
 use crate::pipeline::chain::PipelineHandleChain;
 use crate::pipeline::set::PipelineSet;
 use crate::state::{request_id, State};
@@ -67,7 +67,7 @@ where
             }
             Err(e) => {
                 trace!("[{}] error cloning handler", request_id(&state));
-                future::err((state, e.compat().into_handler_error())).boxed()
+                future::err((state, e.into())).boxed()
             }
         }
     }

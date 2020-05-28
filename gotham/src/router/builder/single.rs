@@ -128,7 +128,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::pipeline::single::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
-    /// # use gotham::error::*;
+    /// # use gotham::anyhow;
     /// #
     /// struct MyNewHandler;
     /// struct MyHandler;
@@ -136,7 +136,7 @@ pub trait DefineSingleRoute {
     /// impl NewHandler for MyNewHandler {
     ///     type Instance = MyHandler;
     ///
-    ///     fn new_handler(&self) -> Result<Self::Instance> {
+    ///     fn new_handler(&self) -> anyhow::Result<Self::Instance> {
     ///         Ok(MyHandler)
     ///     }
     /// }

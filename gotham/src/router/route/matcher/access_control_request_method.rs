@@ -1,3 +1,5 @@
+//! Defines the `AccessControlRequestMethodMatcher`.
+
 use crate::{
     router::{non_match::RouteNonMatch, route::matcher::RouteMatcher},
     state::{FromState, State},

@@ -25,7 +25,7 @@
 // TODO: Remove this when it's a hard error by default (error E0446).
 // See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
 #![deny(private_in_public)]
-pub mod error;
+
 pub mod extractor;
 pub mod handler;
 pub mod helpers;
@@ -45,6 +45,8 @@ pub mod plain;
 #[cfg(feature = "rustls")]
 pub mod tls;
 
+/// Re-export anyhow
+pub use anyhow;
 /// Re-export hyper
 pub use hyper;
 

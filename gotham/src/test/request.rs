@@ -9,8 +9,6 @@ use hyper::{Body, Method, Request, Uri};
 use super::Server;
 use super::{TestClient, TestResponse};
 
-use crate::error::*;
-
 /// Builder API for constructing `Server` requests. When the request is built,
 /// `RequestBuilder::perform` will issue the request and provide access to the response.
 pub struct TestRequest<'a, S: Server, C: Connect> {
@@ -49,7 +47,7 @@ impl<'a, S: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestRe
     }
 
     /// Send a constructed request using the `TestClient`, and await the response.
-    pub fn perform(self) -> Result<TestResponse> {
+    pub fn perform(self) -> anyhow::Result<TestResponse> {
         self.client.perform(self)
     }
 

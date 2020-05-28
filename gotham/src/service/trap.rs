@@ -3,10 +3,8 @@
 
 use std::error::Error;
 use std::panic::catch_unwind;
-use std::panic::AssertUnwindSafe;
-use std::pin::Pin;
+use std::panic::{AssertUnwindSafe, UnwindSafe};
 
-use failure;
 use futures::prelude::*;
 
 use hyper::{Body, Response, StatusCode};
@@ -15,7 +13,16 @@ use log::error;
 use crate::handler::{Handler, HandlerError, IntoResponse, NewHandler};
 use crate::state::{request_id, State};
 
-type CompatError = failure::Compat<failure::Error>;
+async fn handle<H>(
+    handler: H,
+    state: AssertUnwindSafe<State>,
+) -> Result<(State, Response<Body>), (State, HandlerError)>
+where
+    H: Handler,
+{
+    let AssertUnwindSafe(state) = state;
+    handler.handle(state).await
+}
 
 /// Instantiates a `Handler` from the given `NewHandler`, and invokes it with the request. If a
 /// panic occurs from `NewHandler::new_handler` or `Handler::handle`, it is trapped and will result
@@ -23,90 +30,49 @@ type CompatError = failure::Compat<failure::Error>;
 ///
 /// Timing information is recorded and logged, except in the case of a panic where the timer is
 /// moved and cannot be recovered.
-pub(super) fn call_handler<'a, T>(
-    t: &T,
+pub(super) async fn call_handler<T>(
+    t: T,
     state: AssertUnwindSafe<State>,
-) -> Pin<Box<dyn Future<Output = Result<Response<Body>, CompatError>> + Send + 'a>>
+) -> anyhow::Result<Response<Body>>
 where
-    T: NewHandler + 'a,
+    T: NewHandler + Send + UnwindSafe,
 {
-    // Need to consume the NewHandler eagerly (vs lazy) since its borrowed
-    // The rest of the processing occurs in a future
     match catch_unwind(move || t.new_handler()) {
         Ok(handler) => {
-            let res = future::ready(handler)
-                .map_err(failure::Error::compat)
-                .and_then(move |handler| {
-                    let AssertUnwindSafe(state) = state;
-
-                    handler.handle(state).then(move |result| match result {
-                        Ok((_state, res)) => {
-                            future::ok::<_, CompatError>(res).err_into().left_future()
-                        }
-                        Err((state, err)) => finalize_error_response(state, err)
-                            .err_into()
-                            .right_future(),
-                    })
-                });
-
-            AssertUnwindSafe(res)
+            let unwind_result = AssertUnwindSafe(handle(handler?, state))
                 .catch_unwind()
-                .then(|unwind_result| match unwind_result {
-                    Ok(result) => finalize_catch_unwind_response(result).left_future(),
-                    Err(_) => finalize_panic_response().right_future(),
-                })
-                .left_future()
+                .await;
+            let result = match unwind_result {
+                Ok(result) => result.map(|(_, res)| res),
+                Err(_) => Ok(finalize_panic_response()),
+            };
+            Ok(match result {
+                Ok(res) => res,
+                Err((state, err)) => finalize_error_response(state, err),
+            })
         }
-        // Pannicked creating the handler from NewHandler
-        Err(_) => finalize_panic_response().right_future(),
+        // Error while creating the handler from NewHandler
+        Err(_) => Ok(finalize_panic_response()),
     }
-    .boxed()
 }
 
-fn finalize_error_response(
-    state: State,
-    err: HandlerError,
-) -> impl Future<Output = Result<Response<Body>, CompatError>> {
-    {
-        // HandlerError::source() is far more interesting for logging, but the
-        // API doesn't guarantee its presence (even though it always is).
-        let err_description = err
-            .source()
-            .map(Error::description)
-            .unwrap_or_else(|| err.description());
+fn finalize_error_response(state: State, err: HandlerError) -> Response<Body> {
+    error!(
+        "[ERROR][{}][Error: {}]",
+        request_id(&state),
+        err.source().unwrap_or(&err)
+    );
 
-        error!(
-            "[ERROR][{}][Error: {}]",
-            request_id(&state),
-            err_description
-        );
-    }
-    future::ok(err.into_response(&state))
+    err.into_response(&state)
 }
 
-fn finalize_panic_response() -> impl Future<Output = Result<Response<Body>, CompatError>> {
+fn finalize_panic_response() -> Response<Body> {
     error!("[PANIC][A panic occurred while invoking the handler]");
 
-    future::ok(
-        Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Body::default())
-            .unwrap(),
-    )
-}
-
-fn finalize_catch_unwind_response(
-    result: Result<Response<Body>, CompatError>,
-) -> impl Future<Output = Result<Response<Body>, CompatError>> {
-    let response = result.unwrap_or_else(|_| {
-        error!("[PANIC][A panic occurred while polling the future]");
-        Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(Body::default())
-            .unwrap()
-    });
-
-    future::ok(response)
+    Response::builder()
+        .status(StatusCode::INTERNAL_SERVER_ERROR)
+        .body(Body::default())
+        .unwrap()
 }
 
 #[cfg(test)]
@@ -114,10 +80,10 @@ mod tests {
     use super::*;
 
     use std::io;
+    use std::pin::Pin;
 
     use hyper::{HeaderMap, Method, StatusCode};
 
-    use crate::error::Result;
     use crate::handler::{HandlerFuture, IntoHandlerError};
     use crate::helpers::http::response::create_empty_response;
     use crate::state::set_request_id;
@@ -136,7 +102,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
@@ -163,7 +129,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
@@ -181,7 +147,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -200,7 +166,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -214,7 +180,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -238,7 +204,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -249,7 +215,7 @@ mod tests {
         impl NewHandler for PanicNewHandler {
             type Instance = Self;
 
-            fn new_handler(&self) -> Result<Self::Instance> {
+            fn new_handler(&self) -> anyhow::Result<Self::Instance> {
                 panic!("Pannicked creating a new handler");
             }
         }
@@ -266,7 +232,7 @@ mod tests {
         set_request_id(&mut state);
 
         let new_handler = PanicNewHandler {};
-        let r = call_handler(&new_handler, AssertUnwindSafe(state));
+        let r = call_handler(new_handler, AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }

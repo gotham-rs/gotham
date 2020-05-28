@@ -105,7 +105,7 @@ fn router(repo: Repo) -> Router {
 
 fn bad_request<E>(e: E) -> HandlerError
 where
-    E: std::error::Error + Send + 'static,
+    E: IntoHandlerError,
 {
     e.into_handler_error().with_status(StatusCode::BAD_REQUEST)
 }

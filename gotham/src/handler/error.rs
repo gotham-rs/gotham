@@ -12,7 +12,20 @@ use crate::state::{request_id, State};
 /// `Response`.
 pub struct HandlerError {
     status_code: StatusCode,
-    cause: Box<dyn Error + Send>,
+    cause: anyhow::Error,
+}
+
+/// Convert a generic `anyhow::Error` into a `HandlerError`, similar as you would a concrete error
+/// type with `into_handler_error()`.
+impl From<anyhow::Error> for HandlerError {
+    fn from(error: anyhow::Error) -> HandlerError {
+        trace!(" converting Error to HandlerError: {}", error);
+
+        HandlerError {
+            status_code: StatusCode::INTERNAL_SERVER_ERROR,
+            cause: error,
+        }
+    }
 }
 
 /// Allows conversion into a HandlerError from an implementing type.
@@ -50,14 +63,14 @@ pub trait IntoHandlerError {
 
 impl<E> IntoHandlerError for E
 where
-    E: Error + Send + 'static,
+    E: Display + Into<anyhow::Error>,
 {
     fn into_handler_error(self) -> HandlerError {
         trace!(" converting Error to HandlerError: {}", self);
 
         HandlerError {
             status_code: StatusCode::INTERNAL_SERVER_ERROR,
-            cause: Box::new(self),
+            cause: self.into(),
         }
     }
 }
@@ -140,7 +153,10 @@ impl IntoResponse for HandlerError {
             self.status_code
                 .canonical_reason()
                 .unwrap_or("(unregistered)",),
-            self.source().map(Error::description).unwrap_or("(none)"),
+            self.source()
+                .map(ToString::to_string)
+                .as_deref()
+                .unwrap_or("(none)"),
         );
 
         create_empty_response(state, self.status_code)

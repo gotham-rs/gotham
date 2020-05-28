@@ -7,8 +7,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::thread;
 
-use failure;
-
 use futures::prelude::*;
 use futures::task::{self, Poll};
 use http::request;
@@ -66,7 +64,7 @@ where
     T: NewHandler,
 {
     type Response = Response<Body>;
-    type Error = failure::Compat<failure::Error>; // :Into<Box<StdError + Send + Sync>>
+    type Error = anyhow::Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
     fn poll_ready(
@@ -76,7 +74,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
+    fn call<'a>(&'a mut self, req: Request<Body>) -> Self::Future {
         let mut state = State::new();
 
         put_client_addr(&mut state, self.client_addr);
@@ -109,7 +107,7 @@ where
             );
         };
 
-        trap::call_handler(&*self.handler, AssertUnwindSafe(state))
+        trap::call_handler(self.handler.clone(), AssertUnwindSafe(state)).boxed()
     }
 }
 

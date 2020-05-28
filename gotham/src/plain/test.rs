@@ -10,8 +10,6 @@ use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use failure;
-use failure::ResultExt;
 use log::info;
 
 use futures::prelude::*;
@@ -23,7 +21,6 @@ use tokio::time::{delay_for, Delay};
 use hyper::service::Service;
 use tokio::net::TcpStream;
 
-use crate::error::*;
 use crate::handler::NewHandler;
 
 use crate::test::{self, TestClient};
@@ -78,18 +75,16 @@ impl test::Server for TestServer {
         runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
     }
 
-    fn run_future<F, R, E>(&self, future: F) -> Result<R>
+    fn run_future<F, R>(&self, future: F) -> R
     where
-        F: Send + 'static + Future<Output = std::result::Result<R, E>>,
+        F: Send + 'static + Future<Output = R>,
         R: Send + 'static,
-        E: failure::Fail,
     {
         self.data
             .runtime
             .write()
             .expect("unable to acquire write lock")
             .block_on(future)
-            .map_err(Into::into)
     }
 }
 
@@ -99,7 +94,7 @@ impl TestServer {
     /// for each connection.
     ///
     /// Timeout will be set to 10 seconds.
-    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> Result<TestServer>
+    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> anyhow::Result<TestServer>
     where
         NH::Instance: UnwindSafe,
     {
@@ -110,15 +105,13 @@ impl TestServer {
     pub fn with_timeout<NH: NewHandler + 'static>(
         new_handler: NH,
         timeout: u64,
-    ) -> Result<TestServer>
+    ) -> anyhow::Result<TestServer>
     where
         NH::Instance: UnwindSafe,
     {
         let mut runtime = Runtime::new()?;
         // TODO: Fix this into an async flow
-        let listener = runtime.block_on(TcpListener::bind(
-            "127.0.0.1:0".parse::<SocketAddr>().compat()?,
-        ))?;
+        let listener = runtime.block_on(TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?))?;
         let addr = listener.local_addr()?;
 
         let service_stream = super::bind_server(listener, new_handler, future::ok);
@@ -164,13 +157,12 @@ impl TestServer {
         client_addr: net::SocketAddr,
     ) -> TestClient<Self, TestConnect> {
         self.try_client_with_address(client_addr)
-            .expect("TestServer: unable to spawn client")
     }
 
     fn try_client_with_address(
         &self,
         _client_addr: net::SocketAddr,
-    ) -> Result<TestClient<Self, TestConnect>> {
+    ) -> TestClient<Self, TestConnect> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
 
@@ -178,10 +170,10 @@ impl TestServer {
             addr: self.data.addr,
         });
 
-        Ok(TestClient {
+        TestClient {
             client,
             test_server: self.clone(),
-        })
+        }
     }
 }
 
@@ -194,7 +186,7 @@ pub struct TestConnect {
 
 impl Service<Uri> for TestConnect {
     type Response = TcpStream;
-    type Error = CompatError;
+    type Error = tokio::io::Error;
     type Future =
         Pin<Box<dyn Future<Output = std::result::Result<Self::Response, Self::Error>> + Send>>;
 
@@ -205,7 +197,6 @@ impl Service<Uri> for TestConnect {
     fn call(&mut self, _req: Uri) -> Self::Future {
         TcpStream::connect(self.addr)
             .inspect(|s| info!("Client TcpStream connected: {:?}", s))
-            .map_err(|e| Error::from(e).compat())
             .boxed()
     }
 }
@@ -270,7 +261,7 @@ mod tests {
     impl NewHandler for TestHandler {
         type Instance = Self;
 
-        fn new_handler(&self) -> Result<Self> {
+        fn new_handler(&self) -> anyhow::Result<Self> {
             Ok(self.clone())
         }
     }
