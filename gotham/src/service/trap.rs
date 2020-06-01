@@ -102,7 +102,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
@@ -129,7 +129,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
@@ -147,7 +147,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -166,7 +166,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -180,7 +180,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -204,7 +204,7 @@ mod tests {
         state.put(Method::GET);
         set_request_id(&mut state);
 
-        let r = call_handler(Box::new(&new_handler), AssertUnwindSafe(state));
+        let r = call_handler(&new_handler, AssertUnwindSafe(state));
         let response = futures::executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
