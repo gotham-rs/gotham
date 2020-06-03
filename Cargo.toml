@@ -57,6 +57,7 @@ members = [
     "examples/handlers/request_data",
     "examples/handlers/stateful",
     "examples/handlers/simple_async_handlers",
+    "examples/handlers/simple_async_handlers_await",
     "examples/handlers/async_handlers",
     "examples/handlers/form_urlencoded",
     "examples/handlers/multipart",
