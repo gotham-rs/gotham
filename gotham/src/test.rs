@@ -20,8 +20,8 @@ use tokio::time::Delay;
 use crate::error::*;
 
 pub use crate::plain::test::TestServer;
-pub use request::TestRequest;
 use futures::TryFutureExt;
+pub use request::TestRequest;
 
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
