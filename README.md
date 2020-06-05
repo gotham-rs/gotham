@@ -66,6 +66,7 @@ We do acknowledge that sometimes the choices we've made for the Gotham web
 framework may not suit the needs of all projects. If that is the case for your
 project there are alternative Rust web frameworks you might like to consider:
 
+1. [Actix-Web](https://github.com/actix/actix-web)
 1. [Conduit](https://github.com/conduit-rust/conduit)
 1. [Nickel](https://github.com/nickel-org/nickel.rs)
 1. [Rocket](https://github.com/SergioBenitez/Rocket)
