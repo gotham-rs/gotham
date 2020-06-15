@@ -129,6 +129,7 @@ where
 
                 accepted_protocol
                     .serve_connection(socket, service)
+                    .with_upgrades()
                     .map_err(|_| ())
                     .await?;
 

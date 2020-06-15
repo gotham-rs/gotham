@@ -24,7 +24,7 @@ Terminal 2:
   > Host: localhost:7878
   > User-Agent: curl/7.54.0
   > Accept: */*
-  > 
+  >
   < HTTP/1.1 200 OK
   < Content-Length: 39
   < Content-Type: text/plain
@@ -34,10 +34,56 @@ Terminal 2:
   < X-Content-Type-Options: nosniff
   < X-Runtime-Microseconds: 165
   < Date: Mon, 19 Mar 2018 22:17:17 GMT
-  < 
+  <
   Got 4 parts:
   heads
   shoulders
+  knees
+  * Connection #0 to host localhost left intact
+  toes
+
+  curl -vvv http://localhost:7878/middle/heads/shoulders/knees/toes/foobar
+  *   Trying 127.0.0.1...
+  * TCP_NODELAY set
+  * Connected to localhost (127.0.0.1) port 7878 (#0)
+  > GET /middle/heads/shoulders/knees/toes/foobar HTTP/1.1
+  > Host: localhost:7878
+  > User-Agent: curl/7.54.0
+  > Accept: */*
+  >
+  < HTTP/1.1 200 OK
+  < x-request-id: 8449a2ed-2b00-4fbf-98af-63e17d65a345
+  < content-type: text/plain
+  < content-length: 39
+  < date: Sat, 23 May 2020 09:00:40 GMT
+  <
+  Got 4 parts:
+  heads
+  shoulders
+  knees
+  * Connection #0 to host localhost left intact
+  toes
+
+  curl -vvv http://localhost:7878/multi/heads/shoulders/foobar/knees/toes
+  *   Trying 127.0.0.1...
+  * TCP_NODELAY set
+  * Connected to localhost (127.0.0.1) port 7878 (#0)
+  > GET /multi/heads/shoulders/foobar/knees/toes HTTP/1.1
+  > Host: localhost:7878
+  > User-Agent: curl/7.54.0
+  > Accept: */*
+  >
+  < HTTP/1.1 200 OK
+  < x-request-id: 4cbcf782-9dbb-4fcd-b12e-55661d3309a4
+  < content-type: text/plain
+  < content-length: 72
+  < date: Sat, 23 May 2020 09:09:51 GMT
+  <
+  Got 2 parts for top:
+  heads
+  shoulders
+
+  Got 2 parts for bottom:
   knees
   * Connection #0 to host localhost left intact
   toes

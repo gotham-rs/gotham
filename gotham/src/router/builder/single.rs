@@ -4,7 +4,7 @@ use std::panic::RefUnwindSafe;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
 use crate::handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
-use crate::handler::{Handler, NewHandler};
+use crate::handler::{Handler, HandlerResult, NewHandler};
 use crate::pipeline::chain::PipelineHandleChain;
 use crate::router::builder::{
     ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
@@ -12,6 +12,9 @@ use crate::router::builder::{
 use crate::router::route::dispatch::DispatcherImpl;
 use crate::router::route::matcher::RouteMatcher;
 use crate::router::route::{Delegation, Extractors, RouteImpl};
+use crate::state::State;
+use core::future::Future;
+use futures::FutureExt;
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
@@ -106,6 +109,54 @@ pub trait DefineSingleRoute {
     where
         H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static;
 
+    /// Similar to `to`, but accepts an `async fn`
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::{Body, Response, StatusCode};
+    /// # use gotham::handler::HandlerResult;
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::single::*;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// async fn my_handler(state: State) -> HandlerResult {
+    ///     // Handler implementation elided.
+    /// #   Ok((state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
+    /// }
+    /// #
+    /// # fn router() -> Router {
+    /// #   let (chain, pipelines) = single_pipeline(
+    /// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+    /// #   );
+    ///
+    /// build_router(chain, pipelines, |route| {
+    ///     route.get("/request/path").to_async(my_handler);
+    /// })
+    /// #
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+    /// # }
+    /// ```
+    fn to_async<H, Fut>(self, handler: H)
+    where
+        Self: Sized,
+        H: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
+        Fut: Future<Output = HandlerResult> + Send + 'static;
     /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
     /// values are constructed.
     ///
@@ -469,6 +520,15 @@ where
         H: Handler + RefUnwindSafe + Copy + Send + Sync + 'static,
     {
         self.to_new_handler(move || Ok(handler))
+    }
+
+    fn to_async<H, Fut>(self, handler: H)
+    where
+        Self: Sized,
+        H: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
+        Fut: Future<Output = HandlerResult> + Send + 'static,
+    {
+        self.to_new_handler(move || Ok(move |s: State| handler(s).boxed()))
     }
 
     fn to_new_handler<NH>(self, new_handler: NH)

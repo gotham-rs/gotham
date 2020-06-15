@@ -57,6 +57,7 @@ members = [
     "examples/handlers/request_data",
     "examples/handlers/stateful",
     "examples/handlers/simple_async_handlers",
+    "examples/handlers/simple_async_handlers_await",
     "examples/handlers/async_handlers",
     "examples/handlers/form_urlencoded",
     "examples/handlers/multipart",
@@ -75,15 +76,10 @@ members = [
     "examples/example_contribution_template/name",
 
     # TODO: Re-enable when tokio-tungstenite is updated
-    # "examples/websocket",
+    "examples/websocket",
 
     # finalizer
     "examples/finalizers/",
 
 
 ]
-
-[patch.crates-io]
-gotham = { path = "gotham" }
-gotham_derive = { path = "gotham_derive" }
-borrow-bag = { path = "misc/borrow_bag" }
