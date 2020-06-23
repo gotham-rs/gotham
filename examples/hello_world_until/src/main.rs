@@ -40,7 +40,15 @@ pub async fn main() {
     };
 
     future::select(server.boxed(), signal.boxed()).await;
-    println!("Shutting down gracefully");
+    /*
+     * Technically, at this point the server hasn't been shutted down completely, 
+     * because the gotham's shutdown logic is relying on `Drop`, 
+     * and it's up-to tokio's runtime's `Drop` to invoke the server's drop. 
+     * 
+     * E.g. if there is a long running connection here, after this log message gets printed, 
+     * the program will not exist until the connection is done. 
+     */
+    println!("Start graceful shutdown");
 }
 
 #[cfg(test)]
