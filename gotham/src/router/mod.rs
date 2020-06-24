@@ -202,8 +202,9 @@ impl Router {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::header::{HeaderMap, CONTENT_LENGTH};
+    use hyper::header::{HeaderMap, CONTENT_LENGTH, CONTENT_TYPE};
     use hyper::{Body, Method, Uri};
+    use mime::TEXT_PLAIN;
     use std::str::FromStr;
 
     use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
@@ -211,7 +212,9 @@ mod tests {
     use crate::pipeline::set::*;
     use crate::router::response::finalizer::ResponseFinalizerBuilder;
     use crate::router::route::dispatch::DispatcherImpl;
-    use crate::router::route::matcher::MethodOnlyRouteMatcher;
+    use crate::router::route::matcher::{
+        AndRouteMatcher, ContentTypeHeaderRouteMatcher, MethodOnlyRouteMatcher,
+    };
     use crate::router::route::{Extractors, RouteImpl};
     use crate::router::tree::node::Node;
     use crate::router::tree::segment::SegmentType;
@@ -229,11 +232,17 @@ mod tests {
     ) -> ::std::result::Result<(State, Response<Body>), (State, HandlerError)> {
         let uri = Uri::from_str(uri).unwrap();
 
+        let mut headers = HeaderMap::new();
+        if method == Method::POST {
+            headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
+            headers.insert(CONTENT_LENGTH, 0.into());
+        }
+
         let mut state = State::new();
         state.put(RequestPathSegments::new(uri.path()));
         state.put(method);
         state.put(uri);
-        state.put(HeaderMap::new());
+        state.put(headers);
         set_request_id(&mut state);
 
         futures::executor::block_on(r.handle(state))
@@ -284,7 +293,10 @@ mod tests {
 
         let route = {
             let methods = vec![Method::POST];
-            let matcher = MethodOnlyRouteMatcher::new(methods);
+            let matcher = AndRouteMatcher::new(
+                MethodOnlyRouteMatcher::new(methods),
+                ContentTypeHeaderRouteMatcher::new(vec![TEXT_PLAIN]),
+            );
             let dispatcher = Box::new(DispatcherImpl::new(|| Ok(handler), (), pipeline_set));
             let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> =
                 Extractors::new();
@@ -294,9 +306,25 @@ mod tests {
         tree.add_route(route);
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
 
-        match send_request(router, Method::GET, "https://test.gotham.rs") {
+        match send_request(router.clone(), Method::GET, "https://test.gotham.rs") {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::METHOD_NOT_ALLOWED);
+                assert_eq!(
+                    res.headers()
+                        .get_all(ALLOW)
+                        .iter()
+                        .map(|it| it.to_str().unwrap())
+                        .collect::<Vec<&str>>(),
+                    vec!["POST"]
+                );
+            }
+            Err(_) => unreachable!("Router should have handled request"),
+        };
+
+        match send_request(router, Method::POST, "https://test.gotham.rs") {
+            Ok((_state, res)) => {
+                assert_eq!(res.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+                assert!(res.headers().get_all(ALLOW).iter().next().is_none());
             }
             Err(_) => unreachable!("Router should have handled request"),
         };

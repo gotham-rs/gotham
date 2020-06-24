@@ -73,7 +73,23 @@ impl RouteNonMatch {
     /// which wrap other `RouteMatcher` instances. See the `AndRouteMatcher` implementation (in
     /// `gotham::router::route::matcher::and`) for an example.
     pub fn intersection(self, other: RouteNonMatch) -> RouteNonMatch {
-        let status = higher_precedence_status(self.status, other.status);
+        let status = match (self.status, other.status) {
+            // A mismatched method combined with another error doesn't make the method match.
+            (StatusCode::METHOD_NOT_ALLOWED, _) | (_, StatusCode::METHOD_NOT_ALLOWED) => {
+                StatusCode::METHOD_NOT_ALLOWED
+            }
+            // For 404, prefer routes that indicated *some* kind of match.
+            (StatusCode::NOT_FOUND, rhs) => rhs,
+            (lhs, StatusCode::NOT_FOUND) => lhs,
+            // For 406, allow "harder" errors to overrule.
+            (StatusCode::NOT_ACCEPTABLE, rhs) => rhs,
+            (lhs, StatusCode::NOT_ACCEPTABLE) => lhs,
+            // This is a silly safeguard that prefers errors over non-errors. This should never be
+            // needed, but guards against strange custom `RouteMatcher` impls in applications.
+            (lhs, _) if lhs.is_client_error() => lhs,
+            (_, rhs) if rhs.is_client_error() => rhs,
+            (lhs, _) => lhs,
+        };
         let allow = self.allow.intersection(other.allow);
         RouteNonMatch { status, allow }
     }
@@ -86,7 +102,23 @@ impl RouteNonMatch {
     /// which wrap other `RouteMatcher` instances. See the `Node::select_route` implementation (in
     /// `gotham::router::tree`) for an example.
     pub fn union(self, other: RouteNonMatch) -> RouteNonMatch {
-        let status = higher_precedence_status(self.status, other.status);
+        let status = match (self.status, other.status) {
+            // For 405, prefer routes that matched the HTTP method, even if they haven't found the
+            // requested resource and returned a 404.
+            (StatusCode::METHOD_NOT_ALLOWED, rhs) => rhs,
+            (lhs, StatusCode::METHOD_NOT_ALLOWED) => lhs,
+            // For 404, prefer routes that indicated *some* kind of match.
+            (StatusCode::NOT_FOUND, rhs) => rhs,
+            (lhs, StatusCode::NOT_FOUND) => lhs,
+            // For 406, allow "harder" errors to overrule.
+            (StatusCode::NOT_ACCEPTABLE, rhs) => rhs,
+            (lhs, StatusCode::NOT_ACCEPTABLE) => lhs,
+            // This is a silly safeguard that prefers errors over non-errors. This should never be
+            // needed, but guards against strange custom `RouteMatcher` impls in applications.
+            (lhs, _) if lhs.is_client_error() => lhs,
+            (_, rhs) if rhs.is_client_error() => rhs,
+            (lhs, _) => lhs,
+        };
         let allow = self.allow.union(other.allow);
         RouteNonMatch { status, allow }
     }
@@ -102,29 +134,9 @@ impl From<RouteNonMatch> for StatusCode {
     }
 }
 
-fn higher_precedence_status(lhs: StatusCode, rhs: StatusCode) -> StatusCode {
-    match (lhs, rhs) {
-        // For 405, prefer routes that matched the HTTP method, even if they haven't found the
-        // requested resource and returned a 404.
-        (StatusCode::METHOD_NOT_ALLOWED, _) => rhs,
-        (_, StatusCode::METHOD_NOT_ALLOWED) => lhs,
-        // For 404, prefer routes that indicated *some* kind of match.
-        (StatusCode::NOT_FOUND, _) => rhs,
-        (_, StatusCode::NOT_FOUND) => lhs,
-        // For 406, allow "harder" errors to overrule.
-        (StatusCode::NOT_ACCEPTABLE, _) => rhs,
-        (_, StatusCode::NOT_ACCEPTABLE) => lhs,
-        // This is a silly safeguard that prefers errors over non-errors. This should never be
-        // needed, but guards against strange custom `RouteMatcher` impls in applications.
-        (_, _) if lhs.is_client_error() => lhs,
-        (_, _) if rhs.is_client_error() => rhs,
-        (_, _) => lhs,
-    }
-}
-
 // This customised set prevents memory allocations while computing `Allow` lists, except in the
 // case where extension methods are provided using the `hyper::Method::Extension` variant.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct MethodSet {
     connect: bool,
     delete: bool,
@@ -139,18 +151,37 @@ struct MethodSet {
 }
 
 impl MethodSet {
+    fn is_empty(&self) -> bool {
+        !self.connect
+            && !self.delete
+            && !self.get
+            && !self.head
+            && !self.options
+            && !self.patch
+            && !self.post
+            && !self.put
+            && !self.trace
+            && self.other.is_empty()
+    }
+
     fn intersection(self, other: MethodSet) -> MethodSet {
-        MethodSet {
-            connect: self.connect && other.connect,
-            delete: self.delete && other.delete,
-            get: self.get && other.get,
-            head: self.head && other.head,
-            options: self.options && other.options,
-            patch: self.patch && other.patch,
-            post: self.post && other.post,
-            put: self.put && other.put,
-            trace: self.trace && other.trace,
-            other: self.other.intersection(&other.other).cloned().collect(),
+        if self.is_empty() {
+            other
+        } else if other.is_empty() {
+            self
+        } else {
+            MethodSet {
+                connect: self.connect && other.connect,
+                delete: self.delete && other.delete,
+                get: self.get && other.get,
+                head: self.head && other.head,
+                options: self.options && other.options,
+                patch: self.patch && other.patch,
+                post: self.post && other.post,
+                put: self.put && other.put,
+                trace: self.trace && other.trace,
+                other: self.other.intersection(&other.other).cloned().collect(),
+            }
         }
     }
 
@@ -166,23 +197,6 @@ impl MethodSet {
             put: self.put || other.put,
             trace: self.trace || other.trace,
             other: self.other.union(&other.other).cloned().collect(),
-        }
-    }
-}
-
-impl Default for MethodSet {
-    fn default() -> MethodSet {
-        MethodSet {
-            connect: false,
-            delete: true,
-            get: true,
-            head: true,
-            options: true,
-            patch: true,
-            post: true,
-            put: true,
-            trace: false,
-            other: HashSet::default(),
         }
     }
 }
@@ -299,20 +313,23 @@ mod tests {
         ];
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
+            .with_allow_list(&all)
             .intersection(RouteNonMatch::new(StatusCode::NOT_FOUND))
             .deconstruct();
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(&allow_list[..], &all);
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
+            .with_allow_list(&all)
             .intersection(
                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
             )
             .deconstruct();
-        assert_eq!(status, StatusCode::NOT_FOUND);
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(&allow_list[..], &[Method::GET]);
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
+            .with_allow_list(&all)
             .with_allow_list(&[Method::GET, Method::PATCH, Method::POST])
             .intersection(
                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[
@@ -322,7 +339,7 @@ mod tests {
                 ]),
             )
             .deconstruct();
-        assert_eq!(status, StatusCode::NOT_ACCEPTABLE);
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
         assert_eq!(&allow_list[..], &[Method::GET, Method::POST]);
     }
 
@@ -339,12 +356,14 @@ mod tests {
         ];
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
+            .with_allow_list(&all)
             .union(RouteNonMatch::new(StatusCode::NOT_FOUND))
             .deconstruct();
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(&allow_list[..], &all);
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
+            .with_allow_list(&all)
             .union(
                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
             )
@@ -353,6 +372,7 @@ mod tests {
         assert_eq!(&allow_list[..], &all);
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
+            .with_allow_list(&all)
             .with_allow_list(&[Method::GET, Method::PATCH, Method::POST])
             .union(
                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[
