@@ -79,11 +79,11 @@ impl RouteNonMatch {
                 StatusCode::METHOD_NOT_ALLOWED
             }
             // For 404, prefer routes that indicated *some* kind of match.
-            (StatusCode::NOT_FOUND, rhs) => rhs,
-            (lhs, StatusCode::NOT_FOUND) => lhs,
+            (StatusCode::NOT_FOUND, rhs) if rhs.is_client_error() => rhs,
+            (lhs, StatusCode::NOT_FOUND) if lhs.is_client_error() => lhs,
             // For 406, allow "harder" errors to overrule.
-            (StatusCode::NOT_ACCEPTABLE, rhs) => rhs,
-            (lhs, StatusCode::NOT_ACCEPTABLE) => lhs,
+            (StatusCode::NOT_ACCEPTABLE, rhs) if rhs.is_client_error() => rhs,
+            (lhs, StatusCode::NOT_ACCEPTABLE) if lhs.is_client_error() => lhs,
             // This is a silly safeguard that prefers errors over non-errors. This should never be
             // needed, but guards against strange custom `RouteMatcher` impls in applications.
             (lhs, _) if lhs.is_client_error() => lhs,
@@ -105,14 +105,14 @@ impl RouteNonMatch {
         let status = match (self.status, other.status) {
             // For 405, prefer routes that matched the HTTP method, even if they haven't found the
             // requested resource and returned a 404.
-            (StatusCode::METHOD_NOT_ALLOWED, rhs) => rhs,
-            (lhs, StatusCode::METHOD_NOT_ALLOWED) => lhs,
+            (StatusCode::METHOD_NOT_ALLOWED, rhs) if rhs.is_client_error() => rhs,
+            (lhs, StatusCode::METHOD_NOT_ALLOWED) if lhs.is_client_error() => lhs,
             // For 404, prefer routes that indicated *some* kind of match.
-            (StatusCode::NOT_FOUND, rhs) => rhs,
-            (lhs, StatusCode::NOT_FOUND) => lhs,
+            (StatusCode::NOT_FOUND, rhs) if rhs.is_client_error() => rhs,
+            (lhs, StatusCode::NOT_FOUND) if lhs.is_client_error() => lhs,
             // For 406, allow "harder" errors to overrule.
-            (StatusCode::NOT_ACCEPTABLE, rhs) => rhs,
-            (lhs, StatusCode::NOT_ACCEPTABLE) => lhs,
+            (StatusCode::NOT_ACCEPTABLE, rhs) if rhs.is_client_error() => rhs,
+            (lhs, StatusCode::NOT_ACCEPTABLE) if lhs.is_client_error() => lhs,
             // This is a silly safeguard that prefers errors over non-errors. This should never be
             // needed, but guards against strange custom `RouteMatcher` impls in applications.
             (lhs, _) if lhs.is_client_error() => lhs,
@@ -300,92 +300,182 @@ mod tests {
 
     use hyper::{Method, StatusCode};
 
-    #[test]
-    fn intersection_tests() {
-        let all = [
-            Method::DELETE,
-            Method::GET,
-            Method::HEAD,
-            Method::OPTIONS,
-            Method::PATCH,
-            Method::POST,
-            Method::PUT,
-        ];
+    trait AllowList {
+        fn apply_allow_list(self, list: Option<&[Method]>) -> Self;
+    }
 
-        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
-            .with_allow_list(&all)
-            .intersection(RouteNonMatch::new(StatusCode::NOT_FOUND))
-            .deconstruct();
-        assert_eq!(status, StatusCode::NOT_FOUND);
-        assert_eq!(&allow_list[..], &all);
+    impl AllowList for RouteNonMatch {
+        fn apply_allow_list(self, list: Option<&[Method]>) -> Self {
+            match list {
+                Some(list) => self.with_allow_list(list),
+                None => self,
+            }
+        }
+    }
 
-        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
-            .with_allow_list(&all)
-            .intersection(
-                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
-            )
-            .deconstruct();
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(&allow_list[..], &[Method::GET]);
+    const ALL: [Method; 7] = [
+        Method::DELETE,
+        Method::GET,
+        Method::HEAD,
+        Method::OPTIONS,
+        Method::PATCH,
+        Method::POST,
+        Method::PUT,
+    ];
 
-        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
-            .with_allow_list(&all)
-            .with_allow_list(&[Method::GET, Method::PATCH, Method::POST])
-            .intersection(
-                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[
-                    Method::GET,
-                    Method::POST,
-                    Method::OPTIONS,
-                ]),
-            )
+    fn intersection_assert_status_code(code1: StatusCode, code2: StatusCode, expected: StatusCode) {
+        let (status, _) = RouteNonMatch::new(code1)
+            .intersection(RouteNonMatch::new(code2))
             .deconstruct();
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
-        assert_eq!(&allow_list[..], &[Method::GET, Method::POST]);
+        assert_eq!(status, expected);
+        let (status, _) = RouteNonMatch::new(code2)
+            .intersection(RouteNonMatch::new(code1))
+            .deconstruct();
+        assert_eq!(status, expected);
     }
 
     #[test]
-    fn union_tests() {
-        let all = [
-            Method::DELETE,
-            Method::GET,
-            Method::HEAD,
-            Method::OPTIONS,
-            Method::PATCH,
-            Method::POST,
-            Method::PUT,
-        ];
+    fn intersection_test_status_code() {
+        intersection_assert_status_code(
+            StatusCode::METHOD_NOT_ALLOWED,
+            StatusCode::NOT_FOUND,
+            StatusCode::METHOD_NOT_ALLOWED,
+        );
+        intersection_assert_status_code(
+            StatusCode::NOT_ACCEPTABLE,
+            StatusCode::NOT_FOUND,
+            StatusCode::NOT_ACCEPTABLE,
+        );
+        intersection_assert_status_code(
+            StatusCode::NOT_ACCEPTABLE,
+            StatusCode::FORBIDDEN,
+            StatusCode::FORBIDDEN,
+        );
+        intersection_assert_status_code(
+            StatusCode::OK,
+            StatusCode::NOT_FOUND,
+            StatusCode::NOT_FOUND,
+        );
+        intersection_assert_status_code(
+            StatusCode::OK,
+            StatusCode::NOT_ACCEPTABLE,
+            StatusCode::NOT_ACCEPTABLE,
+        );
 
-        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
-            .with_allow_list(&all)
-            .union(RouteNonMatch::new(StatusCode::NOT_FOUND))
+        let (status, _) = RouteNonMatch::new(StatusCode::OK)
+            .intersection(RouteNonMatch::new(StatusCode::NO_CONTENT))
             .deconstruct();
-        assert_eq!(status, StatusCode::NOT_FOUND);
-        assert_eq!(&allow_list[..], &all);
+        assert_eq!(status, StatusCode::OK);
+        let (status, _) = RouteNonMatch::new(StatusCode::NO_CONTENT)
+            .intersection(RouteNonMatch::new(StatusCode::OK))
+            .deconstruct();
+        assert_eq!(status, StatusCode::NO_CONTENT);
+    }
 
-        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_FOUND)
-            .with_allow_list(&all)
-            .union(
-                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
-            )
+    fn intersection_assert_allow_list(
+        list1: Option<&[Method]>,
+        list2: Option<&[Method]>,
+        expected: &[Method],
+    ) {
+        let status = StatusCode::BAD_REQUEST;
+        let (_, allow_list) = RouteNonMatch::new(status)
+            .apply_allow_list(list1)
+            .intersection(RouteNonMatch::new(status).apply_allow_list(list2))
             .deconstruct();
-        assert_eq!(status, StatusCode::NOT_FOUND);
-        assert_eq!(&allow_list[..], &all);
+        assert_eq!(&allow_list, &expected);
+        let (_, allow_list) = RouteNonMatch::new(status)
+            .apply_allow_list(list2)
+            .intersection(RouteNonMatch::new(status).apply_allow_list(list1))
+            .deconstruct();
+        assert_eq!(&allow_list, &expected);
+    }
 
-        let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
-            .with_allow_list(&all)
-            .with_allow_list(&[Method::GET, Method::PATCH, Method::POST])
-            .union(
-                RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[
-                    Method::GET,
-                    Method::POST,
-                    Method::OPTIONS,
-                ]),
-            )
+    #[test]
+    fn intersection_test_allow_list() {
+        intersection_assert_allow_list(None, None, &[]);
+        intersection_assert_allow_list(Some(&ALL), None, &ALL);
+        intersection_assert_allow_list(Some(&ALL), Some(&[Method::GET]), &[Method::GET]);
+        intersection_assert_allow_list(None, Some(&[Method::GET]), &[Method::GET]);
+        intersection_assert_allow_list(
+            Some(&[Method::GET, Method::POST]),
+            Some(&[Method::POST, Method::PUT]),
+            &[Method::POST],
+        );
+    }
+
+    fn union_assert_status_code(code1: StatusCode, code2: StatusCode, expected: StatusCode) {
+        let (status, _) = RouteNonMatch::new(code1)
+            .union(RouteNonMatch::new(code2))
             .deconstruct();
-        assert_eq!(status, StatusCode::NOT_ACCEPTABLE);
-        assert_eq!(
-            &allow_list[..],
-            &[Method::GET, Method::OPTIONS, Method::PATCH, Method::POST]
+        assert_eq!(status, expected);
+        let (status, _) = RouteNonMatch::new(code2)
+            .union(RouteNonMatch::new(code1))
+            .deconstruct();
+        assert_eq!(status, expected);
+    }
+
+    #[test]
+    fn union_test_status_code() {
+        union_assert_status_code(
+            StatusCode::METHOD_NOT_ALLOWED,
+            StatusCode::NOT_FOUND,
+            StatusCode::NOT_FOUND,
+        );
+        union_assert_status_code(
+            StatusCode::NOT_ACCEPTABLE,
+            StatusCode::NOT_FOUND,
+            StatusCode::NOT_ACCEPTABLE,
+        );
+        union_assert_status_code(
+            StatusCode::NOT_ACCEPTABLE,
+            StatusCode::FORBIDDEN,
+            StatusCode::FORBIDDEN,
+        );
+        union_assert_status_code(StatusCode::OK, StatusCode::NOT_FOUND, StatusCode::NOT_FOUND);
+        union_assert_status_code(
+            StatusCode::OK,
+            StatusCode::NOT_ACCEPTABLE,
+            StatusCode::NOT_ACCEPTABLE,
+        );
+
+        let (status, _) = RouteNonMatch::new(StatusCode::OK)
+            .union(RouteNonMatch::new(StatusCode::NO_CONTENT))
+            .deconstruct();
+        assert_eq!(status, StatusCode::OK);
+        let (status, _) = RouteNonMatch::new(StatusCode::NO_CONTENT)
+            .union(RouteNonMatch::new(StatusCode::OK))
+            .deconstruct();
+        assert_eq!(status, StatusCode::NO_CONTENT);
+    }
+
+    fn union_assert_allow_list(
+        list1: Option<&[Method]>,
+        list2: Option<&[Method]>,
+        expected: &[Method],
+    ) {
+        let status = StatusCode::BAD_REQUEST;
+        let (_, allow_list) = RouteNonMatch::new(status)
+            .apply_allow_list(list1)
+            .union(RouteNonMatch::new(status).apply_allow_list(list2))
+            .deconstruct();
+        assert_eq!(&allow_list, &expected);
+        let (_, allow_list) = RouteNonMatch::new(status)
+            .apply_allow_list(list2)
+            .union(RouteNonMatch::new(status).apply_allow_list(list1))
+            .deconstruct();
+        assert_eq!(&allow_list, &expected);
+    }
+
+    #[test]
+    fn union_test_allow_list() {
+        union_assert_allow_list(None, None, &[]);
+        union_assert_allow_list(Some(&ALL), None, &ALL);
+        union_assert_allow_list(Some(&ALL), Some(&[Method::GET]), &ALL);
+        union_assert_allow_list(None, Some(&[Method::GET]), &[Method::GET]);
+        union_assert_allow_list(
+            Some(&[Method::GET, Method::POST]),
+            Some(&[Method::POST, Method::PUT]),
+            &[Method::GET, Method::POST, Method::PUT],
         );
     }
 
