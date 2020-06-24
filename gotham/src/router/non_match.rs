@@ -104,12 +104,13 @@ impl From<RouteNonMatch> for StatusCode {
 
 fn higher_precedence_status(lhs: StatusCode, rhs: StatusCode) -> StatusCode {
     match (lhs, rhs) {
+        // For 405, prefer routes that matched the HTTP method, even if they haven't found the
+        // requested resource and returned a 404.
+        (StatusCode::METHOD_NOT_ALLOWED, _) => rhs,
+        (_, StatusCode::METHOD_NOT_ALLOWED) => lhs,
         // For 404, prefer routes that indicated *some* kind of match.
         (StatusCode::NOT_FOUND, _) => rhs,
         (_, StatusCode::NOT_FOUND) => lhs,
-        // For 405, prefer routes that matched the HTTP method.
-        (StatusCode::METHOD_NOT_ALLOWED, _) => rhs,
-        (_, StatusCode::METHOD_NOT_ALLOWED) => lhs,
         // For 406, allow "harder" errors to overrule.
         (StatusCode::NOT_ACCEPTABLE, _) => rhs,
         (_, StatusCode::NOT_ACCEPTABLE) => lhs,
@@ -308,7 +309,7 @@ mod tests {
                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
             )
             .deconstruct();
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(&allow_list[..], &[Method::GET]);
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
@@ -348,7 +349,7 @@ mod tests {
                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED).with_allow_list(&[Method::GET]),
             )
             .deconstruct();
-        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(&allow_list[..], &all);
 
         let (status, allow_list) = RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
