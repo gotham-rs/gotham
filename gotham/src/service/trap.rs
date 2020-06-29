@@ -72,8 +72,8 @@ fn finalize_error_response(
         // API doesn't guarantee its presence (even though it always is).
         let err_description = err
             .source()
-            .map(Error::description)
-            .unwrap_or_else(|| err.description());
+            .map(Error::to_string)
+            .unwrap_or_else(|| err.to_string());
 
         error!(
             "[ERROR][{}][Error: {}]",

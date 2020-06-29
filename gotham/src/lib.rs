@@ -3,8 +3,8 @@
 //! You can find out more about Gotham, including where to get help, at <https://gotham.rs>.
 //!
 //! We look forward to welcoming you into the Gotham community!
-#![doc(html_root_url = "https://docs.rs/gotham/0.5.0-rc.1")] // Update when changed in Cargo.toml
-#![warn(missing_docs, deprecated)]
+#![doc(html_root_url = "https://docs.rs/gotham/0.5.0-rc.1")]
+// Update when changed in Cargo.toml
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
 #![cfg_attr(

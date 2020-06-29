@@ -1,10 +1,10 @@
-use hyper::Body;
+use hyper::{Body, Response};
 
 use std::panic::RefUnwindSafe;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
 use crate::handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
-use crate::handler::{Handler, HandlerResult, NewHandler};
+use crate::handler::{Handler, HandlerError, HandlerResult, NewHandler};
 use crate::pipeline::chain::PipelineHandleChain;
 use crate::router::builder::{
     ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
@@ -16,6 +16,26 @@ use crate::state::State;
 use core::future::Future;
 use futures::FutureExt;
 
+trait FnHelper<'a> {
+    type Fut: std::future::Future<Output = Result<Response<Body>, HandlerError>>
+        + RefUnwindSafe
+        + Copy
+        + Send
+        + Sync
+        + 'a;
+    fn call(self, arg: &'a State) -> Self::Fut;
+}
+
+impl<'a, D: 'a, F> FnHelper<'a> for F
+where
+    F: FnOnce(&'a State) -> D,
+    D: std::future::Future<Output = Result<Response<Body>, HandlerError>> + RefUnwindSafe + Copy + Send + Sync + 'a,
+{
+    type Fut = D;
+    fn call(self, state: &'a State) -> D {
+        self(state)
+    }
+}
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
 /// `RouterBuilder` which created it.
@@ -157,6 +177,29 @@ pub trait DefineSingleRoute {
         Self: Sized,
         H: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
         Fut: Future<Output = HandlerResult> + Send + 'static;
+       
+    /// Similar to `to_async`, but passes in State as a reference
+    fn to_async_borrrowing<F>(self, handler: F)
+    where
+        Self: Sized,
+        // F: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
+        for<'a> F: FnHelper<'a> + RefUnwindSafe + Copy + Send + Sync + 'static,
+        // Fut: Future<Output = HandlerResult> + Send + 'static
+    {
+        self.to_new_handler(move || {
+            Ok(move |state: State| {
+                async {
+                    let fut = handler.call(&state);
+                    let result = fut.await;
+                    match result {
+                        Ok(response) => Ok((state, response)),
+                        Err(err) => Err((state, err)),
+                    }
+                }
+                .boxed()
+            })
+        })
+    }
     /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
     /// values are constructed.
     ///
