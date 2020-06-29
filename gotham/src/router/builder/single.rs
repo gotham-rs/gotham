@@ -16,7 +16,7 @@ use crate::state::State;
 use core::future::Future;
 use futures::FutureExt;
 
-trait FnHelper<'a> {
+pub trait AsyncHandlerFn<'a> {
     type Fut: std::future::Future<Output = Result<Response<Body>, HandlerError>>
         + RefUnwindSafe
         + Copy
@@ -26,7 +26,7 @@ trait FnHelper<'a> {
     fn call(self, arg: &'a mut State) -> Self::Fut;
 }
 
-impl<'a, D, F> FnHelper<'a> for F
+impl<'a, D, F> AsyncHandlerFn<'a> for F
 where
     F: FnOnce(&'a mut State) -> D,
     D: std::future::Future<Output = Result<Response<Body>, HandlerError>> + RefUnwindSafe + Copy + Send + Sync + 'a,
@@ -183,7 +183,7 @@ pub trait DefineSingleRoute {
     where
         Self: Sized,
         // F: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
-        for<'a> F: FnHelper<'a> + RefUnwindSafe + Copy + Send + Sync + 'static,
+        for<'a> F: AsyncHandlerFn<'a> + RefUnwindSafe + Copy + Send + Sync + 'static,
         // Fut: Future<Output = HandlerResult> + Send + 'static
     {
         self.to_new_handler(move || {
