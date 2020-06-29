@@ -23,16 +23,16 @@ trait FnHelper<'a> {
         + Send
         + Sync
         + 'a;
-    fn call(self, arg: &'a State) -> Self::Fut;
+    fn call(self, arg: &'a mut State) -> Self::Fut;
 }
 
 impl<'a, D, F> FnHelper<'a> for F
 where
-    F: FnOnce(&'a State) -> D,
+    F: FnOnce(&'a mut State) -> D,
     D: std::future::Future<Output = Result<Response<Body>, HandlerError>> + RefUnwindSafe + Copy + Send + Sync + 'a,
 {
     type Fut = D;
-    fn call(self, state: &'a State) -> D {
+    fn call(self, state: &'a mut State) -> D {
         self(state)
     }
 }
@@ -187,9 +187,9 @@ pub trait DefineSingleRoute {
         // Fut: Future<Output = HandlerResult> + Send + 'static
     {
         self.to_new_handler(move || {
-            Ok(move |state: State| {
+            Ok(move |mut state: State| {
                 async {
-                    let fut = handler.call(&state);
+                    let fut = handler.call(&mut state);
                     let result = fut.await;
                     match result {
                         Ok(response) => Ok((state, response)),
