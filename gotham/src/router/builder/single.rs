@@ -17,19 +17,14 @@ use core::future::Future;
 use futures::FutureExt;
 
 pub trait AsyncHandlerFn<'a> {
-    type Fut: std::future::Future<Output = Result<Response<Body>, HandlerError>>
-        + RefUnwindSafe
-        + Copy
-        + Send
-        + Sync
-        + 'a;
+    type Fut: std::future::Future<Output = Result<Response<Body>, HandlerError>> + Send + 'a;
     fn call(self, arg: &'a mut State) -> Self::Fut;
 }
 
 impl<'a, D, F> AsyncHandlerFn<'a> for F
 where
     F: FnOnce(&'a mut State) -> D,
-    D: std::future::Future<Output = Result<Response<Body>, HandlerError>> + RefUnwindSafe + Copy + Send + Sync + 'a,
+    D: std::future::Future<Output = Result<Response<Body>, HandlerError>> + Send + 'a,
 {
     type Fut = D;
     fn call(self, state: &'a mut State) -> D {
