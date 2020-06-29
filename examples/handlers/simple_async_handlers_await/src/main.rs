@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use gotham::hyper::{Body, StatusCode};
 
-use gotham::handler::HandlerResult;
+use gotham::handler::SimpleHandlerResult;
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
@@ -60,8 +60,8 @@ fn sleep(seconds: u64) -> SleepFuture {
 
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
 /// helper method, above.
-async fn sleep_handler(mut state: State) -> HandlerResult {
-    let seconds = QueryStringExtractor::take_from(&mut state).seconds;
+async fn sleep_handler(state: &mut State) -> SimpleHandlerResult {
+    let seconds = QueryStringExtractor::borrow_from(state).seconds;
     println!("sleep for {} seconds once: starting", seconds);
     // Here, we call the sleep function and turn its old-style future into
     // a new-style future. Note that this step doesn't block: it just sets
@@ -79,15 +79,15 @@ async fn sleep_handler(mut state: State) -> HandlerResult {
     // expects, using the helper from IntoHandlerError.
     let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
     println!("sleep for {} seconds once: finished", seconds);
-    Ok((state, res))
+    Ok(res)
 }
 
 /// It calls sleep(1) as many times as needed to make the requested duration.
 ///
 /// Notice how much easier it is to read than the version in
 /// `simple_async_handlers`.
-async fn loop_handler(mut state: State) -> HandlerResult {
-    let seconds = QueryStringExtractor::take_from(&mut state).seconds;
+async fn loop_handler(state: &mut State) -> SimpleHandlerResult {
+    let seconds = QueryStringExtractor::borrow_from(state).seconds;
     println!("sleep for one second {} times: starting", seconds);
 
     // The code within this block reads exactly like syncronous code.
@@ -106,7 +106,7 @@ async fn loop_handler(mut state: State) -> HandlerResult {
         Body::from(accumulator),
     );
     println!("sleep for one second {} times: finished", seconds);
-    Ok((state, res))
+    Ok(res)
 }
 
 /// Create a `Router`.
@@ -115,11 +115,11 @@ fn router() -> Router {
         route
             .get("/sleep")
             .with_query_string_extractor::<QueryStringExtractor>()
-            .to_async(sleep_handler);
+            .to_async_borrowing(sleep_handler);
         route
             .get("/loop")
             .with_query_string_extractor::<QueryStringExtractor>()
-            .to_async(loop_handler);
+            .to_async_borrowing(loop_handler);
     })
 }
 
