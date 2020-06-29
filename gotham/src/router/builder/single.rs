@@ -188,7 +188,7 @@ pub trait DefineSingleRoute {
     {
         self.to_new_handler(move || {
             Ok(move |mut state: State| {
-                async {
+                async move {
                     let fut = handler.call(&mut state);
                     let result = fut.await;
                     match result {
