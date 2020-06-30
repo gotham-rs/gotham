@@ -1,10 +1,10 @@
-use hyper::{Body, Response};
+use hyper::Body;
 
 use std::panic::RefUnwindSafe;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
 use crate::handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
-use crate::handler::{Handler, HandlerError, HandlerResult, NewHandler};
+use crate::handler::{Handler, HandlerError, HandlerResult, IntoResponse, NewHandler};
 use crate::pipeline::chain::PipelineHandleChain;
 use crate::router::builder::{
     ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
@@ -17,15 +17,18 @@ use core::future::Future;
 use futures::FutureExt;
 
 pub trait AsyncHandlerFn<'a> {
-    type Fut: std::future::Future<Output = Result<Response<Body>, HandlerError>> + Send + 'a;
+    type Res: IntoResponse + 'static;
+    type Fut: std::future::Future<Output = Result<Self::Res, HandlerError>> + Send + 'a;
     fn call(self, arg: &'a mut State) -> Self::Fut;
 }
 
-impl<'a, Fut, F> AsyncHandlerFn<'a> for F
+impl<'a, Fut, R, F> AsyncHandlerFn<'a> for F
 where
     F: FnOnce(&'a mut State) -> Fut,
-    Fut: std::future::Future<Output = Result<Response<Body>, HandlerError>> + Send + 'a,
+    R: IntoResponse + 'static,
+    Fut: std::future::Future<Output = Result<R, HandlerError>> + Send + 'a,
 {
+    type Res = R;
     type Fut = Fut;
     fn call(self, state: &'a mut State) -> Fut {
         self(state)
@@ -174,12 +177,10 @@ pub trait DefineSingleRoute {
         Fut: Future<Output = HandlerResult> + Send + 'static;
 
     /// Similar to `to_async`, but passes in State as a reference
-    fn to_async_borrowing<F>(self, handler: F)
+    fn to_async_borrowing<F, R: IntoResponse + 'static>(self, handler: F)
     where
         Self: Sized,
-        // F: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
-        for<'a> F: AsyncHandlerFn<'a> + RefUnwindSafe + Copy + Send + Sync + 'static,
-        // Fut: Future<Output = HandlerResult> + Send + 'static
+        for<'a> F: AsyncHandlerFn<'a, Res = R> + RefUnwindSafe + Copy + Send + Sync + 'static,
     {
         self.to_new_handler(move || {
             Ok(move |mut state: State| {
@@ -187,7 +188,10 @@ pub trait DefineSingleRoute {
                     let fut = handler.call(&mut state);
                     let result = fut.await;
                     match result {
-                        Ok(response) => Ok((state, response)),
+                        Ok(data) => {
+                            let response = data.into_response(&state);
+                            Ok((state, response))
+                        }
                         Err(err) => Err((state, err)),
                     }
                 }
