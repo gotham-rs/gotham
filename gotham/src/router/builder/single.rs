@@ -1,10 +1,13 @@
 use hyper::Body;
 
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
 use crate::handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
-use crate::handler::{Handler, HandlerError, HandlerResult, IntoResponse, NewHandler};
+use crate::handler::{
+    Handler, HandlerError, HandlerFuture, HandlerResult, IntoResponse, NewHandler,
+};
 use crate::pipeline::chain::PipelineHandleChain;
 use crate::router::builder::{
     ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
@@ -15,6 +18,10 @@ use crate::router::route::{Delegation, Extractors, RouteImpl};
 use crate::state::State;
 use core::future::Future;
 use futures::FutureExt;
+
+pub trait HandlerMarker {
+    fn call_and_wrap(self, state: State) -> Pin<Box<HandlerFuture>>;
+}
 
 pub trait AsyncHandlerFn<'a> {
     type Res: IntoResponse + 'static;
@@ -34,6 +41,28 @@ where
         self(state)
     }
 }
+
+impl<F, R> HandlerMarker for F
+where
+    R: IntoResponse + 'static,
+    for<'a> F: AsyncHandlerFn<'a, Res = R> + Send + 'static,
+{
+    fn call_and_wrap(self, mut state: State) -> Pin<Box<HandlerFuture>> {
+        async move {
+            let fut = self.call(&mut state);
+            let result = fut.await;
+            match result {
+                Ok(data) => {
+                    let response = data.into_response(&state);
+                    Ok((state, response))
+                }
+                Err(err) => Err((state, err)),
+            }
+        }
+        .boxed()
+    }
+}
+
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
 /// `RouterBuilder` which created it.
@@ -177,28 +206,11 @@ pub trait DefineSingleRoute {
         Fut: Future<Output = HandlerResult> + Send + 'static;
 
     /// Similar to `to_async`, but passes in State as a reference
-    fn to_async_borrowing<F, R: IntoResponse + 'static>(self, handler: F)
+    fn to_async_borrowing<F>(self, handler: F)
     where
         Self: Sized,
-        for<'a> F: AsyncHandlerFn<'a, Res = R> + RefUnwindSafe + Copy + Send + Sync + 'static,
-    {
-        self.to_new_handler(move || {
-            Ok(move |mut state: State| {
-                async move {
-                    let fut = handler.call(&mut state);
-                    let result = fut.await;
-                    match result {
-                        Ok(data) => {
-                            let response = data.into_response(&state);
-                            Ok((state, response))
-                        }
-                        Err(err) => Err((state, err)),
-                    }
-                }
-                .boxed()
-            })
-        })
-    }
+        F: HandlerMarker + Copy + Send + Sync + RefUnwindSafe + 'static;
+
     /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
     /// values are constructed.
     ///
@@ -571,6 +583,14 @@ where
         Fut: Future<Output = HandlerResult> + Send + 'static,
     {
         self.to_new_handler(move || Ok(move |s: State| handler(s).boxed()))
+    }
+
+    fn to_async_borrowing<F>(self, handler: F)
+    where
+        Self: Sized,
+        F: HandlerMarker + Copy + Send + Sync + RefUnwindSafe + 'static,
+    {
+        self.to_new_handler(move || Ok(move |state: State| handler.call_and_wrap(state)))
     }
 
     fn to_new_handler<NH>(self, new_handler: NH)
