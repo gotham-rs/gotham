@@ -206,6 +206,49 @@ pub trait DefineSingleRoute {
         Fut: Future<Output = HandlerResult> + Send + 'static;
 
     /// Similar to `to_async`, but passes in State as a reference
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::{Body, Response, StatusCode};
+    /// # use gotham::handler::{HandlerError, IntoResponse};
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::single::*;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// async fn my_handler(state: &mut State) -> Result<impl IntoResponse, HandlerError> {
+    ///     // Handler implementation elided.
+    /// #   let _ = state;
+    /// #   Ok(Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// }
+    /// #
+    /// # fn router() -> Router {
+    /// #   let (chain, pipelines) = single_pipeline(
+    /// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+    /// #   );
+    ///
+    /// build_router(chain, pipelines, |route| {
+    ///     route.get("/request/path").to_async_borrowing(my_handler);
+    /// })
+    /// #
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+    /// # }
+    /// ```
     fn to_async_borrowing<F>(self, handler: F)
     where
         Self: Sized,
