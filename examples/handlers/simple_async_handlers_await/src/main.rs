@@ -4,10 +4,9 @@ use futures::prelude::*;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
 
-use gotham::hyper::{Body, StatusCode};
+use gotham::hyper::StatusCode;
 
-use gotham::handler::SimpleHandlerResult;
-use gotham::helpers::http::response::create_response;
+use gotham::handler::{HandlerError, IntoResponse};
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
@@ -60,7 +59,7 @@ fn sleep(seconds: u64) -> SleepFuture {
 
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
 /// helper method, above.
-async fn sleep_handler(state: &mut State) -> SimpleHandlerResult {
+async fn sleep_handler(state: &mut State) -> Result<impl IntoResponse, HandlerError> {
     let seconds = QueryStringExtractor::borrow_from(state).seconds;
     println!("sleep for {} seconds once: starting", seconds);
     // Here, we call the sleep function. Note that this step doesn't block:
@@ -72,17 +71,18 @@ async fn sleep_handler(state: &mut State) -> SimpleHandlerResult {
     // The "slept for x seconds" value is stored in data.
     let data = sleep_future.await;
 
-    // We return a `Result<Response<Body>, HandlerError>` directly
-    let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+    // We return a `Result<impl IntoResponse, HandlerError>` directly
+    // where the success type can be anything implementing `IntoResponse`
+    // (including a `Response<Body>`)
     println!("sleep for {} seconds once: finished", seconds);
-    Ok(res)
+    Ok((StatusCode::OK, mime::TEXT_PLAIN, data))
 }
 
 /// It calls sleep(1) as many times as needed to make the requested duration.
 ///
 /// Notice how much easier it is to read than the version in
 /// `simple_async_handlers`.
-async fn loop_handler(state: &mut State) -> SimpleHandlerResult {
+async fn loop_handler(state: &mut State) -> Result<impl IntoResponse, HandlerError> {
     let seconds = QueryStringExtractor::borrow_from(state).seconds;
     println!("sleep for one second {} times: starting", seconds);
 
@@ -95,14 +95,8 @@ async fn loop_handler(state: &mut State) -> SimpleHandlerResult {
         accumulator.extend(body)
     }
 
-    let res = create_response(
-        &state,
-        StatusCode::OK,
-        mime::TEXT_PLAIN,
-        Body::from(accumulator),
-    );
     println!("sleep for one second {} times: finished", seconds);
-    Ok(res)
+    Ok((StatusCode::OK, mime::TEXT_PLAIN, accumulator))
 }
 
 /// Create a `Router`.
