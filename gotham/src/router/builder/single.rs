@@ -21,13 +21,13 @@ pub trait AsyncHandlerFn<'a> {
     fn call(self, arg: &'a mut State) -> Self::Fut;
 }
 
-impl<'a, D, F> AsyncHandlerFn<'a> for F
+impl<'a, Fut, F> AsyncHandlerFn<'a> for F
 where
-    F: FnOnce(&'a mut State) -> D,
-    D: std::future::Future<Output = Result<Response<Body>, HandlerError>> + Send + 'a,
+    F: FnOnce(&'a mut State) -> Fut,
+    Fut: std::future::Future<Output = Result<Response<Body>, HandlerError>> + Send + 'a,
 {
-    type Fut = D;
-    fn call(self, state: &'a mut State) -> D {
+    type Fut = Fut;
+    fn call(self, state: &'a mut State) -> Fut {
         self(state)
     }
 }
