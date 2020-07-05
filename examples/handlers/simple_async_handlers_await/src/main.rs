@@ -63,20 +63,16 @@ fn sleep(seconds: u64) -> SleepFuture {
 async fn sleep_handler(state: &mut State) -> SimpleHandlerResult {
     let seconds = QueryStringExtractor::borrow_from(state).seconds;
     println!("sleep for {} seconds once: starting", seconds);
-    // Here, we call the sleep function and turn its old-style future into
-    // a new-style future. Note that this step doesn't block: it just sets
-    // up the timer so that we can use it later.
+    // Here, we call the sleep function. Note that this step doesn't block:
+    // it just sets up the timer so that we can use it later.
     let sleep_future = sleep(seconds);
 
     // Here is where the serious sleeping happens. We yield execution of
     // this block until sleep_future is resolved.
-    // The Ok("slept for x seconds") value is stored in result.
+    // The "slept for x seconds" value is stored in data.
     let data = sleep_future.await;
 
-    // Here, we convert the result from `sleep()` into the form that Gotham
-    // expects: `state` is owned by this block so we need to return it.
-    // We also convert any errors that we have into the form that Hyper
-    // expects, using the helper from IntoHandlerError.
+    // We return a `Result<Response<Body>, HandlerError>` directly
     let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
     println!("sleep for {} seconds once: finished", seconds);
     Ok(res)
