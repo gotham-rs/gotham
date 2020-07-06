@@ -10,7 +10,7 @@ extern crate diesel_migrations;
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use futures::prelude::*;
-use gotham::handler::{HandlerError, HandlerFuture, IntoHandlerError};
+use gotham::handler::{HandlerError, HandlerFuture, MapHandlerError, MapHandlerErrorFuture};
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{body, Body, StatusCode};
 use gotham::pipeline::{new_pipeline, single::single_pipeline};
@@ -62,7 +62,7 @@ fn create_product_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
 
         let rows = match query_result {
             Ok(rows) => rows,
-            Err(e) => return Err((state, e.into_handler_error())),
+            Err(e) => return Err((state, e.into())),
         };
 
         let body =
@@ -85,7 +85,7 @@ fn get_products_handler(state: State) -> Pin<Box<HandlerFuture>> {
                 let res = create_response(&state, StatusCode::OK, mime::APPLICATION_JSON, body);
                 Ok((state, res))
             }
-            Err(e) => Err((state, e.into_handler_error())),
+            Err(e) => Err((state, e.into())),
         }
     }
     .boxed()
@@ -103,24 +103,17 @@ fn router(repo: Repo) -> Router {
     })
 }
 
-fn bad_request<E>(e: E) -> HandlerError
-where
-    E: IntoHandlerError,
-{
-    e.into_handler_error().with_status(StatusCode::BAD_REQUEST)
-}
-
 async fn extract_json<T>(state: &mut State) -> Result<T, HandlerError>
 where
     T: serde::de::DeserializeOwned,
 {
     let body = body::to_bytes(Body::take_from(state))
-        .map_err(bad_request)
+        .map_err_with_status(StatusCode::BAD_REQUEST)
         .await?;
     let b = body.to_vec();
     from_utf8(&b)
-        .map_err(bad_request)
-        .and_then(|s| serde_json::from_str::<T>(s).map_err(bad_request))
+        .map_err_with_status(StatusCode::BAD_REQUEST)
+        .and_then(|s| serde_json::from_str::<T>(s).map_err_with_status(StatusCode::BAD_REQUEST))
 }
 
 /// Start a server and use a `Router` to dispatch requests

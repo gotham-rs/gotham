@@ -1,7 +1,6 @@
 //! Defines functionality for processing a request and trapping errors and panics in response
 //! generation.
 
-use std::error::Error;
 use std::panic::catch_unwind;
 use std::panic::{AssertUnwindSafe, UnwindSafe};
 
@@ -57,11 +56,7 @@ where
 }
 
 fn finalize_error_response(state: State, err: HandlerError) -> Response<Body> {
-    error!(
-        "[ERROR][{}][Error: {}]",
-        request_id(&state),
-        err.source().unwrap_or(&err)
-    );
+    error!("[ERROR][{}][Error: {:?}]", request_id(&state), err);
 
     err.into_response(&state)
 }
@@ -84,7 +79,7 @@ mod tests {
 
     use hyper::{HeaderMap, Method, StatusCode};
 
-    use crate::handler::{HandlerFuture, IntoHandlerError};
+    use crate::handler::HandlerFuture;
     use crate::helpers::http::response::create_empty_response;
     use crate::state::set_request_id;
 
@@ -136,11 +131,8 @@ mod tests {
 
     #[test]
     fn error() {
-        let new_handler = || {
-            Ok(|state| {
-                future::err((state, io::Error::last_os_error().into_handler_error())).boxed()
-            })
-        };
+        let new_handler =
+            || Ok(|state| future::err((state, io::Error::last_os_error().into())).boxed());
 
         let mut state = State::new();
         state.put(HeaderMap::new());

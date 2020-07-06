@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use super::cookie::CookieParser;
 use super::{Middleware, NewMiddleware};
-use crate::handler::{HandlerError, HandlerFuture, IntoHandlerError};
+use crate::handler::{HandlerError, HandlerFuture};
 use crate::helpers::http::response::create_empty_response;
 use crate::state::{self, FromState, State, StateData};
 
@@ -1017,7 +1017,7 @@ where
                     format!("backend failed to return session: {:?}", e),
                 );
 
-                future::err((state, e.into_handler_error()))
+                future::err((state, e.into()))
             }
         }
     }

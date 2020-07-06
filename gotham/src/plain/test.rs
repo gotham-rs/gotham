@@ -210,7 +210,7 @@ mod tests {
     use mime;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+    use crate::handler::{Handler, HandlerFuture, NewHandler};
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
     use http::header::CONTENT_TYPE;
@@ -357,7 +357,7 @@ mod tests {
                         future::ok((state, res))
                     }
 
-                    Err(e) => future::err((state, e.into_handler_error())),
+                    Err(e) => future::err((state, e.into())),
                 })
                 .boxed()
         }

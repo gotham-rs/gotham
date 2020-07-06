@@ -4,7 +4,7 @@ use gotham::hyper::{body, Body, StatusCode};
 use std::pin::Pin;
 use url::form_urlencoded;
 
-use gotham::handler::{HandlerFuture, IntoHandlerError};
+use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
@@ -25,7 +25,7 @@ fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
             let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, res_body);
             future::ok((state, res))
         }
-        Err(e) => future::err((state, e.into_handler_error())),
+        Err(e) => future::err((state, e.into())),
     });
 
     f.boxed()

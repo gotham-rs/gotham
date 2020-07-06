@@ -22,7 +22,7 @@ use tokio::fs::File;
 use tokio::io::AsyncRead;
 
 use self::accepted_encoding::accepted_encodings;
-use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+use crate::handler::{Handler, HandlerError, HandlerFuture, NewHandler};
 use crate::router::response::extender::StaticResponseExtender;
 use crate::state::{FromState, State, StateData};
 
@@ -246,7 +246,8 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
                     io::ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
-                Err((state, err.into_handler_error().with_status(status)))
+                let err: HandlerError = err.into();
+                Err((state, err.with_status(status)))
             }
         })
         .boxed()

@@ -15,7 +15,7 @@
 //! # use gotham::pipeline::*;
 //! # use gotham::state::{FromState, State};
 //! # use gotham::helpers::http::response::create_response;
-//! # use gotham::handler::{HandlerFuture, IntoHandlerError};
+//! # use gotham::handler::HandlerFuture;
 //! # use gotham_middleware_diesel::{self, DieselMiddleware};
 //! # use diesel::{RunQueryDsl, SqliteConnection};
 //! # use gotham::hyper::StatusCode;
@@ -54,7 +54,7 @@
 //!                 let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, body);
 //!                 Ok((state, res))
 //!             },
-//!             Err(e) => Err((state, e.into_handler_error())),
+//!             Err(e) => Err((state, e.into())),
 //!         }
 //!     }.boxed()
 //! }

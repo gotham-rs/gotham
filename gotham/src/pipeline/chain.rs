@@ -7,7 +7,7 @@ use log::trace;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
-use crate::handler::{HandlerFuture, IntoHandlerError};
+use crate::handler::HandlerFuture;
 use crate::middleware::chain::NewMiddlewareChain;
 use crate::pipeline::set::PipelineSet;
 use crate::pipeline::Pipeline;
@@ -52,7 +52,7 @@ where
             Ok(p) => chain.call(pipelines, state, move |state| p.call(state, f)),
             Err(e) => {
                 trace!("[{}] error borrowing pipeline", request_id(&state));
-                future::err((state, e.into_handler_error())).boxed()
+                future::err((state, e.into())).boxed()
             }
         }
     }

@@ -294,7 +294,7 @@ mod tests {
     use futures::prelude::*;
     use hyper::{Body, Response, StatusCode};
 
-    use crate::handler::{Handler, IntoHandlerError};
+    use crate::handler::Handler;
     use crate::middleware::Middleware;
     use crate::state::StateData;
     use crate::test::TestServer;
@@ -397,7 +397,7 @@ mod tests {
 
             Ok(move |state| match pipeline.construct() {
                 Ok(p) => p.call(state, |state| handler.handle(state)),
-                Err(e) => future::err((state, e.into_handler_error())).boxed(),
+                Err(e) => future::err((state, e.into())).boxed(),
             })
         })
         .unwrap();

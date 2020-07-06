@@ -255,7 +255,7 @@ mod tests {
 
         match route.dispatch(state).now_or_never() {
             Some(Ok((_state, response))) => assert_eq!(response.status(), StatusCode::ACCEPTED),
-            Some(Err((_state, e))) => panic!("error polling future: {}", e),
+            Some(Err((_state, e))) => panic!("error polling future: {:?}", e),
             None => panic!("expected future to be completed already"),
         }
     }
@@ -287,7 +287,7 @@ mod tests {
 
         match route.dispatch(state).now_or_never() {
             Some(Ok((_state, response))) => assert_eq!(response.status(), StatusCode::ACCEPTED),
-            Some(Err((_state, e))) => panic!("error polling future: {}", e),
+            Some(Err((_state, e))) => panic!("error polling future: {:?}", e),
             None => panic!("expected future to be completed already"),
         }
     }
