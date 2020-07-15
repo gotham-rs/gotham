@@ -32,12 +32,14 @@ where
 /// This is used internally, but exposed in case the developer intends on doing any
 /// manual wiring that isn't supported by the Gotham API. It's unlikely that this will
 /// be required in most use cases; it's mainly exposed for shutdown handling.
-pub async fn init_server<NH, A>(addr: A, new_handler: NH) -> Result<(), ()>
+///
+/// Returns an error if the server failed to bind to `addr`.
+pub async fn init_server<NH, A>(addr: A, new_handler: NH) -> std::io::Result<()>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
 {
-    let listener = tcp_listener(addr).map_err(|_| ()).await?;
+    let listener = tcp_listener(addr).await?;
     let addr = listener.local_addr().unwrap();
 
     info!(
@@ -46,5 +48,7 @@ where
     addr
     );
 
-    bind_server(listener, new_handler, future::ok).await
+    bind_server(listener, new_handler, future::ok).await;
+
+    Ok(())
 }

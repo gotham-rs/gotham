@@ -96,10 +96,9 @@ pub async fn bind_server<'a, NH, F, Wrapped, Wrap>(
     mut listener: TcpListener,
     new_handler: NH,
     wrap: Wrap,
-) -> Result<(), ()>
-where
+) where
     NH: NewHandler + 'static,
-    F: Future<Output = Result<Wrapped, ()>> + Unpin + Send + 'static,
+    F: Future<Output = Result<Wrapped, ()>> + Send + 'static,
     Wrapped: Unpin + AsyncRead + AsyncWrite + Send + 'static,
     Wrap: Fn(TcpStream) -> F,
 {
@@ -139,6 +138,4 @@ where
             future::ready(())
         })
         .await;
-
-    Ok(())
 }

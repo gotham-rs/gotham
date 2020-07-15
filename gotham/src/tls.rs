@@ -40,16 +40,18 @@ pub fn start_with_num_threads<NH, A>(
 /// This is used internally, but exposed in case the developer intends on doing any
 /// manual wiring that isn't supported by the Gotham API. It's unlikely that this will
 /// be required in most use cases; it's mainly exposed for shutdown handling.
+///
+/// Returns an error if the server failed to bind to `addr`.
 pub async fn init_server<NH, A>(
     addr: A,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> Result<(), ()>
+) -> std::io::Result<()>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
 {
-    let listener = tcp_listener(addr).map_err(|_| ()).await?;
+    let listener = tcp_listener(addr).await?;
     let addr = listener.local_addr().unwrap();
 
     info!(
@@ -58,17 +60,16 @@ where
     addr
     );
 
-    bind_server_rustls(listener, new_handler, tls_config)
-        .map_err(|_| ())
-        .await
+    bind_server_rustls(listener, new_handler, tls_config).await;
+
+    Ok(())
 }
 
 async fn bind_server_rustls<NH>(
     listener: TcpListener,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> Result<(), ()>
-where
+) where
     NH: NewHandler + 'static,
 {
     let tls = TlsAcceptor::from(Arc::new(tls_config));
@@ -77,5 +78,5 @@ where
             error!(target: "gotham::tls", "TLS handshake error: {:?}", e);
         })
     })
-    .await
+    .await;
 }
