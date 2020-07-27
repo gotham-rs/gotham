@@ -13,4 +13,4 @@ tokio = { version = "0.2.6", features = ["full"] }
 mime = "0.3"
 
 [target.'cfg(unix)'.dev-dependencies]
-nix = "0.15"
+nix = "0.18"
