@@ -75,10 +75,9 @@ impl test::Server for TestServer {
         runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
     }
 
-    fn run_future<F, R>(&self, future: F) -> R
+    fn run_future<F, O>(&self, future: F) -> O
     where
-        F: Send + 'static + Future<Output = R>,
-        R: Send + 'static,
+        F: Future<Output = O>,
     {
         self.data
             .runtime

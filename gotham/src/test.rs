@@ -16,6 +16,7 @@ use mime;
 use tokio::time::Delay;
 
 pub use crate::plain::test::TestServer;
+use futures::TryFutureExt;
 pub use request::TestRequest;
 
 pub(crate) trait BodyReader {
@@ -27,10 +28,9 @@ pub(crate) trait BodyReader {
 /// An in memory server for testing purposes.
 pub trait Server: Clone {
     /// Runs a Future until it resolves.
-    fn run_future<F, R>(&self, future: F) -> R
+    fn run_future<F, O>(&self, future: F) -> O
     where
-        F: Send + 'static + Future<Output = R>,
-        R: Send + 'static;
+        F: Future<Output = O>;
 
     /// Returns a Delay that will expire when a request should.
     fn request_expiry(&self) -> Delay;
@@ -58,6 +58,7 @@ pub trait Server: Clone {
                     })
                 })
                 .into_future(),
+                .map_err(|error| error.into()),
         )
     }
 }
@@ -65,7 +66,7 @@ pub trait Server: Clone {
 impl<T: Server> BodyReader for T {
     fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>, hyper::Error> {
         let f = body::to_bytes(response.into_body()).and_then(|b| future::ok(b.to_vec()));
-        self.run_future(f)
+        self.run_future(f).map_err(|error| error.into())
     }
 }
 
