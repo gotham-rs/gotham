@@ -15,5 +15,5 @@ futures = "0.3.1"
 
 # Middlewares should reference the semantic versions of Gotham that are they compatible with
 # and not use relative references such as shown here.
-gotham = { path = "../../gotham" }
+gotham = { path = "../../gotham", default-features = false }
 gotham_derive = { path = "../../gotham_derive" }
