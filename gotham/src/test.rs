@@ -57,7 +57,7 @@ pub trait Server: Clone {
                         future::Either::Right(_) => Err(anyhow!("timed out")),
                     })
                 })
-                .into_future(),
+                .into_future()
                 .map_err(|error| error.into()),
         )
     }
