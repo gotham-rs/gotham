@@ -92,18 +92,15 @@ impl test::Server for TestServer {
         runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
     }
 
-    fn run_future<F, R, E>(&self, future: F) -> Result<R>
+    fn run_future<F, O>(&self, future: F) -> O
     where
-        F: Send + 'static + Future<Output = std::result::Result<R, E>>,
-        R: Send + 'static,
-        E: failure::Fail,
+        F: Future<Output = O>,
     {
         self.data
             .runtime
             .write()
             .expect("unable to acquire write lock")
             .block_on(future)
-            .map_err(Into::into)
     }
 }
 

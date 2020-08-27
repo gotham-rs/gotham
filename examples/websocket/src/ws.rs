@@ -1,7 +1,9 @@
 use base64;
 use futures::prelude::*;
-use gotham::hyper::header::{HeaderValue, CONNECTION, UPGRADE};
-use gotham::hyper::{upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
+use gotham::hyper::header::{
+    HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
+};
+use gotham::hyper::{self, upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
 use sha1::Sha1;
 use tokio_tungstenite::{tungstenite, WebSocketStream};
 
@@ -9,8 +11,6 @@ pub use tungstenite::protocol::{Message, Role};
 pub use tungstenite::Error;
 
 const PROTO_WEBSOCKET: &str = "websocket";
-const SEC_WEBSOCKET_KEY: &str = "Sec-WebSocket-Key";
-const SEC_WEBSOCKET_ACCEPT: &str = "Sec-WebSocket-Accept";
 
 /// Check if a WebSocket upgrade was requested.
 pub fn requested(headers: &HeaderMap) -> bool {
@@ -32,9 +32,9 @@ pub fn accept(
     (),
 > {
     let res = response(headers)?;
-    let ws = body
-        .on_upgrade()
-        .map(|upgraded| WebSocketStream::from_raw_socket(upgraded, Role::Server, None));
+    let ws = body.on_upgrade().and_then(|upgraded| {
+        WebSocketStream::from_raw_socket(upgraded, Role::Server, None).map(Ok)
+    });
 
     Ok((res, ws))
 }
@@ -57,4 +57,16 @@ fn accept_key(key: &[u8]) -> String {
     sha1.update(key);
     sha1.update(WS_GUID);
     base64::encode(&sha1.digest().bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_accept_key_from_rfc6455() {
+        // From https://tools.ietf.org/html/rfc6455#section-1.2
+        let key = accept_key("dGhlIHNhbXBsZSBub25jZQ==".as_bytes());
+        assert_eq!(key, "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
+    }
 }

@@ -18,6 +18,7 @@ We recommend reviewing our handler examples in the order shown below:
 1. [Request Data](request_data) - Accessing common request information
 1. [Stateful Handlers](stateful) - Keeping state in a handler
 1. [Simple Async Handlers](simple_async_handlers) - Async Request Handlers 101
+1. [Simple Async Handlers (.await version)](simple_async_handlers_await) - Request Handlers that use async/.await
 1. [Async Handlers](async_handlers) - More complicated async request handlers
 
 ## Help

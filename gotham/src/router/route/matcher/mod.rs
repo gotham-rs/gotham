@@ -1,13 +1,19 @@
 //! Defines the type `RouteMatcher` and default implementations.
 
 pub mod accept;
+pub mod access_control_request_method;
 pub mod and;
 pub mod any;
 pub mod content_type;
 
 pub use self::accept::AcceptHeaderRouteMatcher;
+pub use self::access_control_request_method::AccessControlRequestMethodMatcher;
 pub use self::and::AndRouteMatcher;
 pub use self::any::AnyRouteMatcher;
+pub use self::content_type::ContentTypeHeaderRouteMatcher;
+
+mod lookup_table;
+use self::lookup_table::{LookupTable, LookupTableFromTypes};
 
 use std::panic::RefUnwindSafe;
 

@@ -3,7 +3,7 @@
 //! You can find out more about Gotham, including where to get help, at <https://gotham.rs>.
 //!
 //! We look forward to welcoming you into the Gotham community!
-#![doc(html_root_url = "https://docs.rs/gotham/0.4.0")] // Update when changed in Cargo.toml
+#![doc(html_root_url = "https://docs.rs/gotham/0.5.0-rc.1")] // Update when changed in Cargo.toml
 #![warn(missing_docs, deprecated)]
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
@@ -108,24 +108,37 @@ where
 
     listener
         .incoming()
-        .map_err(|e| panic!("socket error = {:?}", e))
-        .try_for_each_concurrent(None, |socket| {
+        .filter_map(|sock| match sock {
+            Ok(sock) => future::ready(Some(sock)),
+            Err(e) => {
+                panic!("socket error = {:?}", e);
+            }
+        })
+        .for_each(|socket| {
             let addr = socket.peer_addr().unwrap();
             let service = gotham_service.connect(addr);
             let accepted_protocol = protocol.clone();
             let wrapper = wrap(socket);
 
-            async move {
-                // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
-                // will be dropped).
+            // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
+            // will be dropped).
+            let task = async move {
                 let socket = wrapper.await?;
+
                 accepted_protocol
                     .serve_connection(socket, service)
+                    .with_upgrades()
                     .map_err(|_| ())
                     .await?;
 
-                Ok(())
-            }
+                Result::<_, ()>::Ok(())
+            };
+
+            tokio::spawn(task);
+
+            future::ready(())
         })
-        .await
+        .await;
+
+    Ok(())
 }

@@ -1,20 +1,51 @@
 //! Defines the `AcceptHeaderRouterMatcher`.
 
-use hyper::header::{HeaderMap, HeaderValue, ACCEPT};
+use hyper::header::{HeaderMap, ACCEPT};
 use hyper::StatusCode;
 use log::trace;
 use mime;
+use mime::Mime;
 
+use super::{LookupTable, LookupTableFromTypes};
 use crate::error;
-use crate::router::non_match::RouteNonMatch;
 use crate::router::route::RouteMatcher;
+use crate::router::RouteNonMatch;
 use crate::state::{request_id, FromState, State};
+
+/// A mime type that is optionally weighted with a quality.
+struct QMime {
+    mime: Mime,
+    _weight: Option<f32>,
+}
+
+impl QMime {
+    fn new(mime: Mime, weight: Option<f32>) -> Self {
+        Self {
+            mime,
+            _weight: weight,
+        }
+    }
+}
+
+impl core::str::FromStr for QMime {
+    type Err = error::Error;
+
+    fn from_str(str: &str) -> error::Result<Self> {
+        match str.find(";q=") {
+            None => Ok(Self::new(str.parse()?, None)),
+            Some(index) => {
+                let mime = str[..index].parse()?;
+                let weight = str[index + 3..].parse()?;
+                Ok(Self::new(mime, Some(weight)))
+            }
+        }
+    }
+}
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with an `Accept` header that
 /// includes one or more supported media types. A missing `Accept` header, or the value of `*/*`
-/// will also positvely match.
-///
-/// Quality values within `Accept` header values are not considered by this matcher.
+/// will also positvely match. It supports the quality weighted syntax, but does not take the quality
+/// into consideration when matching.
 ///
 /// # Examples
 ///
@@ -73,15 +104,28 @@ use crate::state::{request_id, FromState, State};
 #[derive(Clone)]
 pub struct AcceptHeaderRouteMatcher {
     supported_media_types: Vec<mime::Mime>,
+    lookup_table: LookupTable,
 }
 
 impl AcceptHeaderRouteMatcher {
     /// Creates a new `AcceptHeaderRouteMatcher`
     pub fn new(supported_media_types: Vec<mime::Mime>) -> Self {
-        AcceptHeaderRouteMatcher {
+        let lookup_table = LookupTable::from_types(supported_media_types.iter(), true);
+        Self {
             supported_media_types,
+            lookup_table,
         }
     }
+}
+
+#[inline]
+fn err(state: &State) -> RouteNonMatch {
+    trace!(
+        "[{}] did not provide an Accept with media types supported by this Route",
+        request_id(&state)
+    );
+
+    RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
 }
 
 impl RouteMatcher for AcceptHeaderRouteMatcher {
@@ -92,31 +136,126 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// Quality values within `Accept` header values are not considered by the matcher, as the
     /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
-        // Request method is valid, ensure valid Accept header
-        match HeaderMap::borrow_from(state).get(ACCEPT) {
-            // The client has not specified an `Accept` header.
-            None => Ok(()),
+        HeaderMap::borrow_from(state)
+            .get(ACCEPT)
+            .map(|header| {
+                // parse mime types from the accept header
+                let acceptable = header
+                    .to_str()
+                    .map_err(|_| err(state))?
+                    .split(',')
+                    .map(|str| str.trim().parse())
+                    .collect::<Result<Vec<QMime>, _>>()
+                    .map_err(|_| err(state))?;
 
-            // Or the header is any type, so it's fine.
-            Some(header) if header == "*/*" => Ok(()),
+                for qmime in acceptable {
+                    // get mime type candidates from the lookup table
+                    let essence = qmime.mime.essence_str();
+                    let candidates = match self.lookup_table.get(essence) {
+                        Some(candidates) => candidates,
+                        None => continue,
+                    };
+                    for i in candidates {
+                        let candidate = &self.supported_media_types[*i];
 
-            // Otherwise we have to validate the header is a match.
-            Some(mime_header) => parse_mime_type(mime_header)
-                .map_err(|_| RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
-                .and_then(|mime_type| {
-                    if self.supported_media_types.contains(&mime_type) {
+                        // check that the candidates have the same suffix - this is not included in the
+                        // essence string
+                        if candidate.suffix() != qmime.mime.suffix() && qmime.mime.subtype() != "*"
+                        {
+                            continue;
+                        }
+
+                        // this candidate matches - params don't play a role in accept header matching
                         return Ok(());
                     }
-                    trace!(
-                        "[{}] did not provide an Accept with media types supported by this Route",
-                        request_id(&state)
-                    );
-                    Err(RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE))
-                }),
-        }
+                }
+
+                // no candidates found
+                Err(err(state))
+            })
+            .unwrap_or_else(|| {
+                // no accept header - assume all types are acceptable
+                Ok(())
+            })
     }
 }
 
-fn parse_mime_type(hv: &HeaderValue) -> error::Result<mime::Mime> {
-    Ok(hv.to_str()?.parse()?)
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn with_state<F>(accept: Option<&str>, block: F)
+    where
+        F: FnOnce(&mut State) -> (),
+    {
+        State::with_new(|state| {
+            let mut headers = HeaderMap::new();
+            if let Some(acc) = accept {
+                headers.insert(ACCEPT, acc.parse().unwrap());
+            }
+            state.put(headers);
+            block(state);
+        });
+    }
+
+    #[test]
+    fn no_accept_header() {
+        let matcher = AcceptHeaderRouteMatcher::new(vec![mime::TEXT_PLAIN]);
+        with_state(None, |state| assert!(matcher.is_match(&state).is_ok()));
+    }
+
+    #[test]
+    fn single_mime_type() {
+        let matcher = AcceptHeaderRouteMatcher::new(vec![mime::TEXT_PLAIN, mime::IMAGE_PNG]);
+        with_state(Some("text/plain"), |state| {
+            assert!(matcher.is_match(&state).is_ok())
+        });
+        with_state(Some("text/html"), |state| {
+            assert!(matcher.is_match(&state).is_err())
+        });
+        with_state(Some("image/png"), |state| {
+            assert!(matcher.is_match(&state).is_ok())
+        });
+        with_state(Some("image/webp"), |state| {
+            assert!(matcher.is_match(&state).is_err())
+        });
+    }
+
+    #[test]
+    fn star_star() {
+        let matcher = AcceptHeaderRouteMatcher::new(vec![mime::IMAGE_PNG]);
+        with_state(Some("*/*"), |state| {
+            assert!(matcher.is_match(&state).is_ok())
+        });
+    }
+
+    #[test]
+    fn image_star() {
+        let matcher = AcceptHeaderRouteMatcher::new(vec![mime::IMAGE_PNG]);
+        with_state(Some("image/*"), |state| {
+            assert!(matcher.is_match(&state).is_ok())
+        });
+    }
+
+    #[test]
+    fn suffix_matched_by_wildcard() {
+        let matcher = AcceptHeaderRouteMatcher::new(vec!["application/rss+xml".parse().unwrap()]);
+        with_state(Some("*/*"), |state| {
+            assert!(matcher.is_match(&state).is_ok())
+        });
+        with_state(Some("application/*"), |state| {
+            assert!(matcher.is_match(&state).is_ok())
+        });
+    }
+
+    #[test]
+    fn complex_header() {
+        let matcher = AcceptHeaderRouteMatcher::new(vec![mime::IMAGE_PNG]);
+        with_state(Some("text/html,image/webp;q=0.8"), |state| {
+            assert!(matcher.is_match(&state).is_err())
+        });
+        with_state(Some("text/html,image/webp;q=0.8,*/*;q=0.1"), |state| {
+            assert!(matcher.is_match(&state).is_ok())
+        });
+    }
 }
