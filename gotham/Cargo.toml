@@ -34,7 +34,7 @@ mio = "0.7"
 borrow-bag = { path = "../misc/borrow_bag", version = "1.0" }
 percent-encoding = "2.1"
 pin-project = "0.4.20"
-uuid = { version = "0.7", features = ["v4"] }
+uuid = { version = "0.8", features = ["v4"] }
 chrono = "0.4"
 base64 = "0.12"
 rand = "0.6"
