@@ -1,5 +1,4 @@
 //! Defines a cookie parsing middleware to be attach cookies on requests.
-use std::io;
 use std::pin::Pin;
 
 use cookie::{Cookie, CookieJar};
@@ -52,7 +51,7 @@ impl NewMiddleware for CookieParser {
     type Instance = Self;
 
     /// Clones the current middleware to a new instance.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         Ok(*self)
     }
 }

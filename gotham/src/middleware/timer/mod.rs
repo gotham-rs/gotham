@@ -7,8 +7,6 @@ use crate::state::State;
 use futures::prelude::*;
 use std::pin::Pin;
 
-use std::io;
-
 /// Middleware binding to attach request execution times inside headers.
 ///
 /// This can be used to easily measure request time from outside the
@@ -46,7 +44,7 @@ impl NewMiddleware for RequestTimer {
     type Instance = Self;
 
     /// Clones the current middleware to a new instance.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         Ok(self.clone())
     }
 }

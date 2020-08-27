@@ -4,8 +4,10 @@
 //! `Handler`, but the traits can also be implemented directly for greater control. See the
 //! `Handler` trait for some examples of valid handlers.
 use std::borrow::Cow;
+use std::ops::Deref;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use bytes::Bytes;
 use futures::prelude::*;
@@ -16,12 +18,11 @@ use crate::helpers::http::response;
 use crate::state::State;
 
 mod error;
-use crate::error::*;
 
 /// Defines handlers for serving static assets.
 pub mod assets;
 
-pub use self::error::{HandlerError, IntoHandlerError};
+pub use self::error::{HandlerError, MapHandlerError, MapHandlerErrorFuture};
 
 /// A type alias for the results returned by async fns that can be passed to to_async.
 pub type HandlerResult = std::result::Result<(State, Response<Body>), (State, HandlerError)>;
@@ -133,7 +134,7 @@ pub type HandlerFuture = dyn Future<Output = HandlerResult> + Send;
 /// #
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
-/// # use gotham::error::*;
+/// # use gotham::anyhow;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -142,7 +143,7 @@ pub type HandlerFuture = dyn Future<Output = HandlerResult> + Send;
 /// impl NewHandler for MyCustomHandler {
 ///     type Instance = Self;
 ///
-///     fn new_handler(&self) -> Result<Self::Instance> {
+///     fn new_handler(&self) -> anyhow::Result<Self::Instance> {
 ///         Ok(*self)
 ///     }
 /// }
@@ -191,7 +192,7 @@ where
 /// #
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
-/// # use gotham::error::*;
+/// # use gotham::anyhow;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -200,7 +201,7 @@ where
 /// impl NewHandler for MyCustomHandler {
 ///     type Instance = Self;
 ///
-///     fn new_handler(&self) -> Result<Self::Instance> {
+///     fn new_handler(&self) -> anyhow::Result<Self::Instance> {
 ///         Ok(*self)
 ///     }
 /// }
@@ -227,7 +228,7 @@ where
 /// #
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
-/// # use gotham::error::*;
+/// # use gotham::anyhow;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -236,7 +237,7 @@ where
 /// impl NewHandler for MyValueInstantiatingHandler {
 ///     type Instance = MyHandler;
 ///
-///     fn new_handler(&self) -> Result<Self::Instance> {
+///     fn new_handler(&self) -> anyhow::Result<Self::Instance> {
 ///         Ok(MyHandler)
 ///     }
 /// }
@@ -259,18 +260,29 @@ pub trait NewHandler: Send + Sync + RefUnwindSafe {
     type Instance: Handler + Send;
 
     /// Create and return a new `Handler` value.
-    fn new_handler(&self) -> Result<Self::Instance>;
+    fn new_handler(&self) -> anyhow::Result<Self::Instance>;
 }
 
 impl<F, H> NewHandler for F
 where
-    F: Fn() -> Result<H> + Send + Sync + RefUnwindSafe,
+    F: Fn() -> anyhow::Result<H> + Send + Sync + RefUnwindSafe,
     H: Handler + Send,
 {
     type Instance = H;
 
-    fn new_handler(&self) -> Result<H> {
+    fn new_handler(&self) -> anyhow::Result<H> {
         self()
+    }
+}
+
+impl<H> NewHandler for Arc<H>
+where
+    H: NewHandler,
+{
+    type Instance = H::Instance;
+
+    fn new_handler(&self) -> anyhow::Result<Self::Instance> {
+        self.deref().new_handler()
     }
 }
 

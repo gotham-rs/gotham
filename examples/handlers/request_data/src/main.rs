@@ -3,7 +3,7 @@ use futures::prelude::*;
 use gotham::hyper::{body, Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
 use std::pin::Pin;
 
-use gotham::handler::{HandlerFuture, IntoHandlerError};
+use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_empty_response;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
@@ -31,7 +31,7 @@ fn post_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
             let res = create_empty_response(&state, StatusCode::OK);
             future::ok((state, res))
         }
-        Err(e) => future::err((state, e.into_handler_error())),
+        Err(e) => future::err((state, e.into())),
     });
 
     f.boxed()

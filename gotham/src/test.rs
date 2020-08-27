@@ -5,9 +5,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-use failure::format_err;
-use failure::ResultExt;
-
+use anyhow::anyhow;
 use futures::prelude::*;
 use hyper::client::connect::Connect;
 use hyper::client::Client;
@@ -17,8 +15,6 @@ use log::warn;
 use mime;
 use tokio::time::Delay;
 
-use crate::error::*;
-
 pub use crate::plain::test::TestServer;
 use futures::TryFutureExt;
 pub use request::TestRequest;
@@ -26,7 +22,7 @@ pub use request::TestRequest;
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
     /// response holds a buffer containing all bytes of the response body.
-    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>>;
+    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>, hyper::Error>;
 }
 
 /// An in memory server for testing purposes.
@@ -43,11 +39,11 @@ pub trait Server: Clone {
     ///
     /// If the future came from a different instance of `Server`, the event loop will run until
     /// the timeout is triggered.
-    fn run_request<F>(&self, f: F) -> Result<F::Ok>
+    fn run_request<F>(&self, f: F) -> anyhow::Result<F::Ok>
     where
         F: TryFuture + Unpin + Send + 'static,
-        F::Error: failure::Fail + Sized,
         F::Ok: Send,
+        F::Error: Into<anyhow::Error> + Send,
     {
         self.run_future(
             // Race the timeout against the request future
@@ -58,18 +54,17 @@ pub trait Server: Clone {
                 .and_then(|might_expire| {
                     future::ready(match might_expire {
                         future::Either::Left((item, _)) => Ok(item),
-                        future::Either::Right(_) => Err(failure::err_msg("timed out")),
+                        future::Either::Right(_) => Err(anyhow!("timed out")),
                     })
                 })
                 .into_future()
-                // Finally, make the fail error compatible
                 .map_err(|error| error.into()),
         )
     }
 }
 
 impl<T: Server> BodyReader for T {
-    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>> {
+    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>, hyper::Error> {
         let f = body::to_bytes(response.into_body()).and_then(|b| future::ok(b.to_vec()));
         self.run_future(f).map_err(|error| error.into())
     }
@@ -183,10 +178,10 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform(&self, req: TestRequest<TS, C>) -> Result<TestResponse> {
+    pub fn perform(&self, req: TestRequest<TS, C>) -> anyhow::Result<TestResponse> {
         let req_future = self.client.request(req.request()).map_err(|e| {
             warn!("Error from test client request {:?}", e);
-            format_err!("request failed: {:?}", e).compat()
+            e
         });
 
         self.test_server
@@ -263,14 +258,14 @@ impl fmt::Debug for TestResponse {
 impl TestResponse {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
-    pub fn read_body(mut self) -> Result<Vec<u8>> {
+    pub fn read_body(mut self) -> Result<Vec<u8>, hyper::Error> {
         self.reader.read_body(self.response)
     }
 
     /// Awaits the UTF-8 encoded body of the underlying `Response`, and returns the `String`. This
     /// will cause the event loop to execute until the `Response` body has been fully read and the
     /// `String` created.
-    pub fn read_utf8_body(self) -> Result<String> {
+    pub fn read_utf8_body(self) -> anyhow::Result<String> {
         let buf = self.read_body()?;
         let s = String::from_utf8(buf)?;
         Ok(s)

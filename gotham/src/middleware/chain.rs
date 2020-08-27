@@ -2,7 +2,6 @@
 
 use log::trace;
 
-use std::io;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
@@ -19,7 +18,7 @@ pub unsafe trait NewMiddlewareChain: RefUnwindSafe + Sized {
     type Instance: MiddlewareChain;
 
     /// Create and return a new `MiddlewareChain` value.
-    fn construct(&self) -> io::Result<Self::Instance>;
+    fn construct(&self) -> anyhow::Result<Self::Instance>;
 }
 
 unsafe impl<T, U> NewMiddlewareChain for (T, U)
@@ -30,7 +29,7 @@ where
 {
     type Instance = (T::Instance, U::Instance);
 
-    fn construct(&self) -> io::Result<Self::Instance> {
+    fn construct(&self) -> anyhow::Result<Self::Instance> {
         // This works as a recursive `map` over the "list" of `NewMiddleware`, and is used in
         // creating the `Middleware` instances for serving a single request.
         //
@@ -44,7 +43,7 @@ where
 unsafe impl NewMiddlewareChain for () {
     type Instance = ();
 
-    fn construct(&self) -> io::Result<Self::Instance> {
+    fn construct(&self) -> anyhow::Result<Self::Instance> {
         // () marks the end of the list, so is returned as-is.
         trace!(" completed middleware pipeline construction");
         Ok(())

@@ -9,7 +9,6 @@ use futures::prelude::*;
 use hyper::{header::CONTENT_LENGTH, Method, Uri, Version};
 use log::Level;
 use log::{log, log_enabled};
-use std::io;
 use std::pin::Pin;
 
 use crate::handler::HandlerFuture;
@@ -42,7 +41,7 @@ impl NewMiddleware for RequestLogger {
     type Instance = Self;
 
     /// Returns a new middleware to be used to serve a request.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         Ok(*self)
     }
 }
@@ -132,7 +131,7 @@ impl NewMiddleware for SimpleLogger {
     type Instance = Self;
 
     /// Returns a new middleware to be used to serve a request.
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         Ok(*self)
     }
 }

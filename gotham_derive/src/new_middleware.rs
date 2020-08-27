@@ -12,7 +12,7 @@ pub(crate) fn new_middleware(ast: &syn::DeriveInput) -> proc_macro::TokenStream 
         {
             type Instance = Self;
 
-            fn new_middleware(&self) -> ::std::io::Result<Self> {
+            fn new_middleware(&self) -> ::gotham::anyhow::Result<Self> {
                 // Calling it this way makes the error look like this:
                 //
                 // | #[derive(NewMiddleware)]

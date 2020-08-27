@@ -13,11 +13,11 @@ extern crate log;
 //#[macro_use]
 //extern crate gotham_derive;
 
-use std::io;
 use std::pin::Pin;
 
 use futures::prelude::*;
 
+use gotham::anyhow;
 use gotham::handler::HandlerFuture;
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::state::{request_id, State};
@@ -38,7 +38,7 @@ pub struct MyMiddleware {}
 impl NewMiddleware for MyMiddleware {
     type Instance = MyMiddleware;
 
-    fn new_middleware(&self) -> io::Result<Self::Instance> {
+    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
         Ok(MyMiddleware {})
     }
 }

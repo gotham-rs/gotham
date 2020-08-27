@@ -7,7 +7,6 @@ use mime;
 use mime::Mime;
 
 use super::{LookupTable, LookupTableFromTypes};
-use crate::error;
 use crate::router::route::RouteMatcher;
 use crate::router::RouteNonMatch;
 use crate::state::{request_id, FromState, State};
@@ -28,9 +27,9 @@ impl QMime {
 }
 
 impl core::str::FromStr for QMime {
-    type Err = error::Error;
+    type Err = anyhow::Error;
 
-    fn from_str(str: &str) -> error::Result<Self> {
+    fn from_str(str: &str) -> anyhow::Result<Self> {
         match str.find(";q=") {
             None => Ok(Self::new(str.parse()?, None)),
             Some(index) => {

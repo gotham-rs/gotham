@@ -1,6 +1,6 @@
 //! An example of decoding multipart form requests
 use futures::prelude::*;
-use gotham::handler::{HandlerFuture, IntoHandlerError};
+use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::header::CONTENT_TYPE;
 use gotham::hyper::{body, Body, HeaderMap, StatusCode};
@@ -63,7 +63,7 @@ fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
                     }
                 }
             }
-            Err(e) => future::err((state, e.into_handler_error())),
+            Err(e) => future::err((state, e.into())),
         })
         .boxed()
 }

@@ -1,6 +1,5 @@
 pub(super) mod memory;
 
-use std::io;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
@@ -14,7 +13,7 @@ pub trait NewBackend: Sync + Clone + RefUnwindSafe {
     type Instance: Backend + Send + 'static;
 
     /// Create and return a new `Backend` value.
-    fn new_backend(&self) -> io::Result<Self::Instance>;
+    fn new_backend(&self) -> anyhow::Result<Self::Instance>;
 }
 
 /// Type alias for the trait objects returned by `Backend`.

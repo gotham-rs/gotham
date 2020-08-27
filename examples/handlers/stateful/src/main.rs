@@ -7,7 +7,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
-use gotham::error::Result;
+use gotham::anyhow::Result;
 use gotham::handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use gotham::router::builder::*;
 use gotham::router::Router;

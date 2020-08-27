@@ -1,7 +1,7 @@
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, PoisonError, Weak};
+use std::thread;
 use std::time::{Duration, Instant};
-use std::{io, thread};
 
 use futures::prelude::*;
 use linked_hash_map::LinkedHashMap;
@@ -72,7 +72,7 @@ impl Default for MemoryBackend {
 impl NewBackend for MemoryBackend {
     type Instance = MemoryBackend;
 
-    fn new_backend(&self) -> io::Result<Self::Instance> {
+    fn new_backend(&self) -> anyhow::Result<Self::Instance> {
         Ok(self.clone())
     }
 }

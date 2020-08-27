@@ -950,7 +950,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::io;
     use std::pin::Pin;
 
     use futures::prelude::*;
@@ -971,7 +970,7 @@ mod tests {
     impl NewMiddleware for QuickExitMiddleware {
         type Instance = Self;
 
-        fn new_middleware(&self) -> io::Result<Self> {
+        fn new_middleware(&self) -> anyhow::Result<Self> {
             Ok(*self)
         }
     }

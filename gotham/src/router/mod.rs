@@ -17,7 +17,6 @@ use hyper::header::ALLOW;
 use hyper::{Body, Response, StatusCode};
 use log::{error, trace};
 
-use crate::error::*;
 use crate::handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use crate::helpers::http::request::path::RequestPathSegments;
 use crate::helpers::http::response::create_empty_response;
@@ -62,7 +61,7 @@ impl NewHandler for Router {
     type Instance = Router;
 
     // Creates a new Router instance to route new HTTP requests
-    fn new_handler(&self) -> Result<Self::Instance> {
+    fn new_handler(&self) -> anyhow::Result<Self::Instance> {
         trace!(" cloning instance");
         Ok(self.clone())
     }

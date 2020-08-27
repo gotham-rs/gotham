@@ -6,7 +6,6 @@
 
 mod accepted_encoding;
 
-use crate::error::Result;
 use bytes::{BufMut, Bytes, BytesMut};
 use futures::prelude::*;
 use futures::ready;
@@ -23,7 +22,7 @@ use tokio::fs::File;
 use tokio::io::AsyncRead;
 
 use self::accepted_encoding::accepted_encodings;
-use crate::handler::{Handler, HandlerFuture, IntoHandlerError, NewHandler};
+use crate::handler::{Handler, HandlerError, HandlerFuture, NewHandler};
 use crate::router::response::extender::StaticResponseExtender;
 use crate::state::{FromState, State, StateData};
 
@@ -165,7 +164,7 @@ impl DirHandler {
 impl NewHandler for FileHandler {
     type Instance = Self;
 
-    fn new_handler(&self) -> Result<Self::Instance> {
+    fn new_handler(&self) -> anyhow::Result<Self::Instance> {
         Ok(self.clone())
     }
 }
@@ -173,7 +172,7 @@ impl NewHandler for FileHandler {
 impl NewHandler for DirHandler {
     type Instance = Self;
 
-    fn new_handler(&self) -> Result<Self::Instance> {
+    fn new_handler(&self) -> anyhow::Result<Self::Instance> {
         Ok(self.clone())
     }
 }
@@ -247,7 +246,8 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
                     io::ErrorKind::PermissionDenied => StatusCode::FORBIDDEN,
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
-                Err((state, err.into_handler_error().with_status(status)))
+                let err: HandlerError = err.into();
+                Err((state, err.with_status(status)))
             }
         })
         .boxed()

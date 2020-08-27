@@ -11,7 +11,7 @@ use gotham::hyper::StatusCode;
 #[cfg(not(test))]
 use gotham::hyper::{body, Client, Uri};
 
-use gotham::handler::{HandlerFuture, IntoHandlerError};
+use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
@@ -108,7 +108,7 @@ fn series_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
                 println!("series length: {} finished", length);
                 future::ok((state, res))
             }
-            Err(err) => future::err((state, err.into_handler_error())),
+            Err(err) => future::err((state, err.into())),
         })
         .boxed()
 }
@@ -162,7 +162,7 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
                 println!("loop length: {} finished", length);
                 future::ok((state, res))
             }
-            Err(err) => future::err((state, err.into_handler_error())),
+            Err(err) => future::err((state, err.into())),
         })
         .boxed()
 }
@@ -230,7 +230,7 @@ fn parallel_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
                 println!("parallel length: {} finished", length);
                 future::ok((state, res))
             }
-            Err(err) => future::err((state, err.into_handler_error())),
+            Err(err) => future::err((state, err.into())),
         })
         .boxed()
 }
