@@ -1,12 +1,11 @@
 //! A Hello World example application for working with Gotham.
-use std::io::BufReader;
-use tokio_rustls::rustls::{
+use gotham::rustls::{
     self,
     internal::pemfile::{certs, pkcs8_private_keys},
     NoClientAuth,
 };
-
 use gotham::state::State;
+use std::io::BufReader;
 
 const HELLO_WORLD: &str = "Hello World!";
 
