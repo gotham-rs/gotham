@@ -7,6 +7,4 @@ edition = "2018"
 
 [dependencies]
 gotham = { path = "../../gotham" }
-tokio-rustls = "0.14"
 mime = "0.3"
-

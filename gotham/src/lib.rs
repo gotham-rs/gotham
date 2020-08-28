@@ -50,6 +50,10 @@ pub use anyhow;
 /// Re-export hyper
 pub use hyper;
 
+/// Re-export rustls
+#[cfg(feature = "rustls")]
+pub use tokio_rustls::rustls;
+
 use futures::prelude::*;
 use hyper::server::conn::Http;
 use std::net::ToSocketAddrs;
