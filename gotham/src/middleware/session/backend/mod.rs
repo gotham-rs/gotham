@@ -41,5 +41,5 @@ pub trait Backend: Send {
     fn read_session(&self, state: &State, identifier: SessionIdentifier) -> Pin<Box<SessionFuture>>;
 
     /// Drops a session from the underlying storage.
-    fn drop_session(&self, identifier: SessionIdentifier) -> Result<(), SessionError>;
+    fn drop_session(&self, state: &State, identifier: SessionIdentifier) -> Result<(), SessionError>;
 }

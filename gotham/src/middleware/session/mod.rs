@@ -293,7 +293,7 @@ where
         state.put(SessionDropData {
             cookie_config: self.cookie_config,
         });
-        self.backend.drop_session(self.identifier)
+        self.backend.drop_session(&state, self.identifier)
     }
 
     // Create a new, blank `SessionData<T>`

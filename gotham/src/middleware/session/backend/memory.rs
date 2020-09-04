@@ -111,7 +111,7 @@ impl Backend for MemoryBackend {
         }
     }
 
-    fn drop_session(&self, identifier: SessionIdentifier) -> Result<(), SessionError> {
+    fn drop_session(&self, _: &State, identifier: SessionIdentifier) -> Result<(), SessionError> {
         match self.storage.lock() {
             Ok(mut storage) => {
                 storage.remove(&identifier.value);
