@@ -822,7 +822,7 @@ where
                 );
 
                 self.backend
-                    .read_session(id.clone())
+                    .read_session(&state, id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
                     .and_then(move |state| chain(state))
                     .and_then(persist_session::<T>)
@@ -959,7 +959,7 @@ where
 
     let result = session_data
         .backend
-        .persist_session(identifier.clone(), slice);
+        .persist_session(&state, identifier.clone(), slice);
 
     match result {
         Ok(_) => {

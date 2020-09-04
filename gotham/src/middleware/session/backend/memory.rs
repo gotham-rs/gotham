@@ -7,6 +7,7 @@ use futures::prelude::*;
 use linked_hash_map::LinkedHashMap;
 use log::trace;
 
+use crate::state::State;
 use crate::middleware::session::backend::{Backend, NewBackend, SessionFuture};
 use crate::middleware::session::{SessionError, SessionIdentifier};
 
@@ -80,6 +81,7 @@ impl NewBackend for MemoryBackend {
 impl Backend for MemoryBackend {
     fn persist_session(
         &self,
+        _: &State,
         identifier: SessionIdentifier,
         content: &[u8],
     ) -> Result<(), SessionError> {
@@ -94,7 +96,7 @@ impl Backend for MemoryBackend {
         }
     }
 
-    fn read_session(&self, identifier: SessionIdentifier) -> Pin<Box<SessionFuture>> {
+    fn read_session(&self, _: &State, identifier: SessionIdentifier) -> Pin<Box<SessionFuture>> {
         match self.storage.lock() {
             Ok(mut storage) => match storage.get_refresh(&identifier.value) {
                 Some(&mut (ref mut instant, ref value)) => {
