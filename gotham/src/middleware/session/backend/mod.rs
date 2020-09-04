@@ -38,8 +38,13 @@ pub trait Backend: Send {
     /// The returned future will resolve to an `Option<Vec<u8>>` on success, where a value of
     /// `None` indicates that the session is not available for use and a new session should be
     /// established.
-    fn read_session(&self, state: &State, identifier: SessionIdentifier) -> Pin<Box<SessionFuture>>;
+    fn read_session(&self, state: &State, identifier: SessionIdentifier)
+        -> Pin<Box<SessionFuture>>;
 
     /// Drops a session from the underlying storage.
-    fn drop_session(&self, state: &State, identifier: SessionIdentifier) -> Result<(), SessionError>;
+    fn drop_session(
+        &self,
+        state: &State,
+        identifier: SessionIdentifier,
+    ) -> Result<(), SessionError>;
 }

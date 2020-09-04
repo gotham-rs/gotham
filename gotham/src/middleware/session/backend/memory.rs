@@ -7,9 +7,9 @@ use futures::prelude::*;
 use linked_hash_map::LinkedHashMap;
 use log::trace;
 
-use crate::state::State;
 use crate::middleware::session::backend::{Backend, NewBackend, SessionFuture};
 use crate::middleware::session::{SessionError, SessionIdentifier};
+use crate::state::State;
 
 /// Type alias for the `MemoryBackend` storage container.
 type MemoryMap = Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>;
@@ -225,6 +225,7 @@ mod tests {
     fn memory_backend_test() {
         let new_backend = MemoryBackend::new(Duration::from_millis(100));
         let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
+        let state = State::new();
         let identifier = SessionIdentifier {
             value: "totally_random_identifier".to_owned(),
         };
@@ -232,14 +233,14 @@ mod tests {
         new_backend
             .new_backend()
             .expect("can't create backend for write")
-            .persist_session(identifier.clone(), &bytes[..])
+            .persist_session(&state, identifier.clone(), &bytes[..])
             .expect("failed to persist");
 
         let received = futures::executor::block_on(
             new_backend
                 .new_backend()
                 .expect("can't create backend for read")
-                .read_session(identifier.clone()),
+                .read_session(&state, identifier.clone()),
         )
         .expect("no response from backend")
         .expect("session data missing");
@@ -251,6 +252,7 @@ mod tests {
     fn memory_backend_refresh_test() {
         let new_backend = MemoryBackend::new(Duration::from_millis(100));
         let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
+        let state = State::new();
         let identifier = SessionIdentifier {
             value: "totally_random_identifier".to_owned(),
         };
@@ -264,11 +266,11 @@ mod tests {
             .expect("can't create backend for write");
 
         backend
-            .persist_session(identifier.clone(), &bytes[..])
+            .persist_session(&state, identifier.clone(), &bytes[..])
             .expect("failed to persist");
 
         backend
-            .persist_session(identifier2.clone(), &bytes2[..])
+            .persist_session(&state, identifier2.clone(), &bytes2[..])
             .expect("failed to persist");
 
         {
@@ -284,7 +286,7 @@ mod tests {
             );
         }
 
-        futures::executor::block_on(backend.read_session(identifier.clone()))
+        futures::executor::block_on(backend.read_session(&state, identifier.clone()))
             .expect("failed to read session");
 
         {

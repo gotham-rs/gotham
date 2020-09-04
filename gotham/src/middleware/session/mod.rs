@@ -231,12 +231,14 @@ impl SessionCookieConfig {
 /// # fn main() {
 /// #   let backend = MemoryBackend::new(Duration::from_secs(1));
 /// #   let identifier = SessionIdentifier { value: "u0G6KdfckQgkV0qLANZjjNkEHBU".to_owned() };
-/// #   let session = MySessionType {
-/// #       items: vec!["a".into(), "b".into(), "c".into()],
-/// #   };
 /// #
-/// #   let bytes = bincode::serialize(&session).unwrap();
-/// #   backend.persist_session(identifier.clone(), &bytes[..]).unwrap();
+/// #   State::with_new(|state| {
+/// #       let session = MySessionType {
+/// #           items: vec!["a".into(), "b".into(), "c".into()],
+/// #       };
+/// #       let bytes = bincode::serialize(&session).unwrap();
+/// #       backend.persist_session(&state, identifier.clone(), &bytes[..]).unwrap();
+/// #   });
 /// #
 /// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
 /// #   let nm = Arc::new(nm);
@@ -1162,6 +1164,7 @@ mod tests {
     fn existing_session() {
         let nm = NewSessionMiddleware::default().with_session_type::<TestSession>();
         let m = nm.new_middleware().unwrap();
+        let mut state = State::new();
 
         let identifier = m.random_identifier();
         // 64 -> 512 bits = (85 * 6 + 2)
@@ -1174,7 +1177,7 @@ mod tests {
         let bytes = bincode::serialize(&session).unwrap();
 
         m.backend
-            .persist_session(identifier.clone(), &bytes)
+            .persist_session(&state, identifier.clone(), &bytes)
             .unwrap();
 
         let received: Arc<Mutex<Option<u64>>> = Arc::new(Mutex::new(None));
@@ -1197,7 +1200,6 @@ mod tests {
             .boxed()
         };
 
-        let mut state = State::new();
         let mut headers = HeaderMap::new();
         let cookie = Cookie::build("_gotham_session", identifier.value.clone()).finish();
         headers.insert(COOKIE, cookie.to_string().parse().unwrap());
@@ -1216,8 +1218,9 @@ mod tests {
             Err((_, e)) => panic!("error: {:?}", e),
         }
 
+        let state = State::new();
         let m = nm.new_middleware().unwrap();
-        let bytes = futures::executor::block_on(m.backend.read_session(identifier))
+        let bytes = futures::executor::block_on(m.backend.read_session(&state, identifier))
             .unwrap()
             .unwrap();
         let updated = bincode::deserialize::<TestSession>(&bytes[..]).unwrap();
