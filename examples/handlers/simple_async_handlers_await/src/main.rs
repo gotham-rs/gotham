@@ -4,9 +4,10 @@ use futures::prelude::*;
 use std::pin::Pin;
 use std::time::{Duration, Instant};
 
-use gotham::hyper::StatusCode;
+use gotham::hyper::{Body, StatusCode};
 
-use gotham::handler::{HandlerError, IntoResponse};
+use gotham::handler::{HandlerError, HandlerResult, IntoResponse};
+use gotham::helpers::http::response::create_response;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
@@ -82,8 +83,8 @@ async fn sleep_handler(state: &mut State) -> Result<impl IntoResponse, HandlerEr
 ///
 /// Notice how much easier it is to read than the version in
 /// `simple_async_handlers`.
-async fn loop_handler(state: &mut State) -> Result<impl IntoResponse, HandlerError> {
-    let seconds = QueryStringExtractor::borrow_from(state).seconds;
+async fn loop_handler(mut state: State) -> HandlerResult {
+    let seconds = QueryStringExtractor::take_from(&mut state).seconds;
     println!("sleep for one second {} times: starting", seconds);
 
     // The code within this block reads exactly like syncronous code.
@@ -95,8 +96,14 @@ async fn loop_handler(state: &mut State) -> Result<impl IntoResponse, HandlerErr
         accumulator.extend(body)
     }
 
+    let res = create_response(
+        &state,
+        StatusCode::OK,
+        mime::TEXT_PLAIN,
+        Body::from(accumulator),
+    );
     println!("sleep for one second {} times: finished", seconds);
-    Ok((StatusCode::OK, mime::TEXT_PLAIN, accumulator))
+    Ok((state, res))
 }
 
 /// Create a `Router`.
@@ -109,7 +116,7 @@ fn router() -> Router {
         route
             .get("/loop")
             .with_query_string_extractor::<QueryStringExtractor>()
-            .to_async_borrowing(loop_handler);
+            .to_async(loop_handler);
     })
 }
 
