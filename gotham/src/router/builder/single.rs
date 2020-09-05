@@ -1,10 +1,13 @@
 use hyper::Body;
 
 use std::panic::RefUnwindSafe;
+use std::pin::Pin;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
 use crate::handler::assets::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
-use crate::handler::{Handler, HandlerResult, NewHandler};
+use crate::handler::{
+    Handler, HandlerError, HandlerFuture, HandlerResult, IntoResponse, NewHandler,
+};
 use crate::pipeline::chain::PipelineHandleChain;
 use crate::router::builder::{
     ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
@@ -15,6 +18,50 @@ use crate::router::route::{Delegation, Extractors, RouteImpl};
 use crate::state::State;
 use core::future::Future;
 use futures::FutureExt;
+
+pub trait HandlerMarker {
+    fn call_and_wrap(self, state: State) -> Pin<Box<HandlerFuture>>;
+}
+
+pub trait AsyncHandlerFn<'a> {
+    type Res: IntoResponse + 'static;
+    type Fut: std::future::Future<Output = Result<Self::Res, HandlerError>> + Send + 'a;
+    fn call(self, arg: &'a mut State) -> Self::Fut;
+}
+
+impl<'a, Fut, R, F> AsyncHandlerFn<'a> for F
+where
+    F: FnOnce(&'a mut State) -> Fut,
+    R: IntoResponse + 'static,
+    Fut: std::future::Future<Output = Result<R, HandlerError>> + Send + 'a,
+{
+    type Res = R;
+    type Fut = Fut;
+    fn call(self, state: &'a mut State) -> Fut {
+        self(state)
+    }
+}
+
+impl<F, R> HandlerMarker for F
+where
+    R: IntoResponse + 'static,
+    for<'a> F: AsyncHandlerFn<'a, Res = R> + Send + 'static,
+{
+    fn call_and_wrap(self, mut state: State) -> Pin<Box<HandlerFuture>> {
+        async move {
+            let fut = self.call(&mut state);
+            let result = fut.await;
+            match result {
+                Ok(data) => {
+                    let response = data.into_response(&state);
+                    Ok((state, response))
+                }
+                Err(err) => Err((state, err)),
+            }
+        }
+        .boxed()
+    }
+}
 
 /// Describes the API for defining a single route, after determining which request paths will be
 /// dispatched here. The API here uses chained function calls to build and add the route into the
@@ -157,6 +204,62 @@ pub trait DefineSingleRoute {
         Self: Sized,
         H: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
         Fut: Future<Output = HandlerResult> + Send + 'static;
+
+    /// Directs the route to the given `async fn`, passing `State` to it by mutable reference.
+    ///
+    /// Note that, as of Rust 1.46.0, this does not work for closures due to
+    /// [rust-lang/rust#70263](https://github.com/rust-lang/rust/issues/70263).
+    ///
+    /// On the other hand, one can easily use the `?` operator for error handling
+    /// in these async functions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate gotham;
+    /// # extern crate hyper;
+    /// #
+    /// # use hyper::StatusCode;
+    /// # use gotham::handler::{HandlerError, IntoResponse, MapHandlerError};
+    /// # use gotham::state::State;
+    /// # use gotham::router::Router;
+    /// # use gotham::router::builder::*;
+    /// # use gotham::pipeline::new_pipeline;
+    /// # use gotham::pipeline::single::*;
+    /// # use gotham::middleware::session::NewSessionMiddleware;
+    /// # use gotham::test::TestServer;
+    /// #
+    /// async fn my_handler(_state: &mut State) -> Result<impl IntoResponse, HandlerError> {
+    ///     let flavors = std::fs::read("coffee-flavors.txt")
+    ///         .map_err_with_status(StatusCode::IM_A_TEAPOT)?;
+    ///     Ok(flavors)
+    /// }
+    /// #
+    /// # fn router() -> Router {
+    /// #   let (chain, pipelines) = single_pipeline(
+    /// #       new_pipeline().add(NewSessionMiddleware::default()).build()
+    /// #   );
+    ///
+    /// build_router(chain, pipelines, |route| {
+    ///     route.get("/request/path").to_async_borrowing(my_handler);
+    /// })
+    /// #
+    /// # }
+    /// #
+    /// # fn main() {
+    /// #   let test_server = TestServer::new(router()).unwrap();
+    /// #   let response = test_server.client()
+    /// #       .get("https://example.com/request/path")
+    /// #       .perform()
+    /// #       .unwrap();
+    /// #   assert_eq!(response.status(), StatusCode::IM_A_TEAPOT);
+    /// # }
+    /// ```
+    fn to_async_borrowing<F>(self, handler: F)
+    where
+        Self: Sized,
+        F: HandlerMarker + Copy + Send + Sync + RefUnwindSafe + 'static;
+
     /// Directs the route to the given `NewHandler`. This gives more control over how `Handler`
     /// values are constructed.
     ///
@@ -529,6 +632,14 @@ where
         Fut: Future<Output = HandlerResult> + Send + 'static,
     {
         self.to_new_handler(move || Ok(move |s: State| handler(s).boxed()))
+    }
+
+    fn to_async_borrowing<F>(self, handler: F)
+    where
+        Self: Sized,
+        F: HandlerMarker + Copy + Send + Sync + RefUnwindSafe + 'static,
+    {
+        self.to_new_handler(move || Ok(move |state: State| handler.call_and_wrap(state)))
     }
 
     fn to_new_handler<NH>(self, new_handler: NH)

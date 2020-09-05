@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use gotham::hyper::{Body, StatusCode};
 
-use gotham::handler::HandlerResult;
+use gotham::handler::{HandlerError, HandlerResult, IntoResponse};
 use gotham::helpers::http::response::create_response;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
@@ -60,26 +60,23 @@ fn sleep(seconds: u64) -> SleepFuture {
 
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
 /// helper method, above.
-async fn sleep_handler(mut state: State) -> HandlerResult {
-    let seconds = QueryStringExtractor::take_from(&mut state).seconds;
+async fn sleep_handler(state: &mut State) -> Result<impl IntoResponse, HandlerError> {
+    let seconds = QueryStringExtractor::borrow_from(state).seconds;
     println!("sleep for {} seconds once: starting", seconds);
-    // Here, we call the sleep function and turn its old-style future into
-    // a new-style future. Note that this step doesn't block: it just sets
-    // up the timer so that we can use it later.
+    // Here, we call the sleep function. Note that this step doesn't block:
+    // it just sets up the timer so that we can use it later.
     let sleep_future = sleep(seconds);
 
     // Here is where the serious sleeping happens. We yield execution of
     // this block until sleep_future is resolved.
-    // The Ok("slept for x seconds") value is stored in result.
+    // The "slept for x seconds" value is stored in data.
     let data = sleep_future.await;
 
-    // Here, we convert the result from `sleep()` into the form that Gotham
-    // expects: `state` is owned by this block so we need to return it.
-    // We also convert any errors that we have into the form that Hyper
-    // expects, using the helper from IntoHandlerError.
-    let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+    // We return a `Result<impl IntoResponse, HandlerError>` directly
+    // where the success type can be anything implementing `IntoResponse`
+    // (including a `Response<Body>`)
     println!("sleep for {} seconds once: finished", seconds);
-    Ok((state, res))
+    Ok((StatusCode::OK, mime::TEXT_PLAIN, data))
 }
 
 /// It calls sleep(1) as many times as needed to make the requested duration.
@@ -115,7 +112,7 @@ fn router() -> Router {
         route
             .get("/sleep")
             .with_query_string_extractor::<QueryStringExtractor>()
-            .to_async(sleep_handler);
+            .to_async_borrowing(sleep_handler);
         route
             .get("/loop")
             .with_query_string_extractor::<QueryStringExtractor>()
