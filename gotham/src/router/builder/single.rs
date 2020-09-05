@@ -205,7 +205,13 @@ pub trait DefineSingleRoute {
         H: (FnOnce(State) -> Fut) + RefUnwindSafe + Copy + Send + Sync + 'static,
         Fut: Future<Output = HandlerResult> + Send + 'static;
 
-    /// Similar to `to_async`, but passes in State as a reference
+    /// Directs the route to the given `async fn`, passing `State` to it by mutable reference.
+    ///
+    /// Note that, as of Rust 1.46.0, this does not work for closures due to
+    /// [rust-lang/rust#70263](https://github.com/rust-lang/rust/issues/70263).
+    ///
+    /// On the other hand, one can easily use the `?` operator for error handling
+    /// in these async functions.
     ///
     /// # Examples
     ///
@@ -213,8 +219,8 @@ pub trait DefineSingleRoute {
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Body, Response, StatusCode};
-    /// # use gotham::handler::{HandlerError, IntoResponse};
+    /// # use hyper::StatusCode;
+    /// # use gotham::handler::{HandlerError, IntoResponse, MapHandlerError};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -223,10 +229,10 @@ pub trait DefineSingleRoute {
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
-    /// async fn my_handler(state: &mut State) -> Result<impl IntoResponse, HandlerError> {
-    ///     // Handler implementation elided.
-    /// #   let _ = state;
-    /// #   Ok(Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// async fn my_handler(_state: &mut State) -> Result<impl IntoResponse, HandlerError> {
+    ///     let flavors = std::fs::read("coffee-flavors.txt")
+    ///         .map_err_with_status(StatusCode::IM_A_TEAPOT)?;
+    ///     Ok(flavors)
     /// }
     /// #
     /// # fn router() -> Router {
@@ -246,7 +252,7 @@ pub trait DefineSingleRoute {
     /// #       .get("https://example.com/request/path")
     /// #       .perform()
     /// #       .unwrap();
-    /// #   assert_eq!(response.status(), StatusCode::ACCEPTED);
+    /// #   assert_eq!(response.status(), StatusCode::IM_A_TEAPOT);
     /// # }
     /// ```
     fn to_async_borrowing<F>(self, handler: F)
