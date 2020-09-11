@@ -81,6 +81,22 @@ impl HandlerError {
             ..self
         }
     }
+
+    /// Attempt to downcast the cause by reference.
+    pub fn downcast_cause_ref<E>(&self) -> Option<&E>
+    where
+        E: Display + Debug + Send + Sync + 'static,
+    {
+        self.cause.downcast_ref()
+    }
+
+    /// Attempt to downcast the cause by mutable reference.
+    pub fn downcast_cause_mut<E>(&mut self) -> Option<&mut E>
+    where
+        E: Display + Debug + Send + Sync + 'static,
+    {
+        self.cause.downcast_mut()
+    }
 }
 
 impl IntoResponse for HandlerError {
@@ -239,5 +255,29 @@ where
 {
     fn map_err_with_status(self, status_code: StatusCode) -> MapErrWithStatus<Self> {
         MapErrWithStatus::new(self, status_code)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::io;
+    use thiserror::Error;
+
+    #[derive(Debug, Error)]
+    #[error("Dummy Error")]
+    struct DummyError;
+
+    fn error_prone() -> Result<(), HandlerError> {
+        Err(DummyError.into())
+    }
+
+    #[test]
+    fn test_error_downcast() {
+        let mut err = error_prone().unwrap_err();
+        assert!(err.downcast_cause_ref::<DummyError>().is_some());
+        assert!(err.downcast_cause_mut::<DummyError>().is_some());
+        assert!(err.downcast_cause_ref::<io::Error>().is_none());
+        assert!(err.downcast_cause_mut::<io::Error>().is_none());
     }
 }

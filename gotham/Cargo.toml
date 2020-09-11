@@ -52,6 +52,7 @@ tokio-rustls = { version = "0.14.0", optional = true }
 
 [dev-dependencies]
 gotham_derive = { path = "../gotham_derive" }
+thiserror = "1.0"
 
 [badges]
 travis-ci = { repository = "gotham-rs/gotham", branch = "master" }
