@@ -32,9 +32,10 @@ pub fn accept(
     (),
 > {
     let res = response(headers)?;
-    let ws = body.on_upgrade().and_then(|upgraded| {
-        WebSocketStream::from_raw_socket(upgraded, Role::Server, None).map(Ok)
-    });
+    let ws = async move {
+        let upgraded = body.on_upgrade().await?;
+        Ok(WebSocketStream::from_raw_socket(upgraded, Role::Server, None).await)
+    };
 
     Ok((res, ws))
 }
