@@ -24,11 +24,16 @@ fn handler(mut state: State) -> (State, Response<Body>) {
         };
 
         let req_id = request_id(&state).to_owned();
-        let ws = ws
-            .map_err(|err| eprintln!("websocket init error: {}", err))
-            .and_then(move |ws| connected(req_id, ws));
 
-        tokio::spawn(ws);
+        tokio::spawn(async move {
+            match ws.await {
+                Ok(ws) => connected(req_id, ws).await,
+                Err(err) => {
+                    eprintln!("websocket init error: {}", err);
+                    Err(())
+                }
+            }
+        });
 
         (state, response)
     } else {
