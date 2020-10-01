@@ -37,7 +37,7 @@ percent-encoding = "2.1"
 pin-project = "0.4.20"
 uuid = { version = "0.8", features = ["v4"] }
 chrono = "0.4"
-base64 = "0.12"
+base64 = "0.13"
 rand = "0.6"
 rand_chacha = "0.1"
 linked-hash-map = "0.5"
