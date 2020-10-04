@@ -7,13 +7,7 @@ use tera::{Context, Tera};
 
 lazy_static! {
     pub static ref TERA: Tera = {
-        let tera = match Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/TEMPLATES/**/*")) {
-            Ok(t) => t,
-            Err(e) => {
-                println!("Parsing error(s): {}", e);
-                ::std::process::exit(1);
-            }
-        };
+        let tera = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/TEMPLATES/**/*")).expect("Parsing error(s)");
         tera
     };
 }
