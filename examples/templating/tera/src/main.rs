@@ -6,10 +6,7 @@ use gotham::state::State;
 use tera::{Context, Tera};
 
 lazy_static! {
-    pub static ref TERA: Tera = {
-        let tera = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/TEMPLATES/**/*")).expect("Parsing error(s)");
-        tera
-    };
+    pub static ref TERA: Tera = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/TEMPLATES/**/*")).expect("Parsing error(s)");
 }
 /// Create a `Handler` which calls the Tera static reference, renders
 /// a template with a given Context, and returns the result as a String
