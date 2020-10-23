@@ -22,10 +22,7 @@ use gotham::state::{FromState, State};
 ///        deriving it. The Gotham router uses this property during Request path evaluation to
 ///        create and instance of your struct, populate it and store it into state ready for
 ///        access by application code.
-///     2. That the struct implements `gotham::state::data::StateData` so that it can be stored,
-///        retrieved and removed from state. You generally get this for free by deriving
-///        `StateData` as shown here.
-///     3. That the struct implements the
+///     2. That the struct implements the
 ///        `gotham::router::response::extender::StaticResponseExtender` trait so that bad request
 ///        path data can be appropriately refused by the Router. You generally get this for free by
 ///        deriving `StaticResponseExtender` as shown here which results in bad requests being
@@ -33,7 +30,7 @@ use gotham::state::{FromState, State};
 ///
 /// Naming of fields in extraction structs is important, the same names must appear in the path,
 /// proceeded by a colon to indicate a variable, when defining routes.
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize, StaticResponseExtender)]
 struct PathExtractor {
     name: String,
 }

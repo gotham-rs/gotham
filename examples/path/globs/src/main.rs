@@ -8,19 +8,19 @@ use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize, StaticResponseExtender)]
 struct PathExtractor {
     // This will be a Vec containing each path segment as a separate String, with no '/'s.
     #[serde(rename = "*")]
     parts: Vec<String>,
 }
 
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize, StaticResponseExtender)]
 struct NamedPathExtractor {
     parts: Vec<String>,
 }
 
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize, StaticResponseExtender)]
 struct MultiGlobExtractor {
     top: Vec<String>,
     bottom: Vec<String>,

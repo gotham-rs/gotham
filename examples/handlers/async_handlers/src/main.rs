@@ -21,7 +21,7 @@ use gotham::state::{FromState, State};
 type ResponseContentFuture =
     Pin<Box<dyn Future<Output = Result<Vec<u8>, gotham::hyper::Error>> + Send>>;
 
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize, StaticResponseExtender)]
 struct QueryStringExtractor {
     length: i8,
 }

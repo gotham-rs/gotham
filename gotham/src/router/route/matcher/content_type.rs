@@ -1,6 +1,6 @@
 //! Defines the `ContentTypeHeaderRouteMatcher`.
 
-use hyper::header::{HeaderMap, CONTENT_TYPE};
+use hyper::header::{HeaderMap, HeaderValue, CONTENT_TYPE};
 use hyper::StatusCode;
 use log::trace;
 use mime;
@@ -98,7 +98,7 @@ impl RouteMatcher for ContentTypeHeaderRouteMatcher {
     /// Determines if the `Request` was made using a `Content-Type` header that includes a
     /// supported media type.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
-        HeaderMap::borrow_from(state)
+        HeaderMap::<HeaderValue>::borrow_from(state)
             .get(CONTENT_TYPE)
             .map(|ty| {
                 // parse mime type from the content type header

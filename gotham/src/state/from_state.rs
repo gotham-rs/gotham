@@ -1,23 +1,22 @@
-use crate::state::{State, StateData};
+use crate::state::State;
+use std::any::Any;
 
 /// A trait for accessing data that is stored in `State`.
 ///
 /// This provides the easier `T::try_borrow_from(&state)` API (for example), as an alternative to
 /// `state.try_borrow::<T>()`.
-pub trait FromState: StateData + Sized {
+pub trait FromState: Any + Send + Sized {
     /// Tries to borrow a value from the `State` storage.
     ///
     /// # Examples
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::{FromState, State};
     /// #
     /// # fn main() {
-    /// #[derive(StateData, Eq, PartialEq, Debug)]
+    /// #[derive(Eq, PartialEq, Debug)]
     /// struct MyStruct {
     ///     val: &'static str,
     /// }
@@ -44,13 +43,11 @@ pub trait FromState: StateData + Sized {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::{FromState, State};
     /// #
     /// # fn main() {
-    /// #[derive(StateData, Eq, PartialEq, Debug)]
+    /// #[derive(Eq, PartialEq, Debug)]
     /// struct MyStruct {
     ///     val: &'static str,
     /// }
@@ -71,13 +68,11 @@ pub trait FromState: StateData + Sized {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::{FromState, State};
     /// #
     /// # fn main() {
-    /// #[derive(StateData, Eq, PartialEq, Debug)]
+    /// #[derive(Eq, PartialEq, Debug)]
     /// struct MyStruct {
     ///     val: &'static str,
     /// }
@@ -106,13 +101,11 @@ pub trait FromState: StateData + Sized {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::{FromState, State};
     /// #
     /// # fn main() {
-    /// #[derive(StateData, Eq, PartialEq, Debug)]
+    /// #[derive(Eq, PartialEq, Debug)]
     /// struct MyStruct {
     ///     val: &'static str,
     /// }
@@ -136,13 +129,11 @@ pub trait FromState: StateData + Sized {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::{FromState, State};
     /// #
     /// # fn main() {
-    /// #[derive(StateData, Eq, PartialEq, Debug)]
+    /// #[derive(Eq, PartialEq, Debug)]
     /// struct MyStruct {
     ///     val: &'static str,
     /// }
@@ -169,13 +160,11 @@ pub trait FromState: StateData + Sized {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::{FromState, State};
     /// #
     /// # fn main() {
-    /// #[derive(StateData, Eq, PartialEq, Debug)]
+    /// #[derive(Eq, PartialEq, Debug)]
     /// struct MyStruct {
     ///     val: &'static str,
     /// }
@@ -193,7 +182,7 @@ pub trait FromState: StateData + Sized {
 
 impl<T> FromState for T
 where
-    T: StateData,
+    T: Any + Send,
 {
     fn try_borrow_from(state: &State) -> Option<&Self> {
         state.try_borrow()

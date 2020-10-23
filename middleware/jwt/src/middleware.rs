@@ -1,7 +1,7 @@
 use crate::state_data::AuthorizationToken;
 use futures::prelude::*;
 use gotham::hyper::{
-    header::{HeaderMap, AUTHORIZATION},
+    header::{HeaderMap, HeaderValue, AUTHORIZATION},
     StatusCode,
 };
 use gotham::{
@@ -133,7 +133,7 @@ where
     {
         trace!("[{}] pre-chain jwt middleware", request_id(&state));
 
-        let token = match HeaderMap::borrow_from(&state).get(AUTHORIZATION) {
+        let token = match HeaderMap::<HeaderValue>::borrow_from(&state).get(AUTHORIZATION) {
             Some(h) => match h.to_str() {
                 Ok(hx) => hx.get((self.scheme.len() + 1)..),
                 _ => None,

@@ -1,6 +1,7 @@
 //! A basic example showing the request components
 use futures::prelude::*;
-use gotham::hyper::{body, Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
+use gotham::hyper::header::{HeaderMap, HeaderValue};
+use gotham::hyper::{body, Body, Method, Response, StatusCode, Uri, Version};
 use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
@@ -14,7 +15,7 @@ fn print_request_elements(state: &State) {
     let method = Method::borrow_from(state);
     let uri = Uri::borrow_from(state);
     let http_version = Version::borrow_from(state);
-    let headers = HeaderMap::borrow_from(state);
+    let headers = HeaderMap::<HeaderValue>::borrow_from(state);
     println!("Method: {:?}", method);
     println!("URI: {:?}", uri);
     println!("HTTP Version: {:?}", http_version);

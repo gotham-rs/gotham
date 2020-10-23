@@ -1,7 +1,6 @@
 //! Defines types for passing request state through `Middleware` and `Handler` implementations
 
 pub(crate) mod client_addr;
-mod data;
 mod from_state;
 pub mod request_id;
 
@@ -11,7 +10,6 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
 pub use crate::state::client_addr::client_addr;
-pub use crate::state::data::StateData;
 pub use crate::state::from_state::FromState;
 pub use crate::state::request_id::request_id;
 
@@ -25,12 +23,9 @@ pub(crate) use crate::state::request_id::set_request_id;
 ///
 /// ```rust
 /// extern crate gotham;
-/// #[macro_use]
-/// extern crate gotham_derive;
 ///
 /// use gotham::state::State;
 ///
-/// #[derive(StateData)]
 /// struct MyStruct {
 ///   value: i32
 /// }
@@ -76,17 +71,13 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::State;
     /// #
-    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// #     value: &'static str
     /// # }
@@ -108,7 +99,7 @@ impl State {
     /// ```
     pub fn put<T>(&mut self, t: T)
     where
-        T: StateData,
+        T: Any + Send,
     {
         let type_id = TypeId::of::<T>();
         trace!(" inserting record to state for type_id `{:?}`", type_id);
@@ -121,17 +112,13 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::State;
     /// #
-    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// # }
     /// #
@@ -149,7 +136,7 @@ impl State {
     /// ```
     pub fn has<T>(&self) -> bool
     where
-        T: StateData,
+        T: Any + Send,
     {
         let type_id = TypeId::of::<T>();
         self.data.get(&type_id).is_some()
@@ -161,17 +148,13 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::State;
     /// #
-    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// # }
     /// #
@@ -189,7 +172,7 @@ impl State {
     /// ```
     pub fn try_borrow<T>(&self) -> Option<&T>
     where
-        T: StateData,
+        T: Any + Send,
     {
         let type_id = TypeId::of::<T>();
         trace!(" borrowing state data for type_id `{:?}`", type_id);
@@ -206,12 +189,9 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::State;
     /// #
-    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
@@ -227,7 +207,7 @@ impl State {
     /// ```
     pub fn borrow<T>(&self) -> &T
     where
-        T: StateData,
+        T: Any + Send,
     {
         self.try_borrow()
             .expect("required type is not present in State container")
@@ -239,17 +219,13 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::State;
     /// #
-    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// # }
     /// #
@@ -269,7 +245,7 @@ impl State {
     /// # }
     pub fn try_borrow_mut<T>(&mut self) -> Option<&mut T>
     where
-        T: StateData,
+        T: Any + Send,
     {
         let type_id = TypeId::of::<T>();
         trace!(" mutably borrowing state data for type_id `{:?}`", type_id);
@@ -288,17 +264,13 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::State;
     /// #
-    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// # }
     /// #
@@ -320,7 +292,7 @@ impl State {
     /// # }
     pub fn borrow_mut<T>(&mut self) -> &mut T
     where
-        T: StateData,
+        T: Any + Send,
     {
         self.try_borrow_mut()
             .expect("required type is not present in State container")
@@ -332,17 +304,13 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::State;
     /// #
-    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
     /// #
-    /// # #[derive(StateData)]
     /// # struct AnotherStruct {
     /// # }
     /// #
@@ -363,7 +331,7 @@ impl State {
     /// # }
     pub fn try_take<T>(&mut self) -> Option<T>
     where
-        T: StateData,
+        T: Any + Send,
     {
         let type_id = TypeId::of::<T>();
         trace!(
@@ -386,12 +354,9 @@ impl State {
     ///
     /// ```rust
     /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
     /// #
     /// # use gotham::state::State;
     /// #
-    /// # #[derive(StateData)]
     /// # struct MyStruct {
     /// #     value: i32
     /// # }
@@ -411,7 +376,7 @@ impl State {
     /// # }
     pub fn take<T>(&mut self) -> T
     where
-        T: StateData,
+        T: Any + Send,
     {
         self.try_take()
             .expect("required type is not present in State container")

@@ -7,7 +7,7 @@ use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_empty_response;
-use gotham::hyper::header::{HeaderMap, USER_AGENT};
+use gotham::hyper::header::{HeaderMap, HeaderValue, USER_AGENT};
 use gotham::hyper::{Body, Response, StatusCode};
 use gotham::middleware::Middleware;
 use gotham::pipeline::new_pipeline;
@@ -19,7 +19,6 @@ use gotham::state::{FromState, State};
 /// A simple struct which holds an identifier for the user agent which made the request.
 ///
 /// It is created by our Middleware and then accessed via `state` by both our Middleware and Handler.
-#[derive(StateData)]
 pub struct ExampleMiddlewareData {
     pub user_agent: String,
     pub supported: bool,
@@ -50,7 +49,7 @@ impl Middleware for ExampleMiddleware {
     where
         Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
-        let user_agent = match HeaderMap::borrow_from(&state).get(USER_AGENT) {
+        let user_agent = match HeaderMap::<HeaderValue>::borrow_from(&state).get(USER_AGENT) {
             Some(ua) => ua.to_str().unwrap().to_string(),
             None => "None".to_string(),
         };

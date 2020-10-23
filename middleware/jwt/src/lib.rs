@@ -8,8 +8,6 @@
 //! `401: Unauthorized`.
 #![warn(missing_docs, deprecated)]
 #[macro_use]
-extern crate gotham_derive;
-#[macro_use]
 extern crate log;
 #[cfg(test)]
 #[macro_use]

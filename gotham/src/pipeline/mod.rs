@@ -40,7 +40,6 @@ use crate::state::{request_id, State};
 /// # use gotham::test::TestServer;
 /// # use hyper::{Body, Response, StatusCode};
 /// #
-/// #[derive(StateData)]
 /// struct MiddlewareData {
 ///     vec: Vec<i32>
 /// }
@@ -296,7 +295,6 @@ mod tests {
 
     use crate::handler::Handler;
     use crate::middleware::Middleware;
-    use crate::state::StateData;
     use crate::test::TestServer;
 
     fn handler(state: State) -> (State, Response<Body>) {
@@ -333,8 +331,6 @@ mod tests {
             chain(state)
         }
     }
-
-    impl StateData for Number {}
 
     struct Addition {
         value: i32,

@@ -341,14 +341,12 @@ mod tests {
     use crate::pipeline::new_pipeline;
     use crate::router::response::extender::StaticResponseExtender;
     use crate::service::GothamService;
-    use crate::state::{State, StateData};
+    use crate::state::State;
 
     #[derive(Deserialize)]
     struct SalutationParams {
         name: String,
     }
-
-    impl StateData for SalutationParams {}
 
     impl StaticResponseExtender for SalutationParams {
         type ResBody = Body;
@@ -360,8 +358,6 @@ mod tests {
         x: u64,
         y: u64,
     }
-
-    impl StateData for AddParams {}
 
     impl StaticResponseExtender for AddParams {
         type ResBody = Body;

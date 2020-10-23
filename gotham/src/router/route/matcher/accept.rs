@@ -1,6 +1,6 @@
 //! Defines the `AcceptHeaderRouterMatcher`.
 
-use hyper::header::{HeaderMap, ACCEPT};
+use hyper::header::{HeaderMap, HeaderValue, ACCEPT};
 use hyper::StatusCode;
 use log::trace;
 use mime;
@@ -135,7 +135,7 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// Quality values within `Accept` header values are not considered by the matcher, as the
     /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
-        HeaderMap::borrow_from(state)
+        HeaderMap::<HeaderValue>::borrow_from(state)
             .get(ACCEPT)
             .map(|header| {
                 // parse mime types from the accept header

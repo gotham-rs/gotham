@@ -6,7 +6,8 @@
 //! value to attach to the request state.
 use crate::handler::HandlerFuture;
 use crate::middleware::{Middleware, NewMiddleware};
-use crate::state::{State, StateData};
+use crate::state::State;
+use std::any::Any;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
@@ -21,7 +22,7 @@ use std::pin::Pin;
 #[derive(Clone)]
 pub struct StateMiddleware<T>
 where
-    T: Clone + RefUnwindSafe + StateData + Sync,
+    T: Clone + RefUnwindSafe + Any + Send + Sync,
 {
     t: T,
 }
@@ -29,7 +30,7 @@ where
 /// Main implementation.
 impl<T> StateMiddleware<T>
 where
-    T: Clone + RefUnwindSafe + StateData + Sync,
+    T: Clone + RefUnwindSafe + Any + Send + Sync,
 {
     /// Creates a new middleware binding, taking ownership of the state data.
     pub fn new(t: T) -> Self {
@@ -40,7 +41,7 @@ where
 /// `Middleware` trait implementation.
 impl<T> Middleware for StateMiddleware<T>
 where
-    T: Clone + RefUnwindSafe + StateData + Sync,
+    T: Clone + RefUnwindSafe + Any + Send + Sync,
 {
     /// Attaches the inner generic value to the request state.
     ///
@@ -57,7 +58,7 @@ where
 /// `NewMiddleware` trait implementation.
 impl<T> NewMiddleware for StateMiddleware<T>
 where
-    T: Clone + RefUnwindSafe + StateData + Sync,
+    T: Clone + RefUnwindSafe + Any + Send + Sync,
 {
     type Instance = Self;
 

@@ -1,8 +1,9 @@
 use hyper::{body::HttpBody, Body, Response};
 use serde::{Deserialize, Deserializer};
+use std::any::Any;
 
 use crate::router::response::extender::StaticResponseExtender;
-use crate::state::{State, StateData};
+use crate::state::State;
 
 /// Defines a binding for storing the query parameters from the `Request` URI in `State`. On
 /// failure the `StaticResponseExtender` implementation extends the `Response` to indicate why the
@@ -35,7 +36,7 @@ use crate::state::{State, StateData};
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
 /// #
-/// #[derive(Deserialize, StateData, StaticResponseExtender)]
+/// #[derive(Deserialize, StaticResponseExtender)]
 /// struct MyQueryParams {
 ///     x: i32,
 ///     y: MyEnum,
@@ -84,7 +85,7 @@ use crate::state::{State, StateData};
 /// #   assert_eq!(body, "x = 15, y = B");
 /// # }
 pub trait QueryStringExtractor<B>:
-    for<'de> Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData
+    for<'de> Deserialize<'de> + StaticResponseExtender<ResBody = B> + Any + Send
 where
     B: HttpBody,
 {
@@ -93,7 +94,7 @@ where
 impl<T, B> QueryStringExtractor<B> for T
 where
     B: HttpBody,
-    for<'de> T: Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData,
+    for<'de> T: Deserialize<'de> + StaticResponseExtender<ResBody = B> + Any + Send,
 {
 }
 
@@ -116,8 +117,6 @@ impl<'de> Deserialize<'de> for NoopQueryStringExtractor {
         Ok(NoopQueryStringExtractor)
     }
 }
-
-impl StateData for NoopQueryStringExtractor {}
 
 impl StaticResponseExtender for NoopQueryStringExtractor {
     type ResBody = Body;

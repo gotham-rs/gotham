@@ -16,7 +16,7 @@ extern crate gotham_derive;
 extern crate serde_derive;
 
 use futures::prelude::*;
-use gotham::hyper::header::{HeaderMap, ACCEPT};
+use gotham::hyper::header::{HeaderMap, HeaderValue, ACCEPT};
 use gotham::hyper::{Body, Response, StatusCode};
 use std::pin::Pin;
 
@@ -54,7 +54,7 @@ impl Middleware for ApiMiddleware {
     where
         Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + 'static,
     {
-        let accepts = HeaderMap::borrow_from(&state)
+        let accepts = HeaderMap::<HeaderValue>::borrow_from(&state)
             .get(ACCEPT)
             .map(|ct| ct.to_str().unwrap().to_string());
 
