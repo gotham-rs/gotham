@@ -7,7 +7,7 @@ use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_empty_response;
-use gotham::hyper::header::{HeaderMap, HeaderValue, USER_AGENT};
+use gotham::hyper::header::{HeaderMap, USER_AGENT};
 use gotham::hyper::{Body, Response, StatusCode};
 use gotham::middleware::Middleware;
 use gotham::pipeline::new_pipeline;
@@ -49,7 +49,8 @@ impl Middleware for ExampleMiddleware {
     where
         Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
-        let user_agent = match HeaderMap::<HeaderValue>::borrow_from(&state).get(USER_AGENT) {
+        let header_map: HeaderMap = state.take();
+        let user_agent = match header_map.get(USER_AGENT) {
             Some(ua) => ua.to_str().unwrap().to_string(),
             None => "None".to_string(),
         };

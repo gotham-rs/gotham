@@ -2,10 +2,10 @@
 
 use crate::{
     router::{non_match::RouteNonMatch, route::matcher::RouteMatcher},
-    state::{FromState, State},
+    state::State,
 };
 use hyper::{
-    header::{HeaderMap, HeaderValue, ACCESS_CONTROL_REQUEST_METHOD},
+    header::{HeaderMap, ACCESS_CONTROL_REQUEST_METHOD},
     Method, StatusCode,
 };
 
@@ -51,7 +51,8 @@ impl RouteMatcher for AccessControlRequestMethodMatcher {
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
         // according to the fetch specification, methods should be normalized by byte-uppercase
         // https://fetch.spec.whatwg.org/#concept-method
-        match HeaderMap::<HeaderValue>::borrow_from(state)
+        let header_map: &HeaderMap = state.borrow();
+        match header_map
             .get(ACCESS_CONTROL_REQUEST_METHOD)
             .and_then(|value| value.to_str().ok())
             .and_then(|str| str.to_ascii_uppercase().parse::<Method>().ok())

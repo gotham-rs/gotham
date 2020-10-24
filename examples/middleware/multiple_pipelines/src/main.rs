@@ -16,7 +16,7 @@ extern crate gotham_derive;
 extern crate serde_derive;
 
 use futures::prelude::*;
-use gotham::hyper::header::{HeaderMap, HeaderValue, ACCEPT};
+use gotham::hyper::header::{HeaderMap, ACCEPT};
 use gotham::hyper::{Body, Response, StatusCode};
 use std::pin::Pin;
 
@@ -29,7 +29,7 @@ use gotham::pipeline::set::{finalize_pipeline_set, new_pipeline_set};
 use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
-use gotham::state::{FromState, State};
+use gotham::state::State;
 
 /// A simple struct to represent our default session data.
 #[derive(Default, Serialize, Deserialize)]
@@ -50,11 +50,12 @@ pub struct ApiMiddleware;
 /// Our example API middleware will reject any requests that
 /// don't accept JSON as the response content type.
 impl Middleware for ApiMiddleware {
-    fn call<Chain>(self, state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
+    fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where
         Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + 'static,
     {
-        let accepts = HeaderMap::<HeaderValue>::borrow_from(&state)
+        let header_map: HeaderMap = state.take();
+        let accepts = header_map
             .get(ACCEPT)
             .map(|ct| ct.to_str().unwrap().to_string());
 
