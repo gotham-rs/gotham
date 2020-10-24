@@ -9,7 +9,7 @@ use gotham::{
     handler::HandlerFuture,
     helpers::http::response::create_empty_response,
     middleware::{Middleware, NewMiddleware},
-    state::{request_id, State},
+    state::{request_id, FromState, State},
 };
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::de::Deserialize;
