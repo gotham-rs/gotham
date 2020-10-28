@@ -17,10 +17,10 @@ gotham = { path = "../../gotham", version = "0.5.0", default-features = false }
 gotham_derive = { path = "../../gotham_derive", version = "0.5.0" }
 diesel = { version = "1.4", features = ["r2d2"] }
 r2d2 = "0.8"
-tokio = { version = "0.2.6", features = ["full"] }
+tokio = { version = "0.3.2", features = ["full"] }
 log = "0.4"
 
 [dev-dependencies]
 diesel = { version = "1", features = ["sqlite"] }
 mime = "0.3.15"
-tokio = { version = "0.2.6", features = ["full"] }
+tokio = { version = "0.3.2", features = ["full"] }
