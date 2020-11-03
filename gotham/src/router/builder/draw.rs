@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
@@ -17,6 +18,39 @@ use crate::router::route::matcher::{
 use crate::router::tree::node::Node;
 use crate::router::tree::regex::ConstrainedSegmentRegex;
 use crate::router::tree::segment::SegmentType;
+
+/// This trait allows types that derive `PathTemplate` to supply a template uri string to the router.
+///
+/// Example:
+///
+/// ```rust
+/// # #[macro_use] extern crate gotham_derive;
+/// # #[allow(dead_code)] mod example {
+/// # use hyper::{Body, Response, StatusCode};
+/// # use gotham::{helpers::http::response::create_empty_response, router::{builder::*, Router}, state::State};
+/// # fn handler(state: State) -> (State, Response<Body>) {
+/// #     let res = create_empty_response(&state, StatusCode::NO_CONTENT);
+/// #     (state, res)
+/// # }
+/// #[derive(PathTemplate, StateData, StaticResponseExtender)]
+/// #[path_template = "/:foo/and/:bar"]
+/// struct MyPath {
+/// 	foo: String,
+/// 	bar: String
+/// }
+///
+/// fn router() -> Router {
+/// 	build_simple_router(|route| {
+/// 		route.get_path::<MyPath>().to(handler);
+/// 	})
+/// }
+/// # }
+/// ```
+pub trait PathTemplate {
+    /// Supply the path template to the router. The return type is `Cow<'static, str>` to allow
+    /// for compile-time strings with zero-copy as well as dynamically created strings.
+    fn path_template() -> Cow<'static, str>;
+}
 
 /// The type returned when building a route that only considers path and http verb(s) when
 /// determining if it matches a request.
@@ -129,6 +163,12 @@ where
     /// ```
     fn get<'b>(&'b mut self, path: &str) -> DefaultSingleRouteBuilder<'b, C, P> {
         self.request(vec![Method::GET], path)
+    }
+
+    /// Same as `get`, but uses `PathTemplate` instead of a `path: &str` parameter.
+    fn get_path<'b, T: PathTemplate>(&'b mut self) -> DefaultSingleRouteBuilder<'b, C, P> {
+        // TODO register T as a path extractor
+        self.get(&T::path_template())
     }
 
     /// Creates a route which matches `HEAD` requests to the given path.

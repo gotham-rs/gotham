@@ -25,7 +25,7 @@ use crate::router::tree::Tree;
 use crate::router::Router;
 
 pub use self::associated::{AssociatedRouteBuilder, AssociatedSingleRouteBuilder};
-pub use self::draw::DrawRoutes;
+pub use self::draw::{DrawRoutes, PathTemplate};
 pub use self::modify::{ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor};
 pub use self::single::DefineSingleRoute;
 
