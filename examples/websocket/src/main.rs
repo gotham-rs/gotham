@@ -91,7 +91,6 @@ mod test {
     use gotham::test::Server;
     use std::error::Error;
     use std::fmt::{Display, Formatter};
-    use std::ops::DerefMut;
     use tokio_tungstenite::WebSocketStream;
 
     fn create_test_server() -> TestServer {
@@ -124,7 +123,7 @@ mod test {
         headers.insert(UPGRADE, HeaderValue::from_static("websocket"));
         headers.insert(SEC_WEBSOCKET_KEY, HeaderValue::from_static("QmF0bWFu"));
 
-        let mut response = client
+        let response = client
             .perform(request)
             .expect("Failed to request websocket upgrade");
 
@@ -147,13 +146,11 @@ mod test {
             "hRHWRk+NDTj5O2GjSexJZg8ImzI=".as_bytes()
         );
 
-        // This will be used to swap out the body from the TestResponse because it only implements `DerefMut` but not `Into<Response>`
-        let mut body = Body::empty();
-        std::mem::swap(&mut body, response.deref_mut().body_mut());
-
         server
             .run_future(async move {
-                let upgraded = body
+                let response: Response<_> = response.into();
+                let upgraded = response
+                    .into_body()
                     .on_upgrade()
                     .await
                     .expect("Failed to upgrade client websocket.");
