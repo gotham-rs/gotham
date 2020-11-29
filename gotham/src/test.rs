@@ -255,6 +255,12 @@ impl fmt::Debug for TestResponse {
     }
 }
 
+impl Into<Response<Body>> for TestResponse {
+    fn into(self) -> Response<Body> {
+        self.response
+    }
+}
+
 impl TestResponse {
     /// Awaits the body of the underlying `Response`, and returns it. This will cause the event
     /// loop to execute until the `Response` body has been fully read into the `Vec<u8>`.
