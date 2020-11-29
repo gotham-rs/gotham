@@ -149,33 +149,32 @@ mod test {
         let mut body = Body::empty();
         std::mem::swap(&mut body, response.deref_mut().body_mut());
 
-        server
-            .run_future(async move {
-                let upgraded = body
-                    .on_upgrade()
-                    .await
-                    .expect("Failed to upgrade client websocket.");
-                let mut websocket_stream =
-                    WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await;
+        server.run_future(async move {
+            let upgraded = body
+                .on_upgrade()
+                .await
+                .expect("Failed to upgrade client websocket.");
+            let mut websocket_stream =
+                WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await;
 
-                let message = Message::Text("Hello".to_string());
-                websocket_stream
-                    .send(message.clone())
-                    .await
-                    .expect("Failed to send text message.");
+            let message = Message::Text("Hello".to_string());
+            websocket_stream
+                .send(message.clone())
+                .await
+                .expect("Failed to send text message.");
 
-                let response = websocket_stream
-                    .next()
-                    .await
-                    .expect("Socket was closed")
-                    .expect("Failed to receive response");
-                assert_eq!(message, response);
+            let response = websocket_stream
+                .next()
+                .await
+                .expect("Socket was closed")
+                .expect("Failed to receive response");
+            assert_eq!(message, response);
 
-                websocket_stream
-                    .send(Message::Close(None))
-                    .await
-                    .expect("Failed to send close message");
-            });
+            websocket_stream
+                .send(Message::Close(None))
+                .await
+                .expect("Failed to send close message");
+        });
     }
 
     #[test]
