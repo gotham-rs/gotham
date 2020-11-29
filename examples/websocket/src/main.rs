@@ -89,8 +89,6 @@ mod test {
     };
     use gotham::plain::test::TestServer;
     use gotham::test::Server;
-    use std::error::Error;
-    use std::fmt::{Display, Formatter};
     use std::ops::DerefMut;
     use tokio_tungstenite::WebSocketStream;
 
@@ -177,10 +175,7 @@ mod test {
                     .send(Message::Close(None))
                     .await
                     .expect("Failed to send close message");
-
-                Ok::<(), DummyError>(())
-            })
-            .unwrap();
+            });
     }
 
     #[test]
@@ -198,15 +193,4 @@ mod test {
         let body = response.read_body().expect("Failed to read response body");
         assert!(body.is_empty());
     }
-
-    #[derive(Debug)]
-    struct DummyError {}
-
-    impl Display for DummyError {
-        fn fmt(&self, _formatter: &mut Formatter) -> std::fmt::Result {
-            Ok(())
-        }
-    }
-
-    impl Error for DummyError {}
 }
