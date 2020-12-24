@@ -24,4 +24,4 @@ serde_derive = "1.0"
 
 [dev-dependencies]
 diesel_migrations = "1.4.0"
-tokio = { version = "0.2.6", features = ["full"] }
+tokio = { version = "1.0.0", features = ["full"] }
