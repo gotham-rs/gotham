@@ -17,7 +17,7 @@ use tokio::task;
 /// # use diesel::sqlite::SqliteConnection;
 /// # use tokio::runtime::Runtime;
 ///
-/// # let mut runtime = Runtime::new().unwrap();
+/// # let runtime = Runtime::new().unwrap();
 ///
 /// # let database_url = ":memory:";
 /// # mod schema {

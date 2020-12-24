@@ -16,7 +16,7 @@ use futures::prelude::*;
 use hyper::client::Client;
 use tokio::net::TcpListener;
 use tokio::runtime::Runtime;
-use tokio::time::{delay_for, Delay};
+use tokio::time::{sleep, Sleep};
 
 use hyper::service::Service;
 use tokio::net::TcpStream;
@@ -70,9 +70,10 @@ impl Clone for TestServer {
 }
 
 impl test::Server for TestServer {
-    fn request_expiry(&self) -> Delay {
+    fn request_expiry(&self) -> Sleep {
         let runtime = self.data.runtime.write().unwrap();
-        runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
+        let _guard = runtime.enter();
+        sleep(Duration::from_secs(self.data.timeout))
     }
 
     fn run_future<F, O>(&self, future: F) -> O
@@ -108,7 +109,7 @@ impl TestServer {
     where
         NH::Instance: UnwindSafe,
     {
-        let mut runtime = Runtime::new()?;
+        let runtime = Runtime::new()?;
         // TODO: Fix this into an async flow
         let listener = runtime.block_on(TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?))?;
         let addr = listener.local_addr()?;

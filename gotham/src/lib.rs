@@ -70,9 +70,8 @@ pub use plain::*;
 pub use tls::start as start_with_tls;
 
 fn new_runtime(threads: usize) -> Runtime {
-    runtime::Builder::new()
-        .threaded_scheduler()
-        .core_threads(threads)
+    runtime::Builder::new_multi_thread()
+        .worker_threads(threads)
         .thread_name("gotham-worker")
         .enable_all()
         .build()
@@ -99,7 +98,7 @@ where
 /// the socket as necessary. Errors returned by this function will be ignored and the connection
 /// will be dropped if the future returned by the wrapper resolves to an error.
 pub async fn bind_server<'a, NH, F, Wrapped, Wrap>(
-    mut listener: TcpListener,
+    listener: TcpListener,
     new_handler: NH,
     wrap: Wrap,
 ) -> !
