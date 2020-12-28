@@ -145,9 +145,9 @@ mod test {
         );
 
         server.run_future(async move {
-                let response: Response<_> = response.into();
-                let upgraded = response
-                    .into_body()
+            let response: Response<_> = response.into();
+            let upgraded = response
+                .into_body()
                 .on_upgrade()
                 .await
                 .expect("Failed to upgrade client websocket.");
