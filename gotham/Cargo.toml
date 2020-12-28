@@ -45,7 +45,7 @@ regex = "1.0"
 cookie = "0.14"
 http = "0.2"
 httpdate = "0.3"
-itertools = "0.9.0"
+itertools = "0.10.0"
 anyhow = "1.0"
 tokio-rustls = { version = "0.22", optional = true }
 
