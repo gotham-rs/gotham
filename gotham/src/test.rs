@@ -194,7 +194,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
 }
 
 /// Wrapping struct for the `Response` returned by a `TestClient`. Provides access to the
-/// `Response` value via the `Deref` and `DerefMut` traits, and also provides a function for
+/// `Response` value via the `Deref`, `DerefMut` and `Into` traits, and also provides a function for
 /// awaiting a completed response body.
 ///
 /// # Examples
@@ -252,6 +252,12 @@ impl DerefMut for TestResponse {
 impl fmt::Debug for TestResponse {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TestResponse")
+    }
+}
+
+impl Into<Response<Body>> for TestResponse {
+    fn into(self) -> Response<Body> {
+        self.response
     }
 }
 

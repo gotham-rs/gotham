@@ -133,7 +133,6 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use failure::Fail;
     use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
     use gotham_middleware_diesel::Repo;
@@ -151,8 +150,7 @@ mod tests {
     fn get_empty_products() {
         let repo = Repo::with_test_transactions(DATABASE_URL);
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let _ = runtime
-            .block_on(repo.run(|conn| embedded_migrations::run(&conn).map_err(|e| e.compat())));
+        let _ = runtime.block_on(repo.run(|conn| embedded_migrations::run(&conn)));
         let test_server = TestServer::new(router(repo)).unwrap();
         let response = test_server
             .client()
@@ -172,8 +170,7 @@ mod tests {
     fn create_and_retrieve_product() {
         let repo = Repo::with_test_transactions(DATABASE_URL);
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let _ = runtime
-            .block_on(repo.run(|conn| embedded_migrations::run(&conn).map_err(|e| e.compat())));
+        let _ = runtime.block_on(repo.run(|conn| embedded_migrations::run(&conn)));
         let test_server = TestServer::new(router(repo)).unwrap();
 
         //  First we'll insert something into the DB with a post

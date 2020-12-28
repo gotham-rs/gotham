@@ -102,7 +102,7 @@ pub async fn bind_server<'a, NH, F, Wrapped, Wrap>(
     mut listener: TcpListener,
     new_handler: NH,
     wrap: Wrap,
-) -> Result<(), ()>
+) -> !
 where
     NH: NewHandler + 'static,
     F: Future<Output = Result<Wrapped, ()>> + Unpin + Send + 'static,
@@ -112,39 +112,33 @@ where
     let protocol = Arc::new(Http::new());
     let gotham_service = GothamService::new(new_handler);
 
-    listener
-        .incoming()
-        .filter_map(|sock| match sock {
-            Ok(sock) => future::ready(Some(sock)),
-            Err(e) => {
-                panic!("socket error = {:?}", e);
+    loop {
+        let (socket, addr) = match listener.accept().await {
+            Ok(ok) => ok,
+            Err(err) => {
+                log::error!("Socket Error: {}", err);
+                continue;
             }
-        })
-        .for_each(|socket| {
-            let addr = socket.peer_addr().unwrap();
-            let service = gotham_service.connect(addr);
-            let accepted_protocol = protocol.clone();
-            let wrapper = wrap(socket);
+        };
 
-            // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
-            // will be dropped).
-            let task = async move {
-                let socket = wrapper.await?;
+        let service = gotham_service.connect(addr);
+        let accepted_protocol = protocol.clone();
+        let wrapper = wrap(socket);
 
-                accepted_protocol
-                    .serve_connection(socket, service)
-                    .with_upgrades()
-                    .map_err(|_| ())
-                    .await?;
+        // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
+        // will be dropped).
+        let task = async move {
+            let socket = wrapper.await?;
 
-                Result::<_, ()>::Ok(())
-            };
+            accepted_protocol
+                .serve_connection(socket, service)
+                .with_upgrades()
+                .map_err(|_| ())
+                .await?;
 
-            tokio::spawn(task);
+            Result::<_, ()>::Ok(())
+        };
 
-            future::ready(())
-        })
-        .await;
-
-    Ok(())
+        tokio::spawn(task);
+    }
 }

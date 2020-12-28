@@ -89,9 +89,6 @@ mod test {
     };
     use gotham::plain::test::TestServer;
     use gotham::test::Server;
-    use std::error::Error;
-    use std::fmt::{Display, Formatter};
-    use std::ops::DerefMut;
     use tokio_tungstenite::WebSocketStream;
 
     fn create_test_server() -> TestServer {
@@ -124,7 +121,7 @@ mod test {
         headers.insert(UPGRADE, HeaderValue::from_static("websocket"));
         headers.insert(SEC_WEBSOCKET_KEY, HeaderValue::from_static("QmF0bWFu"));
 
-        let mut response = client
+        let response = client
             .perform(request)
             .expect("Failed to request websocket upgrade");
 
@@ -147,40 +144,34 @@ mod test {
             "hRHWRk+NDTj5O2GjSexJZg8ImzI=".as_bytes()
         );
 
-        // This will be used to swap out the body from the TestResponse because it only implements `DerefMut` but not `Into<Response>`
-        let mut body = Body::empty();
-        std::mem::swap(&mut body, response.deref_mut().body_mut());
+        server.run_future(async move {
+            let response: Response<_> = response.into();
+            let upgraded = response
+                .into_body()
+                .on_upgrade()
+                .await
+                .expect("Failed to upgrade client websocket.");
+            let mut websocket_stream =
+                WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await;
 
-        server
-            .run_future(async move {
-                let upgraded = body
-                    .on_upgrade()
-                    .await
-                    .expect("Failed to upgrade client websocket.");
-                let mut websocket_stream =
-                    WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await;
+            let message = Message::Text("Hello".to_string());
+            websocket_stream
+                .send(message.clone())
+                .await
+                .expect("Failed to send text message.");
 
-                let message = Message::Text("Hello".to_string());
-                websocket_stream
-                    .send(message.clone())
-                    .await
-                    .expect("Failed to send text message.");
+            let response = websocket_stream
+                .next()
+                .await
+                .expect("Socket was closed")
+                .expect("Failed to receive response");
+            assert_eq!(message, response);
 
-                let response = websocket_stream
-                    .next()
-                    .await
-                    .expect("Socket was closed")
-                    .expect("Failed to receive response");
-                assert_eq!(message, response);
-
-                websocket_stream
-                    .send(Message::Close(None))
-                    .await
-                    .expect("Failed to send close message");
-
-                Ok::<(), DummyError>(())
-            })
-            .unwrap();
+            websocket_stream
+                .send(Message::Close(None))
+                .await
+                .expect("Failed to send close message");
+        });
     }
 
     #[test]
@@ -198,15 +189,4 @@ mod test {
         let body = response.read_body().expect("Failed to read response body");
         assert!(body.is_empty());
     }
-
-    #[derive(Debug)]
-    struct DummyError {}
-
-    impl Display for DummyError {
-        fn fmt(&self, _formatter: &mut Formatter) -> std::fmt::Result {
-            Ok(())
-        }
-    }
-
-    impl Error for DummyError {}
 }
