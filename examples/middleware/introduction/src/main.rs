@@ -19,7 +19,6 @@ use gotham::state::{FromState, State};
 /// A simple struct which holds an identifier for the user agent which made the request.
 ///
 /// It is created by our Middleware and then accessed via `state` by both our Middleware and Handler.
-#[derive(StateData)]
 pub struct ExampleMiddlewareData {
     pub user_agent: String,
     pub supported: bool,
@@ -50,7 +49,8 @@ impl Middleware for ExampleMiddleware {
     where
         Chain: FnOnce(State) -> Pin<Box<HandlerFuture>>,
     {
-        let user_agent = match HeaderMap::borrow_from(&state).get(USER_AGENT) {
+        let header_map: HeaderMap = state.take();
+        let user_agent = match header_map.get(USER_AGENT) {
             Some(ua) => ua.to_str().unwrap().to_string(),
             None => "None".to_string(),
         };

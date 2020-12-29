@@ -12,14 +12,14 @@ use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use gotham_derive::{StateData, StaticResponseExtender};
+use gotham_derive::StaticResponseExtender;
 use serde_derive::Deserialize;
 
 use tokio::time::delay_until;
 
 type SleepFuture = Pin<Box<dyn Future<Output = Vec<u8>> + Send>>;
 
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize, StaticResponseExtender)]
 struct QueryStringExtractor {
     seconds: u64,
 }

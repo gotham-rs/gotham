@@ -133,7 +133,8 @@ where
     {
         trace!("[{}] pre-chain jwt middleware", request_id(&state));
 
-        let token = match HeaderMap::borrow_from(&state).get(AUTHORIZATION) {
+        let header_map: &HeaderMap = state.borrow();
+        let token = match header_map.get(AUTHORIZATION) {
             Some(h) => match h.to_str() {
                 Ok(hx) => hx.get((self.scheme.len() + 1)..),
                 _ => None,

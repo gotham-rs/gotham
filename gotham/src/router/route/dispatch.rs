@@ -83,7 +83,6 @@ mod tests {
     use crate::middleware::{Middleware, NewMiddleware};
     use crate::pipeline::new_pipeline;
     use crate::pipeline::set::*;
-    use crate::state::StateData;
     use crate::test::TestServer;
 
     fn handler(state: State) -> (State, Response<Body>) {
@@ -120,8 +119,6 @@ mod tests {
             chain(state)
         }
     }
-
-    impl StateData for Number {}
 
     struct Addition {
         value: i32,

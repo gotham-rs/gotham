@@ -22,7 +22,8 @@ pub(super) struct RequestId {
 /// that a value for `RequestId` is always available.
 pub(crate) fn set_request_id<'a>(state: &'a mut State) -> &'a str {
     if !state.has::<RequestId>() {
-        let request_id = match HeaderMap::borrow_from(state).get("X-Request-ID") {
+        let header_map: &HeaderMap = state.borrow();
+        let request_id = match header_map.get("X-Request-ID") {
             Some(ex_req_id) => {
                 let id = String::from_utf8(ex_req_id.as_bytes().into()).unwrap();
                 trace!(

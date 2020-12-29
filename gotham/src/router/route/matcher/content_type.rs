@@ -9,7 +9,7 @@ use mime::Mime;
 use super::{LookupTable, LookupTableFromTypes};
 use crate::router::route::RouteMatcher;
 use crate::router::RouteNonMatch;
-use crate::state::{request_id, FromState, State};
+use crate::state::{request_id, State};
 
 /// A `RouteMatcher` that succeeds when the `Request` has been made with a `Content-Type` header
 /// that includes a supported media type. The matcher will fail if the Content-Type
@@ -98,7 +98,8 @@ impl RouteMatcher for ContentTypeHeaderRouteMatcher {
     /// Determines if the `Request` was made using a `Content-Type` header that includes a
     /// supported media type.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
-        HeaderMap::borrow_from(state)
+        let header_map: &HeaderMap = state.borrow();
+        header_map
             .get(CONTENT_TYPE)
             .map(|ty| {
                 // parse mime type from the content type header

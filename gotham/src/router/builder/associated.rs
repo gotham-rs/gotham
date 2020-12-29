@@ -156,7 +156,7 @@ where
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// }
     ///
-    /// #[derive(Deserialize, StateData, StaticResponseExtender)]
+    /// #[derive(Deserialize, StaticResponseExtender)]
     /// struct MyPathExtractor {
     /// #   #[allow(dead_code)]
     ///     id: u32,
@@ -221,7 +221,7 @@ where
     /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
     /// }
     ///
-    /// #[derive(StateData, Deserialize, StaticResponseExtender)]
+    /// #[derive(Deserialize, StaticResponseExtender)]
     /// struct MyQueryStringExtractor {
     /// #   #[allow(dead_code)]
     ///     val: String,

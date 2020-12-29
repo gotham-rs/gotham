@@ -9,10 +9,6 @@
 #[macro_use]
 extern crate log;
 
-// Enable to use #[derive(StateData)] below
-//#[macro_use]
-//extern crate gotham_derive;
-
 use std::pin::Pin;
 
 use futures::prelude::*;
@@ -27,7 +23,6 @@ use gotham::state::{request_id, State};
 // n.b. There is no requirement to have a StateData struct associated with your Middleware
 // instance but it is a common need hence we've shown one here to assist newcomers.
 //
-//#[derive(StateData)]
 //pub struct MyData {
 //  pub my_value: String,
 //}

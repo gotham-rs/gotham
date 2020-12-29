@@ -9,7 +9,7 @@ use mime::Mime;
 use super::{LookupTable, LookupTableFromTypes};
 use crate::router::route::RouteMatcher;
 use crate::router::RouteNonMatch;
-use crate::state::{request_id, FromState, State};
+use crate::state::{request_id, State};
 
 /// A mime type that is optionally weighted with a quality.
 struct QMime {
@@ -135,7 +135,8 @@ impl RouteMatcher for AcceptHeaderRouteMatcher {
     /// Quality values within `Accept` header values are not considered by the matcher, as the
     /// matcher is only able to indicate whether a successful match has been found.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
-        HeaderMap::borrow_from(state)
+        let header_map: &HeaderMap = state.borrow();
+        header_map
             .get(ACCEPT)
             .map(|header| {
                 // parse mime types from the accept header

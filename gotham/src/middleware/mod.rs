@@ -99,7 +99,6 @@ pub mod timer;
 /// #[derive(NewMiddleware, Copy, Clone)]
 /// struct MiddlewareWithStateData;
 ///
-/// #[derive(StateData)]
 /// struct MiddlewareStateData {
 ///     i: i32,
 /// }

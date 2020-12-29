@@ -440,7 +440,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
-    /// #[derive(Deserialize, StateData, StaticResponseExtender)]
+    /// #[derive(Deserialize, StaticResponseExtender)]
     /// struct MyPathParams {
     /// #   #[allow(dead_code)]
     ///     name: String,
@@ -510,7 +510,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
-    /// #[derive(StateData, Deserialize, StaticResponseExtender)]
+    /// #[derive(Deserialize, StaticResponseExtender)]
     /// struct MyQueryParams {
     /// #   #[allow(dead_code)]
     ///     id: u64,

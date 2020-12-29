@@ -6,9 +6,6 @@
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
 
-#[macro_use]
-extern crate gotham_derive;
-
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::single::single_pipeline;
 use gotham::pipeline::single_middleware;
@@ -26,7 +23,7 @@ use std::sync::{Arc, Mutex};
 ///
 /// This struct must implement `Clone` and `StateData` to be applicable
 /// for use with the `StateMiddleware`, and be shared via `Middleware`.
-#[derive(Clone, StateData)]
+#[derive(Clone)]
 struct RequestCounter {
     inner: Arc<Mutex<usize>>,
 }

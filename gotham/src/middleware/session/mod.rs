@@ -21,7 +21,7 @@ use super::cookie::CookieParser;
 use super::{Middleware, NewMiddleware};
 use crate::handler::{HandlerError, HandlerFuture};
 use crate::helpers::http::response::create_empty_response;
-use crate::state::{self, FromState, State, StateData};
+use crate::state::{self, FromState, State};
 
 mod backend;
 mod rng;
@@ -372,11 +372,6 @@ where
     }
 }
 
-impl<T> StateData for SessionData<T> where
-    T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static
-{
-}
-
 impl<T> Deref for SessionData<T>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
@@ -397,8 +392,6 @@ where
         &mut self.value
     }
 }
-
-impl StateData for SessionDropData {}
 
 trait SessionTypePhantom<T>: Send + Sync + RefUnwindSafe
 where

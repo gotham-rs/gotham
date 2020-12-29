@@ -8,7 +8,7 @@ use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize, StaticResponseExtender)]
 struct PathExtractor {
     id: usize,
 }

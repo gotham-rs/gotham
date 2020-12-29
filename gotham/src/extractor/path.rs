@@ -1,8 +1,9 @@
 use hyper::{body::HttpBody, Body, Response};
 use serde::{Deserialize, Deserializer};
+use std::any::Any;
 
 use crate::router::response::extender::StaticResponseExtender;
-use crate::state::{State, StateData};
+use crate::state::State;
 
 /// Defines a binding for storing the dynamic segments of the `Request` path in `State`. On failure
 /// the `StaticResponseExtender` implementation extends the `Response` to indicate why the
@@ -35,7 +36,7 @@ use crate::state::{State, StateData};
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
 /// #
-/// #[derive(Deserialize, StateData, StaticResponseExtender)]
+/// #[derive(Deserialize, StaticResponseExtender)]
 /// struct MyPathParams {
 ///     id: i32,
 ///     slug: String,
@@ -76,7 +77,7 @@ use crate::state::{State, StateData};
 /// #   assert_eq!(body, "id = 1551, slug = ten-reasons-serde-is-amazing");
 /// # }
 pub trait PathExtractor<B>:
-    for<'de> Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData
+    for<'de> Deserialize<'de> + StaticResponseExtender<ResBody = B> + Any + Send
 where
     B: HttpBody,
 {
@@ -85,7 +86,7 @@ where
 impl<T, B> PathExtractor<B> for T
 where
     B: HttpBody,
-    for<'de> T: Deserialize<'de> + StaticResponseExtender<ResBody = B> + StateData,
+    for<'de> T: Deserialize<'de> + StaticResponseExtender<ResBody = B> + Any + Send,
 {
 }
 
@@ -106,8 +107,6 @@ impl<'de> Deserialize<'de> for NoopPathExtractor {
         Ok(NoopPathExtractor)
     }
 }
-
-impl StateData for NoopPathExtractor {}
 
 impl StaticResponseExtender for NoopPathExtractor {
     type ResBody = Body;

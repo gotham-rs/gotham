@@ -24,7 +24,7 @@ use tokio::io::AsyncRead;
 use self::accepted_encoding::accepted_encodings;
 use crate::handler::{Handler, HandlerError, HandlerFuture, NewHandler};
 use crate::router::response::extender::StaticResponseExtender;
-use crate::state::{FromState, State, StateData};
+use crate::state::{FromState, State};
 
 use std::cmp;
 use std::convert::From;
@@ -357,8 +357,6 @@ pub struct FilePathExtractor {
     #[serde(rename = "*")]
     parts: Vec<String>,
 }
-
-impl StateData for FilePathExtractor {}
 
 impl StaticResponseExtender for FilePathExtractor {
     type ResBody = Body;

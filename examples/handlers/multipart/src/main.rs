@@ -2,8 +2,8 @@
 use futures::prelude::*;
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::header::CONTENT_TYPE;
-use gotham::hyper::{body, Body, HeaderMap, StatusCode};
+use gotham::hyper::header::{HeaderMap, CONTENT_TYPE};
+use gotham::hyper::{body, Body, StatusCode};
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
@@ -15,7 +15,7 @@ use std::pin::Pin;
 /// Extracts the elements of the POST request and responds with the form keys and values
 fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     const BOUNDARY: &str = "boundary=";
-    let header_map = HeaderMap::take_from(&mut state);
+    let header_map: HeaderMap = state.take();
     let boundary = header_map
         .get(CONTENT_TYPE)
         .and_then(|ct| {

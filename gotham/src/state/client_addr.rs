@@ -1,13 +1,11 @@
 //! Defines storage for the remote address of the client
 
-use crate::state::{FromState, State, StateData};
+use crate::state::{FromState, State};
 use std::net::SocketAddr;
 
 struct ClientAddr {
     addr: SocketAddr,
 }
-
-impl StateData for ClientAddr {}
 
 pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
     state.put(ClientAddr { addr })
