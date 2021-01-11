@@ -1,5 +1,5 @@
 use futures::prelude::*;
-use gotham::hyper::{Body, HeaderMap, Response, StatusCode};
+use gotham::hyper::{upgrade::OnUpgrade, Body, HeaderMap, Response, StatusCode};
 use gotham::state::{request_id, FromState, State};
 
 mod ws;
@@ -14,30 +14,31 @@ fn main() {
 }
 
 fn handler(mut state: State) -> (State, Response<Body>) {
-    let body = Body::take_from(&mut state);
     let headers = HeaderMap::take_from(&mut state);
+    let on_upgrade = OnUpgrade::try_take_from(&mut state);
 
-    if ws::requested(&headers) {
-        let (response, ws) = match ws::accept(&headers, body) {
-            Ok(res) => res,
-            Err(_) => return (state, bad_request()),
-        };
+    match on_upgrade {
+        Some(on_upgrade) if ws::requested(&headers) => {
+            let (response, ws) = match ws::accept(&headers, on_upgrade) {
+                Ok(res) => res,
+                Err(_) => return (state, bad_request()),
+            };
 
-        let req_id = request_id(&state).to_owned();
+            let req_id = request_id(&state).to_owned();
 
-        tokio::spawn(async move {
-            match ws.await {
-                Ok(ws) => connected(req_id, ws).await,
-                Err(err) => {
-                    eprintln!("websocket init error: {}", err);
-                    Err(())
+            tokio::spawn(async move {
+                match ws.await {
+                    Ok(ws) => connected(req_id, ws).await,
+                    Err(err) => {
+                        eprintln!("websocket init error: {}", err);
+                        Err(())
+                    }
                 }
-            }
-        });
+            });
 
-        (state, response)
-    } else {
-        (state, Response::new(Body::from(INDEX_HTML)))
+            (state, response)
+        }
+        _ => (state, Response::new(Body::from(INDEX_HTML))),
     }
 }
 
@@ -84,8 +85,9 @@ const INDEX_HTML: &str = include_str!("index.html");
 mod test {
     use super::*;
     use crate::ws::{Message, Role};
-    use gotham::hyper::header::{
-        HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
+    use gotham::hyper::{
+        header::{HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE},
+        upgrade,
     };
     use gotham::plain::test::TestServer;
     use gotham::test::Server;
@@ -146,9 +148,7 @@ mod test {
 
         server.run_future(async move {
             let response: Response<_> = response.into();
-            let upgraded = response
-                .into_body()
-                .on_upgrade()
+            let upgraded = upgrade::on(response)
                 .await
                 .expect("Failed to upgrade client websocket.");
             let mut websocket_stream =
