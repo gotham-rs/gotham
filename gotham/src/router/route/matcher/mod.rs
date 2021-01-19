@@ -73,14 +73,14 @@ where
 /// #
 /// #   State::with_new(|state| {
 /// #
-///   let methods = vec![Method::GET, Method::HEAD];
-///   let matcher = MethodOnlyRouteMatcher::new(methods);
+/// let methods = vec![Method::GET, Method::HEAD];
+/// let matcher = MethodOnlyRouteMatcher::new(methods);
 ///
-///   state.put(Method::GET);
-///   assert!(matcher.is_match(&state).is_ok());
+/// state.put(Method::GET);
+/// assert!(matcher.is_match(&state).is_ok());
 ///
-///   state.put(Method::POST);
-///   assert!(matcher.is_match(&state).is_err());
+/// state.put(Method::POST);
+/// assert!(matcher.is_match(&state).is_err());
 /// #   });
 /// # }
 /// ```

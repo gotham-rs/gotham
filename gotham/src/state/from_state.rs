@@ -23,7 +23,9 @@ pub trait FromState: StateData + Sized {
     /// }
     ///
     /// # State::with_new(|state| {
-    /// state.put(MyStruct { val: "This is the value!" });
+    /// state.put(MyStruct {
+    ///     val: "This is the value!",
+    /// });
     ///
     /// match MyStruct::try_borrow_from(&state) {
     ///     Some(&MyStruct { val }) => assert_eq!(val, "This is the value!"),
@@ -56,7 +58,9 @@ pub trait FromState: StateData + Sized {
     /// }
     ///
     /// # State::with_new(|state| {
-    /// state.put(MyStruct { val: "This is the value!" });
+    /// state.put(MyStruct {
+    ///     val: "This is the value!",
+    /// });
     ///
     /// let my_struct = MyStruct::borrow_from(&state);
     /// assert_eq!(my_struct.val, "This is the value!");
@@ -83,7 +87,9 @@ pub trait FromState: StateData + Sized {
     /// }
     ///
     /// # State::with_new(|mut state| {
-    /// state.put(MyStruct { val: "This is the value!" });
+    /// state.put(MyStruct {
+    ///     val: "This is the value!",
+    /// });
     ///
     /// match MyStruct::try_borrow_mut_from(&mut state) {
     ///     Some(&mut MyStruct { ref mut val }) => *val = "This is the new value!",
@@ -118,7 +124,9 @@ pub trait FromState: StateData + Sized {
     /// }
     ///
     /// # State::with_new(|mut state| {
-    /// state.put(MyStruct { val: "This is the value!" });
+    /// state.put(MyStruct {
+    ///     val: "This is the value!",
+    /// });
     ///
     /// # {
     /// let my_struct = MyStruct::borrow_mut_from(&mut state);
@@ -148,7 +156,9 @@ pub trait FromState: StateData + Sized {
     /// }
     ///
     /// # State::with_new(|mut state| {
-    /// state.put(MyStruct { val: "This is the value!" });
+    /// state.put(MyStruct {
+    ///     val: "This is the value!",
+    /// });
     ///
     /// match MyStruct::try_take_from(&mut state) {
     ///     Some(MyStruct { val }) => assert_eq!(val, "This is the value!"),
@@ -181,7 +191,9 @@ pub trait FromState: StateData + Sized {
     /// }
     ///
     /// # State::with_new(|mut state| {
-    /// state.put(MyStruct { val: "This is the value!" });
+    /// state.put(MyStruct {
+    ///     val: "This is the value!",
+    /// });
     ///
     /// let my_struct = MyStruct::take_from(&mut state);
     /// assert_eq!(my_struct.val, "This is the value!");
