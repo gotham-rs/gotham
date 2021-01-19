@@ -1,0 +1,101 @@
+name: Rust
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: test-${{ matrix.toolchain }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: ["stable", "beta"]
+        nightly: [false]
+        include:
+          - toolchain: "nightly"
+            nightly: true
+    
+    continue-on-error: ${{ matrix.nightly }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      
+      - name: Get Rust Version
+        id: rust-version
+        run: echo "::set-output name=VERSION::$(cargo -V | head -n1 | awk '{print $2}')"
+      
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            target
+          key: ${{ runner.os }}-rust-${{ steps.rust-version.outputs.VERSION }}
+      
+      - run: cargo test --workspace
+  
+  rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt -- --check
+  
+  clippy:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      
+      - name: Get Rust Version
+        id: rust-version
+        run: echo "::set-output name=VERSION::$(cargo -V | head -n1 | awk '{print $2}')"
+      
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            target
+          key: ${{ runner.os }}-rust-${{ steps.rust-version.outputs.VERSION }}-clippy
+      
+      - run: cargo clippy --workspace --profile test -- -Dclippy::all
+  
+  coverage:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Get Rust Version
+        id: rust-version
+        run: echo "::set-output name=VERSION::$(cargo -V | head -n1 | awk '{print $2}')"
+      
+      - name: Get Tarpaulin Version
+        id: tarpaulin-version
+        run: echo "::set-output name=VERSION::$(wget -qO- 'https://api.github.com/repos/xd009642/tarpaulin/releases/latest' | jq -r '.tag_name')"
+      
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/cargo-tarpaulin
+            ~/.cargo/git
+            ~/.cargo/registry
+            target
+          key: ${{ runner.os }}-rust-${{ steps.rust-version.outputs.VERSION }}-tarpaulin-${{ steps.tarpaulin-version.outputs.VERSION }}
+      
+      - name: Install Tarpaulin
+        run: test -e ~/.cargo/bin/cargo-tarpaulin || cargo install cargo-tarpaulin --version ${{ steps.tarpaulin-version.outputs.VERSION }}
+      
+      - run: |
+          cargo tarpaulin --workspace --forward --out Xml
+          bash <(curl -s https://codecov.io/bash)
