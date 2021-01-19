@@ -149,7 +149,7 @@ mod tests {
     #[test]
     fn get_empty_products() {
         let repo = Repo::with_test_transactions(DATABASE_URL);
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let runtime = tokio::runtime::Runtime::new().unwrap();
         let _ = runtime.block_on(repo.run(|conn| embedded_migrations::run(&conn)));
         let test_server = TestServer::new(router(repo)).unwrap();
         let response = test_server
@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn create_and_retrieve_product() {
         let repo = Repo::with_test_transactions(DATABASE_URL);
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let runtime = tokio::runtime::Runtime::new().unwrap();
         let _ = runtime.block_on(repo.run(|conn| embedded_migrations::run(&conn)));
         let test_server = TestServer::new(router(repo)).unwrap();
 

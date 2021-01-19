@@ -31,7 +31,7 @@ pub fn start_with_num_threads<NH, A>(
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
 {
-    let mut runtime = new_runtime(threads);
+    let runtime = new_runtime(threads);
     let _ = runtime.block_on(async { init_server(addr, new_handler, tls_config).await });
 }
 

@@ -1,6 +1,7 @@
 use std::any::Any;
 
 use cookie::CookieJar;
+use hyper::upgrade::OnUpgrade;
 use hyper::{Body, HeaderMap, Method, Uri, Version};
 
 use crate::helpers::http::request::path::RequestPathSegments;
@@ -37,6 +38,7 @@ impl StateData for Uri {}
 impl StateData for Version {}
 impl StateData for HeaderMap {}
 impl StateData for CookieJar {}
+impl StateData for OnUpgrade {}
 
 impl StateData for RequestPathSegments {}
 impl StateData for RequestId {}

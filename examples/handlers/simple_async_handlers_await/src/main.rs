@@ -1,23 +1,17 @@
 //! A basic example showing the request components
 
-use futures::prelude::*;
-use std::pin::Pin;
-use std::time::{Duration, Instant};
-
-use gotham::hyper::{Body, StatusCode};
+use std::time::Duration;
 
 use gotham::handler::{HandlerError, HandlerResult, IntoResponse};
 use gotham::helpers::http::response::create_response;
+use gotham::hyper::{Body, StatusCode};
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 use gotham_derive::{StateData, StaticResponseExtender};
 use serde_derive::Deserialize;
-
-use tokio::time::delay_until;
-
-type SleepFuture = Pin<Box<dyn Future<Output = Vec<u8>> + Send>>;
+use tokio::time::sleep;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
@@ -33,6 +27,7 @@ fn get_duration(seconds: u64) -> Duration {
 fn get_duration(seconds: u64) -> Duration {
     Duration::from_millis(seconds)
 }
+
 /// All this function does is return a future that resolves after a number of
 /// seconds, with a Vec<u8> that tells you how long it slept for.
 ///
@@ -47,15 +42,12 @@ fn get_duration(seconds: u64) -> Duration {
 /// web apis) can be coerced into returning futures that yield useful data,
 /// so the patterns that you learn in this example should be applicable to
 /// real world problems.
-fn sleep(seconds: u64) -> SleepFuture {
-    let when = Instant::now() + get_duration(seconds);
-    let delay = delay_until(when.into()).map(move |_| {
-        format!("slept for {} seconds\n", seconds)
-            .as_bytes()
-            .to_vec()
-    });
+async fn sleep_for(seconds: u64) -> Vec<u8> {
+    sleep(get_duration(seconds)).await;
 
-    delay.boxed()
+    format!("slept for {} seconds\n", seconds)
+        .as_bytes()
+        .to_vec()
 }
 
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
@@ -65,7 +57,7 @@ async fn sleep_handler(state: &mut State) -> Result<impl IntoResponse, HandlerEr
     println!("sleep for {} seconds once: starting", seconds);
     // Here, we call the sleep function. Note that this step doesn't block:
     // it just sets up the timer so that we can use it later.
-    let sleep_future = sleep(seconds);
+    let sleep_future = sleep_for(seconds);
 
     // Here is where the serious sleeping happens. We yield execution of
     // this block until sleep_future is resolved.
@@ -92,7 +84,7 @@ async fn loop_handler(mut state: State) -> HandlerResult {
     // logic in.
     let mut accumulator = Vec::new();
     for _ in 0..seconds {
-        let body = sleep(1).await;
+        let body = sleep_for(1).await;
         accumulator.extend(body)
     }
 

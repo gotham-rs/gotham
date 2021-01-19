@@ -4,7 +4,7 @@
 
 use http::Uri;
 use hyper::client::connect::{Connected, Connection};
-use std::io::BufReader;
+use std::io::{self, BufReader};
 use std::net::{self, IpAddr, SocketAddr};
 use std::panic::UnwindSafe;
 use std::pin::Pin;
@@ -19,11 +19,11 @@ use hyper::client::Client;
 use hyper::service::Service;
 use pin_project::pin_project;
 use rustls::Session;
-use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
-use tokio::time::{delay_for, Delay};
+use tokio::time::{sleep, Sleep};
 use tokio_rustls::client::TlsStream;
 use tokio_rustls::{
     rustls::{
@@ -84,9 +84,10 @@ impl Clone for TestServer {
 }
 
 impl test::Server for TestServer {
-    fn request_expiry(&self) -> Delay {
+    fn request_expiry(&self) -> Sleep {
         let runtime = self.data.runtime.write().unwrap();
-        runtime.enter(|| delay_for(Duration::from_secs(self.data.timeout)))
+        let _guard = runtime.enter();
+        sleep(Duration::from_secs(self.data.timeout))
     }
 
     fn run_future<F, O>(&self, future: F) -> O
@@ -122,7 +123,7 @@ impl TestServer {
     where
         NH::Instance: UnwindSafe,
     {
-        let mut runtime = Runtime::new()?;
+        let runtime = Runtime::new()?;
         // TODO: Fix this into an async flow
         let listener = runtime.block_on(TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?))?;
         let addr = listener.local_addr()?;
@@ -225,8 +226,8 @@ where
     fn poll_read(
         self: Pin<&mut Self>,
         cx: &mut Context,
-        buf: &mut [u8],
-    ) -> Poll<std::result::Result<usize, std::io::Error>> {
+        buf: &mut ReadBuf,
+    ) -> Poll<Result<(), io::Error>> {
         self.project().0.poll_read(cx, buf)
     }
 }
@@ -237,23 +238,17 @@ impl<IO: AsyncRead + AsyncWrite + Unpin> AsyncWrite for TlsConnectionStream<IO> 
         self: Pin<&mut Self>,
         cx: &mut Context<'_>,
         buf: &[u8],
-    ) -> Poll<std::result::Result<usize, std::io::Error>> {
+    ) -> Poll<Result<usize, io::Error>> {
         self.project().0.poll_write(cx, buf)
     }
 
     #[inline]
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<std::result::Result<(), std::io::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         self.project().0.poll_flush(cx)
     }
 
     #[inline]
-    fn poll_shutdown(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<std::result::Result<(), std::io::Error>> {
+    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         self.project().0.poll_shutdown(cx)
     }
 }
@@ -269,10 +264,9 @@ pub struct TestConnect {
 impl Service<Uri> for TestConnect {
     type Response = TlsConnectionStream<TcpStream>;
     type Error = tokio::io::Error;
-    type Future =
-        Pin<Box<dyn Future<Output = std::result::Result<Self::Response, Self::Error>> + Send>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
-    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<std::result::Result<(), Self::Error>> {
+    fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Ok(()).into()
     }
 

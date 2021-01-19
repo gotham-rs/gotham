@@ -13,7 +13,7 @@ use hyper::header::CONTENT_TYPE;
 use hyper::{body, Body, Method, Response, Uri};
 use log::warn;
 use mime;
-use tokio::time::Delay;
+use tokio::time::Sleep;
 
 pub use crate::plain::test::TestServer;
 use futures::TryFutureExt;
@@ -33,7 +33,7 @@ pub trait Server: Clone {
         F: Future<Output = O>;
 
     /// Returns a Delay that will expire when a request should.
-    fn request_expiry(&self) -> Delay;
+    fn request_expiry(&self) -> Sleep;
 
     /// Runs the event loop until the response future is completed.
     ///
@@ -45,9 +45,14 @@ pub trait Server: Clone {
         F::Ok: Send,
         F::Error: Into<anyhow::Error> + Send,
     {
+        // Note: tokio::time::Sleep does not implement Unpin, so we have to box this future
+        let expiry_fut = self
+            .request_expiry()
+            .then(future::ok::<(), F::Error>)
+            .boxed();
         self.run_future(
             // Race the timeout against the request future
-            future::try_select(f, self.request_expiry().then(future::ok::<_, F::Error>))
+            future::try_select(f, expiry_fut)
                 // Map an error in either (though it can only occur in the request future)
                 .map_err(|either| either.factor_first().0.into())
                 // Finally, map the Ok(Either) (left = request, right = timeout) to Ok/Err

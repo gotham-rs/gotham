@@ -79,7 +79,7 @@ mod tests {
         let uri_parsed = uri.parse().unwrap();
         let work = client.get(uri_parsed);
 
-        let mut rt = Runtime::new().unwrap();
+        let rt = Runtime::new().unwrap();
 
         match rt.block_on(work) {
             Ok(req) => {

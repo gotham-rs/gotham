@@ -11,6 +11,7 @@ use futures::prelude::*;
 use futures::task::{self, Poll};
 use http::request;
 use hyper::service::Service;
+use hyper::upgrade::OnUpgrade;
 use hyper::{Body, Request, Response};
 use log::debug;
 
@@ -85,7 +86,7 @@ where
                 uri,
                 version,
                 headers,
-                //extensions?
+                mut extensions,
                 ..
             },
             body,
@@ -97,6 +98,10 @@ where
         state.put(version);
         state.put(headers);
         state.put(body);
+
+        if let Some(on_upgrade) = extensions.remove::<OnUpgrade>() {
+            state.put(on_upgrade);
+        }
 
         {
             let request_id = set_request_id(&mut state);

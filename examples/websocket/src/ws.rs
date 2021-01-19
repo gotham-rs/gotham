@@ -3,7 +3,11 @@ use futures::prelude::*;
 use gotham::hyper::header::{
     HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
 };
-use gotham::hyper::{self, upgrade::Upgraded, Body, HeaderMap, Response, StatusCode};
+use gotham::hyper::{
+    self,
+    upgrade::{OnUpgrade, Upgraded},
+    Body, HeaderMap, Response, StatusCode,
+};
 use sha1::Sha1;
 use tokio_tungstenite::{tungstenite, WebSocketStream};
 
@@ -23,7 +27,7 @@ pub fn requested(headers: &HeaderMap) -> bool {
 /// into websocket object.
 pub fn accept(
     headers: &HeaderMap,
-    body: Body,
+    on_upgrade: OnUpgrade,
 ) -> Result<
     (
         Response<Body>,
@@ -33,7 +37,7 @@ pub fn accept(
 > {
     let res = response(headers)?;
     let ws = async move {
-        let upgraded = body.on_upgrade().await?;
+        let upgraded = on_upgrade.await?;
         Ok(WebSocketStream::from_raw_socket(upgraded, Role::Server, None).await)
     };
 
