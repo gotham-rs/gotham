@@ -2,21 +2,8 @@
 extern crate proc_macro;
 
 mod extenders;
-mod extractors;
 mod new_middleware;
 mod state;
-
-#[proc_macro_derive(PathExtractor)]
-pub fn base_path_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = syn::parse(input).unwrap();
-    extractors::base_path(&ast)
-}
-
-#[proc_macro_derive(QueryStringExtractor)]
-pub fn base_query_string_extractor(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = syn::parse(input).unwrap();
-    extractors::base_query_string(&ast)
-}
 
 #[proc_macro_derive(StaticResponseExtender)]
 pub fn static_response_extender(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

@@ -1,19 +1,14 @@
 //! An example usage of Tera template engine working with Gotham.
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate tera;
 
 use gotham::state::State;
 use tera::{Context, Tera};
 
-// Assuming the Rust file is at the same level as the templates folder
-// we can get a Tera instance that way:
 lazy_static! {
-    pub static ref TERA: Tera =
-        compile_templates!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*"));
+    pub static ref TERA: Tera = Tera::new(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/**/*"))
+        .expect("Parsing error(s)");
 }
-
 /// Create a `Handler` which calls the Tera static reference, renders
 /// a template with a given Context, and returns the result as a String
 /// to be used as Response Body

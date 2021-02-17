@@ -6,20 +6,16 @@ extern crate serde_derive;
 
 use futures::prelude::*;
 use std::pin::Pin;
-use std::time::{Duration, Instant};
-
-use gotham::hyper::StatusCode;
+use std::time::Duration;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
+use gotham::hyper::StatusCode;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-
-use tokio::time::delay_until;
-
-type SleepFuture = Pin<Box<dyn Future<Output = Vec<u8>> + Send>>;
+use tokio::time::sleep;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
@@ -35,6 +31,7 @@ fn get_duration(seconds: u64) -> Duration {
 fn get_duration(seconds: u64) -> Duration {
     Duration::from_millis(seconds)
 }
+
 /// All this function does is return a future that resolves after a number of
 /// seconds, with a Vec<u8> that tells you how long it slept for.
 ///
@@ -49,15 +46,12 @@ fn get_duration(seconds: u64) -> Duration {
 /// web apis) can be coerced into returning futures that yield useful data,
 /// so the patterns that you learn in this example should be applicable to
 /// real world problems.
-fn sleep(seconds: u64) -> SleepFuture {
-    let when = Instant::now() + get_duration(seconds);
-    let delay = delay_until(when.into()).map(move |_| {
-        format!("slept for {} seconds\n", seconds)
-            .as_bytes()
-            .to_vec()
-    });
+async fn sleep_for(seconds: u64) -> Vec<u8> {
+    sleep(get_duration(seconds)).await;
 
-    delay.boxed()
+    format!("slept for {} seconds\n", seconds)
+        .as_bytes()
+        .to_vec()
 }
 
 /// This handler sleeps for the requested number of seconds, using the `sleep()`
@@ -67,7 +61,7 @@ fn sleep_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     println!("sleep for {} seconds once: starting", seconds);
 
     // Here, we call our helper function that returns a future.
-    let sleep_future = sleep(seconds);
+    let sleep_future = sleep_for(seconds);
 
     // Here, we convert the future from `sleep()` into the form that Gotham expects.
     // We have to use .then() rather than .and_then() because we need to coerce both
@@ -95,16 +89,15 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
 
     // Here, we create a stream of Ok(_) that's as long as we need, and use fold
     // to loop over it asyncronously, accumulating the return values from sleep().
-    let sleep_future: SleepFuture = futures::stream::iter(0..seconds)
-        .fold(Vec::new(), move |mut accumulator, _| {
+    let sleep_future =
+        futures::stream::iter(0..seconds).fold(Vec::new(), move |mut accumulator, _| {
             // Do the sleep(), and append the result to the accumulator so that it can
             // be returned.
-            sleep(1).map(move |body| {
+            sleep_for(1).map(move |body| {
                 accumulator.extend(body);
                 accumulator
             })
-        })
-        .boxed();
+        });
 
     // This bit is the same as the bit in the first example.
     sleep_future

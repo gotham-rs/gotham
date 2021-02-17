@@ -11,7 +11,6 @@ publish = false
 gotham = { path = "../../gotham/"}
 gotham_derive = { path = "../../gotham_derive/" }
 gotham_middleware_diesel = { path = "../../middleware/diesel"}
-failure = "0.1"
 futures = "0.3.1"
 mime = "0.3"
 log = "0.4"
@@ -25,4 +24,4 @@ serde_derive = "1.0"
 
 [dev-dependencies]
 diesel_migrations = "1.4.0"
-tokio = { version = "0.2.6", features = ["full"] }
+tokio = { version = "1.0", features = ["full"] }

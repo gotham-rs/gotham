@@ -27,6 +27,9 @@ pub use self::error::{HandlerError, MapHandlerError, MapHandlerErrorFuture};
 /// A type alias for the results returned by async fns that can be passed to to_async.
 pub type HandlerResult = std::result::Result<(State, Response<Body>), (State, HandlerError)>;
 
+/// A type alias for the results returned by async fns that can be passed to to_async_borrowing.
+pub type SimpleHandlerResult = std::result::Result<Response<Body>, HandlerError>;
+
 /// A type alias for the trait objects returned by `HandlerService`.
 ///
 /// When the `Future` resolves to an error, the `(State, HandlerError)` value is used to generate

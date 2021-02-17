@@ -19,7 +19,7 @@ use mime::{self, Mime};
 use mime_guess::from_path;
 use serde_derive::Deserialize;
 use tokio::fs::File;
-use tokio::io::AsyncRead;
+use tokio::io::{AsyncRead, ReadBuf};
 
 use self::accepted_encoding::accepted_encodings;
 use crate::handler::{Handler, HandlerError, HandlerFuture, NewHandler};
@@ -31,6 +31,7 @@ use std::convert::From;
 use std::fs::Metadata;
 use std::io;
 use std::iter::FromIterator;
+use std::mem::MaybeUninit;
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
 use std::time::UNIX_EPOCH;
@@ -366,8 +367,9 @@ impl StaticResponseExtender for FilePathExtractor {
 }
 
 // Creates a Stream from the given file, for streaming as part of the Response.
-// Borrowed from Warp https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
-// Thanks @seanmonstar.
+// Inspired by Warp https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
+// Inspired by tokio https://github.com/tokio-rs/tokio/blob/master/tokio/src/io/util/read_buf.rs
+// Thanks @seanmonstar and @carllerche.
 fn file_stream(
     mut f: File,
     buf_size: usize,
@@ -382,19 +384,30 @@ fn file_stream(
             buf.reserve(buf_size);
         }
 
-        let read = Pin::new(&mut f).poll_read_buf(cx, &mut buf);
-        let n = ready!(read).map_err(|err| {
+        let dst = buf.chunk_mut();
+        let dst = unsafe { &mut *(dst as *mut _ as *mut [MaybeUninit<u8>]) };
+        let mut read_buf = ReadBuf::uninit(dst);
+        let read = Pin::new(&mut f).poll_read(cx, &mut read_buf);
+        ready!(read).map_err(|err| {
             debug!("file read error: {}", err);
             err
-        })? as u64;
+        })?;
 
-        if n == 0 {
+        if read_buf.filled().is_empty() {
             debug!("file read found EOF before expected length");
             return Poll::Ready(Some(Err(io::Error::new(
                 io::ErrorKind::UnexpectedEof,
                 "file read found EOF before expected length",
             ))));
         }
+
+        let n = read_buf.filled().len();
+        // Safety: This is guaranteed to be the number of initialized (and read)
+        // bytes due to the invariants provided by `ReadBuf::filled`.
+        unsafe {
+            buf.advance_mut(n);
+        }
+        let n = n as u64;
 
         let chunk = if n > len {
             let chunk = buf.split_to(len as usize);

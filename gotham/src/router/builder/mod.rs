@@ -18,7 +18,7 @@ use crate::pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet}
 use crate::router::response::extender::ResponseExtender;
 use crate::router::response::finalizer::ResponseFinalizerBuilder;
 use crate::router::route::dispatch::DispatcherImpl;
-use crate::router::route::matcher::{AnyRouteMatcher, RouteMatcher};
+use crate::router::route::matcher::{AndRouteMatcher, RouteMatcher};
 use crate::router::route::{Delegation, Extractors, RouteImpl};
 use crate::router::tree::node::Node;
 use crate::router::tree::Tree;
@@ -238,34 +238,50 @@ where
 
 /// A delegated builder, which is created by `DrawRoutes::delegate` and returned. The `DrawRoutes`
 /// trait has documentation for using this type.
-pub struct DelegateRouteBuilder<'a, C, P>
+pub struct DelegateRouteBuilder<'a, M, C, P>
 where
+    M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
 {
+    matcher: M,
     node_builder: &'a mut Node,
     pipeline_chain: C,
     pipelines: PipelineSet<P>,
 }
 
-type DelegatedRoute = RouteImpl<AnyRouteMatcher, NoopPathExtractor, NoopQueryStringExtractor>;
+type DelegatedRoute<M> = RouteImpl<M, NoopPathExtractor, NoopQueryStringExtractor>;
 
-impl<'a, C, P> DelegateRouteBuilder<'a, C, P>
+impl<'a, M, C, P> DelegateRouteBuilder<'a, M, C, P>
 where
+    M: RouteMatcher + Send + Sync + 'static,
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: RefUnwindSafe + Send + Sync + 'static,
 {
     /// Directs the delegated route to the given `Router`.
     pub fn to_router(self, router: Router) {
         let dispatcher = DispatcherImpl::new(router, self.pipeline_chain, self.pipelines);
-        let route: DelegatedRoute = DelegatedRoute::new(
-            AnyRouteMatcher::new(),
+        let route: DelegatedRoute<M> = DelegatedRoute::new(
+            self.matcher,
             Box::new(dispatcher),
             Extractors::new(),
             Delegation::External,
         );
 
         self.node_builder.add_route(Box::new(route));
+    }
+
+    /// Adds additional `RouteMatcher` requirements to the current delegate.
+    pub fn add_route_matcher<NM: RouteMatcher + Send + Sync + 'static>(
+        self,
+        matcher: NM,
+    ) -> DelegateRouteBuilder<'a, AndRouteMatcher<M, NM>, C, P> {
+        DelegateRouteBuilder {
+            matcher: AndRouteMatcher::<M, NM>::new(self.matcher, matcher),
+            node_builder: self.node_builder,
+            pipeline_chain: self.pipeline_chain,
+            pipelines: self.pipelines,
+        }
     }
 }
 
