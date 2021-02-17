@@ -5,7 +5,7 @@
 A flexible web framework that promotes **stability, safety, security and speed**.
 
 [![Join the chat at https://gitter.im/gotham-rs/gotham](https://badges.gitter.im/gotham-rs/gotham.svg)](https://gitter.im/gotham-rs/gotham?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Linux build status](https://travis-ci.org/gotham-rs/gotham.svg?branch=master)](https://travis-ci.org/gotham-rs/gotham)
+[![GitHub actions](https://github.com/gotham-rs/gotham/workflows/Rust/badge.svg)](https://github.com/gotham-rs/gotham/actions?query=workflow%3ARust)
 [![Dependency status](https://deps.rs/repo/github/gotham-rs/gotham/status.svg)](https://deps.rs/repo/github/gotham-rs/gotham)
 
 ## Features
