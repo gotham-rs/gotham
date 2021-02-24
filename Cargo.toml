@@ -81,5 +81,7 @@ members = [
     # finalizer
     "examples/finalizers/",
 
+    # custom_service
+    "examples/custom_service/",
 
 ]
