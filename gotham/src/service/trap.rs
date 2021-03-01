@@ -29,10 +29,7 @@ where
 ///
 /// Timing information is recorded and logged, except in the case of a panic where the timer is
 /// moved and cannot be recovered.
-pub(super) async fn call_handler<T>(
-    t: T,
-    state: AssertUnwindSafe<State>,
-) -> anyhow::Result<Response<Body>>
+pub async fn call_handler<T>(t: T, state: AssertUnwindSafe<State>) -> anyhow::Result<Response<Body>>
 where
     T: NewHandler + Send + UnwindSafe,
 {

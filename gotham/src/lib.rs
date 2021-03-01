@@ -32,7 +32,7 @@ pub mod helpers;
 pub mod middleware;
 pub mod pipeline;
 pub mod router;
-mod service;
+pub mod service;
 pub mod state;
 
 /// Test utilities for Gotham and Gotham consumer apps.
