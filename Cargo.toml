@@ -58,6 +58,7 @@ members = [
     "examples/handlers/stateful",
     "examples/handlers/simple_async_handlers",
     "examples/handlers/simple_async_handlers_await",
+    "examples/handlers/simple_async_handlers_await_with_customized_error_response",
     "examples/handlers/async_handlers",
     "examples/handlers/form_urlencoded",
     "examples/handlers/multipart",

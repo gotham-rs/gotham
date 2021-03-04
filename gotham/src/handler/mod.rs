@@ -22,7 +22,10 @@ mod error;
 /// Defines handlers for serving static assets.
 pub mod assets;
 
-pub use self::error::{HandlerError, MapHandlerError, MapHandlerErrorFuture};
+pub use self::error::{
+    HandlerError, MapHandlerError, MapHandlerErrorFuture, MapHandlerErrorToCustomizedResponse,
+    MapHandlerErrorWithCustomizedResponse,
+};
 
 /// A type alias for the results returned by async fns that can be passed to to_async.
 pub type HandlerResult = std::result::Result<(State, Response<Body>), (State, HandlerError)>;

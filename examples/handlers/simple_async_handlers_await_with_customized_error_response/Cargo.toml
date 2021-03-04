@@ -1,0 +1,17 @@
+[package]
+name = "simple_async_handlers_await_with_customized_error_response"
+description = "An example that customizes response when different errors occur"
+version = "0.0.0"
+authors = ["darkdarkfruit<darkdarkfruit@gmail.com>"]
+publish = false
+edition = "2018"
+
+[dependencies]
+gotham = { path = "../../../gotham" }
+gotham_derive = { path = "../../../gotham_derive" }
+
+mime = "0.3"
+futures = "0.3.1"
+serde = "1.0"
+serde_derive = "1.0"
+tokio = "1.0"
