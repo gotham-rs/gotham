@@ -30,7 +30,11 @@ pub async fn map_err_with_customized_response(
 pub async fn might_return_error_by_mapping_err_with_customized_response(
     state: &mut State,
 ) -> Result<impl IntoResponse, HandlerError> {
-    let even = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() % 2;
+    let even = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
+        % 2;
 
     if even == 0 {
         // here, we just simulate an err.
@@ -43,7 +47,12 @@ pub async fn might_return_error_by_mapping_err_with_customized_response(
                 },
             )?;
     }
-    Ok(create_response(&state, StatusCode::OK, mime::TEXT_PLAIN_UTF_8, "even != 0"))
+    Ok(create_response(
+        &state,
+        StatusCode::OK,
+        mime::TEXT_PLAIN_UTF_8,
+        "even != 0",
+    ))
 }
 
 pub async fn map_err_with_customized_response_by_returning_json(
@@ -188,14 +197,15 @@ mod tests {
 
     #[test]
     fn test_might_return_error_by_mapping_err_with_customized_response() {
-        let url_str =     "http://localhost/might_return_error_by_mapping_err_with_customized_response";
+        let url_str = "http://localhost/might_return_error_by_mapping_err_with_customized_response";
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server.client().get(url_str).perform().unwrap();
 
-        assert!(response.status() == StatusCode::OK || response.status() == StatusCode::SERVICE_UNAVAILABLE);
-
+        assert!(
+            response.status() == StatusCode::OK
+                || response.status() == StatusCode::SERVICE_UNAVAILABLE
+        );
     }
-
 
     #[test]
     fn test_map_err_with_customized_response_by_returning_json() {
