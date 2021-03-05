@@ -8,6 +8,33 @@ A flexible web framework that promotes **stability, safety, security and speed**
 [![GitHub actions](https://github.com/gotham-rs/gotham/workflows/Rust/badge.svg)](https://github.com/gotham-rs/gotham/actions?query=workflow%3ARust)
 [![Dependency status](https://deps.rs/repo/github/gotham-rs/gotham/status.svg)](https://deps.rs/repo/github/gotham-rs/gotham)
 
+## Additional feature of this fork:
+* Support Borrowing Async Request Handlers(route: `to_async_borrowing`) by customizing error response (.await version), so you can use `?` shorthand.
+* example usage:
+```rust
+pub async fn might_return_error_by_mapping_err_with_customized_response(
+    state: &mut State,
+) -> Result<impl IntoResponse, HandlerError> {
+    let even = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() % 2;
+
+    if even == 0 {
+        // here, we just simulate an err.
+        let _io_error = Err(std::io::Error::last_os_error())
+            .map_err_with_customized_response(
+                state,
+                |_state| {
+                    // an error occurs, but still sending **OK** to client
+                    (StatusCode::SERVICE_UNAVAILABLE, mime::TEXT_PLAIN_UTF_8, "Error: Customized response by the last os error (Intentionally return 200 even error occurs) (even == 0)")
+                },
+            )?;
+    }
+    Ok(create_response(&state, StatusCode::OK, mime::TEXT_PLAIN_UTF_8, "even != 0"))
+}
+```
+* see more examples at: `examples/handlers/simple_async_handlers_await_with_customized_error_response/src/main.rs`
+
+This example shows how to customizing error response when different errors occur.What is this fork includes
+
 ## Features
 
 1.  Stability focused. All releases target **stable**
