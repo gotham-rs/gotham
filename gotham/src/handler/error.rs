@@ -23,7 +23,7 @@ pub struct HandlerError {
     //   fn set_customized_response_body<F: FnOnce(&State) -> R, R: IntoResponse>(&mut self, state: &State, f: F)
     // or by method of trait (MapHandlerErrorToCustomizedResponse):
     //   fn map_err_to_response<F: FnOnce(&State) -> R, R: IntoResponse>(self, state: &State, f: F) -> Result<T, HandlerError>
-    customized_response_body: Option<Response<Body>>,
+    customized_response_body: Option<Box<Response<Body>>>,
 }
 
 /// Convert a generic `anyhow::Error` into a `HandlerError`, similar as you would a concrete error
@@ -73,7 +73,7 @@ impl HandlerError {
     ) {
         let body = f(state).into_response(state);
         self.status_code = body.status(); // update status_code by the customized response.
-        self.customized_response_body = Some(body);
+        self.customized_response_body = Some(Box::new(body));
         // self
     }
 
@@ -155,7 +155,7 @@ impl IntoResponse for HandlerError {
         );
 
         if let Some(rsp) = self.customized_response_body {
-            rsp
+            *rsp
         } else {
             create_empty_response(state, self.status_code)
         }
@@ -305,7 +305,7 @@ where
             let mut handler_error = HandlerError::from(e);
             let rsp = body.into_response(state);
             handler_error.status_code = rsp.status(); // update status_code by the customized response.
-            handler_error.customized_response_body = Some(rsp);
+            handler_error.customized_response_body = Some(Box::new(rsp));
             handler_error
         })
     }

@@ -3,13 +3,14 @@
 use gotham::handler::MapHandlerErrorToCustomizedResponse;
 use gotham::handler::MapHandlerErrorWithCustomizedResponse;
 use gotham::handler::{HandlerError, HandlerResult, IntoResponse};
-use gotham::helpers::http::response::create_empty_response;
+use gotham::helpers::http::response::{create_empty_response, create_response};
 use gotham::hyper::header::CONTENT_TYPE;
 use gotham::hyper::{HeaderMap, StatusCode};
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
+use std::time::{Instant, SystemTime};
 
 pub async fn map_err_with_customized_response(
     state: &mut State,
@@ -24,6 +25,25 @@ pub async fn map_err_with_customized_response(
             },
         )?;
     Ok(create_empty_response(&state, StatusCode::OK))
+}
+
+pub async fn might_return_error_by_mapping_err_with_customized_response(
+    state: &mut State,
+) -> Result<impl IntoResponse, HandlerError> {
+    let even = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_secs() % 2;
+
+    if even == 0 {
+        // here, we just simulate an err.
+        let _io_error = Err(std::io::Error::last_os_error())
+            .map_err_with_customized_response(
+                state,
+                |_state| {
+                    // an error occurs, but still sending **OK** to client
+                    (StatusCode::SERVICE_UNAVAILABLE, mime::TEXT_PLAIN_UTF_8, "Error: Customized response by the last os error (Intentionally return 200 even error occurs) (even == 0)")
+                },
+            )?;
+    }
+    Ok(create_response(&state, StatusCode::OK, mime::TEXT_PLAIN_UTF_8, "even != 0"))
 }
 
 pub async fn map_err_with_customized_response_by_returning_json(
@@ -108,6 +128,10 @@ fn router() -> Router {
             .get("/map_err_with_customized_response")
             .to_async_borrowing(map_err_with_customized_response);
         route
+            .get("/might_return_error_by_mapping_err_with_customized_response")
+            .to_async_borrowing(might_return_error_by_mapping_err_with_customized_response);
+
+        route
             .get("/map_err_with_customized_response_by_returning_json")
             .to_async_borrowing(map_err_with_customized_response_by_returning_json);
         route
@@ -161,6 +185,17 @@ mod tests {
             "Customized response by the last os error (Intentionally return 200 even error occurs)",
         );
     }
+
+    #[test]
+    fn test_might_return_error_by_mapping_err_with_customized_response() {
+        let url_str =     "http://localhost/might_return_error_by_mapping_err_with_customized_response";
+        let test_server = TestServer::new(router()).unwrap();
+        let response = test_server.client().get(url_str).perform().unwrap();
+
+        assert!(response.status() == StatusCode::OK || response.status() == StatusCode::SERVICE_UNAVAILABLE);
+
+    }
+
 
     #[test]
     fn test_map_err_with_customized_response_by_returning_json() {
