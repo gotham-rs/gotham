@@ -1,12 +1,11 @@
 //! An example of the Gotham web framework `Router` that shows how to use Regex patterns in path segments.
-#[macro_use]
-extern crate gotham_derive;
-#[macro_use]
-extern crate serde_derive;
 
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
+use gotham_derive::{StateData, StaticResponseExtender};
+
+use serde::Deserialize;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct PathExtractor {

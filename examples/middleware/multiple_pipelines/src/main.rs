@@ -10,10 +10,6 @@
 //! Our app also has some admin functionality, so we'll also override admin paths
 //! to require an additional admin session.
 //! Finally, our app exposes an JSON endpoint, which needs its own middleware.
-#[macro_use]
-extern crate gotham_derive;
-#[macro_use]
-extern crate serde_derive;
 
 use futures::prelude::*;
 use gotham::hyper::header::{HeaderMap, ACCEPT};
@@ -30,6 +26,8 @@ use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
+use gotham_derive::NewMiddleware;
+use serde::{Serialize, Deserialize};
 
 /// A simple struct to represent our default session data.
 #[derive(Default, Serialize, Deserialize)]

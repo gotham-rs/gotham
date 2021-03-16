@@ -12,7 +12,8 @@ use gotham::{
     state::{request_id, FromState, State},
 };
 use jsonwebtoken::{decode, DecodingKey, Validation};
-use serde::de::Deserialize;
+use log::trace;
+use serde::Deserialize;
 use std::pin::Pin;
 use std::{marker::PhantomData, panic::RefUnwindSafe};
 
@@ -196,7 +197,8 @@ mod tests {
         test::TestServer,
     };
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
-
+    use serde::{Serialize, Deserialize};
+    
     const SECRET: &str = "some-secret";
 
     #[derive(Debug, Deserialize, Serialize)]

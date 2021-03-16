@@ -1,6 +1,4 @@
 //! Introduces the Middleware and Pipeline concepts provided by the Gotham web framework.
-#[macro_use]
-extern crate gotham_derive;
 
 use futures::prelude::*;
 use std::pin::Pin;
@@ -15,6 +13,7 @@ use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
+use gotham_derive::{StateData, NewMiddleware};
 
 /// A simple struct which holds an identifier for the user agent which made the request.
 ///

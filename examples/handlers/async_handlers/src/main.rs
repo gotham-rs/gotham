@@ -1,8 +1,4 @@
 //! A basic example showing the request components
-#[macro_use]
-extern crate gotham_derive;
-#[macro_use]
-extern crate serde_derive;
 
 use futures::prelude::*;
 use std::pin::Pin;
@@ -17,6 +13,9 @@ use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
+
+use serde::Deserialize;
+use gotham_derive::{StateData, StaticResponseExtender};
 
 type ResponseContentFuture =
     Pin<Box<dyn Future<Output = Result<Vec<u8>, gotham::hyper::Error>> + Send>>;

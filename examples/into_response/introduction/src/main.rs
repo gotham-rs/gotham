@@ -1,6 +1,4 @@
 //! An introduction to the Gotham web framework's `IntoResponse` trait.
-#[macro_use]
-extern crate serde_derive;
 
 use gotham::hyper::{Body, Response, StatusCode};
 
@@ -9,6 +7,8 @@ use gotham::helpers::http::response::create_response;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::State;
+
+use serde::Serialize;
 
 /// A Product
 #[derive(Serialize)]

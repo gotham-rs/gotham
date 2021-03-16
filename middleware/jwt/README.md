@@ -13,9 +13,7 @@ Second, create a struct you wish to deserialize into. For our example below,
 we've used `Claims`:
 
 ```rust
-#[macro_use]
-extern crate serde_derive;
-
+use serde::Deserialize;
 use futures::future;
 use gotham::{
   helpers::http::response::create_empty_response,

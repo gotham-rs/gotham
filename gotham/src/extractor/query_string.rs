@@ -25,8 +25,6 @@ use crate::state::{State, StateData};
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # extern crate serde;
-/// # #[macro_use]
-/// # extern crate serde_derive;
 /// #
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::{FromState, State};
@@ -34,6 +32,7 @@ use crate::state::{State, StateData};
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
+/// # use serde::Deserialize;
 /// #
 /// #[derive(Deserialize, StateData, StaticResponseExtender)]
 /// struct MyQueryParams {

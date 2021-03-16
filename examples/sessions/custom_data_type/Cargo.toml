@@ -11,7 +11,6 @@ gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
 mime = "0.3"
-serde = "1"
-serde_derive = "1"
+serde = { version = "1.0", features = ["derive"] }
 time = "0.1"
 cookie = "0.15"

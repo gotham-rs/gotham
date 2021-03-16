@@ -9,14 +9,9 @@
 #![warn(missing_docs, deprecated)]
 #[macro_use]
 extern crate gotham_derive;
-#[macro_use]
-extern crate log;
-#[cfg(test)]
-#[macro_use]
-extern crate serde_derive;
 
 mod middleware;
 mod state_data;
 
-pub use self::middleware::JWTMiddleware;
-pub use self::state_data::AuthorizationToken;
+pub use middleware::JWTMiddleware;
+pub use state_data::AuthorizationToken;

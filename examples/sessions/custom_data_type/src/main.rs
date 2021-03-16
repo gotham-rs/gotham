@@ -1,9 +1,5 @@
 //! Storing and retrieving session data with a custom data type, in a type safe
 //! way, with the Gotham web framework.
-#[macro_use]
-extern crate gotham_derive;
-#[macro_use]
-extern crate serde_derive;
 
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
@@ -11,6 +7,9 @@ use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
+
+use serde::{Serialize, Deserialize};
+use gotham_derive::StateData;
 
 // A custom type for storing data associated with the user's session.
 #[derive(Clone, Deserialize, Serialize, StateData)]

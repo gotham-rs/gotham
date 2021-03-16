@@ -25,8 +25,6 @@ use crate::state::{State, StateData};
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # extern crate serde;
-/// # #[macro_use]
-/// # extern crate serde_derive;
 /// #
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::{FromState, State};
