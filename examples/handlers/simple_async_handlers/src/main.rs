@@ -13,8 +13,8 @@ use gotham::router::Router;
 use gotham::state::{FromState, State};
 use tokio::time::sleep;
 
-use serde::Deserialize;
 use gotham_derive::{StateData, StaticResponseExtender};
+use serde::Deserialize;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {

@@ -14,8 +14,8 @@ use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-use serde::Deserialize;
 use gotham_derive::{StateData, StaticResponseExtender};
+use serde::Deserialize;
 
 type ResponseContentFuture =
     Pin<Box<dyn Future<Output = Result<Vec<u8>, gotham::hyper::Error>> + Send>>;

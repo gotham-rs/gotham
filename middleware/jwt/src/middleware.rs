@@ -197,8 +197,8 @@ mod tests {
         test::TestServer,
     };
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
-    use serde::{Serialize, Deserialize};
-    
+    use serde::{Deserialize, Serialize};
+
     const SECRET: &str = "some-secret";
 
     #[derive(Debug, Deserialize, Serialize)]

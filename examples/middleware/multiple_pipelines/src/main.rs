@@ -27,7 +27,7 @@ use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 use gotham_derive::NewMiddleware;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// A simple struct to represent our default session data.
 #[derive(Default, Serialize, Deserialize)]

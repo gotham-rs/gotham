@@ -7,7 +7,7 @@ use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Holds data extracted from the Request query string.
 ///

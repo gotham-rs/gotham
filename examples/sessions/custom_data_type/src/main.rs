@@ -8,8 +8,8 @@ use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-use serde::{Serialize, Deserialize};
 use gotham_derive::StateData;
+use serde::{Deserialize, Serialize};
 
 // A custom type for storing data associated with the user's session.
 #[derive(Clone, Deserialize, Serialize, StateData)]

@@ -5,8 +5,8 @@ use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 
-use serde::Deserialize;
 use gotham_derive::{StateData, StaticResponseExtender};
+use serde::Deserialize;
 
 /// Holds data extracted from the Request path.
 ///
