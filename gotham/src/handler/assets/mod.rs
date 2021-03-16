@@ -17,7 +17,7 @@ use hyper::{Body, Response, StatusCode};
 use log::debug;
 use mime::{self, Mime};
 use mime_guess::from_path;
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use tokio::fs::File;
 use tokio::io::{AsyncRead, ReadBuf};
 
