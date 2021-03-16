@@ -1,6 +1,4 @@
-use proc_macro;
 use quote::quote;
-use syn;
 
 pub(crate) fn new_middleware(ast: &syn::DeriveInput) -> proc_macro::TokenStream {
     let name = &ast.ident;
