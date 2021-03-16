@@ -214,9 +214,11 @@ mod tests {
             exp: 10_000_000_000,
         };
 
-        let mut header = Header::default();
-        header.kid = Some("signing-key".to_owned());
-        header.alg = alg;
+        let header = Header {
+            kid: Some("signing-key".to_owned()),
+            alg: alg,
+            ..Header::default()
+        };
 
         match encode(&header, &claims, &EncodingKey::from_secret(SECRET.as_ref())) {
             Ok(t) => t,
