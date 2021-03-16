@@ -334,7 +334,7 @@ mod tests {
 
     use hyper::service::Service;
     use hyper::{body, Body, Request, Response, StatusCode};
-    use serde_derive::Deserialize;
+    use serde::Deserialize;
 
     use crate::middleware::cookie::CookieParser;
     use crate::middleware::session::NewSessionMiddleware;

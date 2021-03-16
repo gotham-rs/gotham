@@ -10,7 +10,7 @@ use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 use gotham_derive::{StateData, StaticResponseExtender};
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use tokio::time::sleep;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]

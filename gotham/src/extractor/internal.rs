@@ -704,7 +704,7 @@ impl<'de> VariantAccess<'de> for UnitVariant {
 mod tests {
     use super::*;
     use crate::helpers::http::{FormUrlDecoded, PercentDecoded};
-    use serde_derive::Deserialize;
+    use serde::Deserialize;
     use std;
 
     #[derive(Deserialize)]
