@@ -4,7 +4,7 @@
 //! the value back later. As the `BorrowBag` is add-only, `Handle` values remain valid for the
 //! lifetime of the `BorrowBag`.
 
-#![doc(html_root_url = "https://docs.rs/borrow-bag/1.0.0")] // Update when changed in Cargo.toml
+#![doc(html_root_url = "https://docs.rs/borrow-bag/1.1.0")] // Update when changed in Cargo.toml
 #![warn(missing_docs, deprecated)]
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
