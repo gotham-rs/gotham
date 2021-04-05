@@ -83,6 +83,7 @@ const DEFAULT_SCHEME: &str = "Bearer";
 /// #    let _ = router();
 /// # }
 /// ```
+#[allow(clippy::upper_case_acronyms)]
 pub struct JWTMiddleware<T> {
     secret: String,
     validation: Validation,

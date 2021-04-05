@@ -960,7 +960,7 @@ mod tests {
 
         let p = from_segment_mapping::<WithBorrowedBytes>(sm).unwrap();
 
-        assert_eq!(&p.bytes_val[..], b"borrowed_bytes");
+        assert_eq!(p.bytes_val, b"borrowed_bytes");
     }
 
     #[test]
@@ -973,7 +973,7 @@ mod tests {
 
         let p = from_query_string_mapping::<WithBorrowedBytes>(&qsm).unwrap();
 
-        assert_eq!(&p.bytes_val[..], b"borrowed_bytes");
+        assert_eq!(p.bytes_val, b"borrowed_bytes");
     }
 
     // This is **not** a realistic use case here, as `StateData` must also be `'static`. However,

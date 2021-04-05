@@ -261,9 +261,9 @@ impl fmt::Debug for TestResponse {
     }
 }
 
-impl Into<Response<Body>> for TestResponse {
-    fn into(self) -> Response<Body> {
-        self.response
+impl From<TestResponse> for Response<Body> {
+    fn from(response: TestResponse) -> Response<Body> {
+        response.response
     }
 }
 
