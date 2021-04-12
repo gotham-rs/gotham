@@ -872,12 +872,7 @@ where
 fn descend<'n>(node_builder: &'n mut Node, path: &str) -> &'n mut Node {
     trace!("[walking to: {}]", path);
 
-    let path = if path.starts_with('/') {
-        &path[1..]
-    } else {
-        path
-    };
-
+    let path = path.strip_prefix('/').unwrap_or(path);
     if path.is_empty() {
         node_builder
     } else {
@@ -899,7 +894,7 @@ where
                     match segment.find(':') {
                         Some(n) => {
                             let (segment, pattern) = segment.split_at(n);
-                            let regex = ConstrainedSegmentRegex::new(&pattern[1..]);
+                            let regex = Box::new(ConstrainedSegmentRegex::new(&pattern[1..]));
                             (segment, SegmentType::Constrained { regex })
                         }
                         None => (segment, SegmentType::Dynamic),

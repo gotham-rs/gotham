@@ -3,9 +3,9 @@
 
 use std::net::SocketAddr;
 use std::panic::AssertUnwindSafe;
-use std::pin::Pin;
 use std::sync::Arc;
 
+use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::task::{self, Poll};
 use hyper::service::Service;
@@ -61,7 +61,7 @@ where
 {
     type Response = Response<Body>;
     type Error = anyhow::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(
         &mut self,

@@ -205,7 +205,7 @@ impl Node {
                 SegmentType::Glob => {
                     params
                         .entry(&child.segment)
-                        .or_insert_with(|| vec![])
+                        .or_insert_with(Vec::new)
                         .push(&segment);
                 }
 
@@ -387,7 +387,7 @@ mod tests {
         let mut seg_id = Node::new(
             "id",
             SegmentType::Constrained {
-                regex: ConstrainedSegmentRegex::new("[0-9]+"),
+                regex: Box::new(ConstrainedSegmentRegex::new("[0-9]+")),
             },
         );
         seg_id.add_route(get_route(pipeline_set.clone()));
@@ -413,7 +413,7 @@ mod tests {
         let mut seg9 = Node::new("seg9", SegmentType::Static);
 
         let mut seg10 = Node::new("seg10", SegmentType::Glob);
-        seg10.add_route(get_route(pipeline_set.clone()));
+        seg10.add_route(get_route(pipeline_set));
 
         segdyn1.add_child(seg7);
         seg5.add_child(seg6);

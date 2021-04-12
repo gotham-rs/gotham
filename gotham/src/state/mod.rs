@@ -38,7 +38,7 @@ pub(crate) use crate::state::request_id::set_request_id;
 ///
 /// #[derive(StateData)]
 /// struct MyStruct {
-///   value: i32
+///     value: i32,
 /// }
 ///
 /// # fn main() {

@@ -193,7 +193,6 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
 ///
 /// In summary:
 ///     Don't do this at home kids. It is only included as a cautionary tale.
-///
 fn parallel_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     let length = QueryStringExtractor::take_from(&mut state).length;
     println!("parallel length: {} starting", length);

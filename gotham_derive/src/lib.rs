@@ -1,6 +1,3 @@
-#![recursion_limit = "256"]
-extern crate proc_macro;
-
 mod extenders;
 mod new_middleware;
 mod state;

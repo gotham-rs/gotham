@@ -22,14 +22,16 @@ use hyper::{
 ///
 /// # build_simple_router(|route| {
 /// // use the matcher for your request
-/// route.options("/foo")
-/// 	.extend_route_matcher(matcher)
-/// 	.to(|state| {
-/// 		// we know that this is a CORS preflight for a PUT request
-/// 		let mut res = create_empty_response(&state, StatusCode::NO_CONTENT);
-/// 		res.headers_mut().insert(ACCESS_CONTROL_ALLOW_METHODS, "PUT".parse().unwrap());
-/// 		(state, res)
-/// 	});
+/// route
+///     .options("/foo")
+///     .extend_route_matcher(matcher)
+///     .to(|state| {
+///         // we know that this is a CORS preflight for a PUT request
+///         let mut res = create_empty_response(&state, StatusCode::NO_CONTENT);
+///         res.headers_mut()
+///             .insert(ACCESS_CONTROL_ALLOW_METHODS, "PUT".parse().unwrap());
+///         (state, res)
+///     });
 /// # });
 /// ```
 #[derive(Clone, Debug)]
@@ -68,7 +70,7 @@ mod test {
 
     fn with_state<F>(accept: Option<&str>, block: F)
     where
-        F: FnOnce(&mut State) -> (),
+        F: FnOnce(&mut State),
     {
         State::with_new(|state| {
             let mut headers = HeaderMap::new();

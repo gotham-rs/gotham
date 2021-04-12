@@ -116,7 +116,7 @@ mod tests {
             Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
             Self: Sized,
         {
-            state.put(self.clone());
+            state.put(self);
             chain(state)
         }
     }

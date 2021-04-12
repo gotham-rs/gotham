@@ -230,8 +230,8 @@ pub trait DefineSingleRoute {
     /// # use gotham::test::TestServer;
     /// #
     /// async fn my_handler(_state: &mut State) -> Result<impl IntoResponse, HandlerError> {
-    ///     let flavors = std::fs::read("coffee-flavors.txt")
-    ///         .map_err_with_status(StatusCode::IM_A_TEAPOT)?;
+    ///     let flavors =
+    ///         std::fs::read("coffee-flavors.txt").map_err_with_status(StatusCode::IM_A_TEAPOT)?;
     ///     Ok(flavors)
     /// }
     /// #

@@ -193,8 +193,6 @@ fn cleanup_once(
 mod tests {
     use super::*;
 
-    use rand;
-
     #[test]
     fn cleanup_test() {
         let mut storage = LinkedHashMap::new();
@@ -237,7 +235,7 @@ mod tests {
             new_backend
                 .new_backend()
                 .expect("can't create backend for read")
-                .read_session(identifier.clone()),
+                .read_session(identifier),
         )
         .expect("no response from backend")
         .expect("session data missing");
