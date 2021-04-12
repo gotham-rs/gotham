@@ -31,12 +31,7 @@ use crate::state::{request_id, FromState, State};
 /// static BODY: &'static [u8] = b"Hello, world!";
 ///
 /// fn handler(state: State) -> (State, Response<Body>) {
-///     let response = create_response(
-///         &state,
-///         StatusCode::OK,
-///         mime::TEXT_PLAIN,
-///         BODY,
-///     );
+///     let response = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, BODY);
 ///
 ///     (state, response)
 /// }

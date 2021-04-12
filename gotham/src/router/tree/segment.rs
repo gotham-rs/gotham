@@ -19,7 +19,7 @@ pub enum SegmentType {
     /// Uses the supplied regex to determine match against incoming request paths.
     Constrained {
         /// Regex used to match against a single segment of a request path.
-        regex: ConstrainedSegmentRegex,
+        regex: Box<ConstrainedSegmentRegex>,
     },
 
     /// Matches any corresponding segment for incoming request paths.

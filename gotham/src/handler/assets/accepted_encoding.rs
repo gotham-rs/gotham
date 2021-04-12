@@ -32,13 +32,13 @@ impl FromStr for AcceptedEncoding {
         let mut iter = s.split(';');
         iter.next()
             .map(str::trim)
-            .and_then(|encoding_str| {
+            .map(|encoding_str| {
                 let encoding = encoding_str.to_string();
                 let quality = iter
                     .next()
                     .and_then(|qval| qval.replace("q=", "").trim().parse::<f32>().ok())
                     .unwrap_or(1f32);
-                Some(AcceptedEncoding { encoding, quality })
+                AcceptedEncoding { encoding, quality }
             })
             .ok_or(ParseEncodingError::InvalidEncoding)
     }

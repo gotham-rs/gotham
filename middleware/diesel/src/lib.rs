@@ -43,20 +43,23 @@
 //!     // As an example, we perform the query:
 //!     // `SELECT 1`
 //!     async move {
-//!         let result = repo.run(move |conn| {
-//!             diesel::select(diesel::dsl::sql("1"))
-//!             .load::<i64>(&conn)
-//!             .map(|v| v.into_iter().next().expect("no results"))
-//!         }).await;
+//!         let result = repo
+//!             .run(move |conn| {
+//!                 diesel::select(diesel::dsl::sql("1"))
+//!                     .load::<i64>(&conn)
+//!                     .map(|v| v.into_iter().next().expect("no results"))
+//!             })
+//!             .await;
 //!         match result {
 //!             Ok(n) => {
 //!                 let body = format!("result: {}", n);
 //!                 let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, body);
 //!                 Ok((state, res))
-//!             },
+//!             }
 //!             Err(e) => Err((state, e.into())),
 //!         }
-//!     }.boxed()
+//!     }
+//!     .boxed()
 //! }
 //!
 //! # fn main() {

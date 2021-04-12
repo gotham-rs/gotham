@@ -24,7 +24,7 @@ use crate::state::State;
 ///   let methods = vec![Method::GET, Method::HEAD];
 ///   let supported_media_types = vec![mime::APPLICATION_JSON];
 ///   let method_matcher = MethodOnlyRouteMatcher::new(methods);
-///	  let accept_matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
+///   let accept_matcher = AcceptHeaderRouteMatcher::new(supported_media_types);
 ///   let matcher = AndRouteMatcher::new(method_matcher, accept_matcher);
 ///
 ///   state.put(Method::GET);

@@ -10,11 +10,10 @@ You agree to license your contribution under the
 
 ## Submission guidelines
 
-1. Format your contribution with
-   [rustfmt](https://github.com/rust-lang-nursery/rustfmt) version 0.9 or later.
-1. Consider using [clippy](https://github.com/rust-lang-nursery/rust-clippy).
+1. Format your contribution with [rustfmt](https://github.com/rust-lang/rustfmt#quick-start).
+1. Resolve all warnings from [clippy](https://github.com/rust-lang/rust-clippy#usage).
 1. Document your contribution per the
-   [Rust documentation guidelines](https://doc.rust-lang.org/book/first-edition/documentation.html).
+   [Rust documentation guidelines](https://doc.rust-lang.org/1.30.0/book/first-edition/documentation.html).
 
 Provide tests that prove the functionality you're contributing is correct.
 

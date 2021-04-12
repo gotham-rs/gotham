@@ -34,11 +34,10 @@ fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
                         let mut data = Vec::new();
                         field.data.read_to_end(&mut data).expect("can't read");
                         let res_result = String::from_utf8(data);
-                        let res_body;
-                        match res_result {
-                            Ok(r) => res_body = r.to_string(),
-                            Err(e) => res_body = format!("{:?}", e),
-                        }
+                        let res_body = match res_result {
+                            Ok(r) => r,
+                            Err(e) => format!("{:?}", e),
+                        };
                         let res =
                             create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, res_body);
                         future::ok((state, res))

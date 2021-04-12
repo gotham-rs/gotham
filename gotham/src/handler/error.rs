@@ -61,8 +61,7 @@ impl HandlerError {
     ///     // It's OK if this is bogus, we just need something to convert into a `HandlerError`.
     ///     let io_error = std::io::Error::last_os_error();
     ///
-    ///     let handler_error = HandlerError::from(io_error)
-    ///         .with_status(StatusCode::IM_A_TEAPOT);
+    ///     let handler_error = HandlerError::from(io_error).with_status(StatusCode::IM_A_TEAPOT);
     ///
     ///     future::err((state, handler_error)).boxed()
     /// }
@@ -70,7 +69,11 @@ impl HandlerError {
     /// # fn main() {
     /// #
     /// let test_server = TestServer::new(|| Ok(handler)).unwrap();
-    /// let response = test_server.client().get("http://example.com/").perform().unwrap();
+    /// let response = test_server
+    ///     .client()
+    ///     .get("http://example.com/")
+    ///     .perform()
+    ///     .unwrap();
     /// assert_eq!(response.status(), StatusCode::IM_A_TEAPOT);
     /// #
     /// # }
@@ -125,9 +128,9 @@ impl IntoResponse for HandlerError {
 /// # use gotham::handler::{HandlerError, MapHandlerError};
 /// # use gotham::hyper::StatusCode;
 /// fn handler() -> Result<(), HandlerError> {
-/// 	let result = Err(anyhow!("just a test"));
-/// 	result.map_err_with_status(StatusCode::IM_A_TEAPOT)?;
-/// 	unreachable!()
+///     let result = Err(anyhow!("just a test"));
+///     result.map_err_with_status(StatusCode::IM_A_TEAPOT)?;
+///     unreachable!()
 /// }
 ///
 /// # #[allow(non_snake_case)]
@@ -136,7 +139,10 @@ impl IntoResponse for HandlerError {
 /// # }
 /// # fn main() {
 /// let response = handler();
-/// assert_eq!(response.map_err(|err| err.status()), Err(StatusCode::IM_A_TEAPOT));
+/// assert_eq!(
+///     response.map_err(|err| err.status()),
+///     Err(StatusCode::IM_A_TEAPOT)
+/// );
 /// # }
 /// ```
 pub trait MapHandlerError<T> {
@@ -228,8 +234,8 @@ where
 /// # use gotham::hyper::StatusCode;
 /// # use std::future::Future;
 /// fn handler() -> impl Future<Output = Result<(), HandlerError>> {
-/// 	let result = async { Err(anyhow!("just a test")) };
-/// 	result.map_err_with_status(StatusCode::IM_A_TEAPOT)
+///     let result = async { Err(anyhow!("just a test")) };
+///     result.map_err_with_status(StatusCode::IM_A_TEAPOT)
 /// }
 ///
 /// # #[allow(non_snake_case)]
@@ -238,7 +244,10 @@ where
 /// # }
 /// # fn main() {
 /// let response = block_on(handler());
-/// assert_eq!(response.map_err(|err| err.status()), Err(StatusCode::IM_A_TEAPOT));
+/// assert_eq!(
+///     response.map_err(|err| err.status()),
+///     Err(StatusCode::IM_A_TEAPOT)
+/// );
 /// # }
 /// ```
 pub trait MapHandlerErrorFuture {

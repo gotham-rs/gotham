@@ -19,6 +19,7 @@ use crate::router::tree::segment::SegmentMapping;
 /// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
 /// `PathExtractor` provided by the application.
 #[derive(Debug)]
+#[non_exhaustive]
 pub(crate) enum ExtractorError {
     /// The `PathExtractor` type is not one which can be deserialized from a
     /// `ExtractorDeserializer`.  This deserializer requires a structured type (usually a custom
@@ -81,10 +82,6 @@ pub(crate) enum ExtractorError {
     /// in the implementation of the `serde::de::Error` trait for external types to provide
     /// informative error messages.
     Custom(String),
-
-    // Variants may be added in future, and it will not be considered a breaking change.
-    #[doc(hidden)]
-    __NonExhaustive,
 }
 
 impl Display for ExtractorError {
@@ -705,7 +702,6 @@ mod tests {
     use super::*;
     use crate::helpers::http::{FormUrlDecoded, PercentDecoded};
     use serde_derive::Deserialize;
-    use std;
 
     #[derive(Deserialize)]
     struct SimpleValues {
@@ -964,7 +960,7 @@ mod tests {
 
         let p = from_segment_mapping::<WithBorrowedBytes>(sm).unwrap();
 
-        assert_eq!(&p.bytes_val[..], b"borrowed_bytes");
+        assert_eq!(p.bytes_val, b"borrowed_bytes");
     }
 
     #[test]
@@ -977,7 +973,7 @@ mod tests {
 
         let p = from_query_string_mapping::<WithBorrowedBytes>(&qsm).unwrap();
 
-        assert_eq!(&p.bytes_val[..], b"borrowed_bytes");
+        assert_eq!(p.bytes_val, b"borrowed_bytes");
     }
 
     // This is **not** a realistic use case here, as `StateData` must also be `'static`. However,

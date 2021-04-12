@@ -36,18 +36,18 @@ const DEFAULT_SCHEME: &str = "Bearer";
 /// extern crate serde_derive;
 ///
 /// use futures::prelude::*;
+/// use gotham::hyper::{Response, StatusCode};
 /// use gotham::{
-///     helpers::http::response::create_empty_response,
 ///     handler::HandlerFuture,
+///     helpers::http::response::create_empty_response,
 ///     pipeline::{
 ///         new_pipeline,
 ///         set::{finalize_pipeline_set, new_pipeline_set},
 ///     },
 ///     router::{builder::*, Router},
-///     state::{State, FromState},
+///     state::{FromState, State},
 /// };
-/// use gotham_middleware_jwt::{JWTMiddleware, AuthorizationToken};
-/// use gotham::hyper::{Response, StatusCode};
+/// use gotham_middleware_jwt::{AuthorizationToken, JWTMiddleware};
 /// use std::pin::Pin;
 ///
 /// #[derive(Deserialize, Debug)]
@@ -83,6 +83,7 @@ const DEFAULT_SCHEME: &str = "Bearer";
 /// #    let _ = router();
 /// # }
 /// ```
+#[allow(clippy::upper_case_acronyms)]
 pub struct JWTMiddleware<T> {
     secret: String,
     validation: Validation,
@@ -212,9 +213,11 @@ mod tests {
             exp: 10_000_000_000,
         };
 
-        let mut header = Header::default();
-        header.kid = Some("signing-key".to_owned());
-        header.alg = alg;
+        let header = Header {
+            kid: Some("signing-key".to_owned()),
+            alg,
+            ..Default::default()
+        };
 
         match encode(&header, &claims, &EncodingKey::from_secret(SECRET.as_ref())) {
             Ok(t) => t,
