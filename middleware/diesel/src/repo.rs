@@ -43,11 +43,12 @@ use tokio::task;
 /// #         name VARCHAR NOT NULL
 /// #         )")
 /// # })).unwrap();
-/// let result = runtime.block_on(repo.run(|conn| {
-///     use schema::users::dsl::*;
-///     users.load::<User>(&conn)
-/// })).unwrap();
-///
+/// let result = runtime
+///     .block_on(repo.run(|conn| {
+///         use schema::users::dsl::*;
+///         users.load::<User>(&conn)
+///     }))
+///     .unwrap();
 /// ```
 #[derive(StateData)]
 pub struct Repo<T>
@@ -92,15 +93,16 @@ where
     ///
     /// ```rust
     /// # use diesel::sqlite::SqliteConnection;
-    /// use r2d2::Pool;
     /// use core::time::Duration;
+    /// use r2d2::Pool;
     ///
     /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
     /// let database_url = ":memory:";
-    /// let repo = Repo::from_pool_builder(database_url,
+    /// let repo = Repo::from_pool_builder(
+    ///     database_url,
     ///     Pool::builder()
     ///         .connection_timeout(Duration::from_secs(120))
-    ///         .max_size(100)
+    ///         .max_size(100),
     /// );
     /// ```
     pub fn from_pool_builder(

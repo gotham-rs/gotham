@@ -37,7 +37,7 @@ fn parts_handler(state: State) -> (State, String) {
         );
 
         for part in path.parts.iter() {
-            response_string.push_str("\n");
+            response_string.push('\n');
             response_string.push_str(&part);
         }
 
@@ -58,7 +58,7 @@ fn named_parts_handler(state: State) -> (State, String) {
         );
 
         for part in path.parts.iter() {
-            response_string.push_str("\n");
+            response_string.push('\n');
             response_string.push_str(&part);
         }
 
@@ -79,7 +79,7 @@ fn multi_parts_handler(state: State) -> (State, String) {
         );
 
         for part in path.top.iter() {
-            top.push_str("\n");
+            top.push('\n');
             top.push_str(&part);
         }
 
@@ -90,7 +90,7 @@ fn multi_parts_handler(state: State) -> (State, String) {
         );
 
         for part in path.bottom.iter() {
-            bottom.push_str("\n");
+            bottom.push('\n');
             bottom.push_str(&part);
         }
 

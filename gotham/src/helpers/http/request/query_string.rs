@@ -48,7 +48,7 @@ mod tests {
             .iter()
             .map(|(k, v)| {
                 let mut values: Vec<&str> = v.iter().map(AsRef::as_ref).collect();
-                values.sort();
+                values.sort_unstable();
 
                 (k.as_str(), values)
             })

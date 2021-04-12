@@ -9,7 +9,8 @@ use handle::{Skip, Take};
 /// # use borrow_bag::*;
 /// #
 /// fn borrow_from<V, T, N>(bag: &BorrowBag<V>, handle: Handle<T, N>) -> &T
-///     where V: Lookup<T, N>
+/// where
+///     V: Lookup<T, N>,
 /// {
 ///     bag.borrow(handle)
 /// }

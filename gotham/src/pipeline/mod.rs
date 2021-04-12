@@ -42,7 +42,7 @@ use crate::state::{request_id, State};
 /// #
 /// #[derive(StateData)]
 /// struct MiddlewareData {
-///     vec: Vec<i32>
+///     vec: Vec<i32>,
 /// }
 ///
 /// #[derive(NewMiddleware, Copy, Clone)]
@@ -89,14 +89,11 @@ use crate::state::{request_id, State};
 ///
 /// fn handler(state: State) -> (State, Response<Body>) {
 ///     let body = {
-///        let data = state.borrow::<MiddlewareData>();
-///        format!("{:?}", data.vec)
+///         let data = state.borrow::<MiddlewareData>();
+///         format!("{:?}", data.vec)
 ///     };
 ///
-///     let res = create_response(&state,
-///                               StatusCode::OK,
-///                               mime::TEXT_PLAIN,
-///                               body);
+///     let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, body);
 ///
 ///     (state, res)
 /// }
@@ -107,7 +104,7 @@ use crate::state::{request_id, State};
 ///             .add(MiddlewareOne)
 ///             .add(MiddlewareTwo)
 ///             .add(MiddlewareThree)
-///             .build()
+///             .build(),
 ///     );
 ///
 ///     let router = build_router(chain, pipelines, |route| {
@@ -115,7 +112,11 @@ use crate::state::{request_id, State};
 ///     });
 ///
 ///     let test_server = TestServer::new(router).unwrap();
-///     let response = test_server.client().get("http://example.com/").perform().unwrap();
+///     let response = test_server
+///         .client()
+///         .get("http://example.com/")
+///         .perform()
+///         .unwrap();
 ///     assert_eq!(response.status(), StatusCode::OK);
 ///     assert_eq!(response.read_utf8_body().unwrap(), "[1, 2, 3]");
 /// }
@@ -329,7 +330,7 @@ mod tests {
             Chain: FnOnce(State) -> Pin<Box<HandlerFuture>> + Send + 'static,
             Self: Sized,
         {
-            state.put(self.clone());
+            state.put(self);
             chain(state)
         }
     }

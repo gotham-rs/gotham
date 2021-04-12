@@ -18,9 +18,9 @@ use crate::state::State;
 /// #
 /// #   State::with_new(|state| {
 /// #
-///   let matcher = AnyRouteMatcher::new();
+/// let matcher = AnyRouteMatcher::new();
 ///
-///   assert!(matcher.is_match(&state).is_ok());
+/// assert!(matcher.is_match(&state).is_ok());
 /// #
 /// #   });
 /// # }

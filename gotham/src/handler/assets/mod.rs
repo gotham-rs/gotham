@@ -10,7 +10,6 @@ use bytes::{BufMut, Bytes, BytesMut};
 use futures::prelude::*;
 use futures::ready;
 use futures::task::Poll;
-use http;
 use httpdate::parse_http_date;
 use hyper::header::*;
 use hyper::{Body, Response, StatusCode};

@@ -12,7 +12,6 @@ use hyper::client::Client;
 use hyper::header::CONTENT_TYPE;
 use hyper::{body, Body, Method, Response, Uri};
 use log::warn;
-use mime;
 use tokio::time::Sleep;
 
 pub use crate::plain::test::TestServer;
@@ -62,8 +61,7 @@ pub trait Server: Clone {
                         future::Either::Right(_) => Err(anyhow!("timed out")),
                     })
                 })
-                .into_future()
-                .map_err(|error| error.into()),
+                .into_future(),
         )
     }
 }
@@ -71,7 +69,7 @@ pub trait Server: Clone {
 impl<T: Server> BodyReader for T {
     fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>, hyper::Error> {
         let f = body::to_bytes(response.into_body()).and_then(|b| future::ok(b.to_vec()));
-        self.run_future(f).map_err(|error| error.into())
+        self.run_future(f)
     }
 }
 
@@ -228,13 +226,16 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
 ///
 /// let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 ///
-/// let response = test_server.client().get("http://localhost/").perform().unwrap();
+/// let response = test_server
+///     .client()
+///     .get("http://localhost/")
+///     .perform()
+///     .unwrap();
 /// assert_eq!(response.status(), StatusCode::OK);
 /// let body = response.read_body().unwrap();
 /// assert_eq!(&body[..], b"This is the body content.");
 /// # }
 /// ```
-///
 pub struct TestResponse {
     response: Response<Body>,
     reader: Box<dyn BodyReader>,
@@ -260,9 +261,9 @@ impl fmt::Debug for TestResponse {
     }
 }
 
-impl Into<Response<Body>> for TestResponse {
-    fn into(self) -> Response<Body> {
-        self.response
+impl From<TestResponse> for Response<Body> {
+    fn from(response: TestResponse) -> Response<Body> {
+        response.response
     }
 }
 

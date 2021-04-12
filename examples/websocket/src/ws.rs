@@ -1,4 +1,3 @@
-use base64;
 use futures::prelude::*;
 use gotham::hyper::header::{
     HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
