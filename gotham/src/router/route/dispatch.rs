@@ -1,6 +1,6 @@
 //! Defines the route `Dispatcher` and supporting types.
 
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use log::trace;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use hyper::{Body, Response, StatusCode};
 use log::trace;
 

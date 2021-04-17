@@ -952,7 +952,7 @@ where
 mod tests {
     use std::pin::Pin;
 
-    use futures::prelude::*;
+    use futures_util::future::{self, FutureExt};
     use hyper::{Body, Response, StatusCode};
 
     use crate::handler::HandlerFuture;

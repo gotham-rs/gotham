@@ -54,13 +54,13 @@ pub use hyper;
 #[cfg(feature = "rustls")]
 pub use tokio_rustls::rustls;
 
-use futures::prelude::*;
+use futures_util::TryFutureExt;
 use hyper::server::conn::Http;
+use std::future::Future;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
-
 use tokio::runtime::{self, Runtime};
 
 use crate::{handler::NewHandler, service::GothamService};

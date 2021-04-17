@@ -1,5 +1,6 @@
 //! Defines a session middleware with a pluggable backend.
 
+use std::future::Future;
 use std::io;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -8,7 +9,7 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use cookie::{Cookie, CookieJar};
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use hyper::header::SET_COOKIE;
 use hyper::{Body, Response, StatusCode};
 use log::{error, trace, warn};
@@ -183,17 +184,12 @@ impl SessionCookieConfig {
 /// ## Examples
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// # extern crate futures;
 /// # #[macro_use]
 /// # extern crate serde_derive;
-/// # extern crate bincode;
-/// # extern crate mime;
 /// #
 /// # use std::sync::Arc;
 /// # use std::time::Duration;
-/// # use futures::prelude::*;
+/// # use futures_util::future::{self, FutureExt};
 /// # use gotham::state::{State, FromState};
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
@@ -1199,7 +1195,7 @@ mod tests {
         state.put(headers);
 
         let r = m.call(state, handler);
-        match futures::executor::block_on(r) {
+        match futures_executor::block_on(r) {
             Ok(_) => {
                 let guard = received.lock().unwrap();
                 if let Some(value) = *guard {
@@ -1212,7 +1208,7 @@ mod tests {
         }
 
         let m = nm.new_middleware().unwrap();
-        let bytes = futures::executor::block_on(m.backend.read_session(identifier))
+        let bytes = futures_executor::block_on(m.backend.read_session(identifier))
             .unwrap()
             .unwrap();
         let updated = bincode::deserialize::<TestSession>(&bytes[..]).unwrap();

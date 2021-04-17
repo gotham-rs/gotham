@@ -1,9 +1,8 @@
 pub(super) mod memory;
 
+use std::future::Future;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
-
-use futures::prelude::*;
 
 use crate::middleware::session::{SessionError, SessionIdentifier};
 

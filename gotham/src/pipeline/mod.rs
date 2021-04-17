@@ -292,7 +292,7 @@ where
 mod tests {
     use super::*;
 
-    use futures::prelude::*;
+    use futures_util::future::{self, FutureExt};
     use hyper::{Body, Response, StatusCode};
 
     use crate::handler::Handler;

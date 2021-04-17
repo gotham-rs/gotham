@@ -11,8 +11,7 @@ pub use self::non_match::RouteNonMatch;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use futures::prelude::*;
-
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use hyper::header::ALLOW;
 use hyper::{Body, Response, StatusCode};
 use log::{error, trace};
@@ -244,7 +243,7 @@ mod tests {
         state.put(headers);
         set_request_id(&mut state);
 
-        futures::executor::block_on(r.handle(state))
+        futures_executor::block_on(r.handle(state))
     }
 
     #[test]
@@ -262,7 +261,7 @@ mod tests {
         state.put(HeaderMap::new());
         set_request_id(&mut state);
 
-        match futures::executor::block_on(router.handle(state)) {
+        match futures_executor::block_on(router.handle(state)) {
             Ok((_state, res)) => {
                 assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
             }
