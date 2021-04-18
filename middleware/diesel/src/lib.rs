@@ -22,6 +22,7 @@
 //! # use futures::prelude::*;
 //! # use gotham::test::TestServer;
 //! # use std::pin::Pin;
+//! # use gotham::mime::TEXT_PLAIN;
 //!
 //! pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 //!
@@ -53,7 +54,7 @@
 //!         match result {
 //!             Ok(n) => {
 //!                 let body = format!("result: {}", n);
-//!                 let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, body);
+//!                 let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, body);
 //!                 Ok((state, res))
 //!             }
 //!             Err(e) => Err((state, e.into())),

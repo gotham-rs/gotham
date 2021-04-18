@@ -1,16 +1,16 @@
 //! A basic example showing the request components
 
-use std::time::Duration;
-
 use gotham::handler::{HandlerError, HandlerResult, IntoResponse};
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{Body, StatusCode};
+use gotham::mime::TEXT_PLAIN;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 use gotham_derive::{StateData, StaticResponseExtender};
 use serde_derive::Deserialize;
+use std::time::Duration;
 use tokio::time::sleep;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
@@ -68,7 +68,7 @@ async fn sleep_handler(state: &mut State) -> Result<impl IntoResponse, HandlerEr
     // where the success type can be anything implementing `IntoResponse`
     // (including a `Response<Body>`)
     println!("sleep for {} seconds once: finished", seconds);
-    Ok((StatusCode::OK, mime::TEXT_PLAIN, data))
+    Ok((StatusCode::OK, TEXT_PLAIN, data))
 }
 
 /// It calls sleep(1) as many times as needed to make the requested duration.
@@ -88,12 +88,7 @@ async fn loop_handler(mut state: State) -> HandlerResult {
         accumulator.extend(body)
     }
 
-    let res = create_response(
-        &state,
-        StatusCode::OK,
-        mime::TEXT_PLAIN,
-        Body::from(accumulator),
-    );
+    let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, Body::from(accumulator));
     println!("sleep for one second {} times: finished", seconds);
     Ok((state, res))
 }
