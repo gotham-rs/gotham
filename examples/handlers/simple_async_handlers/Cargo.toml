@@ -11,7 +11,7 @@ gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 
 mime = "0.3"
-futures = "0.3.1"
+futures-util = "0.3.14"
 serde = "1.0"
 serde_derive = "1.0"
 tokio = { version = "1.0", features = ["full"] }

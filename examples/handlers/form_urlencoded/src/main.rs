@@ -1,5 +1,5 @@
 //! An example of decoding requests from an HTML form element
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use gotham::hyper::{body, Body, StatusCode};
 use std::pin::Pin;
 use url::form_urlencoded;

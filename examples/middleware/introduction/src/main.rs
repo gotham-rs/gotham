@@ -2,7 +2,7 @@
 #[macro_use]
 extern crate gotham_derive;
 
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
