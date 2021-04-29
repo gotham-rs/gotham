@@ -1,0 +1,36 @@
+version: 2
+updates:
+- package-ecosystem: cargo
+  directory: "/"
+  schedule:
+    interval: daily
+    time: "07:00"
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: futures
+    versions:
+    - "< 0.3, >= 0.2.a"
+  - dependency-name: hyper
+    versions:
+    - ">= 0.14.a, < 0.15"
+  - dependency-name: quote
+    versions:
+    - "< 0.7, >= 0.6.a"
+  - dependency-name: quote
+    versions:
+    - "< 1, > 0.4"
+  - dependency-name: rand
+    versions:
+    - "< 1, > 0.4"
+  - dependency-name: syn
+    versions:
+    - "< 1, > 0.12"
+  - dependency-name: tokio
+    versions:
+    - ">= 1.0.a, < 1.1"
+  - dependency-name: tokio-timer
+    versions:
+    - "< 0.3, >= 0.2.a"
+  - dependency-name: tokio-tungstenite
+    versions:
+    - ">= 0.13.a, < 0.14"
