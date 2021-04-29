@@ -41,11 +41,12 @@ fn get_handler(mut state: State) -> (State, String) {
         let visit_data: &mut Option<VisitData> =
             SessionData::<Option<VisitData>>::borrow_mut_from(&mut state);
         let old_count = maybe_visit_data.map(|v| v.count).unwrap_or(0);
-        let last_visit =
-            OffsetDateTime::try_now_local().unwrap_or_else(|_| OffsetDateTime::now_utc());
+        let last_visit = OffsetDateTime::try_now_local()
+            .unwrap_or_else(|_| OffsetDateTime::now_utc())
+            .format(Format::Rfc3339);
         *visit_data = Some(VisitData {
             count: old_count + 1,
-            last_visit: format!("{}", last_visit.format(Format::Rfc3339)),
+            last_visit,
         });
     }
 
