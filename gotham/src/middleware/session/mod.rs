@@ -871,7 +871,7 @@ where
 
 fn persist_session<T>(
     (mut state, mut response): (State, Response<Body>),
-) -> Pin<Box<dyn Future<Output = Result<(State, Response<Body>), (State, HandlerError)>> + Send>>
+) -> Pin<Box<dyn Future<Output = HandlerResult> + Send>>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {

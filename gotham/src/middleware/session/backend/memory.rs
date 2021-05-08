@@ -197,7 +197,6 @@ fn cleanup_once(
 mod tests {
     use super::*;
 
-
     #[test]
     fn cleanup_test() {
         let mut storage = LinkedHashMap::new();
