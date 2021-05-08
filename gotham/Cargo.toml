@@ -1,6 +1,6 @@
 [package]
 name = "gotham"
-version = "0.5.0" # Alter html_root_url in lib.rs also
+version = "0.6.0" # Alter html_root_url in lib.rs also
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
           "Colin Bankier <colinbankier@gmail.com>",
 		  "Dominic Meiser <git@msrd0.de>",
@@ -22,7 +22,7 @@ rustls = ["tokio-rustls"]
 
 [dependencies]
 log = "0.4"
-hyper = { version = "0.14", features = ["full"] }
+hyper = { version = "0.14.3", features = ["full"] }
 serde = "1.0"
 serde_derive = "1.0"
 bincode = "1.0"
@@ -31,20 +31,20 @@ mime_guess = "2.0.1"
 futures = "0.3.1"
 tokio = { version = "1.0", features = ["net", "rt-multi-thread", "time", "fs", "io-util"] }
 bytes = "1.0"
-borrow-bag = { path = "../misc/borrow_bag", version = "1.0" }
+borrow-bag = { path = "../misc/borrow_bag", version = "1.1" }
 percent-encoding = "2.1"
 pin-project = "1.0.0"
 uuid = { version = "0.8", features = ["v4"] }
 chrono = "0.4"
 base64 = "0.13"
-rand = "0.6"
-rand_chacha = "0.1"
+rand = "0.8"
+rand_chacha = "0.3"
 linked-hash-map = "0.5.3"
 num_cpus = "1.8"
 regex = "1.0"
-cookie = "0.14"
+cookie = "0.15"
 http = "0.2"
-httpdate = "0.3"
+httpdate = "1.0"
 itertools = "0.10.0"
 anyhow = "1.0"
 tokio-rustls = { version = "0.22", optional = true }

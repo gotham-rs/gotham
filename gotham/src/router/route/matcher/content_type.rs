@@ -3,7 +3,6 @@
 use hyper::header::{HeaderMap, CONTENT_TYPE};
 use hyper::StatusCode;
 use log::trace;
-use mime;
 use mime::Mime;
 
 use super::{LookupTable, LookupTableFromTypes};
@@ -153,7 +152,7 @@ mod test {
 
     fn with_state<F>(content_type: Option<&str>, block: F)
     where
-        F: FnOnce(&mut State) -> (),
+        F: FnOnce(&mut State),
     {
         State::with_new(|state| {
             let mut headers = HeaderMap::new();

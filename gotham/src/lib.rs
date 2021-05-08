@@ -3,7 +3,7 @@
 //! You can find out more about Gotham, including where to get help, at <https://gotham.rs>.
 //!
 //! We look forward to welcoming you into the Gotham community!
-#![doc(html_root_url = "https://docs.rs/gotham/0.5.0")] // Update when changed in Cargo.toml
+#![doc(html_root_url = "https://docs.rs/gotham/0.6.0")] // Update when changed in Cargo.toml
 #![warn(missing_docs, deprecated)]
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
@@ -32,7 +32,7 @@ pub mod helpers;
 pub mod middleware;
 pub mod pipeline;
 pub mod router;
-mod service;
+pub mod service;
 pub mod state;
 
 /// Test utilities for Gotham and Gotham consumer apps.

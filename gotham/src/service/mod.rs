@@ -3,25 +3,20 @@
 
 use std::net::SocketAddr;
 use std::panic::AssertUnwindSafe;
-use std::pin::Pin;
 use std::sync::Arc;
-use std::thread;
 
+use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::task::{self, Poll};
-use http::request;
 use hyper::service::Service;
-use hyper::upgrade::OnUpgrade;
 use hyper::{Body, Request, Response};
-use log::debug;
 
 use crate::handler::NewHandler;
-
-use crate::helpers::http::request::path::RequestPathSegments;
-use crate::state::client_addr::put_client_addr;
-use crate::state::{set_request_id, State};
+use crate::state::State;
 
 mod trap;
+
+pub use trap::call_handler;
 
 /// Wraps a `NewHandler` which will be used to serve requests. Used in `gotham::os::*` to bind
 /// incoming connections to `ConnectedGothamService` values.
@@ -66,7 +61,7 @@ where
 {
     type Response = Response<Body>;
     type Error = anyhow::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(
         &mut self,
@@ -76,43 +71,8 @@ where
     }
 
     fn call<'a>(&'a mut self, req: Request<Body>) -> Self::Future {
-        let mut state = State::new();
-
-        put_client_addr(&mut state, self.client_addr);
-
-        let (
-            request::Parts {
-                method,
-                uri,
-                version,
-                headers,
-                mut extensions,
-                ..
-            },
-            body,
-        ) = req.into_parts();
-
-        state.put(RequestPathSegments::new(uri.path()));
-        state.put(method);
-        state.put(uri);
-        state.put(version);
-        state.put(headers);
-        state.put(body);
-
-        if let Some(on_upgrade) = extensions.remove::<OnUpgrade>() {
-            state.put(on_upgrade);
-        }
-
-        {
-            let request_id = set_request_id(&mut state);
-            debug!(
-                "[DEBUG][{}][Thread][{:?}]",
-                request_id,
-                thread::current().id(),
-            );
-        };
-
-        trap::call_handler(self.handler.clone(), AssertUnwindSafe(state)).boxed()
+        let state = State::from_request(req, self.client_addr);
+        call_handler(self.handler.clone(), AssertUnwindSafe(state)).boxed()
     }
 }
 

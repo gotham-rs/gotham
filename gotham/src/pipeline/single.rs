@@ -39,7 +39,7 @@ pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
 /// let (chain, pipelines) = single_pipeline(
 ///     new_pipeline()
 ///         .add(NewSessionMiddleware::default().with_session_type::<Session>())
-///         .build()
+///         .build(),
 /// );
 ///
 /// build_router(chain, pipelines, |route| {

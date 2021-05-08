@@ -10,4 +10,4 @@ edition = "2018"
 gotham = { path = "../../../gotham" }
 
 mime = "0.3"
-cookie = "0.14"
+cookie = "0.15"

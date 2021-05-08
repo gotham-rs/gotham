@@ -14,6 +14,7 @@ use std::time::Duration;
 
 use log::info;
 
+use futures::future::BoxFuture;
 use futures::prelude::*;
 use hyper::client::Client;
 use hyper::service::Service;
@@ -178,13 +179,12 @@ impl TestServer {
         client_addr: net::SocketAddr,
     ) -> TestClient<Self, TestConnect> {
         self.try_client_with_address(client_addr)
-            .expect("TestServer: unable to spawn client")
     }
 
     fn try_client_with_address(
         &self,
         _client_addr: net::SocketAddr,
-    ) -> anyhow::Result<TestClient<Self, TestConnect>> {
+    ) -> TestClient<Self, TestConnect> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
         let mut config = rustls::ClientConfig::new();
@@ -196,10 +196,10 @@ impl TestServer {
             config: Arc::new(config),
         });
 
-        Ok(TestClient {
+        TestClient {
             client,
             test_server: self.clone(),
-        })
+        }
     }
 }
 
@@ -264,7 +264,7 @@ pub struct TestConnect {
 impl Service<Uri> for TestConnect {
     type Response = TlsConnectionStream<TcpStream>;
     type Error = tokio::io::Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Ok(()).into()
@@ -296,7 +296,6 @@ mod tests {
 
     use hyper::header::CONTENT_LENGTH;
     use hyper::{body, Body, Response, StatusCode, Uri};
-    use mime;
 
     use crate::handler::{Handler, HandlerFuture, NewHandler};
     use crate::helpers::http::response::create_response;
@@ -317,7 +316,7 @@ mod tests {
                     info!("TestHandler responding to /");
                     let response = Response::builder()
                         .status(StatusCode::OK)
-                        .body(self.response.clone().into())
+                        .body(self.response.into())
                         .unwrap();
 
                     future::ok((state, response)).boxed()

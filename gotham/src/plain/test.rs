@@ -5,13 +5,13 @@
 use http::Uri;
 use std::net::{self, IpAddr, SocketAddr};
 use std::panic::UnwindSafe;
-use std::pin::Pin;
 use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
 use log::info;
 
+use futures::future::BoxFuture;
 use futures::prelude::*;
 use hyper::client::Client;
 use tokio::net::TcpListener;
@@ -187,8 +187,7 @@ pub struct TestConnect {
 impl Service<Uri> for TestConnect {
     type Response = TcpStream;
     type Error = tokio::io::Error;
-    type Future =
-        Pin<Box<dyn Future<Output = std::result::Result<Self::Response, Self::Error>> + Send>>;
+    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<std::result::Result<(), Self::Error>> {
         Ok(()).into()
@@ -207,7 +206,7 @@ mod tests {
 
     use hyper::header::CONTENT_LENGTH;
     use hyper::{body, Body, Response, StatusCode, Uri};
-    use mime;
+    use std::pin::Pin;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use crate::handler::{Handler, HandlerFuture, NewHandler};
@@ -229,7 +228,7 @@ mod tests {
                     info!("TestHandler responding to /");
                     let response = Response::builder()
                         .status(StatusCode::OK)
-                        .body(self.response.clone().into())
+                        .body(self.response.into())
                         .unwrap();
 
                     future::ok((state, response)).boxed()

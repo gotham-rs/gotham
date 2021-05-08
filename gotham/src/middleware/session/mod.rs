@@ -7,8 +7,6 @@ use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, PoisonError};
 
-use base64;
-use bincode;
 use cookie::{Cookie, CookieJar};
 use futures::prelude::*;
 use hyper::header::SET_COOKIE;
@@ -41,14 +39,12 @@ pub struct SessionIdentifier {
 
 /// The kind of failure which occurred trying to perform a session operation.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum SessionError {
     /// The backend failed, and the included message describes the problem.
     Backend(String),
     /// The session was unable to be deserialized.
     Deserialize,
-    /// Exhaustive match against this enum is unsupported.
-    #[doc(hidden)]
-    __NonExhaustive,
 }
 
 enum SessionCookieState {
@@ -316,7 +312,7 @@ where
         let identifier = middleware.random_identifier();
         let value = T::default();
         let backend = Box::new(middleware.backend);
-        let cookie_config = middleware.cookie_config.clone();
+        let cookie_config = middleware.cookie_config;
 
         trace!(
             " no existing session, assigning new identifier ({})",
@@ -350,7 +346,7 @@ where
                 match bincode::deserialize::<T>(&val[..]) {
                     Ok(value) => {
                         let backend = Box::new(middleware.backend);
-                        let cookie_config = middleware.cookie_config.clone();
+                        let cookie_config = middleware.cookie_config;
 
                         trace!(
                             " successfully deserialized session data ({})",
@@ -1054,7 +1050,6 @@ mod tests {
     use cookie::Cookie;
     use hyper::header::{HeaderMap, COOKIE};
     use hyper::{Response, StatusCode};
-    use rand;
     use serde_derive::{Deserialize, Serialize};
     use std::sync::Mutex;
     use std::time::Duration;
@@ -1099,7 +1094,7 @@ mod tests {
     #[test]
     fn enforce_secure_cookie_prefix_attributes() {
         let backend = MemoryBackend::new(Duration::from_secs(1));
-        let nm = NewSessionMiddleware::new(backend.clone())
+        let nm = NewSessionMiddleware::new(backend)
             .with_cookie_name("__Secure-my_session")
             .insecure()
             .with_session_type::<TestSession>();
@@ -1111,7 +1106,7 @@ mod tests {
     #[test]
     fn enforce_host_cookie_prefix_attributes() {
         let backend = MemoryBackend::new(Duration::from_secs(1));
-        let nm = NewSessionMiddleware::new(backend.clone())
+        let nm = NewSessionMiddleware::new(backend)
             .with_cookie_name("__Host-my_session")
             .insecure()
             .with_cookie_domain("example.com")

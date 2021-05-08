@@ -197,7 +197,6 @@ fn cleanup_once(
 mod tests {
     use super::*;
 
-    use rand;
 
     #[test]
     fn cleanup_test() {
@@ -244,7 +243,7 @@ mod tests {
             new_backend
                 .new_backend()
                 .expect("can't create backend for read")
-                .read_session(&state, identifier.clone()),
+                .read_session(&state, identifier),
         )
         .expect("no response from backend")
         .expect("session data missing");

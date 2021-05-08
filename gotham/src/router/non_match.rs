@@ -25,10 +25,8 @@ use hyper::{Method, StatusCode};
 ///     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch> {
 ///         match state.borrow::<Method>() {
 ///             &Method::GET => Ok(()),
-///             _ => Err(
-///                 RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED)
-///                     .with_allow_list(&[Method::GET]),
-///             ),
+///             _ => Err(RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED)
+///                 .with_allow_list(&[Method::GET])),
 ///         }
 ///     }
 /// }
