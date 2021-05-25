@@ -6,10 +6,7 @@ Framework that verifies JSON Web Tokens, returning
 
 ## Usage
 
-First, ensure you're using at least Gotham version `0.3`. Then, add the
-following to your `Cargo.toml`: `gotham_middleware_jwt = "0.3"`.
-
-Second, create a struct you wish to deserialize into. For our example below,
+Create a struct you wish to deserialize into. For our example below,
 we've used `Claims`:
 
 ```rust

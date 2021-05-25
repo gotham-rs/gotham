@@ -31,7 +31,7 @@ repo.run(move |conn| {
         .execute(&conn)
 })
 ```
-`repo.run` returns a Future, allowing you to seamlessly sprinkle your database calls amongst other asynchronous handler code. The `Repo` type manages the synchronous calls of the underlying connections using `tokio_threadpool::blocking`, which allows blocking operations to run without blocking the tokio reactor. Although not true async, this allows multiple concurrent database requests to be handled, with a default of 100 concurrent blocking operations. For further details see [tokio_threadpool::blocking documentation](https://docs.rs/tokio-threadpool/0.1.8/tokio_threadpool/fn.blocking.html).
+`repo.run` returns a Future, allowing you to seamlessly sprinkle your database calls amongst other asynchronous handler code. The `Repo` type manages the synchronous calls of the underlying connections using `tokio::task::spawn_blocking`, which allows blocking operations to run without blocking the tokio reactor. Although not true async, this allows multiple concurrent database requests to be handled, with a default of 100 concurrent blocking operations. For further details see [tokio::task::spawn_blocking documentation](https://docs.rs/tokio/1/tokio/task/fn.spawn_blocking.html).
 
 For a complete example, see the [example in the main repository](https://github.com/gotham-rs/gotham/tree/master/examples/diesel).
 

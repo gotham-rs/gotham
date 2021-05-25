@@ -7,7 +7,7 @@ use tokio::task;
 
 /// A database "repository", for running database workloads.
 /// Manages a connection pool and running blocking tasks using
-/// `tokio_threadpool::blocking` which does not block the tokio event loop.
+/// [tokio::task::spawn_blocking] which does not block the tokio event loop.
 ///
 /// ```rust
 /// # #[macro_use] extern crate diesel;
