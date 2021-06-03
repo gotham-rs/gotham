@@ -14,10 +14,8 @@ gotham_middleware_diesel = { path = "../../middleware/diesel"}
 futures = "0.3.1"
 mime = "0.3"
 log = "0.4"
-diesel = { version = "1.4", features = ["sqlite", "extras"] }
+diesel = { version = "1.4.6", features = ["r2d2", "sqlite"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }
-r2d2 = "0.8"
-r2d2-diesel = "1.0"
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"
