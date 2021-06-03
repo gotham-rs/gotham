@@ -184,10 +184,8 @@ impl SessionCookieConfig {
 /// ## Examples
 ///
 /// ```rust
-
 /// # #[macro_use]
 /// # extern crate serde_derive;
-
 /// #
 /// # use std::sync::Arc;
 /// # use std::time::Duration;
@@ -230,7 +228,6 @@ impl SessionCookieConfig {
 /// #       let session = MySessionType {
 /// #           items: vec!["a".into(), "b".into(), "c".into()],
 /// #       };
-
 /// #       let bytes = bincode::serialize(&session).unwrap();
 /// #       futures_executor::block_on(backend.persist_session(
 /// #           &state,
