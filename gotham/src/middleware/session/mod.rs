@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use super::cookie::CookieParser;
 use super::{Middleware, NewMiddleware};
-use crate::handler::{HandlerError, HandlerFuture};
+use crate::handler::{HandlerError, HandlerFuture, HandlerResult};
 use crate::helpers::http::response::create_empty_response;
 use crate::state::{self, FromState, State, StateData};
 
@@ -25,7 +25,7 @@ mod backend;
 mod rng;
 
 pub use self::backend::memory::MemoryBackend;
-pub use self::backend::{Backend, NewBackend};
+pub use self::backend::{Backend, GetSessionFuture, NewBackend, SetSessionFuture};
 
 const SECURE_COOKIE_PREFIX: &str = "__Secure-";
 const HOST_COOKIE_PREFIX: &str = "__Host-";
@@ -227,12 +227,19 @@ impl SessionCookieConfig {
 /// # fn main() {
 /// #   let backend = MemoryBackend::new(Duration::from_secs(1));
 /// #   let identifier = SessionIdentifier { value: "u0G6KdfckQgkV0qLANZjjNkEHBU".to_owned() };
-/// #   let session = MySessionType {
-/// #       items: vec!["a".into(), "b".into(), "c".into()],
-/// #   };
 /// #
-/// #   let bytes = bincode::serialize(&session).unwrap();
-/// #   backend.persist_session(identifier.clone(), &bytes[..]).unwrap();
+/// #   State::with_new(|state| {
+/// #       let session = MySessionType {
+/// #           items: vec!["a".into(), "b".into(), "c".into()],
+/// #       };
+/// #       let bytes = bincode::serialize(&session).unwrap();
+/// #       futures::executor::block_on(backend.persist_session(
+/// #           &state,
+/// #           identifier.clone(),
+/// #           &bytes[..]
+/// #       ))
+/// #       .unwrap();
+/// #   });
 /// #
 /// #   let nm = NewSessionMiddleware::new(backend).with_session_type::<MySessionType>();
 /// #   let nm = Arc::new(nm);
@@ -285,11 +292,14 @@ where
     /// Discards the session, invalidating it for future use and removing the data from the
     /// `Backend`.
     // TODO: Add test case that covers this.
-    pub fn discard(self, state: &mut State) -> Result<(), SessionError> {
+    pub fn discard(
+        self,
+        state: &mut State,
+    ) -> Pin<Box<dyn Future<Output = Result<(), SessionError>>>> {
         state.put(SessionDropData {
             cookie_config: self.cookie_config,
         });
-        self.backend.drop_session(self.identifier)
+        self.backend.drop_session(&state, self.identifier)
     }
 
     // Create a new, blank `SessionData<T>`
@@ -818,7 +828,7 @@ where
                 );
 
                 self.backend
-                    .read_session(id.clone())
+                    .read_session(&state, id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
                     .and_then(move |state| chain(state))
                     .and_then(persist_session::<T>)
@@ -861,7 +871,7 @@ where
 
 fn persist_session<T>(
     (mut state, mut response): (State, Response<Body>),
-) -> impl Future<Output = Result<(State, Response<Body>), (State, HandlerError)>>
+) -> Pin<Box<dyn Future<Output = HandlerResult> + Send>>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
@@ -872,7 +882,7 @@ where
                 state::request_id(&state)
             );
             reset_cookie(&mut response, session_drop_data);
-            return future::ok((state, response)).right_future();
+            return Box::pin(future::ok((state, response)));
         }
         None => {
             trace!(
@@ -889,14 +899,12 @@ where
             }
 
             match session_data.state {
-                SessionDataState::Dirty => {
-                    write_session(state, response, session_data).left_future()
-                }
-                SessionDataState::Clean => future::ok((state, response)).right_future(),
+                SessionDataState::Dirty => write_session(state, response, session_data),
+                SessionDataState::Clean => Box::pin(future::ok((state, response))),
             }
         }
         // Session was discarded with `SessionData::discard`, or otherwise removed
-        None => future::ok((state, response)).right_future(),
+        None => Box::pin(future::ok((state, response))),
     }
 }
 
@@ -931,7 +939,7 @@ fn write_session<T>(
     state: State,
     response: Response<Body>,
     session_data: SessionData<T>,
-) -> impl Future<Output = Result<(State, Response<Body>), (State, HandlerError)>>
+) -> Pin<Box<dyn Future<Output = HandlerResult> + Send>>
 where
     T: Default + Serialize + for<'de> Deserialize<'de> + Send + 'static,
 {
@@ -946,33 +954,33 @@ where
 
             let response = create_empty_response(&state, StatusCode::INTERNAL_SERVER_ERROR);
 
-            return future::ok((state, response));
+            return Box::pin(future::ok((state, response)));
         }
     };
 
     let identifier = session_data.identifier;
     let slice = &bytes[..];
 
-    let result = session_data
+    session_data
         .backend
-        .persist_session(identifier.clone(), slice);
+        .persist_session(&state, identifier.clone(), slice)
+        .then(move |result| match result {
+            Ok(_) => {
+                trace!(
+                    "[{}] persisted session ({}) successfully",
+                    state::request_id(&state),
+                    identifier.value
+                );
 
-    match result {
-        Ok(_) => {
-            trace!(
-                "[{}] persisted session ({}) successfully",
-                state::request_id(&state),
-                identifier.value
-            );
+                future::ok((state, response))
+            }
+            Err(_) => {
+                let response = create_empty_response(&state, StatusCode::INTERNAL_SERVER_ERROR);
 
-            future::ok((state, response))
-        }
-        Err(_) => {
-            let response = create_empty_response(&state, StatusCode::INTERNAL_SERVER_ERROR);
-
-            future::ok((state, response))
-        }
-    }
+                future::ok((state, response))
+            }
+        })
+        .boxed()
 }
 
 impl<B, T> SessionMiddleware<B, T>
@@ -1157,6 +1165,7 @@ mod tests {
     fn existing_session() {
         let nm = NewSessionMiddleware::default().with_session_type::<TestSession>();
         let m = nm.new_middleware().unwrap();
+        let mut state = State::new();
 
         let identifier = m.random_identifier();
         // 64 -> 512 bits = (85 * 6 + 2)
@@ -1168,9 +1177,11 @@ mod tests {
         };
         let bytes = bincode::serialize(&session).unwrap();
 
-        m.backend
-            .persist_session(identifier.clone(), &bytes)
-            .unwrap();
+        futures::executor::block_on(
+            m.backend
+                .persist_session(&state, identifier.clone(), &bytes),
+        )
+        .unwrap();
 
         let received: Arc<Mutex<Option<u64>>> = Arc::new(Mutex::new(None));
         let r = received.clone();
@@ -1192,7 +1203,6 @@ mod tests {
             .boxed()
         };
 
-        let mut state = State::new();
         let mut headers = HeaderMap::new();
         let cookie = Cookie::build("_gotham_session", identifier.value.clone()).finish();
         headers.insert(COOKIE, cookie.to_string().parse().unwrap());
@@ -1211,8 +1221,9 @@ mod tests {
             Err((_, e)) => panic!("error: {:?}", e),
         }
 
+        let state = State::new();
         let m = nm.new_middleware().unwrap();
-        let bytes = futures::executor::block_on(m.backend.read_session(identifier))
+        let bytes = futures::executor::block_on(m.backend.read_session(&state, identifier))
             .unwrap()
             .unwrap();
         let updated = bincode::deserialize::<TestSession>(&bytes[..]).unwrap();

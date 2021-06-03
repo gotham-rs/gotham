@@ -7,8 +7,11 @@ use futures::prelude::*;
 use linked_hash_map::LinkedHashMap;
 use log::trace;
 
-use crate::middleware::session::backend::{Backend, NewBackend, SessionFuture};
-use crate::middleware::session::{SessionError, SessionIdentifier};
+use crate::middleware::session::backend::{
+    Backend, GetSessionFuture, NewBackend, SetSessionFuture,
+};
+use crate::middleware::session::SessionIdentifier;
+use crate::state::State;
 
 /// Type alias for the `MemoryBackend` storage container.
 type MemoryMap = Mutex<LinkedHashMap<String, (Instant, Vec<u8>)>>;
@@ -80,13 +83,14 @@ impl NewBackend for MemoryBackend {
 impl Backend for MemoryBackend {
     fn persist_session(
         &self,
+        _: &State,
         identifier: SessionIdentifier,
         content: &[u8],
-    ) -> Result<(), SessionError> {
+    ) -> Pin<Box<SetSessionFuture>> {
         match self.storage.lock() {
             Ok(mut storage) => {
                 storage.insert(identifier.value, (Instant::now(), Vec::from(content)));
-                Ok(())
+                Box::pin(future::ok(()))
             }
             Err(PoisonError { .. }) => {
                 unreachable!("session memory backend lock poisoned, HashMap panicked?")
@@ -94,7 +98,7 @@ impl Backend for MemoryBackend {
         }
     }
 
-    fn read_session(&self, identifier: SessionIdentifier) -> Pin<Box<SessionFuture>> {
+    fn read_session(&self, _: &State, identifier: SessionIdentifier) -> Pin<Box<GetSessionFuture>> {
         match self.storage.lock() {
             Ok(mut storage) => match storage.get_refresh(&identifier.value) {
                 Some(&mut (ref mut instant, ref value)) => {
@@ -109,11 +113,11 @@ impl Backend for MemoryBackend {
         }
     }
 
-    fn drop_session(&self, identifier: SessionIdentifier) -> Result<(), SessionError> {
+    fn drop_session(&self, _: &State, identifier: SessionIdentifier) -> Pin<Box<SetSessionFuture>> {
         match self.storage.lock() {
             Ok(mut storage) => {
                 storage.remove(&identifier.value);
-                Ok(())
+                future::ok(()).boxed()
             }
             Err(PoisonError { .. }) => {
                 unreachable!("session memory backend lock poisoned, HashMap panicked?")
@@ -221,21 +225,24 @@ mod tests {
     fn memory_backend_test() {
         let new_backend = MemoryBackend::new(Duration::from_millis(100));
         let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
+        let state = State::new();
         let identifier = SessionIdentifier {
             value: "totally_random_identifier".to_owned(),
         };
 
-        new_backend
-            .new_backend()
-            .expect("can't create backend for write")
-            .persist_session(identifier.clone(), &bytes[..])
-            .expect("failed to persist");
+        futures::executor::block_on(
+            new_backend
+                .new_backend()
+                .expect("can't create backend for write")
+                .persist_session(&state, identifier.clone(), &bytes[..]),
+        )
+        .expect("failed to persist");
 
         let received = futures::executor::block_on(
             new_backend
                 .new_backend()
                 .expect("can't create backend for read")
-                .read_session(identifier),
+                .read_session(&state, identifier),
         )
         .expect("no response from backend")
         .expect("session data missing");
@@ -247,6 +254,7 @@ mod tests {
     fn memory_backend_refresh_test() {
         let new_backend = MemoryBackend::new(Duration::from_millis(100));
         let bytes: Vec<u8> = (0..64).map(|_| rand::random()).collect();
+        let state = State::new();
         let identifier = SessionIdentifier {
             value: "totally_random_identifier".to_owned(),
         };
@@ -259,13 +267,19 @@ mod tests {
             .new_backend()
             .expect("can't create backend for write");
 
-        backend
-            .persist_session(identifier.clone(), &bytes[..])
-            .expect("failed to persist");
+        futures::executor::block_on(backend.persist_session(
+            &state,
+            identifier.clone(),
+            &bytes[..],
+        ))
+        .expect("failed to persist");
 
-        backend
-            .persist_session(identifier2.clone(), &bytes2[..])
-            .expect("failed to persist");
+        futures::executor::block_on(backend.persist_session(
+            &state,
+            identifier2.clone(),
+            &bytes2[..],
+        ))
+        .expect("failed to persist");
 
         {
             let mut storage = backend.storage.lock().expect("couldn't lock storage");
@@ -280,7 +294,7 @@ mod tests {
             );
         }
 
-        futures::executor::block_on(backend.read_session(identifier.clone()))
+        futures::executor::block_on(backend.read_session(&state, identifier.clone()))
             .expect("failed to read session");
 
         {
