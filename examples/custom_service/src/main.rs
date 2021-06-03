@@ -3,12 +3,12 @@
 use anyhow::{Context as _, Error};
 use futures_util::future::{BoxFuture, FutureExt};
 use gotham::{
+    hyper::{server::conn::Http, service::Service, Body},
     router::{builder::*, Router},
     service::call_handler,
     state::State,
 };
 use http::{Request, Response};
-use hyper::{server::conn::Http, service::Service, Body};
 use std::net::SocketAddr;
 use std::panic::AssertUnwindSafe;
 use std::task;
