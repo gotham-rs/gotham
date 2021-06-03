@@ -11,5 +11,5 @@ gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
 serde = "1"
 serde_derive = "1"
-time = "0.1"
+time = "0.2.23"
 cookie = "0.15"
