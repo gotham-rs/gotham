@@ -12,6 +12,7 @@ use std::pin::Pin;
 use gotham::hyper::StatusCode;
 #[cfg(not(test))]
 use gotham::hyper::{body, Client, Uri};
+use gotham::mime::TEXT_PLAIN;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
@@ -106,7 +107,7 @@ fn series_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     data_future
         .then(move |result| match result {
             Ok(data) => {
-                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+                let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, data);
                 println!("series length: {} finished", length);
                 future::ok((state, res))
             }
@@ -160,7 +161,7 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     data_future
         .then(move |result| match result {
             Ok(data) => {
-                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+                let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, data);
                 println!("loop length: {} finished", length);
                 future::ok((state, res))
             }
@@ -227,7 +228,7 @@ fn parallel_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     data_future
         .then(move |result| match result {
             Ok(data) => {
-                let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+                let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, data);
                 println!("parallel length: {} finished", length);
                 future::ok((state, res))
             }

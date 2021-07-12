@@ -18,6 +18,7 @@ extern crate serde_derive;
 use futures_util::future::{self, FutureExt};
 use gotham::hyper::header::{HeaderMap, ACCEPT};
 use gotham::hyper::{Body, Response, StatusCode};
+use gotham::mime::{APPLICATION_JSON, TEXT_HTML_UTF_8};
 use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
@@ -63,12 +64,8 @@ impl Middleware for ApiMiddleware {
             Some(ref s) if s == "application/json" || s == "*/*" => chain(state),
             _ => {
                 let body = r#"{"message":"Invalid accept type"}"#;
-                let response = create_response(
-                    &state,
-                    StatusCode::BAD_REQUEST,
-                    mime::APPLICATION_JSON,
-                    body,
-                );
+                let response =
+                    create_response(&state, StatusCode::BAD_REQUEST, APPLICATION_JSON, body);
                 future::ok((state, response)).boxed()
             }
         }
@@ -79,13 +76,15 @@ impl Middleware for ApiMiddleware {
 pub fn html_handler(state: State) -> (State, Response<Body>) {
     let doc = "
     <html>
-    <head>Gotham</head>
+    <head>
+        <title>Gotham</title>
+    </head>
     <body>
         <p>A flexible web framework that promotes stability, safety, security and speed.</p>
     </body>
     </html>
     ";
-    let res = create_response(&state, StatusCode::OK, mime::TEXT_HTML, doc);
+    let res = create_response(&state, StatusCode::OK, TEXT_HTML_UTF_8, doc);
     (state, res)
 }
 
@@ -94,7 +93,7 @@ pub fn api_handler(state: State) -> (State, Response<Body>) {
     let doc = r#"{
         "Gotham": "A flexible web framework that promotes stability, safety, security and speed."
     }"#;
-    let res = create_response(&state, StatusCode::OK, mime::APPLICATION_JSON, doc);
+    let res = create_response(&state, StatusCode::OK, APPLICATION_JSON, doc);
     (state, res)
 }
 

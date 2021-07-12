@@ -12,7 +12,7 @@ gotham = { path = "../../gotham/"}
 gotham_derive = { path = "../../gotham_derive/" }
 gotham_middleware_diesel = { path = "../../middleware/diesel"}
 futures-util = "0.3.14"
-mime = "0.3"
+
 log = "0.4"
 diesel = { version = "1.4.6", features = ["r2d2", "sqlite"] }
 diesel_migrations = { version = "1.4", features = ["sqlite"] }

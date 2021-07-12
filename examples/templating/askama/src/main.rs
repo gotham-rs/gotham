@@ -1,6 +1,7 @@
 use askama::Template;
 use gotham::helpers::http::response::{create_empty_response, create_response};
 use gotham::hyper::{Body, Response, StatusCode};
+use gotham::mime::TEXT_HTML_UTF_8;
 use gotham::state::State;
 
 pub const MESSAGE: &str = "Hello, Gotham!";
@@ -24,7 +25,7 @@ pub fn index(state: State) -> (State, Response<Body>) {
         Ok(content) => create_response(
             &state,
             StatusCode::OK,
-            mime::TEXT_HTML_UTF_8,
+            TEXT_HTML_UTF_8,
             content.into_bytes(),
         ),
         Err(_) => create_empty_response(&state, StatusCode::INTERNAL_SERVER_ERROR),

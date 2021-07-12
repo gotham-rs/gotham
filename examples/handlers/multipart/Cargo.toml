@@ -9,6 +9,5 @@ edition = "2018"
 [dependencies]
 gotham = { path = "../../../gotham" }
 
-mime = "0.3"
 futures-util = "0.3.14"
 multipart = { version = "0.18", default-features = false, features = ["server"] }

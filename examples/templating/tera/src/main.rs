@@ -2,6 +2,7 @@
 #[macro_use]
 extern crate lazy_static;
 
+use gotham::mime::{Mime, TEXT_HTML_UTF_8};
 use gotham::state::State;
 use tera::{Context, Tera};
 
@@ -12,12 +13,12 @@ lazy_static! {
 /// Create a `Handler` which calls the Tera static reference, renders
 /// a template with a given Context, and returns the result as a String
 /// to be used as Response Body
-pub fn say_hello(state: State) -> (State, (mime::Mime, String)) {
+pub fn say_hello(state: State) -> (State, (Mime, String)) {
     let mut context = Context::new();
     context.insert("user", "Gotham");
     let rendered = TERA.render("example.html.tera", &context).unwrap();
 
-    (state, (mime::TEXT_HTML, rendered))
+    (state, (TEXT_HTML_UTF_8, rendered))
 }
 
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.

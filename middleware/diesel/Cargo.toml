@@ -22,4 +22,3 @@ log = "0.4"
 
 [dev-dependencies]
 diesel = { version = "1.4.6", features = ["sqlite"] }
-mime = "0.3.15"

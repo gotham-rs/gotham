@@ -65,6 +65,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::mime::TEXT_PLAIN;
     use gotham::test::TestServer;
 
     #[test]
@@ -84,7 +85,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .post("http://localhost", "", mime::TEXT_PLAIN)
+            .post("http://localhost", "", TEXT_PLAIN)
             .perform()
             .unwrap();
 

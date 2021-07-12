@@ -6,6 +6,4 @@ edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
-
 askama = "0.10.3"
-mime = "0.3.12"

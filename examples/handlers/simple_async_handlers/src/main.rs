@@ -8,15 +8,16 @@ use futures_util::stream::{self, StreamExt};
 use futures_util::FutureExt;
 use std::pin::Pin;
 use std::time::Duration;
+use tokio::time::sleep;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::StatusCode;
+use gotham::mime::TEXT_PLAIN;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
-use tokio::time::sleep;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
@@ -72,7 +73,7 @@ fn sleep_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     // IntoHandlerError.
     sleep_future
         .map(move |data| {
-            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+            let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, data);
             println!("sleep for {} seconds once: finished", seconds);
             Ok((state, res))
         })
@@ -102,7 +103,7 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     // This bit is the same as the bit in the first example.
     sleep_future
         .map(move |data| {
-            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, data);
+            let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, data);
             println!("sleep for one second {} times: finished", seconds);
             Ok((state, res))
         })

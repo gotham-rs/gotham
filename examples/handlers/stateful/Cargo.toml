@@ -10,4 +10,3 @@ edition = "2018"
 gotham = { path = "../../../gotham" }
 
 futures-util = "0.3.14"
-mime = "0.3"

@@ -49,6 +49,8 @@ pub mod tls;
 pub use anyhow;
 /// Re-export hyper
 pub use hyper;
+/// Re-export mime
+pub use mime;
 
 /// Re-export rustls
 #[cfg(feature = "rustls")]
