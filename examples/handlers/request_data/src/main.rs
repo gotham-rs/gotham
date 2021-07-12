@@ -1,5 +1,5 @@
 //! A basic example showing the request components
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use gotham::hyper::{body, Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
 use std::pin::Pin;
 

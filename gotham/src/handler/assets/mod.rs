@@ -7,9 +7,8 @@
 mod accepted_encoding;
 
 use bytes::{BufMut, Bytes, BytesMut};
-use futures::prelude::*;
-use futures::ready;
-use futures::task::Poll;
+use futures_util::stream::{self, TryStream, TryStreamExt};
+use futures_util::{ready, FutureExt, TryFutureExt};
 use httpdate::parse_http_date;
 use hyper::header::*;
 use hyper::{Body, Response, StatusCode};
@@ -33,6 +32,7 @@ use std::iter::FromIterator;
 use std::mem::MaybeUninit;
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
+use std::task::Poll;
 use std::time::UNIX_EPOCH;
 
 /// Represents a handler for any files under a directory.
@@ -269,7 +269,7 @@ fn check_compressed_options(
                 .filter_map(|e| {
                     get_extension(&e.encoding, &options).map(|ext| (e.encoding.to_string(), ext))
                 })
-                .filter_map(|(encoding, ext)| {
+                .find_map(|(encoding, ext)| {
                     let path = options.path.with_file_name(format!(
                         "{}.{}",
                         filename.to_string_lossy(),
@@ -281,7 +281,6 @@ fn check_compressed_options(
                         None
                     }
                 })
-                .next()
         })
         .unwrap_or((options.path.clone(), None))
 }

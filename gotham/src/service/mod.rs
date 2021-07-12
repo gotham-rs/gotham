@@ -4,10 +4,9 @@
 use std::net::SocketAddr;
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
+use std::task::{self, Poll};
 
-use futures::future::BoxFuture;
-use futures::prelude::*;
-use futures::task::{self, Poll};
+use futures_util::future::{BoxFuture, FutureExt};
 use hyper::service::Service;
 use hyper::{Body, Request, Response};
 
@@ -101,7 +100,7 @@ mod tests {
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = futures::executor::block_on(f).unwrap();
+        let response = futures_executor::block_on(f).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
@@ -119,7 +118,7 @@ mod tests {
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
             .call(req);
-        let response = futures::executor::block_on(f).unwrap();
+        let response = futures_executor::block_on(f).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 }

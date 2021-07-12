@@ -1,4 +1,3 @@
-use futures::prelude::*;
 use gotham::hyper::header::{
     HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
 };
@@ -8,6 +7,7 @@ use gotham::hyper::{
     Body, HeaderMap, Response, StatusCode,
 };
 use sha1::Sha1;
+use std::future::Future;
 use tokio_tungstenite::{tungstenite, WebSocketStream};
 
 pub use tungstenite::protocol::{Message, Role};

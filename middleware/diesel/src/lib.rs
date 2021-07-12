@@ -19,7 +19,7 @@
 //! # use gotham_middleware_diesel::{self, DieselMiddleware};
 //! # use diesel::{RunQueryDsl, SqliteConnection};
 //! # use gotham::hyper::StatusCode;
-//! # use futures::prelude::*;
+//! # use futures_util::FutureExt;
 //! # use gotham::test::TestServer;
 //! # use std::pin::Pin;
 //! # use gotham::mime::TEXT_PLAIN;
@@ -78,7 +78,7 @@
 #![doc(test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
 use diesel::Connection;
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use log::{error, trace};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::pin::Pin;

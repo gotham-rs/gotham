@@ -15,7 +15,7 @@ extern crate gotham_derive;
 #[macro_use]
 extern crate serde_derive;
 
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use gotham::hyper::header::{HeaderMap, ACCEPT};
 use gotham::hyper::{Body, Response, StatusCode};
 use gotham::mime::{APPLICATION_JSON, TEXT_HTML_UTF_8};

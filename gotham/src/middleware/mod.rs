@@ -143,15 +143,12 @@ pub mod timer;
 /// Decorating the response after the request has completed:
 ///
 /// ```rust
-/// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
-/// # extern crate hyper;
-/// # extern crate futures;
 /// #
 /// # use std::pin::Pin;
 /// #
-/// # use futures::prelude::*;
+/// # use futures_util::{FutureExt, TryFutureExt};
 /// # use hyper::{Body, Response, StatusCode};
 /// # use hyper::header::WARNING;
 /// # use gotham::handler::HandlerFuture;
@@ -207,16 +204,13 @@ pub mod timer;
 /// Terminating the request early based on some arbitrary condition:
 ///
 /// ```rust
-/// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
-/// # extern crate hyper;
-/// # extern crate futures;
 /// #
 /// # use std::pin::Pin;
 /// #
 /// # use hyper::{Body, Response, Method, StatusCode};
-/// # use futures::prelude::*;
+/// # use futures_util::future::{self, FutureExt};
 /// # use gotham::helpers::http::response::create_empty_response;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
@@ -270,15 +264,12 @@ pub mod timer;
 /// Asynchronous middleware, which continues the request after some action completes:
 ///
 /// ```rust
-/// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
-/// # extern crate hyper;
-/// # extern crate futures;
 /// #
 /// # use std::pin::Pin;
 /// #
-/// # use futures::prelude::*;
+/// # use futures_util::future::{self, FutureExt, TryFutureExt};
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;

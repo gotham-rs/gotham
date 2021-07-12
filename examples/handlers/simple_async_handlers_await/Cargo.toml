@@ -9,7 +9,8 @@ edition = "2018"
 [dependencies]
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
-futures = "0.3.1"
+
+
 serde = "1.0"
 serde_derive = "1.0"
 tokio = "1.0"

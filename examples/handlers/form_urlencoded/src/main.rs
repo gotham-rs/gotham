@@ -1,5 +1,6 @@
 //! An example of decoding requests from an HTML form element
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
+
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{body, Body, StatusCode};

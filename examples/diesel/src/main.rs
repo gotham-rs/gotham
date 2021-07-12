@@ -9,7 +9,7 @@ extern crate diesel_migrations;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::prelude::*;
+use futures_util::FutureExt;
 use gotham::handler::{HandlerError, HandlerFuture, MapHandlerError, MapHandlerErrorFuture};
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{body, Body, StatusCode};

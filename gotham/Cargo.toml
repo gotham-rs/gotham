@@ -28,7 +28,7 @@ serde_derive = "1.0"
 bincode = "1.0"
 mime = "0.3.15"
 mime_guess = "2.0.1"
-futures = "0.3.1"
+futures-util = "0.3.14"
 tokio = { version = "1.0", features = ["net", "rt-multi-thread", "time", "fs", "io-util"] }
 bytes = "1.0"
 borrow-bag = { path = "../misc/borrow_bag", version = "1.1" }
@@ -50,6 +50,7 @@ anyhow = "1.0"
 tokio-rustls = { version = "0.22", optional = true }
 
 [dev-dependencies]
+futures-executor = "0.3.14"
 gotham_derive = { path = "../gotham_derive" }
 thiserror = "1.0"
 

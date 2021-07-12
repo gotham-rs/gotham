@@ -1,5 +1,7 @@
+use futures_util::FutureExt;
 use hyper::Body;
 
+use std::future::Future;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
@@ -16,8 +18,6 @@ use crate::router::route::dispatch::DispatcherImpl;
 use crate::router::route::matcher::RouteMatcher;
 use crate::router::route::{Delegation, Extractors, RouteImpl};
 use crate::state::State;
-use core::future::Future;
-use futures::FutureExt;
 
 pub trait HandlerMarker {
     fn call_and_wrap(self, state: State) -> Pin<Box<HandlerFuture>>;
@@ -266,14 +266,10 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # extern crate futures;
-    /// #
     /// # use std::pin::Pin;
     /// #
+    /// # use futures_util::future::{self, FutureExt};
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use futures::prelude::*;
     /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;

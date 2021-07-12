@@ -5,7 +5,7 @@
 //! [Common Log Format](https://en.wikipedia.org/wiki/Common_Log_Format) (CLF).
 //!
 //! There is also a `SimpleLogger` which emits only basic request logs.
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use hyper::{header::CONTENT_LENGTH, Method, Uri, Version};
 use log::Level;
 use log::{log, log_enabled};

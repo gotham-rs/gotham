@@ -15,7 +15,7 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
-futures = "0.3.1"
+futures-util = "0.3.14"
 gotham = { path = "../../gotham", version = "0.6.0", default-features = false }
 gotham_derive = { path = "../../gotham_derive", version = "0.6.0" }
 serde = "1.0"
