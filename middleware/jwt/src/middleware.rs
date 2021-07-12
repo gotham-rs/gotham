@@ -47,7 +47,7 @@ const DEFAULT_SCHEME: &str = "Bearer";
 ///     router::{builder::*, Router},
 ///     state::{FromState, State},
 /// };
-/// use gotham_middleware_jwt::{AuthorizationToken, JWTMiddleware};
+/// use gotham_middleware_jwt::{AuthorizationToken, JwtMiddleware};
 /// use std::pin::Pin;
 ///
 /// #[derive(Deserialize, Debug)]
@@ -69,7 +69,7 @@ const DEFAULT_SCHEME: &str = "Bearer";
 ///     let pipelines = new_pipeline_set();
 ///     let (pipelines, defaults) = pipelines.add(
 ///         new_pipeline()
-///             .add(JWTMiddleware::<Claims>::new("secret"))
+///             .add(JwtMiddleware::<Claims>::new("secret"))
 ///             .build(),
 ///     );
 ///     let default_chain = (defaults, ());
@@ -83,15 +83,14 @@ const DEFAULT_SCHEME: &str = "Bearer";
 /// #    let _ = router();
 /// # }
 /// ```
-#[allow(clippy::upper_case_acronyms)]
-pub struct JWTMiddleware<T> {
+pub struct JwtMiddleware<T> {
     secret: String,
     validation: Validation,
     scheme: String,
     claims: PhantomData<T>,
 }
 
-impl<T> JWTMiddleware<T>
+impl<T> JwtMiddleware<T>
 where
     T: for<'de> Deserialize<'de> + Send + Sync,
 {
@@ -100,7 +99,7 @@ where
     pub fn new<S: Into<String>>(secret: S) -> Self {
         let validation = Validation::default();
 
-        JWTMiddleware {
+        Self {
             secret: secret.into(),
             validation,
             scheme: DEFAULT_SCHEME.into(),
@@ -111,19 +110,19 @@ where
     /// Create a new instance of the middleware by appending new
     /// validation constraints.
     pub fn validation(self, validation: Validation) -> Self {
-        JWTMiddleware { validation, ..self }
+        Self { validation, ..self }
     }
 
     /// Create a new instance of the middleware with a custom scheme
     pub fn scheme<S: Into<String>>(self, scheme: S) -> Self {
-        JWTMiddleware {
+        Self {
             scheme: scheme.into(),
             ..self
         }
     }
 }
 
-impl<T> Middleware for JWTMiddleware<T>
+impl<T> Middleware for JwtMiddleware<T>
 where
     T: for<'de> Deserialize<'de> + Send + Sync + 'static,
 {
@@ -169,14 +168,14 @@ where
     }
 }
 
-impl<T> NewMiddleware for JWTMiddleware<T>
+impl<T> NewMiddleware for JwtMiddleware<T>
 where
     T: for<'de> Deserialize<'de> + RefUnwindSafe + Send + Sync + 'static,
 {
-    type Instance = JWTMiddleware<T>;
+    type Instance = Self;
 
     fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
-        Ok(JWTMiddleware {
+        Ok(Self {
             secret: self.secret.clone(),
             validation: self.validation.clone(),
             scheme: self.scheme.clone(),
@@ -233,17 +232,17 @@ mod tests {
         future::ok((state, res)).boxed()
     }
 
-    fn default_jwt_middleware() -> JWTMiddleware<Claims> {
-        JWTMiddleware::<Claims>::new(SECRET).validation(Validation::default())
+    fn default_jwt_middleware() -> JwtMiddleware<Claims> {
+        JwtMiddleware::<Claims>::new(SECRET).validation(Validation::default())
     }
 
-    fn jwt_middleware_with_scheme(scheme: &str) -> JWTMiddleware<Claims> {
-        JWTMiddleware::<Claims>::new(SECRET)
+    fn jwt_middleware_with_scheme(scheme: &str) -> JwtMiddleware<Claims> {
+        JwtMiddleware::<Claims>::new(SECRET)
             .validation(Validation::default())
             .scheme(scheme)
     }
 
-    fn router(middleware: JWTMiddleware<Claims>) -> Router {
+    fn router(middleware: JwtMiddleware<Claims>) -> Router {
         // Create JWTMiddleware with HS256 algorithm (default).
 
         let (chain, pipelines) = single_pipeline(new_pipeline().add(middleware).build());
