@@ -11,6 +11,5 @@ gotham = { path = "../../gotham" }
 futures-util = "0.3.14"
 tokio = { version = "1.0", features = ["full"] }
 
-
 [target.'cfg(unix)'.dev-dependencies]
 nix = "0.21"
