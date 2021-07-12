@@ -757,7 +757,7 @@ mod tests {
 
         let p = from_segment_mapping::<SimpleValues>(sm).unwrap();
 
-        assert_eq!(p.bool_val, true);
+        assert!(p.bool_val);
         assert_eq!(p.i8_val, 15);
         assert_eq!(p.i16_val, 511);
         assert_eq!(p.i32_val, 90000);
@@ -836,7 +836,7 @@ mod tests {
 
         let p = from_query_string_mapping::<SimpleValues>(&qsm).unwrap();
 
-        assert_eq!(p.bool_val, true);
+        assert!(p.bool_val);
         assert_eq!(p.i8_val, 15);
         assert_eq!(p.i16_val, 511);
         assert_eq!(p.i32_val, 90000);
