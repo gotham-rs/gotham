@@ -24,7 +24,7 @@ use gotham::{
   router::{builder::*, Router},
   state::{State, FromState},
 };
-use gotham_middleware_jwt::{JWTMiddleware, AuthorizationToken};
+use gotham_middleware_jwt::{JwtMiddleware, AuthorizationToken};
 use gotham::hyper::{Response, StatusCode};
 
 #[derive(Deserialize, Debug)]
@@ -46,7 +46,7 @@ fn router() -> Router {
   let pipelines = new_pipeline_set();
   let (pipelines, defaults) = pipelines.add(
     new_pipeline()
-      .add(JWTMiddleware::<Claims>::new("secret".as_ref()))
+      .add(JwtMiddleware::<Claims>::new("secret".as_ref()))
       .build(),
   );
   let default_chain = (defaults, ());

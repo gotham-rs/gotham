@@ -1,6 +1,6 @@
 [package]
 name = "gotham_middleware_jwt"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Nicholas Young <nyoung@uptime.ventures>",
           "Colin Bankier <colinbankier@gmail.com>",
           "Isaac Whitfield <iw@whitfin.io>",
