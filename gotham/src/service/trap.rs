@@ -4,8 +4,7 @@
 use std::panic::catch_unwind;
 use std::panic::{AssertUnwindSafe, UnwindSafe};
 
-use futures::prelude::*;
-
+use futures_util::future::FutureExt;
 use hyper::{Body, Response, StatusCode};
 use log::error;
 
@@ -71,10 +70,10 @@ fn finalize_panic_response() -> Response<Body> {
 mod tests {
     use super::*;
 
+    use futures_util::future;
+    use hyper::{HeaderMap, Method, StatusCode};
     use std::io;
     use std::pin::Pin;
-
-    use hyper::{HeaderMap, Method, StatusCode};
 
     use crate::handler::HandlerFuture;
     use crate::helpers::http::response::create_empty_response;
@@ -95,7 +94,7 @@ mod tests {
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
-        let response = futures::executor::block_on(r).unwrap();
+        let response = futures_executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
@@ -122,7 +121,7 @@ mod tests {
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
-        let response = futures::executor::block_on(r).unwrap();
+        let response = futures_executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::ACCEPTED);
     }
 
@@ -137,7 +136,7 @@ mod tests {
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
-        let response = futures::executor::block_on(r).unwrap();
+        let response = futures_executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
@@ -156,7 +155,7 @@ mod tests {
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
-        let response = futures::executor::block_on(r).unwrap();
+        let response = futures_executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
@@ -170,7 +169,7 @@ mod tests {
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
-        let response = futures::executor::block_on(r).unwrap();
+        let response = futures_executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
@@ -194,7 +193,7 @@ mod tests {
         set_request_id(&mut state);
 
         let r = call_handler(&new_handler, AssertUnwindSafe(state));
-        let response = futures::executor::block_on(r).unwrap();
+        let response = futures_executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
@@ -222,7 +221,7 @@ mod tests {
 
         let new_handler = PanicNewHandler {};
         let r = call_handler(new_handler, AssertUnwindSafe(state));
-        let response = futures::executor::block_on(r).unwrap();
+        let response = futures_executor::block_on(r).unwrap();
         assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }

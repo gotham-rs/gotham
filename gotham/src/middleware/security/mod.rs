@@ -15,10 +15,10 @@
 use crate::handler::HandlerFuture;
 use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::State;
-use futures::prelude::*;
-use std::pin::Pin;
 
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use hyper::header::{HeaderValue, X_CONTENT_TYPE_OPTIONS, X_FRAME_OPTIONS, X_XSS_PROTECTION};
+use std::pin::Pin;
 
 // constant strings to be used as header values
 const XFO_VALUE: &str = "DENY";

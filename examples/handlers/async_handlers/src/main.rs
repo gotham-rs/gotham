@@ -4,7 +4,9 @@ extern crate gotham_derive;
 #[macro_use]
 extern crate serde_derive;
 
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
+use futures_util::stream::{self, StreamExt, TryStreamExt};
+use std::future::Future;
 use std::pin::Pin;
 
 use gotham::hyper::StatusCode;
@@ -140,7 +142,7 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
         // Here, we create a stream that contains our two URLs, and call fold to loop over all URLs
         // and get the urls, concatenating the results into the accumulator (which starts off as the
         // empty `Vec`).
-        let f = futures::stream::iter(vec![url_a, url_b]).map(Ok).try_fold(
+        let f = stream::iter(vec![url_a, url_b]).map(Ok).try_fold(
             Vec::new(),
             move |mut accumulator, url| {
                 // Do the http_get(), and append the result to the accumulator so that it can

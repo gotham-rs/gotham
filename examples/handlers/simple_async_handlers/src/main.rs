@@ -4,7 +4,8 @@ extern crate gotham_derive;
 #[macro_use]
 extern crate serde_derive;
 
-use futures::prelude::*;
+use futures_util::stream::{self, StreamExt};
+use futures_util::FutureExt;
 use std::pin::Pin;
 use std::time::Duration;
 
@@ -89,15 +90,14 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
 
     // Here, we create a stream of Ok(_) that's as long as we need, and use fold
     // to loop over it asyncronously, accumulating the return values from sleep().
-    let sleep_future =
-        futures::stream::iter(0..seconds).fold(Vec::new(), move |mut accumulator, _| {
-            // Do the sleep(), and append the result to the accumulator so that it can
-            // be returned.
-            sleep_for(1).map(move |body| {
-                accumulator.extend(body);
-                accumulator
-            })
-        });
+    let sleep_future = stream::iter(0..seconds).fold(Vec::new(), move |mut accumulator, _| {
+        // Do the sleep(), and append the result to the accumulator so that it can
+        // be returned.
+        sleep_for(1).map(move |body| {
+            accumulator.extend(body);
+            accumulator
+        })
+    });
 
     // This bit is the same as the bit in the first example.
     sleep_future

@@ -2,27 +2,25 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use http::Uri;
+use std::future::Future;
 use std::net::{self, IpAddr, SocketAddr};
 use std::panic::UnwindSafe;
 use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use log::info;
-
-use futures::future::BoxFuture;
-use futures::prelude::*;
+use futures_util::future::{self, BoxFuture};
+use futures_util::FutureExt;
+use http::Uri;
 use hyper::client::Client;
+use hyper::service::Service;
+use log::info;
 use tokio::net::TcpListener;
+use tokio::net::TcpStream;
 use tokio::runtime::Runtime;
 use tokio::time::{sleep, Sleep};
 
-use hyper::service::Service;
-use tokio::net::TcpStream;
-
 use crate::handler::NewHandler;
-
 use crate::test::{self, TestClient};
 
 struct TestServerData {

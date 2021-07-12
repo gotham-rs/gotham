@@ -12,7 +12,7 @@ categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "gotham", "diesel"]
 
 [dependencies]
-futures = "0.3.1"
+futures-util = "0.3.14"
 gotham = { path = "../../gotham", version = "0.6.0", default-features = false }
 gotham_derive = { path = "../../gotham_derive", version = "0.6.0" }
 diesel = { version = "1.4.6", features = ["r2d2"] }

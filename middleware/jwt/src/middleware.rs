@@ -1,5 +1,5 @@
 use crate::state_data::AuthorizationToken;
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use gotham::hyper::{
     header::{HeaderMap, AUTHORIZATION},
     StatusCode,
@@ -35,7 +35,7 @@ const DEFAULT_SCHEME: &str = "Bearer";
 /// #[macro_use]
 /// extern crate serde_derive;
 ///
-/// use futures::prelude::*;
+/// use futures_util::future::{self, FutureExt};
 /// use gotham::hyper::{Response, StatusCode};
 /// use gotham::{
 ///     handler::HandlerFuture,
@@ -188,7 +188,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use futures::future;
     use gotham::{
         handler::HandlerFuture,
         pipeline::{new_pipeline, single::*},

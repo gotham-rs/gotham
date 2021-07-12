@@ -221,7 +221,7 @@ where
 mod tests {
     use super::*;
 
-    use futures::prelude::*;
+    use futures_util::FutureExt;
     use hyper::{HeaderMap, Method, StatusCode, Uri};
     use std::str::FromStr;
 

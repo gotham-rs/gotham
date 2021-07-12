@@ -1,4 +1,4 @@
-use futures::prelude::*;
+use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use gotham::hyper::{upgrade::OnUpgrade, Body, HeaderMap, Response, StatusCode};
 use gotham::state::{request_id, FromState, State};
 

@@ -2,7 +2,7 @@
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
 
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;

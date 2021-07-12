@@ -2,8 +2,7 @@
 //!
 //! See the `TestServer` type for example usage.
 
-use http::Uri;
-use hyper::client::connect::{Connected, Connection};
+use std::future::Future;
 use std::io::{self, BufReader};
 use std::net::{self, IpAddr, SocketAddr};
 use std::panic::UnwindSafe;
@@ -12,12 +11,12 @@ use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use log::info;
-
-use futures::future::BoxFuture;
-use futures::prelude::*;
+use futures_util::future::{BoxFuture, FutureExt, TryFutureExt};
+use http::Uri;
+use hyper::client::connect::{Connected, Connection};
 use hyper::client::Client;
 use hyper::service::Service;
+use log::info;
 use pin_project::pin_project;
 use rustls::Session;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
@@ -37,7 +36,6 @@ use tokio_rustls::{
 };
 
 use crate::handler::NewHandler;
-
 use crate::test::{self, TestClient};
 
 struct TestServerData {
@@ -294,14 +292,15 @@ mod tests {
 
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use futures_util::future;
+    use http::header::CONTENT_TYPE;
     use hyper::header::CONTENT_LENGTH;
     use hyper::{body, Body, Response, StatusCode, Uri};
+    use log::info;
 
     use crate::handler::{Handler, HandlerFuture, NewHandler};
     use crate::helpers::http::response::create_response;
     use crate::state::{client_addr, FromState, State};
-    use http::header::CONTENT_TYPE;
-    use log::info;
 
     #[derive(Clone)]
     struct TestHandler {

@@ -15,7 +15,7 @@ extern crate log;
 
 use std::pin::Pin;
 
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
 
 use gotham::anyhow;
 use gotham::handler::HandlerFuture;

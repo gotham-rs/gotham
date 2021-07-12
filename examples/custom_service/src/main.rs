@@ -1,7 +1,7 @@
 //! An example usage of Gotham from another service.
 
 use anyhow::{Context as _, Error};
-use futures::future::{BoxFuture, FutureExt};
+use futures_util::future::{BoxFuture, FutureExt};
 use gotham::{
     hyper::{server::conn::Http, service::Service, Body},
     router::{builder::*, Router},

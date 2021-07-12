@@ -4,13 +4,14 @@
 //! `Handler`, but the traits can also be implemented directly for greater control. See the
 //! `Handler` trait for some examples of valid handlers.
 use std::borrow::Cow;
+use std::future::Future;
 use std::ops::Deref;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 use std::sync::Arc;
 
 use bytes::Bytes;
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use hyper::{Body, Response, StatusCode};
 use mime::{self, Mime};
 
@@ -100,10 +101,6 @@ pub type HandlerFuture = dyn Future<Output = HandlerResult> + Send;
 /// `NewHandler` trait.
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// # extern crate futures;
-/// #
 /// # use gotham::handler::{NewHandler, IntoHandlerFuture};
 /// # use gotham::helpers::http::response::create_empty_response;
 /// # use gotham::state::State;

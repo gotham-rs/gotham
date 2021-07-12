@@ -1,5 +1,5 @@
 //! An example of decoding multipart form requests
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::header::CONTENT_TYPE;

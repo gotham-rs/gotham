@@ -3,10 +3,11 @@ pub mod request;
 
 use std::convert::TryFrom;
 use std::fmt;
+use std::future::Future;
 use std::ops::{Deref, DerefMut};
 
 use anyhow::anyhow;
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFuture, TryFutureExt};
 use hyper::client::connect::Connect;
 use hyper::client::Client;
 use hyper::header::CONTENT_TYPE;
@@ -15,7 +16,6 @@ use log::warn;
 use tokio::time::Sleep;
 
 pub use crate::plain::test::TestServer;
-use futures::TryFutureExt;
 pub use request::TestRequest;
 
 pub(crate) trait BodyReader {
