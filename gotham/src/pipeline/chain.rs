@@ -2,7 +2,7 @@
 //! dispatcher for a route.
 
 use borrow_bag::{Handle, Lookup};
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use log::trace;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;

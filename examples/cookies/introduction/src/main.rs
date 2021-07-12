@@ -1,12 +1,11 @@
 //! An introduction to storing and retrieving cookie data, with the Gotham
 //! web framework.
+use cookie::{Cookie, CookieJar};
+use gotham::helpers::http::response::create_response;
 use gotham::hyper::header::SET_COOKIE;
 use gotham::hyper::{Body, Response, StatusCode};
-
-use cookie::{Cookie, CookieJar};
-
-use gotham::helpers::http::response::create_response;
 use gotham::middleware::cookie::CookieParser;
+use gotham::mime::TEXT_PLAIN;
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::*;
@@ -27,7 +26,7 @@ fn handler(state: State) -> (State, Response<Body>) {
     let mut response = create_response(
         &state,
         StatusCode::OK,
-        mime::TEXT_PLAIN,
+        TEXT_PLAIN,
         format!("Hello {} visitor\n", adjective),
     );
 

@@ -7,7 +7,5 @@ edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
-
-mime = "0.3"
 tera = "1.5"
 lazy_static = "1.0"

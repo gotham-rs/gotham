@@ -9,10 +9,11 @@ extern crate diesel_migrations;
 
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
-use futures::prelude::*;
+use futures_util::FutureExt;
 use gotham::handler::{HandlerError, HandlerFuture, MapHandlerError, MapHandlerErrorFuture};
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{body, Body, StatusCode};
+use gotham::mime::APPLICATION_JSON;
 use gotham::pipeline::{new_pipeline, single::single_pipeline};
 use gotham::router::{builder::*, Router};
 use gotham::state::{FromState, State};
@@ -67,7 +68,7 @@ fn create_product_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
 
         let body =
             serde_json::to_string(&RowsUpdated { rows }).expect("Failed to serialise to json");
-        let res = create_response(&state, StatusCode::CREATED, mime::APPLICATION_JSON, body);
+        let res = create_response(&state, StatusCode::CREATED, APPLICATION_JSON, body);
         Ok((state, res))
     }
     .boxed()
@@ -82,7 +83,7 @@ fn get_products_handler(state: State) -> Pin<Box<HandlerFuture>> {
         match result {
             Ok(users) => {
                 let body = serde_json::to_string(&users).expect("Failed to serialize users.");
-                let res = create_response(&state, StatusCode::OK, mime::APPLICATION_JSON, body);
+                let res = create_response(&state, StatusCode::OK, APPLICATION_JSON, body);
                 Ok((state, res))
             }
             Err(e) => Err((state, e.into())),
@@ -177,7 +178,7 @@ mod tests {
         let body = r#"{"title":"test","price":1.0,"link":"http://localhost"}"#;
         let response = test_server
             .client()
-            .post("http://localhost", body, mime::APPLICATION_JSON)
+            .post("http://localhost", body, APPLICATION_JSON)
             .perform()
             .unwrap();
         assert_eq!(response.status(), StatusCode::CREATED);

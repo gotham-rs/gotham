@@ -1,10 +1,9 @@
 //! Provides an interface for running Diesel queries in a Gotham application.
 //!
-//! The gotham diesel middleware uses `tokio_threadpool::blocking`, which allows
+//! The gotham diesel middleware uses [tokio::task::spawn_blocking], which allows
 //! blocking operations to run without blocking the tokio reactor. Although not true async,
 //! this allows multiple concurrent database requests to be handled, with a default of 100
-//! concurrent blocking operations. For further details see
-//! [tokio_threadpool::blocking documentation](https://docs.rs/tokio-threadpool/0.1.8/tokio_threadpool/fn.blocking.html).
+//! concurrent blocking operations.
 //!
 //! Usage example:
 //!
@@ -19,9 +18,10 @@
 //! # use gotham_middleware_diesel::{self, DieselMiddleware};
 //! # use diesel::{RunQueryDsl, SqliteConnection};
 //! # use gotham::hyper::StatusCode;
-//! # use futures::prelude::*;
+//! # use futures_util::FutureExt;
 //! # use gotham::test::TestServer;
 //! # use std::pin::Pin;
+//! # use gotham::mime::TEXT_PLAIN;
 //!
 //! pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 //!
@@ -53,7 +53,7 @@
 //!         match result {
 //!             Ok(n) => {
 //!                 let body = format!("result: {}", n);
-//!                 let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, body);
+//!                 let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, body);
 //!                 Ok((state, res))
 //!             }
 //!             Err(e) => Err((state, e.into())),
@@ -77,7 +77,7 @@
 #![doc(test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
 use diesel::Connection;
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use log::{error, trace};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::pin::Pin;

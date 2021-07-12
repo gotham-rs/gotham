@@ -4,9 +4,10 @@
 #[cfg(all(test, unix))]
 extern crate nix;
 
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{Body, Response, StatusCode};
+use gotham::mime::TEXT_PLAIN;
 use gotham::state::State;
 use tokio::signal;
 
@@ -19,7 +20,7 @@ pub fn say_hello(state: State) -> (State, Response<Body>) {
     let res = create_response(
         &state,
         StatusCode::OK,
-        mime::TEXT_PLAIN,
+        TEXT_PLAIN,
         String::from("Hello World!"),
     );
 

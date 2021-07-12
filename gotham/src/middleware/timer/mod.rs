@@ -4,7 +4,7 @@ use crate::helpers::http::header::X_RUNTIME_DURATION;
 use crate::helpers::timing::Timer;
 use crate::middleware::{Middleware, NewMiddleware};
 use crate::state::State;
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt, TryFutureExt};
 use std::pin::Pin;
 
 /// Middleware binding to attach request execution times inside headers.

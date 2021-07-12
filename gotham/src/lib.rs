@@ -49,18 +49,20 @@ pub mod tls;
 pub use anyhow;
 /// Re-export hyper
 pub use hyper;
+/// Re-export mime
+pub use mime;
 
 /// Re-export rustls
 #[cfg(feature = "rustls")]
 pub use tokio_rustls::rustls;
 
-use futures::prelude::*;
+use futures_util::TryFutureExt;
 use hyper::server::conn::Http;
+use std::future::Future;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
-
 use tokio::runtime::{self, Runtime};
 
 use crate::{handler::NewHandler, service::GothamService};

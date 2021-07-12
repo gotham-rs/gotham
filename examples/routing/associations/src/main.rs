@@ -76,6 +76,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::hyper::StatusCode;
+    use gotham::mime::TEXT_PLAIN;
     use gotham::test::TestServer;
 
     #[test]
@@ -180,11 +181,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .post(
-                "http://localhost/checkout/complete",
-                "data",
-                mime::TEXT_PLAIN,
-            )
+            .post("http://localhost/checkout/complete", "data", TEXT_PLAIN)
             .perform()
             .unwrap();
 
@@ -199,11 +196,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .post(
-                "http://localhost/checkout/address",
-                "data",
-                mime::TEXT_PLAIN,
-            )
+            .post("http://localhost/checkout/address", "data", TEXT_PLAIN)
             .perform()
             .unwrap();
 
@@ -218,11 +211,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .put(
-                "http://localhost/checkout/address",
-                "data",
-                mime::TEXT_PLAIN,
-            )
+            .put("http://localhost/checkout/address", "data", TEXT_PLAIN)
             .perform()
             .unwrap();
 
@@ -237,11 +226,7 @@ mod tests {
         let test_server = TestServer::new(router()).unwrap();
         let response = test_server
             .client()
-            .patch(
-                "http://localhost/checkout/address",
-                "data",
-                mime::TEXT_PLAIN,
-            )
+            .patch("http://localhost/checkout/address", "data", TEXT_PLAIN)
             .perform()
             .unwrap();
 
@@ -274,7 +259,7 @@ mod tests {
             .post(
                 "http://localhost/checkout/payment_details",
                 "data",
-                mime::TEXT_PLAIN,
+                TEXT_PLAIN,
             )
             .perform()
             .unwrap();
@@ -293,7 +278,7 @@ mod tests {
             .put(
                 "http://localhost/checkout/payment_details",
                 "data",
-                mime::TEXT_PLAIN,
+                TEXT_PLAIN,
             )
             .perform()
             .unwrap();

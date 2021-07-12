@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex, PoisonError, Weak};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use linked_hash_map::LinkedHashMap;
 use log::trace;
 
@@ -230,7 +230,7 @@ mod tests {
             value: "totally_random_identifier".to_owned(),
         };
 
-        futures::executor::block_on(
+        futures_executor::block_on(
             new_backend
                 .new_backend()
                 .expect("can't create backend for write")
@@ -238,7 +238,7 @@ mod tests {
         )
         .expect("failed to persist");
 
-        let received = futures::executor::block_on(
+        let received = futures_executor::block_on(
             new_backend
                 .new_backend()
                 .expect("can't create backend for read")
@@ -267,14 +267,10 @@ mod tests {
             .new_backend()
             .expect("can't create backend for write");
 
-        futures::executor::block_on(backend.persist_session(
-            &state,
-            identifier.clone(),
-            &bytes[..],
-        ))
-        .expect("failed to persist");
+        futures_executor::block_on(backend.persist_session(&state, identifier.clone(), &bytes[..]))
+            .expect("failed to persist");
 
-        futures::executor::block_on(backend.persist_session(
+        futures_executor::block_on(backend.persist_session(
             &state,
             identifier2.clone(),
             &bytes2[..],
@@ -294,7 +290,7 @@ mod tests {
             );
         }
 
-        futures::executor::block_on(backend.read_session(&state, identifier.clone()))
+        futures_executor::block_on(backend.read_session(&state, identifier.clone()))
             .expect("failed to read session");
 
         {

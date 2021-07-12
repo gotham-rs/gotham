@@ -1,9 +1,10 @@
 //! An example of decoding multipart form requests
-use futures::prelude::*;
+use futures_util::future::{self, FutureExt};
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::header::CONTENT_TYPE;
 use gotham::hyper::{body, Body, HeaderMap, StatusCode};
+use gotham::mime::TEXT_PLAIN;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
@@ -38,26 +39,21 @@ fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
                             Ok(r) => r,
                             Err(e) => format!("{:?}", e),
                         };
-                        let res =
-                            create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, res_body);
+                        let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, res_body);
                         future::ok((state, res))
                     }
                     Ok(None) => {
                         let res = create_response(
                             &state,
                             StatusCode::OK,
-                            mime::TEXT_PLAIN,
+                            TEXT_PLAIN,
                             "can't read".to_string(),
                         );
                         future::ok((state, res))
                     }
                     Err(e) => {
-                        let res = create_response(
-                            &state,
-                            StatusCode::OK,
-                            mime::TEXT_PLAIN,
-                            format!("{:?}", e),
-                        );
+                        let res =
+                            create_response(&state, StatusCode::OK, TEXT_PLAIN, format!("{:?}", e));
                         future::ok((state, res))
                     }
                 }
@@ -85,6 +81,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::hyper::header::HeaderValue;
+    use gotham::mime::MULTIPART_FORM_DATA;
     use gotham::test::TestServer;
 
     #[test]
@@ -100,7 +97,7 @@ mod tests {
 
         let test_server = TestServer::new(router()).unwrap();
         let client = test_server.client();
-        let mut request = client.post("http://localhost", body, mime::MULTIPART_FORM_DATA);
+        let mut request = client.post("http://localhost", body, MULTIPART_FORM_DATA);
 
         let content_type_string = format!("multipart/form-data; boundary={}", boundary);
         request.headers_mut().insert(

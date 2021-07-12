@@ -9,7 +9,5 @@ edition = "2018"
 [dependencies]
 gotham = { path = "../../../gotham" }
 gotham_derive = { path = "../../../gotham_derive" }
-
-mime = "0.3"
 serde = "1"
 serde_derive = "1"

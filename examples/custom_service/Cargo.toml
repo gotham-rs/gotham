@@ -6,8 +6,8 @@ publish = false
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0"
-futures = "0.3"
 gotham = { path = "../../gotham" }
+anyhow = "1.0"
+futures-util = "0.3.14"
 http = "0.2"
 tokio = { version = "1.0", features = ["full"] }

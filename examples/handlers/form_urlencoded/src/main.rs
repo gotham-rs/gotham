@@ -1,14 +1,15 @@
 //! An example of decoding requests from an HTML form element
-use futures::prelude::*;
-use gotham::hyper::{body, Body, StatusCode};
-use std::pin::Pin;
-use url::form_urlencoded;
+use futures_util::future::{self, FutureExt};
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
+use gotham::hyper::{body, Body, StatusCode};
+use gotham::mime::TEXT_PLAIN;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham::state::{FromState, State};
+use std::pin::Pin;
+use url::form_urlencoded;
 
 /// Extracts the elements of the POST request and responds with the form keys and values
 fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
@@ -22,7 +23,7 @@ fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
                 let res_body_line = format!("{}: {}\n", key, value);
                 res_body.push_str(&res_body_line);
             }
-            let res = create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, res_body);
+            let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, res_body);
             future::ok((state, res))
         }
         Err(e) => future::err((state, e.into())),
@@ -48,6 +49,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gotham::mime::APPLICATION_WWW_FORM_URLENCODED;
     use gotham::test::TestServer;
 
     #[test]
@@ -58,7 +60,7 @@ mod tests {
             .post(
                 "http://localhost",
                 "name=Bob&address=123+Jersey Ave.&message=Hello world%21",
-                mime::APPLICATION_WWW_FORM_URLENCODED,
+                APPLICATION_WWW_FORM_URLENCODED,
             )
             .perform()
             .unwrap();

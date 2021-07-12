@@ -2,10 +2,10 @@
 #[macro_use]
 extern crate serde_derive;
 
-use gotham::hyper::{Body, Response, StatusCode};
-
 use gotham::handler::IntoResponse;
 use gotham::helpers::http::response::create_response;
+use gotham::hyper::{Body, Response, StatusCode};
+use gotham::mime::APPLICATION_JSON;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::State;
@@ -29,7 +29,7 @@ impl IntoResponse for Product {
         create_response(
             state,
             StatusCode::OK,
-            mime::APPLICATION_JSON,
+            APPLICATION_JSON,
             serde_json::to_string(&self).expect("serialized product"),
         )
     }

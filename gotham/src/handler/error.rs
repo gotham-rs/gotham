@@ -1,4 +1,4 @@
-use futures::future::FusedFuture;
+use futures_util::future::FusedFuture;
 use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::pin::Pin;
@@ -45,13 +45,9 @@ impl HandlerError {
     /// implementation.
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # extern crate futures;
-    /// #
     /// # use std::pin::Pin;
     /// #
-    /// # use futures::prelude::*;
+    /// # use futures_util::future::{self, FutureExt};
     /// # use hyper::StatusCode;
     /// # use gotham::state::State;
     /// # use gotham::handler::{HandlerError, HandlerFuture};
@@ -226,9 +222,7 @@ where
 /// status code. This is handy if you want to specify the status code but still use the `?`
 /// shorthand.
 /// ```rust
-/// # extern crate futures;
-/// # extern crate gotham;
-/// # use futures::executor::block_on;
+/// # use futures_executor::block_on;
 /// # use gotham::anyhow::anyhow;
 /// # use gotham::handler::{HandlerError, MapHandlerErrorFuture};
 /// # use gotham::hyper::StatusCode;
