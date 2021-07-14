@@ -6,10 +6,10 @@ use gotham::hyper::{Body, StatusCode};
 use gotham::mime::TEXT_PLAIN;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
+use gotham::router::response::extender::StaticResponseExtender;
 use gotham::router::Router;
-use gotham::state::{FromState, State};
-use gotham_derive::{StateData, StaticResponseExtender};
-use serde_derive::Deserialize;
+use gotham::state::{FromState, State, StateData};
+use serde::Deserialize;
 use std::time::Duration;
 use tokio::time::sleep;
 

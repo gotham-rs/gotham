@@ -1046,7 +1046,7 @@ mod tests {
     use cookie::Cookie;
     use hyper::header::{HeaderMap, COOKIE};
     use hyper::{Response, StatusCode};
-    use serde_derive::{Deserialize, Serialize};
+    use serde::{Deserialize, Serialize};
     use std::sync::Mutex;
     use std::time::Duration;
 
