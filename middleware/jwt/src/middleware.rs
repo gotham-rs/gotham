@@ -33,9 +33,6 @@ const DEFAULT_SCHEME: &str = "Bearer";
 ///
 /// Example:
 /// ```rust
-/// #[macro_use]
-/// extern crate serde_derive;
-///
 /// use futures_util::future::{self, FutureExt};
 /// use gotham::hyper::{Response, StatusCode};
 /// use gotham::{
@@ -49,6 +46,7 @@ const DEFAULT_SCHEME: &str = "Bearer";
 ///     state::{FromState, State},
 /// };
 /// use gotham_middleware_jwt::{AuthorizationToken, JwtMiddleware};
+/// use serde::Deserialize;
 /// use std::pin::Pin;
 ///
 /// #[derive(Deserialize, Debug)]

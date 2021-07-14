@@ -20,20 +20,18 @@ use crate::state::{State, StateData};
 ///
 /// ```rust
 /// # extern crate gotham;
-/// # #[macro_use]
-/// # extern crate gotham_derive;
 /// # extern crate hyper;
 /// # extern crate mime;
 /// # extern crate serde;
-/// # #[macro_use]
-/// # extern crate serde_derive;
 /// #
 /// # use hyper::{Body, Response, StatusCode};
-/// # use gotham::state::{FromState, State};
+/// # use gotham::state::{FromState, State, StateData};
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
+/// # use gotham::router::response::extender::StaticResponseExtender;
 /// # use gotham::test::TestServer;
+/// # use serde::Deserialize;
 /// #
 /// #[derive(Deserialize, StateData, StaticResponseExtender)]
 /// struct MyQueryParams {
