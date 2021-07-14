@@ -7,4 +7,3 @@ edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
-gotham_derive = { path = "../../../gotham_derive" }

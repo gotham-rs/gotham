@@ -1,7 +1,7 @@
 //! Holds the two possible structs that are `Queryable` and
 //! `Insertable` in the DB
 use diesel::{Insertable, Queryable};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::schema::products;
 

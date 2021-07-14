@@ -8,14 +8,6 @@
 //! `401: Unauthorized`.
 #![warn(missing_docs, rust_2018_idioms)]
 
-#[macro_use]
-extern crate gotham_derive;
-#[macro_use]
-extern crate log;
-#[cfg(test)]
-#[macro_use]
-extern crate serde_derive;
-
 mod middleware;
 mod state_data;
 

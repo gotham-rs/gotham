@@ -15,6 +15,8 @@ pub mod session;
 pub mod state;
 pub mod timer;
 
+pub use gotham_derive::NewMiddleware;
+
 /// `Middleware` has the opportunity to provide additional behaviour to the `Request` / `Response`
 /// interaction. For example:
 ///

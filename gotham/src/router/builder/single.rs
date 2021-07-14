@@ -420,21 +420,16 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
-    /// # #[macro_use]
-    /// # extern crate serde_derive;
-    /// # extern crate hyper;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use gotham::state::{State, FromState};
+    /// # use gotham::state::{State, StateData, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
+    /// # use gotham::router::response::extender::StaticResponseExtender;
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
+    /// # use serde::Deserialize;
     /// #
     /// #[derive(Deserialize, StateData, StaticResponseExtender)]
     /// struct MyPathParams {
@@ -489,22 +484,16 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
-    /// # extern crate hyper;
-    /// # extern crate serde;
-    /// # #[macro_use]
-    /// # extern crate serde_derive;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use gotham::state::{State, FromState};
+    /// # use gotham::state::{State, StateData, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
+    /// # use gotham::router::response::extender::StaticResponseExtender;
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::set::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
+    /// # use serde::Deserialize;
     /// #
     /// #[derive(StateData, Deserialize, StaticResponseExtender)]
     /// struct MyQueryParams {

@@ -1,12 +1,10 @@
 //! Shows how to match arbitrarily many path segments.
-#[macro_use]
-extern crate gotham_derive;
-#[macro_use]
-extern crate serde_derive;
 
 use gotham::router::builder::*;
+use gotham::router::response::extender::StaticResponseExtender;
 use gotham::router::Router;
-use gotham::state::{FromState, State};
+use gotham::state::{FromState, State, StateData};
+use serde::Deserialize;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct PathExtractor {

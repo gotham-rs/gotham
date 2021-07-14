@@ -1,14 +1,12 @@
 //! An introduction to extracting query string name/value pairs, in a type safe way, with the
 //! Gotham web framework
-#[macro_use]
-extern crate gotham_derive;
-#[macro_use]
-extern crate serde_derive;
 
 use gotham::mime::{Mime, APPLICATION_JSON};
 use gotham::router::builder::*;
+use gotham::router::response::extender::StaticResponseExtender;
 use gotham::router::Router;
-use gotham::state::{FromState, State};
+use gotham::state::{FromState, State, StateData};
+use serde::{Deserialize, Serialize};
 
 /// Holds data extracted from the Request query string.
 ///

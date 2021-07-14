@@ -535,11 +535,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # #[macro_use]
-    /// # extern crate serde_derive;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
@@ -548,6 +543,7 @@ where
     /// # use gotham::pipeline::new_pipeline;
     /// # use gotham::pipeline::set::{finalize_pipeline_set, new_pipeline_set};
     /// # use gotham::test::TestServer;
+    /// # use serde::{Deserialize, Serialize};
     /// #
     /// # #[derive(Default, Serialize, Deserialize)]
     /// # struct Session;
@@ -705,11 +701,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # #[macro_use]
-    /// # extern crate serde_derive;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -718,6 +709,7 @@ where
     /// # use gotham::state::State;
     /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
     /// # use gotham::test::TestServer;
+    /// # use serde::{Deserialize, Serialize};
     /// #
     /// # #[derive(Default, Serialize, Deserialize)]
     /// # struct Session;

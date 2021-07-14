@@ -16,9 +16,7 @@ edition = "2018"
 
 [dependencies]
 futures-util = "0.3.14"
-gotham = { path = "../../gotham", version = "0.6.0", default-features = false }
-gotham_derive = { path = "../../gotham_derive", version = "0.6.0" }
-serde = "1.0"
-serde_derive = "1.0"
+gotham = { path = "../../gotham", version = "0.6.0", default-features = false, features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 jsonwebtoken = "7.0"
 log = "0.4"

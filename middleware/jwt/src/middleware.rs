@@ -12,7 +12,8 @@ use gotham::{
     state::{request_id, FromState, State},
 };
 use jsonwebtoken::{decode, DecodingKey, Validation};
-use serde::de::Deserialize;
+use log::trace;
+use serde::Deserialize;
 use std::pin::Pin;
 use std::{marker::PhantomData, panic::RefUnwindSafe};
 
@@ -32,9 +33,6 @@ const DEFAULT_SCHEME: &str = "Bearer";
 ///
 /// Example:
 /// ```rust
-/// #[macro_use]
-/// extern crate serde_derive;
-///
 /// use futures_util::future::{self, FutureExt};
 /// use gotham::hyper::{Response, StatusCode};
 /// use gotham::{
@@ -48,6 +46,7 @@ const DEFAULT_SCHEME: &str = "Bearer";
 ///     state::{FromState, State},
 /// };
 /// use gotham_middleware_jwt::{AuthorizationToken, JwtMiddleware};
+/// use serde::Deserialize;
 /// use std::pin::Pin;
 ///
 /// #[derive(Deserialize, Debug)]
@@ -195,6 +194,7 @@ mod tests {
         test::TestServer,
     };
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+    use serde::Serialize;
 
     const SECRET: &str = "some-secret";
 
