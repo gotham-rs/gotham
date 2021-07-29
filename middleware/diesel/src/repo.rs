@@ -1,6 +1,6 @@
 use diesel::r2d2::ConnectionManager;
 use diesel::Connection;
-use gotham_derive::StateData;
+use gotham::state::StateData;
 use log::error;
 use r2d2::{CustomizeConnection, Pool, PooledConnection};
 use tokio::task;

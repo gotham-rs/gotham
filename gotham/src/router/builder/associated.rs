@@ -137,18 +137,13 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
-    /// # #[macro_use]
-    /// # extern crate serde_derive;
-    /// # extern crate hyper;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::state::State;
+    /// # use gotham::router::response::extender::StaticResponseExtender;
+    /// # use gotham::state::{State, StateData};
     /// # use gotham::test::TestServer;
+    /// # use serde::Deserialize;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
@@ -201,19 +196,13 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # #[macro_use]
-    /// # extern crate gotham_derive;
-    /// # extern crate hyper;
-    /// # extern crate serde;
-    /// # #[macro_use]
-    /// # extern crate serde_derive;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::state::State;
+    /// # use gotham::router::response::extender::StaticResponseExtender;
+    /// # use gotham::state::{State, StateData};
     /// # use gotham::test::TestServer;
+    /// # use serde::Deserialize;
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.

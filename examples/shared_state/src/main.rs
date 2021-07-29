@@ -6,15 +6,12 @@
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
 
-#[macro_use]
-extern crate gotham_derive;
-
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::single::single_pipeline;
 use gotham::pipeline::single_middleware;
 use gotham::router::builder::*;
 use gotham::router::Router;
-use gotham::state::{FromState, State};
+use gotham::state::{FromState, State, StateData};
 
 use std::sync::{Arc, Mutex};
 

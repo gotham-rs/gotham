@@ -39,11 +39,6 @@ pub use self::single::DefineSingleRoute;
 /// `route.get("/foo/bar/baz")`
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// # #[macro_use]
-/// # extern crate serde_derive;
-/// #
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
@@ -52,6 +47,7 @@ pub use self::single::DefineSingleRoute;
 /// # use gotham::pipeline::single::*;
 /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 /// # use gotham::test::TestServer;
+/// # use serde::{Deserialize, Serialize};
 /// #
 /// # #[derive(Serialize, Deserialize, Default)]
 /// # struct Session;
@@ -334,7 +330,7 @@ mod tests {
 
     use hyper::service::Service;
     use hyper::{body, Body, Request, Response, StatusCode};
-    use serde_derive::Deserialize;
+    use serde::Deserialize;
 
     use crate::middleware::cookie::CookieParser;
     use crate::middleware::session::NewSessionMiddleware;

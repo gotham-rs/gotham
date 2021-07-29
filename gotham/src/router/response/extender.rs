@@ -5,6 +5,8 @@ use hyper::{body::HttpBody, Body, Response};
 use log::trace;
 use std::panic::RefUnwindSafe;
 
+pub use gotham_derive::StaticResponseExtender;
+
 /// Extend the `Response` based on current `State` and `Response` data.
 pub trait StaticResponseExtender: RefUnwindSafe {
     /// The type of the response body. Almost always `hyper::Body`.

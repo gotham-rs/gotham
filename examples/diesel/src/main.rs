@@ -18,7 +18,7 @@ use gotham::pipeline::{new_pipeline, single::single_pipeline};
 use gotham::router::{builder::*, Router};
 use gotham::state::{FromState, State};
 use gotham_middleware_diesel::DieselMiddleware;
-use serde_derive::Serialize;
+use serde::Serialize;
 use std::pin::Pin;
 use std::str::from_utf8;
 

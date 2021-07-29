@@ -8,9 +8,7 @@ edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
-gotham_derive = { path = "../../../gotham_derive" }
 
 futures-util = "0.3.14"
-serde = "1.0"
-serde_derive = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.0", features = ["full"] }

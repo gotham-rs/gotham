@@ -1,11 +1,8 @@
 //! A basic example showing the request components
-#[macro_use]
-extern crate gotham_derive;
-#[macro_use]
-extern crate serde_derive;
 
 use futures_util::stream::{self, StreamExt};
 use futures_util::FutureExt;
+use serde::Deserialize;
 use std::pin::Pin;
 use std::time::Duration;
 use tokio::time::sleep;
@@ -16,8 +13,9 @@ use gotham::hyper::StatusCode;
 use gotham::mime::TEXT_PLAIN;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
+use gotham::router::response::extender::StaticResponseExtender;
 use gotham::router::Router;
-use gotham::state::{FromState, State};
+use gotham::state::{FromState, State, StateData};
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
