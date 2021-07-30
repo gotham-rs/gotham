@@ -120,7 +120,7 @@ impl AcceptHeaderRouteMatcher {
 fn err(state: &State) -> RouteNonMatch {
     trace!(
         "[{}] did not provide an Accept with media types supported by this Route",
-        request_id(&state)
+        request_id(state)
     );
 
     RouteNonMatch::new(StatusCode::NOT_ACCEPTABLE)
@@ -199,23 +199,23 @@ mod test {
     #[test]
     fn no_accept_header() {
         let matcher = AcceptHeaderRouteMatcher::new(vec![mime::TEXT_PLAIN]);
-        with_state(None, |state| assert!(matcher.is_match(&state).is_ok()));
+        with_state(None, |state| assert!(matcher.is_match(state).is_ok()));
     }
 
     #[test]
     fn single_mime_type() {
         let matcher = AcceptHeaderRouteMatcher::new(vec![mime::TEXT_PLAIN, mime::IMAGE_PNG]);
         with_state(Some("text/plain"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
         with_state(Some("text/html"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
         with_state(Some("image/png"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
         with_state(Some("image/webp"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
     }
 
@@ -223,7 +223,7 @@ mod test {
     fn star_star() {
         let matcher = AcceptHeaderRouteMatcher::new(vec![mime::IMAGE_PNG]);
         with_state(Some("*/*"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
     }
 
@@ -231,7 +231,7 @@ mod test {
     fn image_star() {
         let matcher = AcceptHeaderRouteMatcher::new(vec![mime::IMAGE_PNG]);
         with_state(Some("image/*"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
     }
 
@@ -239,10 +239,10 @@ mod test {
     fn suffix_matched_by_wildcard() {
         let matcher = AcceptHeaderRouteMatcher::new(vec!["application/rss+xml".parse().unwrap()]);
         with_state(Some("*/*"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
         with_state(Some("application/*"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
     }
 
@@ -250,10 +250,10 @@ mod test {
     fn complex_header() {
         let matcher = AcceptHeaderRouteMatcher::new(vec![mime::IMAGE_PNG]);
         with_state(Some("text/html,image/webp;q=0.8"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
         with_state(Some("text/html,image/webp;q=0.8,*/*;q=0.1"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
     }
 }

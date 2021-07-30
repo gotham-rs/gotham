@@ -178,7 +178,7 @@ where
         match extractor::internal::from_segment_mapping::<PE>(params) {
             Ok(val) => Ok(state.put(val)),
             Err(e) => {
-                debug!("[{}] path extractor failed: {}", request_id(&state), e);
+                debug!("[{}] path extractor failed: {}", request_id(state), e);
                 Err(ExtractorFailed)
             }
         }
@@ -200,7 +200,7 @@ where
             Err(e) => {
                 debug!(
                     "[{}] query string extractor failed: {}",
-                    request_id(&state),
+                    request_id(state),
                     e
                 );
                 Err(ExtractorFailed)

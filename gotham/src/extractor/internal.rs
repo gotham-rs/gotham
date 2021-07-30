@@ -391,7 +391,7 @@ where
     {
         self.current = self.data_source.next();
         match self.current {
-            Some((ref key, ref _v)) => {
+            Some((key, _)) => {
                 let key = seed.deserialize(DeserializeKey { key })?;
                 Ok(Some(key))
             }

@@ -87,7 +87,7 @@ impl ContentTypeHeaderRouteMatcher {
 fn err(state: &State) -> RouteNonMatch {
     trace!(
         "[{}] did not specify a Content-Type with a media type supported by this Route",
-        request_id(&state)
+        request_id(state)
     );
 
     RouteNonMatch::new(StatusCode::UNSUPPORTED_MEDIA_TYPE)
@@ -167,24 +167,24 @@ mod test {
     #[test]
     fn empty_type_list() {
         let matcher = ContentTypeHeaderRouteMatcher::new(Vec::new());
-        with_state(None, |state| assert!(matcher.is_match(&state).is_err()));
+        with_state(None, |state| assert!(matcher.is_match(state).is_err()));
         with_state(Some("text/plain"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
 
         let matcher = matcher.allow_no_type();
-        with_state(None, |state| assert!(matcher.is_match(&state).is_ok()));
+        with_state(None, |state| assert!(matcher.is_match(state).is_ok()));
     }
 
     #[test]
     fn simple_type() {
         let matcher = ContentTypeHeaderRouteMatcher::new(vec![mime::TEXT_PLAIN]);
-        with_state(None, |state| assert!(matcher.is_match(&state).is_err()));
+        with_state(None, |state| assert!(matcher.is_match(state).is_err()));
         with_state(Some("text/plain"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
         with_state(Some("text/plain; charset=utf-8"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
     }
 
@@ -194,22 +194,22 @@ mod test {
             .parse()
             .unwrap()]);
         with_state(Some("image/svg"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
         with_state(Some("image/svg+xml"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
         with_state(Some("image/svg+xml; charset=utf-8"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
         with_state(Some("image/svg+xml; charset=utf-8; eol=lf"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
         with_state(Some("image/svg+xml; charset=us-ascii"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
         with_state(Some("image/svg+json; charset=utf-8"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
     }
 
@@ -217,7 +217,7 @@ mod test {
     fn type_mismatch() {
         let matcher = ContentTypeHeaderRouteMatcher::new(vec![mime::TEXT_HTML]);
         with_state(Some("text/plain"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
     }
 }

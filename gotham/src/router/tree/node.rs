@@ -206,7 +206,7 @@ impl Node {
                     params
                         .entry(&child.segment)
                         .or_insert_with(Vec::new)
-                        .push(&segment);
+                        .push(segment);
                 }
 
                 // Static matches based on a raw string match, so we simply
@@ -224,11 +224,11 @@ impl Node {
                 // to make sure to store the value inside the parameters map.
                 SegmentType::Constrained { ref regex } => {
                     // check for regex matching
-                    if !regex.is_match(&segment.as_ref()) {
+                    if !regex.is_match(segment.as_ref()) {
                         continue;
                     }
                     // if there's a match, store the value
-                    params.insert(&child.segment, vec![&segment]);
+                    params.insert(&child.segment, vec![segment]);
                 }
 
                 // Dynamic matches match every value, so we just attach the
@@ -236,7 +236,7 @@ impl Node {
                 // constrained type).
                 SegmentType::Dynamic => {
                     // if there's a match, store the value
-                    params.insert(&child.segment, vec![&segment]);
+                    params.insert(&child.segment, vec![segment]);
                 }
             };
 
@@ -252,7 +252,7 @@ impl Node {
         if let SegmentType::Glob = self.segment_type {
             // push the segment to the parameters of the glob
             if let Some(path) = params.get_mut(self.segment()) {
-                path.push(&segment);
+                path.push(segment);
             }
             // call again, but after shifting the segments to the next
             return self.inner_match_node(remaining, params, processed);
@@ -443,7 +443,7 @@ mod tests {
 
         // GET /seg3/seg4
         let rs = RequestPathSegments::new("/seg3/seg4");
-        match root.match_node(&rs.segments()) {
+        match root.match_node(rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, "seg4");
                 assert_eq!(processed, 2);
@@ -453,11 +453,11 @@ mod tests {
 
         // GET /seg3/seg4/seg5
         let rs = RequestPathSegments::new("/seg3/seg4/seg5");
-        assert!(root.match_node(&rs.segments()).is_none());
+        assert!(root.match_node(rs.segments()).is_none());
 
         // GET /seg5/seg6
         let rs = RequestPathSegments::new("/seg5/seg6");
-        match root.match_node(&rs.segments()) {
+        match root.match_node(rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, "seg6");
                 assert_eq!(processed, 2);
@@ -467,7 +467,7 @@ mod tests {
 
         // GET /seg5/someval/seg7
         let rs = RequestPathSegments::new("/seg5/someval/seg7");
-        match root.match_node(&rs.segments()) {
+        match root.match_node(rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, "seg7");
                 assert_eq!(processed, 3);
@@ -477,7 +477,7 @@ mod tests {
 
         // GET /some/path/seg9/another/path
         let rs = RequestPathSegments::new("/some/path/seg9/another/branch");
-        match root.match_node(&rs.segments()) {
+        match root.match_node(rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, "seg10");
                 assert_eq!(processed, 5);
@@ -487,7 +487,7 @@ mod tests {
 
         let rs = RequestPathSegments::new("/resource/5001");
         let expected_segment = "id";
-        match root.match_node(&rs.segments()) {
+        match root.match_node(rs.segments()) {
             Some((node, _params, processed)) => {
                 assert_eq!(node.segment, expected_segment);
                 assert_eq!(processed, 2);
@@ -506,7 +506,7 @@ mod tests {
         set_request_id(&mut state);
 
         let rs = RequestPathSegments::new("/seg2");
-        match root.match_node(&rs.segments()) {
+        match root.match_node(rs.segments()) {
             Some((node, _params, _processed)) => match node.select_route(&state) {
                 Err(e) => {
                     let (status, mut allow_list) = e.deconstruct();
@@ -520,7 +520,7 @@ mod tests {
         }
 
         let rs = RequestPathSegments::new("/resource/100");
-        match root.match_node(&rs.segments()) {
+        match root.match_node(rs.segments()) {
             Some((node, _params, _processed)) => match node.select_route(&state) {
                 Err(e) => {
                     let (status, mut allow_list) = e.deconstruct();

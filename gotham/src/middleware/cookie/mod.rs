@@ -20,7 +20,7 @@ pub struct CookieParser;
 impl CookieParser {
     /// Parses a `CookieJar` from a `State`.
     pub fn from_state(state: &State) -> CookieJar {
-        HeaderMap::borrow_from(&state)
+        HeaderMap::borrow_from(state)
             .get_all(COOKIE)
             .iter()
             .flat_map(HeaderValue::to_str)

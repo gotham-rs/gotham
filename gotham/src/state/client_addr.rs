@@ -57,5 +57,5 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// #   assert_eq!(buf[..10], b"127.0.0.1:9816"[0..10]);
 /// # }
 pub fn client_addr(state: &State) -> Option<SocketAddr> {
-    ClientAddr::try_borrow_from(&state).map(|c| c.addr)
+    ClientAddr::try_borrow_from(state).map(|c| c.addr)
 }
