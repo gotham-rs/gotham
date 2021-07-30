@@ -103,14 +103,14 @@ impl RouteMatcher for MethodOnlyRouteMatcher {
         if self.methods.iter().any(|m| m == method) {
             trace!(
                 "[{}] matched request method {} to permitted method",
-                request_id(&state),
+                request_id(state),
                 method
             );
             Ok(())
         } else {
             trace!(
                 "[{}] did not match request method {}",
-                request_id(&state),
+                request_id(state),
                 method
             );
             Err(RouteNonMatch::new(StatusCode::METHOD_NOT_ALLOWED)

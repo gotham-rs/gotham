@@ -36,7 +36,7 @@ fn parts_handler(state: State) -> (State, String) {
 
         for part in path.parts.iter() {
             response_string.push('\n');
-            response_string.push_str(&part);
+            response_string.push_str(part);
         }
 
         response_string
@@ -57,7 +57,7 @@ fn named_parts_handler(state: State) -> (State, String) {
 
         for part in path.parts.iter() {
             response_string.push('\n');
-            response_string.push_str(&part);
+            response_string.push_str(part);
         }
 
         response_string
@@ -78,7 +78,7 @@ fn multi_parts_handler(state: State) -> (State, String) {
 
         for part in path.top.iter() {
             top.push('\n');
-            top.push_str(&part);
+            top.push_str(part);
         }
 
         let mut bottom = format!(
@@ -89,7 +89,7 @@ fn multi_parts_handler(state: State) -> (State, String) {
 
         for part in path.bottom.iter() {
             bottom.push('\n');
-            bottom.push_str(&part);
+            bottom.push_str(part);
         }
 
         vec![top, bottom].join("\n\n")

@@ -267,7 +267,7 @@ fn check_compressed_options(
             accepted_encodings(headers)
                 .iter()
                 .filter_map(|e| {
-                    get_extension(&e.encoding, &options).map(|ext| (e.encoding.to_string(), ext))
+                    get_extension(&e.encoding, options).map(|ext| (e.encoding.to_string(), ext))
                 })
                 .find_map(|(encoding, ext)| {
                     let path = options.path.with_file_name(format!(
@@ -320,7 +320,7 @@ fn normalize_path(path: &Path) -> PathBuf {
 fn not_modified(metadata: &Metadata, headers: &HeaderMap) -> bool {
     // If-None-Match header takes precedence over If-Modified-Since
     match headers.get(IF_NONE_MATCH) {
-        Some(_) => entity_tag(&metadata)
+        Some(_) => entity_tag(metadata)
             .map(|etag| headers.get_all(IF_NONE_MATCH).iter().any(|v| v == &etag))
             .unwrap_or(false),
         _ => headers

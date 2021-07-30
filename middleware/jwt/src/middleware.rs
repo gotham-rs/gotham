@@ -147,7 +147,7 @@ where
         }
 
         let decoding_key = DecodingKey::from_secret(self.secret.as_ref());
-        match decode::<T>(&token.unwrap(), &decoding_key, &self.validation) {
+        match decode::<T>(token.unwrap(), &decoding_key, &self.validation) {
             Ok(token) => {
                 state.put(AuthorizationToken(token));
 

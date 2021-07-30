@@ -29,7 +29,7 @@ where
     fn extend(&self, state: &mut State, res: &mut Response<B>) {
         trace!(
             "[{}] running closure based response extender",
-            request_id(&state)
+            request_id(state)
         );
         self(state, res);
     }
@@ -46,9 +46,9 @@ impl StaticResponseExtender for NoopResponseExtender {
     fn extend(state: &mut State, _res: &mut Response<Body>) {
         trace!(
             "[{}] NoopResponseExtender invoked, does not make any changes to Response",
-            request_id(&state)
+            request_id(state)
         );
-        trace!("[{}] no response body, no change made", request_id(&state));
+        trace!("[{}] no response body, no change made", request_id(state));
     }
 }
 
@@ -56,8 +56,8 @@ impl ResponseExtender<Body> for NoopResponseExtender {
     fn extend(&self, state: &mut State, _res: &mut Response<Body>) {
         trace!(
             "[{}] NoopResponseExtender invoked on instance, does not make any changes to Response",
-            request_id(&state)
+            request_id(state)
         );
-        trace!("[{}] no response body, no change made", request_id(&state));
+        trace!("[{}] no response body, no change made", request_id(state));
     }
 }

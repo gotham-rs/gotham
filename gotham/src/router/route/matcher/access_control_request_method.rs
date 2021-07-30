@@ -85,17 +85,17 @@ mod test {
     #[test]
     fn no_acrm_header() {
         let matcher = AccessControlRequestMethodMatcher::new(Method::PUT);
-        with_state(None, |state| assert!(matcher.is_match(&state).is_err()));
+        with_state(None, |state| assert!(matcher.is_match(state).is_err()));
     }
 
     #[test]
     fn correct_acrm_header() {
         let matcher = AccessControlRequestMethodMatcher::new(Method::PUT);
         with_state(Some("PUT"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
         with_state(Some("put"), |state| {
-            assert!(matcher.is_match(&state).is_ok())
+            assert!(matcher.is_match(state).is_ok())
         });
     }
 
@@ -103,7 +103,7 @@ mod test {
     fn incorrect_acrm_header() {
         let matcher = AccessControlRequestMethodMatcher::new(Method::PUT);
         with_state(Some("DELETE"), |state| {
-            assert!(matcher.is_match(&state).is_err())
+            assert!(matcher.is_match(state).is_err())
         });
     }
 }
