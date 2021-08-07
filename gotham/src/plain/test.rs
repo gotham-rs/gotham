@@ -196,65 +196,15 @@ mod tests {
     use super::*;
 
     use hyper::header::CONTENT_LENGTH;
-    use hyper::{body, Body, Response, StatusCode, Uri};
+    use hyper::{body, Body, StatusCode};
     use std::pin::Pin;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use crate::handler::{Handler, HandlerFuture, NewHandler};
+    use crate::handler::HandlerFuture;
     use crate::helpers::http::response::create_response;
-    use crate::state::{client_addr, FromState, State};
+    use crate::state::{FromState, State};
+    use crate::test::helper::TestHandler;
     use http::header::CONTENT_TYPE;
-    use log::info;
-
-    #[derive(Clone)]
-    struct TestHandler {
-        response: String,
-    }
-
-    impl Handler for TestHandler {
-        fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
-            let path = Uri::borrow_from(&state).path().to_owned();
-            match path.as_str() {
-                "/" => {
-                    info!("TestHandler responding to /");
-                    let response = Response::builder()
-                        .status(StatusCode::OK)
-                        .body(self.response.into())
-                        .unwrap();
-
-                    future::ok((state, response)).boxed()
-                }
-                "/timeout" => {
-                    // TODO: What is this supposed to return?  It previously returned nothing which isn't a timeout
-                    let response = Response::builder()
-                        .status(StatusCode::REQUEST_TIMEOUT)
-                        .body(Body::default())
-                        .unwrap();
-
-                    info!("TestHandler responding to /timeout");
-                    future::ok((state, response)).boxed()
-                }
-                "/myaddr" => {
-                    info!("TestHandler responding to /myaddr");
-                    let response = Response::builder()
-                        .status(StatusCode::OK)
-                        .body(format!("{}", client_addr(&state).unwrap()).into())
-                        .unwrap();
-
-                    future::ok((state, response)).boxed()
-                }
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    impl NewHandler for TestHandler {
-        type Instance = Self;
-
-        fn new_handler(&self) -> anyhow::Result<Self> {
-            Ok(self.clone())
-        }
-    }
 
     #[test]
     fn serves_requests() {
