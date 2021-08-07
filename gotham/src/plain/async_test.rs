@@ -66,65 +66,10 @@ impl AsyncTestServer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::async_test::read_utf8_body;
-    use crate::handler::{Handler, HandlerFuture};
-    use crate::state::{client_addr, FromState, State};
-    use futures_util::FutureExt;
+    use crate::async_test::helper::read_utf8_body;
+    use crate::test::helper::TestHandler;
     use http::{StatusCode, Uri};
-    use hyper::{Body, Response};
-    use log::info;
-    use std::pin::Pin;
     use std::time::{SystemTime, UNIX_EPOCH};
-
-    #[derive(Clone)]
-    struct TestHandler {
-        response: String,
-    }
-
-    impl Handler for TestHandler {
-        fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
-            let path = Uri::borrow_from(&state).path().to_owned();
-            match path.as_str() {
-                "/" => {
-                    info!("TestHandler responding to /");
-                    let response = Response::builder()
-                        .status(StatusCode::OK)
-                        .body(self.response.into())
-                        .unwrap();
-
-                    future::ok((state, response)).boxed()
-                }
-                "/timeout" => {
-                    // TODO: What is this supposed to return?  It previously returned nothing which isn't a timeout
-                    let response = Response::builder()
-                        .status(StatusCode::REQUEST_TIMEOUT)
-                        .body(Body::default())
-                        .unwrap();
-
-                    info!("TestHandler responding to /timeout");
-                    future::ok((state, response)).boxed()
-                }
-                "/myaddr" => {
-                    info!("TestHandler responding to /myaddr");
-                    let response = Response::builder()
-                        .status(StatusCode::OK)
-                        .body(format!("{}", client_addr(&state).unwrap()).into())
-                        .unwrap();
-
-                    future::ok((state, response)).boxed()
-                }
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    impl NewHandler for TestHandler {
-        type Instance = Self;
-
-        fn new_handler(&self) -> anyhow::Result<Self> {
-            Ok(self.clone())
-        }
-    }
 
     #[tokio::test]
     async fn serves_requests() {
