@@ -35,6 +35,7 @@ pub mod router;
 pub mod service;
 pub mod state;
 
+pub mod async_test;
 /// Test utilities for Gotham and Gotham consumer apps.
 pub mod test;
 
