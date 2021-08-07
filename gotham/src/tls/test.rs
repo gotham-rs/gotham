@@ -70,16 +70,9 @@ struct TestServerData {
 /// assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
+#[derive(Clone)]
 pub struct TestServer {
     data: Arc<TestServerData>,
-}
-
-impl Clone for TestServer {
-    fn clone(&self) -> TestServer {
-        TestServer {
-            data: self.data.clone(),
-        }
-    }
 }
 
 impl test::Server for TestServer {
