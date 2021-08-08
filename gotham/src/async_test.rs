@@ -12,15 +12,22 @@ use std::convert::{TryFrom, TryInto};
 use std::error::Error;
 use std::fmt::{Debug, Formatter};
 use std::ops::{Deref, DerefMut};
+use std::time::Duration;
+use tokio::time::timeout;
 
 pub struct AsyncTestClient<C: Connect> {
     client: Client<C, Body>,
+    timeout: Duration,
 }
 
 impl<C: Connect + Clone + Send + Sync + 'static> AsyncTestClient<C> {
+    pub(crate) fn new(client: Client<C, Body>, timeout: Duration) -> Self {
+        Self { client, timeout }
+    }
+
     pub async fn request(&self, request: Request<Body>) -> anyhow::Result<AsyncTestResponse> {
-        // TODO: Timeout-Handling
-        Ok(self.client.request(request).await?.into())
+        let request_future = self.client.request(request);
+        Ok(timeout(self.timeout, request_future).await??.into())
     }
 
     pub fn head<U>(&self, uri: U) -> anyhow::Result<AsyncTestRequestBuilder<'_, C>>
@@ -86,12 +93,6 @@ impl<C: Connect + Clone + Send + Sync + 'static> AsyncTestClient<C> {
             request_builder,
             body: None,
         }
-    }
-}
-
-impl<C: Connect> From<Client<C>> for AsyncTestClient<C> {
-    fn from(client: Client<C>) -> Self {
-        AsyncTestClient { client }
     }
 }
 

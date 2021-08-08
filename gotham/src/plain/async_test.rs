@@ -6,6 +6,7 @@ use hyper::Client;
 use std::net::SocketAddr;
 use std::panic::UnwindSafe;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::TcpListener;
 
 pub struct AsyncTestServer {
@@ -15,7 +16,7 @@ pub struct AsyncTestServer {
 #[derive(Clone)]
 struct AsyncTestServerData {
     addr: SocketAddr,
-    timeout: u64,
+    timeout: Duration,
 }
 
 impl AsyncTestServer {
@@ -28,13 +29,13 @@ impl AsyncTestServer {
     where
         NH::Instance: UnwindSafe,
     {
-        AsyncTestServer::with_timeout(new_handler, 10).await
+        AsyncTestServer::with_timeout(new_handler, Duration::from_secs(10)).await
     }
 
     /// Sets the request timeout to `timeout` seconds and returns a new `AsyncTestServer`.
     pub async fn with_timeout<NH: NewHandler + 'static>(
         new_handler: NH,
-        timeout: u64,
+        timeout: Duration,
     ) -> anyhow::Result<AsyncTestServer>
     where
         NH::Instance: UnwindSafe, // TODO: Not quite sure why it must explicitly be UnwindSafe
@@ -59,18 +60,16 @@ impl AsyncTestServer {
     pub fn client(&self) -> AsyncTestClient<TestConnect> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
-        Client::builder()
-            .build(TestConnect {
-                addr: self.data.addr,
-            })
-            .into()
+        let client = Client::builder().build(TestConnect {
+            addr: self.data.addr,
+        });
+        AsyncTestClient::new(client, self.data.timeout)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::async_test::helper::read_utf8_body;
     use crate::test::helper::TestHandler;
     use http::StatusCode;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -99,5 +98,27 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let buf = response.read_utf8_body().await.unwrap();
         assert_eq!(buf, format!("time: {}", ticks));
+    }
+
+    #[tokio::test]
+    async fn times_out() {
+        let new_service = || {
+            Ok(TestHandler {
+                response: "".to_owned(),
+            })
+        };
+
+        let timeout = Duration::from_secs(1); // TODO: Maybe less? This will slow down the tests after all, maybe get tokio::time::pause to work properly ...
+        let test_server = AsyncTestServer::with_timeout(new_service, timeout)
+            .await
+            .unwrap();
+
+        let client = test_server.client();
+        let builder = client.get("http://localhost/timeout").unwrap();
+        assert!(builder
+            .perform()
+            .await
+            .unwrap_err()
+            .is::<tokio::time::error::Elapsed>());
     }
 }
