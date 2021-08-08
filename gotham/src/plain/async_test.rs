@@ -1,3 +1,4 @@
+use crate::async_test::AsyncTestClient;
 use crate::handler::NewHandler;
 use crate::plain::test::TestConnect;
 use futures_util::future;
@@ -41,6 +42,7 @@ impl AsyncTestServer {
         let listener = TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?).await?;
         let addr = listener.local_addr()?;
 
+        // TODO: Won't this leak the server?
         let service_stream = super::bind_server(listener, new_handler, future::ok);
         let _ = tokio::spawn(service_stream);
 
@@ -54,12 +56,14 @@ impl AsyncTestServer {
     /// Returns a client connected to the `AsyncTestServer`. The transport is handled internally, and
     /// the server will see a default socket address of `127.0.0.1:10000` as the source address for
     /// the connection.
-    pub fn client(&self) -> Client<TestConnect> {
+    pub fn client(&self) -> AsyncTestClient<TestConnect> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
-        Client::builder().build(TestConnect {
-            addr: self.data.addr,
-        })
+        Client::builder()
+            .build(TestConnect {
+                addr: self.data.addr,
+            })
+            .into()
     }
 }
 
@@ -68,7 +72,7 @@ mod tests {
     use super::*;
     use crate::async_test::helper::read_utf8_body;
     use crate::test::helper::TestHandler;
-    use http::{StatusCode, Uri};
+    use http::StatusCode;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[tokio::test]
@@ -86,12 +90,14 @@ mod tests {
         let test_server = AsyncTestServer::new(new_service).await.unwrap();
         let response = test_server
             .client()
-            .get(Uri::from_static("http://localhost/"))
+            .get("http://localhost/")
+            .unwrap()
+            .perform()
             .await
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
-        let buf = read_utf8_body(response).await.unwrap();
+        let buf = response.read_utf8_body().await.unwrap();
         assert_eq!(buf, format!("time: {}", ticks));
     }
 }
