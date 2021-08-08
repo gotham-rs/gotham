@@ -314,14 +314,8 @@ pub(crate) mod helper {
                     future::ok((state, response)).boxed()
                 }
                 "/timeout" => {
-                    // TODO: What is this supposed to return?  It previously returned nothing which isn't a timeout
-                    let response = Response::builder()
-                        .status(StatusCode::REQUEST_TIMEOUT)
-                        .body(Body::default())
-                        .unwrap();
-
                     info!("TestHandler responding to /timeout");
-                    future::ok((state, response)).boxed()
+                    future::pending().boxed()
                 }
                 "/myaddr" => {
                     info!("TestHandler responding to /myaddr");
