@@ -212,13 +212,8 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let new_service = move || {
-            Ok(TestHandler {
-                response: format!("time: {}", ticks),
-            })
-        };
 
-        let test_server = TestServer::new(new_service).unwrap();
+        let test_server = TestServer::new(TestHandler::from(format!("time: {}", ticks))).unwrap();
         let response = test_server
             .client()
             .get("http://localhost/")
@@ -234,13 +229,7 @@ mod tests {
     #[ignore] // XXX I don't understand why this doesn't work.
               // It seems like Hyper is treating the future::empty() as an empty body...
     fn times_out() {
-        let new_service = || {
-            Ok(TestHandler {
-                response: "".to_owned(),
-            })
-        };
-
-        let test_server = TestServer::with_timeout(new_service, 1).unwrap();
+        let test_server = TestServer::with_timeout(TestHandler::from(""), 1).unwrap();
 
         let res = test_server
             .client()
@@ -263,14 +252,8 @@ mod tests {
             .unwrap()
             .as_secs();
 
-        let new_service = move || {
-            Ok(TestHandler {
-                response: format!("time: {}", ticks),
-            })
-        };
-
         let client_addr = "9.8.7.6:58901".parse().unwrap();
-        let test_server = TestServer::new(new_service).unwrap();
+        let test_server = TestServer::new(TestHandler::from(format!("time: {}", ticks))).unwrap();
 
         let response = test_server
             .client_with_address(client_addr)
