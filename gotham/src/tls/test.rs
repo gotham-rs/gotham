@@ -285,14 +285,10 @@ mod tests {
 
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use futures_util::future;
     use http::header::CONTENT_TYPE;
     use hyper::header::CONTENT_LENGTH;
-    use hyper::{body, Body, StatusCode};
+    use hyper::StatusCode;
 
-    use crate::handler::HandlerFuture;
-    use crate::helpers::http::response::create_response;
-    use crate::state::{FromState, State};
     use crate::test::helper::TestHandler;
 
     #[test]
