@@ -290,14 +290,22 @@ pub(crate) mod helper {
     use crate::state::{client_addr, FromState, State};
     use futures_util::{future, FutureExt};
     use http::StatusCode;
+    use hyper::Response;
     use hyper::Uri;
-    use hyper::{Body, Response};
     use log::info;
     use std::pin::Pin;
 
     #[derive(Clone)]
     pub(crate) struct TestHandler {
         pub response: String,
+    }
+
+    impl<T: Into<String>> From<T> for TestHandler {
+        fn from(response: T) -> Self {
+            Self {
+                response: response.into(),
+            }
+        }
     }
 
     impl Handler for TestHandler {
