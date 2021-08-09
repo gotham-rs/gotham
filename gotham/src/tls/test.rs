@@ -187,7 +187,7 @@ impl<IO: AsyncRead + AsyncWrite + Unpin> AsyncWrite for TlsConnectionStream<IO> 
 #[derive(Clone)]
 pub struct TestConnect {
     pub(crate) addr: SocketAddr,
-    config: Arc<rustls::ClientConfig>,
+    pub(crate) config: Arc<rustls::ClientConfig>,
 }
 
 impl Service<Uri> for TestConnect {
