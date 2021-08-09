@@ -287,11 +287,13 @@ impl TestResponse {
 #[cfg(test)]
 pub(crate) mod helper {
     use crate::handler::{Handler, HandlerFuture, NewHandler};
+    use crate::helpers::http::response::create_response;
+    use crate::hyper::Body;
     use crate::state::{client_addr, FromState, State};
     use futures_util::{future, FutureExt};
     use http::StatusCode;
-    use hyper::Response;
     use hyper::Uri;
+    use hyper::{body, Response};
     use log::info;
     use std::pin::Pin;
 
@@ -309,7 +311,7 @@ pub(crate) mod helper {
     }
 
     impl Handler for TestHandler {
-        fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
+        fn handle(self, mut state: State) -> Pin<Box<HandlerFuture>> {
             let path = Uri::borrow_from(&state).path().to_owned();
             match path.as_str() {
                 "/" => {
@@ -334,6 +336,23 @@ pub(crate) mod helper {
 
                     future::ok((state, response)).boxed()
                 }
+                "/echo" => async move {
+                    let body = Body::take_from(&mut state);
+                    match body::to_bytes(body).await {
+                        Ok(body) => {
+                            let response_data = body.to_vec();
+                            let response = create_response(
+                                &state,
+                                StatusCode::OK,
+                                mime::TEXT_PLAIN,
+                                response_data,
+                            );
+                            Ok((state, response))
+                        }
+                        Err(error) => Err((state, error.into())),
+                    }
+                }
+                .boxed(),
                 _ => unreachable!(),
             }
         }

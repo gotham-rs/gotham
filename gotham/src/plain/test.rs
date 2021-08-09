@@ -264,22 +264,7 @@ mod tests {
 
     #[test]
     fn async_echo() {
-        fn handler(mut state: State) -> Pin<Box<HandlerFuture>> {
-            body::to_bytes(Body::take_from(&mut state))
-                .then(move |full_body| match full_body {
-                    Ok(body) => {
-                        let resp_data = body.to_vec();
-                        let res =
-                            create_response(&state, StatusCode::OK, mime::TEXT_PLAIN, resp_data);
-                        future::ok((state, res))
-                    }
-
-                    Err(e) => future::err((state, e.into())),
-                })
-                .boxed()
-        }
-
-        let server = TestServer::new(|| Ok(handler)).unwrap();
+        let server = TestServer::new(TestHandler::default()).unwrap();
 
         let client = server.client();
         let data = "This text should get reflected back to us. Even this fancy piece of unicode: \
