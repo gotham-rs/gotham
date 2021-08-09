@@ -109,19 +109,6 @@ pub struct AsyncTestRequestBuilder<'client, C: Connect> {
 }
 
 impl<'client, C: Connect + Clone + Send + Sync + 'static> AsyncTestRequestBuilder<'client, C> {
-    pub fn mime(&mut self, mime: Mime) -> &mut Self {
-        self.header(
-            CONTENT_TYPE,
-            mime.to_string().parse::<HeaderValue>().unwrap(),
-        );
-        self
-    }
-
-    pub fn body(&mut self, body: Body) -> &mut Self {
-        self.body.replace(body);
-        self
-    }
-
     pub async fn perform(self) -> anyhow::Result<AsyncTestResponse> {
         let Self {
             test_client,
@@ -133,14 +120,26 @@ impl<'client, C: Connect + Clone + Send + Sync + 'static> AsyncTestRequestBuilde
         test_client.request(request).await
     }
 
-    pub fn extension<T>(&mut self, extension: T) -> &mut Self
+    pub fn mime(self, mime: Mime) -> Self {
+        self.header(
+            CONTENT_TYPE,
+            mime.to_string().parse::<HeaderValue>().unwrap(),
+        )
+    }
+
+    pub fn body(mut self, body: Body) -> Self {
+        self.body.replace(body);
+        self
+    }
+
+    pub fn extension<T>(self, extension: T) -> Self
     where
         T: Any + Send + Sync + 'static,
     {
         self.replace_request_builder(|builder| builder.extension(extension))
     }
 
-    pub fn header<K, V>(&mut self, key: K, value: V) -> &mut Self
+    pub fn header<K, V>(self, key: K, value: V) -> Self
     where
         HeaderName: TryFrom<K>,
         <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
@@ -150,7 +149,7 @@ impl<'client, C: Connect + Clone + Send + Sync + 'static> AsyncTestRequestBuilde
         self.replace_request_builder(|builder| builder.header(key, value))
     }
 
-    pub fn method<M>(&mut self, method: M) -> &mut Self
+    pub fn method<M>(self, method: M) -> Self
     where
         Method: TryFrom<M>,
         <Method as TryFrom<M>>::Error: Into<http::Error>,
@@ -158,7 +157,7 @@ impl<'client, C: Connect + Clone + Send + Sync + 'static> AsyncTestRequestBuilde
         self.replace_request_builder(|builder| builder.method(method))
     }
 
-    pub fn uri<U>(&mut self, uri: U) -> &mut Self
+    pub fn uri<U>(self, uri: U) -> Self
     where
         Uri: TryFrom<U>,
         <Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -166,14 +165,14 @@ impl<'client, C: Connect + Clone + Send + Sync + 'static> AsyncTestRequestBuilde
         self.replace_request_builder(|builder| builder.uri(uri))
     }
 
-    pub fn version(&mut self, version: Version) -> &mut Self {
+    pub fn version(self, version: Version) -> Self {
         self.replace_request_builder(|builder| builder.version(version))
     }
 
     fn replace_request_builder(
-        &mut self,
+        mut self,
         replacer: impl FnOnce(request::Builder) -> request::Builder,
-    ) -> &mut Self {
+    ) -> Self {
         let mut intermediary = request::Builder::new();
         // swap out request_builder so it can be modified
         std::mem::swap(&mut intermediary, &mut self.request_builder);
