@@ -17,7 +17,6 @@ use std::fmt::{Debug, Formatter};
 use std::io::BufReader;
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
-use std::panic::UnwindSafe;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
@@ -68,10 +67,7 @@ impl AsyncTestServer {
     /// for each connection.
     ///
     /// Requests will time out after 10 seconds by default. Use [`AsyncTestServer::with_timeout`] for a different timeout.
-    pub async fn new<NH: NewHandler + 'static>(new_handler: NH) -> anyhow::Result<AsyncTestServer>
-    where
-        NH::Instance: UnwindSafe,
-    {
+    pub async fn new<NH: NewHandler + 'static>(new_handler: NH) -> anyhow::Result<AsyncTestServer> {
         AsyncTestServer::with_timeout(new_handler, Duration::from_secs(10)).await
     }
 
@@ -79,10 +75,7 @@ impl AsyncTestServer {
     pub async fn with_timeout<NH: NewHandler + 'static>(
         new_handler: NH,
         timeout: Duration,
-    ) -> anyhow::Result<AsyncTestServer>
-    where
-        NH::Instance: UnwindSafe, // TODO: Not quite sure why it must explicitly be UnwindSafe
-    {
+    ) -> anyhow::Result<AsyncTestServer> {
         let listener = TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?).await?;
         let addr = listener.local_addr()?;
 
