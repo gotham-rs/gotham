@@ -375,3 +375,130 @@ pub(crate) mod helper {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use hyper::header::CONTENT_LENGTH;
+    use hyper::StatusCode;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use crate::test::helper::TestHandler;
+    use http::header::CONTENT_TYPE;
+
+    mod plain {
+        use crate::plain::test::TestServer;
+
+        #[test]
+        fn serves_requests() {
+            super::serves_requests(TestServer::new, TestServer::client)
+        }
+
+        #[test]
+        fn times_out() {
+            super::times_out(TestServer::with_timeout, TestServer::client)
+        }
+
+        #[test]
+        fn async_echo() {
+            super::async_echo(TestServer::new, TestServer::client)
+        }
+    }
+
+    #[cfg(feature = "rustls")]
+    mod tls {
+        use crate::tls::test::TestServer;
+
+        #[test]
+        fn serves_requests() {
+            super::serves_requests(TestServer::new, TestServer::client)
+        }
+
+        #[test]
+        fn times_out() {
+            super::times_out(TestServer::with_timeout, TestServer::client)
+        }
+
+        #[test]
+        fn async_echo() {
+            super::async_echo(TestServer::new, TestServer::client)
+        }
+    }
+
+    fn serves_requests<TS, C>(
+        server_factory: fn(TestHandler) -> anyhow::Result<TS>,
+        client_factory: fn(&TS) -> TestClient<TS, C>,
+    ) where
+        TS: Server + 'static,
+        C: Connect + Clone + Send + Sync + 'static,
+    {
+        let ticks = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        let test_server = server_factory(TestHandler::from(format!("time: {}", ticks))).unwrap();
+        let response = client_factory(&test_server)
+            .get("http://localhost/")
+            .perform()
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let buf = response.read_utf8_body().unwrap();
+        assert_eq!(buf, format!("time: {}", ticks));
+    }
+
+    fn times_out<TS, C>(
+        server_factory: fn(TestHandler, u64) -> anyhow::Result<TS>,
+        client_factory: fn(&TS) -> TestClient<TS, C>,
+    ) where
+        TS: Server + 'static,
+        C: Connect + Clone + Send + Sync + 'static,
+    {
+        // sadly it seems nearly impossible to use `tokio::time::advance` to test this
+        let test_server = server_factory(TestHandler::default(), 1).unwrap();
+        let result = client_factory(&test_server)
+            .get("http://localhost/timeout")
+            .perform();
+        assert!(result.unwrap_err().to_string().contains("timed out"));
+    }
+
+    fn async_echo<TS, C>(
+        server_factory: fn(TestHandler) -> anyhow::Result<TS>,
+        client_factory: fn(&TS) -> TestClient<TS, C>,
+    ) where
+        TS: Server + 'static,
+        C: Connect + Clone + Send + Sync + 'static,
+    {
+        let server = server_factory(TestHandler::default()).unwrap();
+
+        let client = client_factory(&server);
+        let data = "This text should get reflected back to us. Even this fancy piece of unicode: \
+                    \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
+
+        let res = client
+            .post("http://example.com/echo", data, mime::TEXT_PLAIN)
+            .perform()
+            .expect("request successful");
+
+        assert_eq!(res.status(), StatusCode::OK);
+
+        {
+            let mime = res.headers().get(CONTENT_TYPE).expect("ContentType");
+            assert_eq!(mime, mime::TEXT_PLAIN.as_ref());
+        }
+
+        let content_length = {
+            let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
+            assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
+            content_length.clone()
+        };
+
+        let buf =
+            String::from_utf8(res.read_body().expect("readable response")).expect("UTF8 response");
+
+        assert_eq!(content_length, &format!("{}", buf.len()));
+        assert_eq!(data, &buf);
+    }
+}
