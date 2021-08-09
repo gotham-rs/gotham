@@ -316,22 +316,16 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // XXX I don't understand why this doesn't work.
-              // It seems like Hyper is treating the future::empty() as an empty body...
     fn times_out() {
-        let test_server = TestServer::with_timeout(TestHandler::from(""), 1).unwrap();
-
-        let res = test_server
+        // sadly it seems near impossible to use `tokio::time::advance` to test this
+        let timeout = Duration::from_secs(1);
+        let test_server =
+            TestServer::with_timeout(TestHandler::from(""), timeout.as_secs()).unwrap();
+        let result = test_server
             .client()
             .get("http://localhost/timeout")
             .perform();
-
-        match res {
-            e @ Err(_) => {
-                e.unwrap();
-            }
-            Ok(_) => panic!("expected timeout, but was Ok(_)"),
-        }
+        assert!(result.unwrap_err().to_string().contains("timed out"));
     }
 
     #[test]
