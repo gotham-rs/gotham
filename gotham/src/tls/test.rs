@@ -36,13 +36,7 @@ use tokio_rustls::{
 };
 
 use crate::handler::NewHandler;
-use crate::test::{self, TestClient};
-
-struct TestServerData {
-    addr: SocketAddr,
-    timeout: u64,
-    runtime: RwLock<Runtime>,
-}
+use crate::test::{self, TestClient, TestServerData};
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
 /// (which Gotham's `Router` is). An instance of `TestServer` is run asynchronously within the

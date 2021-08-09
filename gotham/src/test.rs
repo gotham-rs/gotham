@@ -17,11 +17,20 @@ use tokio::time::Sleep;
 
 pub use crate::plain::test::TestServer;
 pub use request::TestRequest;
+use std::net::SocketAddr;
+use std::sync::RwLock;
+use tokio::runtime::Runtime;
 
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
     /// response holds a buffer containing all bytes of the response body.
     fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>, hyper::Error>;
+}
+
+pub(crate) struct TestServerData {
+    pub addr: SocketAddr,
+    pub timeout: u64,
+    pub runtime: RwLock<Runtime>,
 }
 
 /// An in memory server for testing purposes.
