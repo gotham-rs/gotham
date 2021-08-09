@@ -108,16 +108,28 @@ mod tests {
             })
         };
 
-        let timeout = Duration::from_secs(1); // TODO: Maybe less? This will slow down the tests after all, maybe get tokio::time::pause to work properly ...
+        let timeout = Duration::from_secs(10);
         let test_server = AsyncTestServer::with_timeout(new_service, timeout)
             .await
             .unwrap();
 
         let client = test_server.client();
-        let builder = client.get("http://localhost/timeout").unwrap();
-        assert!(builder
-            .perform()
-            .await
+
+        tokio::time::pause();
+        // Spawning the request into the background so the time can be controlled concurrently
+        let request_handle = tokio::spawn(async move {
+            let builder = client.get("http://localhost/timeout").unwrap();
+            builder.perform().await
+        });
+        // This exploits Auto-advance, see https://docs.rs/tokio/1.9.0/tokio/time/fn.pause.html#auto-advance
+        // Just calling `tokio::time::advance(timeout)` directly won't have any effect here, because the spawned
+        // request future hasn't been polled yet so it's timer isn't registered, meaning the advance doesn't affect
+        // the request's timeout in any way
+        tokio::time::sleep(timeout).await;
+        tokio::time::resume();
+
+        let request_result = request_handle.await.unwrap();
+        assert!(request_result
             .unwrap_err()
             .is::<tokio::time::error::Elapsed>());
     }
