@@ -11,7 +11,7 @@ use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use futures_util::future::{BoxFuture, FutureExt, TryFutureExt};
+use futures_util::future::{BoxFuture, FutureExt};
 use http::Uri;
 use hyper::client::connect::{Connected, Connection};
 use hyper::client::Client;
@@ -263,19 +263,27 @@ impl Service<Uri> for TestConnect {
 
     fn call(&mut self, req: Uri) -> Self::Future {
         let tls = TlsConnector::from(self.config.clone());
+        let address = self.addr;
 
-        TcpStream::connect(self.addr)
-            .and_then(move |stream| {
-                let domain = DNSNameRef::try_from_ascii_str(req.host().unwrap()).unwrap();
-                tls.connect(domain, stream)
-                    .inspect(|s| info!("Client TcpStream connected: {:?}", s))
-                    .map_ok(TlsConnectionStream)
-                    .map_err(|e| {
-                        info!("TLS TestClient error: {:?}", e);
-                        e
-                    })
-            })
-            .boxed()
+        async move {
+            match TcpStream::connect(address).await {
+                Ok(stream) => {
+                    let domain = DNSNameRef::try_from_ascii_str(req.host().unwrap()).unwrap();
+                    match tls.connect(domain, stream).await {
+                        Ok(tls_stream) => {
+                            info!("Client TcpStream connected: {:?}", tls_stream);
+                            Ok(TlsConnectionStream(tls_stream))
+                        }
+                        Err(error) => {
+                            info!("TLS TestClient error: {:?}", error);
+                            Err(error)
+                        }
+                    }
+                }
+                Err(error) => Err(error),
+            }
+        }
+        .boxed()
     }
 }
 
