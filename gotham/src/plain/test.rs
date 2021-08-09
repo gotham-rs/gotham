@@ -3,7 +3,7 @@
 //! See the `TestServer` type for example usage.
 
 use std::future::Future;
-use std::net::{self, IpAddr, SocketAddr};
+use std::net::{self, SocketAddr};
 use std::panic::UnwindSafe;
 use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
@@ -119,11 +119,19 @@ impl TestServer {
         })
     }
 
-    /// Returns a client connected to the `TestServer`. The transport is handled internally, and
-    /// the server will see a default socket address of `127.0.0.1:10000` as the source address for
-    /// the connection.
+    /// Returns a client connected to the `TestServer`. The transport is handled internally.
     pub fn client(&self) -> TestClient<Self, TestConnect> {
-        self.client_with_address(SocketAddr::new(IpAddr::from([127, 0, 0, 1]), 10000))
+        // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
+        // it and then immediately discard the listener.
+
+        let client = Client::builder().build(TestConnect {
+            addr: self.data.addr,
+        });
+
+        TestClient {
+            client,
+            test_server: self.clone(),
+        }
     }
 
     /// Spawns the given future on the `TestServer`'s internal runtime.
@@ -140,31 +148,13 @@ impl TestServer {
             .spawn(fut);
     }
 
-    /// Returns a client connected to the `TestServer`. The transport is handled internally, and
-    /// the server will see `client_addr` as the source address for the connection. The
-    /// `client_addr` can be any valid `SocketAddr`, and need not be contactable.
+    /// Exactly the same as [`TestServer::client`].
+    #[deprecated(note = "does the same as client")]
     pub fn client_with_address(
-        &self,
-        client_addr: net::SocketAddr,
-    ) -> TestClient<Self, TestConnect> {
-        self.try_client_with_address(client_addr)
-    }
-
-    fn try_client_with_address(
         &self,
         _client_addr: net::SocketAddr,
     ) -> TestClient<Self, TestConnect> {
-        // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
-        // it and then immediately discard the listener.
-
-        let client = Client::builder().build(TestConnect {
-            addr: self.data.addr,
-        });
-
-        TestClient {
-            client,
-            test_server: self.clone(),
-        }
+        self.client()
     }
 }
 
@@ -232,30 +222,6 @@ mod tests {
             .get("http://localhost/timeout")
             .perform();
         assert!(result.unwrap_err().to_string().contains("timed out"));
-    }
-
-    #[test]
-    #[ignore] // We trade using the mainline server setup code for this behavior.
-    fn sets_client_addr() {
-        let ticks = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        let client_addr = "9.8.7.6:58901".parse().unwrap();
-        let test_server = TestServer::new(TestHandler::from(format!("time: {}", ticks))).unwrap();
-
-        let response = test_server
-            .client_with_address(client_addr)
-            .get("http://localhost/myaddr")
-            .perform()
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::OK);
-
-        let buf = response.read_body().unwrap();
-        let received_addr: net::SocketAddr = String::from_utf8(buf).unwrap().parse().unwrap();
-        assert_eq!(received_addr, client_addr);
     }
 
     #[test]
