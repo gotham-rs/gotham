@@ -320,7 +320,7 @@ mod tests {
         // sadly it seems near impossible to use `tokio::time::advance` to test this
         let timeout = Duration::from_secs(1);
         let test_server =
-            TestServer::with_timeout(TestHandler::from(""), timeout.as_secs()).unwrap();
+            TestServer::with_timeout(TestHandler::default(), timeout.as_secs()).unwrap();
         let result = test_server
             .client()
             .get("http://localhost/timeout")

@@ -295,7 +295,7 @@ pub(crate) mod helper {
     use log::info;
     use std::pin::Pin;
 
-    #[derive(Clone)]
+    #[derive(Default, Clone)]
     pub(crate) struct TestHandler {
         pub response: String,
     }
