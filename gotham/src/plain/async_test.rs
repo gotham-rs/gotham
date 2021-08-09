@@ -93,7 +93,7 @@ mod tests {
     #[tokio::test]
     async fn times_out() {
         let timeout = Duration::from_secs(10);
-        let test_server = AsyncTestServer::with_timeout(TestHandler::from(""), timeout)
+        let test_server = AsyncTestServer::with_timeout(TestHandler::default(), timeout)
             .await
             .unwrap();
 
