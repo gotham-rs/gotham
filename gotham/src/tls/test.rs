@@ -5,7 +5,6 @@
 use std::future::Future;
 use std::io::{self, BufReader};
 use std::net::{self, SocketAddr};
-use std::panic::UnwindSafe;
 use std::pin::Pin;
 use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
@@ -94,10 +93,7 @@ impl TestServer {
     /// for each connection.
     ///
     /// Timeout will be set to 10 seconds.
-    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> anyhow::Result<TestServer>
-    where
-        NH::Instance: UnwindSafe,
-    {
+    pub fn new<NH: NewHandler + 'static>(new_handler: NH) -> anyhow::Result<TestServer> {
         TestServer::with_timeout(new_handler, 10)
     }
 
@@ -105,10 +101,7 @@ impl TestServer {
     pub fn with_timeout<NH: NewHandler + 'static>(
         new_handler: NH,
         timeout: u64,
-    ) -> anyhow::Result<TestServer>
-    where
-        NH::Instance: UnwindSafe,
-    {
+    ) -> anyhow::Result<TestServer> {
         let runtime = Runtime::new()?;
         // TODO: Fix this into an async flow
         let listener = runtime.block_on(TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?))?;
