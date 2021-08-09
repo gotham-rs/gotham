@@ -127,8 +127,8 @@ impl<'client, C: Connect + Clone + Send + Sync + 'static> AsyncTestRequestBuilde
         )
     }
 
-    pub fn body(mut self, body: Body) -> Self {
-        self.body.replace(body);
+    pub fn body<B: Into<Body>>(mut self, body: B) -> Self {
+        self.body.replace(body.into());
         self
     }
 
