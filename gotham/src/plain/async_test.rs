@@ -72,21 +72,12 @@ mod tests {
     use super::*;
     use crate::test::helper::TestHandler;
     use http::StatusCode;
-    use std::time::{SystemTime, UNIX_EPOCH};
 
     #[tokio::test]
     async fn serves_requests() {
-        let ticks = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        let new_service = move || {
-            Ok(TestHandler {
-                response: format!("time: {}", ticks),
-            })
-        };
-
-        let test_server = AsyncTestServer::new(new_service).await.unwrap();
+        let test_server = AsyncTestServer::new(TestHandler::from("response"))
+            .await
+            .unwrap();
         let response = test_server
             .client()
             .get("http://localhost/")
@@ -96,20 +87,13 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::OK);
-        let buf = response.read_utf8_body().await.unwrap();
-        assert_eq!(buf, format!("time: {}", ticks));
+        assert_eq!(response.read_utf8_body().await.unwrap(), "response");
     }
 
     #[tokio::test]
     async fn times_out() {
-        let new_service = || {
-            Ok(TestHandler {
-                response: "".to_owned(),
-            })
-        };
-
         let timeout = Duration::from_secs(10);
-        let test_server = AsyncTestServer::with_timeout(new_service, timeout)
+        let test_server = AsyncTestServer::with_timeout(TestHandler::from(""), timeout)
             .await
             .unwrap();
 
