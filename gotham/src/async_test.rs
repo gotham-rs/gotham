@@ -350,13 +350,57 @@ mod tests {
     use crate::test::helper::TestHandler;
     use http::StatusCode;
 
-    #[tokio::test]
-    async fn serves_requests() {
+    mod plain {
+        use crate::async_test::AsyncTestServer;
+
+        #[tokio::test]
+        async fn serves_requests() {
+            super::serves_requests(AsyncTestServer::client).await;
+        }
+
+        #[tokio::test]
+        async fn times_out() {
+            super::times_out(AsyncTestServer::client).await;
+        }
+
+        #[tokio::test]
+        async fn echo() {
+            super::echo(AsyncTestServer::client).await;
+        }
+    }
+
+    #[cfg(feature = "rustls")]
+    // FIXME: The TLS tests currently don't work. Still unclear why
+    mod tls {
+        use crate::async_test::AsyncTestServer;
+
+        #[tokio::test]
+        #[ignore]
+        async fn serves_requests() {
+            super::serves_requests(AsyncTestServer::tls_client).await;
+        }
+
+        #[tokio::test]
+        #[ignore]
+        async fn times_out() {
+            super::times_out(AsyncTestServer::tls_client).await;
+        }
+
+        #[tokio::test]
+        #[ignore]
+        async fn echo() {
+            super::echo(AsyncTestServer::tls_client).await;
+        }
+    }
+
+    async fn serves_requests<C>(client_factory: fn(&AsyncTestServer) -> AsyncTestClient<C>)
+    where
+        C: Connect + Clone + Send + Sync + 'static,
+    {
         let test_server = AsyncTestServer::new(TestHandler::from("response"))
             .await
             .unwrap();
-        let response = test_server
-            .client()
+        let response = client_factory(&test_server)
             .get("http://localhost/")
             .unwrap()
             .perform()
@@ -367,14 +411,16 @@ mod tests {
         assert_eq!(response.read_utf8_body().await.unwrap(), "response");
     }
 
-    #[tokio::test]
-    async fn times_out() {
+    async fn times_out<C>(client_factory: fn(&AsyncTestServer) -> AsyncTestClient<C>)
+    where
+        C: Connect + Clone + Send + Sync + 'static,
+    {
         let timeout = Duration::from_secs(10);
         let test_server = AsyncTestServer::with_timeout(TestHandler::default(), timeout)
             .await
             .unwrap();
 
-        let client = test_server.client();
+        let client = client_factory(&test_server);
 
         tokio::time::pause();
         // Spawning the request into the background so the time can be controlled concurrently
@@ -395,15 +441,16 @@ mod tests {
             .is::<tokio::time::error::Elapsed>());
     }
 
-    #[tokio::test]
-    async fn echo() {
+    async fn echo<C>(client_factory: fn(&AsyncTestServer) -> AsyncTestClient<C>)
+    where
+        C: Connect + Clone + Send + Sync + 'static,
+    {
         let server = AsyncTestServer::new(TestHandler::default()).await.unwrap();
 
         let data = "This text should get reflected back to us. Even this fancy piece of unicode: \
                     \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
 
-        let response = server
-            .client()
+        let response = client_factory(&server)
             .post("http://localhost/echo")
             .unwrap()
             .body(data)
