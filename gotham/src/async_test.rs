@@ -12,8 +12,7 @@ use hyper::Client;
 use hyper::{Body, Response};
 use mime::Mime;
 use std::any::Any;
-use std::convert::{TryFrom, TryInto};
-use std::error::Error;
+use std::convert::TryFrom;
 use std::fmt::{Debug, Formatter};
 use std::io::BufReader;
 use std::net::SocketAddr;
@@ -48,7 +47,7 @@ use tokio::time::timeout;
 ///
 /// let test_server = AsyncTestServer::new(|| Ok(my_handler)).await.unwrap();
 ///
-/// let response = test_server.client().get("http://localhost/").unwrap().perform().await.unwrap();
+/// let response = test_server.client().get("http://localhost/").perform().await.unwrap();
 /// assert_eq!(response.status(), StatusCode::ACCEPTED);
 /// # }
 /// ```
@@ -158,66 +157,66 @@ impl<C: Connect + Clone + Send + Sync + 'static> AsyncTestClient<C> {
     }
 
     /// Begin constructing a `HEAD` request using this [`AsyncTestClient`]
-    pub fn head<U>(&self, uri: U) -> anyhow::Result<AsyncTestRequestBuilder<'_, C>>
+    pub fn head<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
     where
         Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Error + Send + Sync + 'static,
+        <Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        Ok(self.build_request_with_method_and_uri(Method::HEAD, uri.try_into()?))
+        self.request_builder_with_method_and_uri(Method::HEAD, uri)
     }
 
     /// Begin constructing a `GET` request using this [`AsyncTestClient`]
-    pub fn get<U>(&self, uri: U) -> anyhow::Result<AsyncTestRequestBuilder<'_, C>>
+    pub fn get<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
     where
         Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Error + Send + Sync + 'static,
+        <Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        Ok(self.build_request_with_method_and_uri(Method::GET, uri.try_into()?))
+        self.request_builder_with_method_and_uri(Method::GET, uri)
     }
 
     /// Begin constructing an `OPTIONS` request using this [`AsyncTestClient`]
-    pub fn options<U>(&self, uri: U) -> anyhow::Result<AsyncTestRequestBuilder<'_, C>>
+    pub fn options<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
     where
         Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Error + Send + Sync + 'static,
+        <Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        Ok(self.build_request_with_method_and_uri(Method::OPTIONS, uri.try_into()?))
+        self.request_builder_with_method_and_uri(Method::OPTIONS, uri)
     }
 
     /// Begin constructing a `POST` request using this [`AsyncTestClient`]
-    pub fn post<U>(&self, uri: U) -> anyhow::Result<AsyncTestRequestBuilder<'_, C>>
+    pub fn post<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
     where
         Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Error + Send + Sync + 'static,
+        <Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        Ok(self.build_request_with_method_and_uri(Method::POST, uri.try_into()?))
+        self.request_builder_with_method_and_uri(Method::POST, uri)
     }
 
     /// Begin constructing a `PUT` request using this [`AsyncTestClient`]
-    pub fn put<U>(&self, uri: U) -> anyhow::Result<AsyncTestRequestBuilder<'_, C>>
+    pub fn put<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
     where
         Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Error + Send + Sync + 'static,
+        <Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        Ok(self.build_request_with_method_and_uri(Method::PUT, uri.try_into()?))
+        self.request_builder_with_method_and_uri(Method::PUT, uri)
     }
 
     /// Begin constructing a `PATCH` request using this [`AsyncTestClient`]
-    pub fn patch<U>(&self, uri: U) -> anyhow::Result<AsyncTestRequestBuilder<'_, C>>
+    pub fn patch<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
     where
         Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Error + Send + Sync + 'static,
+        <Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        Ok(self.build_request_with_method_and_uri(Method::PATCH, uri.try_into()?))
+        self.request_builder_with_method_and_uri(Method::PATCH, uri)
     }
 
     /// Begin constructing a `DELETE` request using this [`AsyncTestClient`]
-    pub fn delete<U>(&self, uri: U) -> anyhow::Result<AsyncTestRequestBuilder<'_, C>>
+    pub fn delete<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
     where
         Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Error + Send + Sync + 'static,
+        <Uri as TryFrom<U>>::Error: Into<http::Error>,
     {
-        Ok(self.build_request_with_method_and_uri(Method::DELETE, uri.try_into()?))
+        self.request_builder_with_method_and_uri(Method::DELETE, uri)
     }
 
     /// Begin constructing a request using this [`AsyncTestClient`]
@@ -229,11 +228,15 @@ impl<C: Connect + Clone + Send + Sync + 'static> AsyncTestClient<C> {
         }
     }
 
-    fn build_request_with_method_and_uri(
+    fn request_builder_with_method_and_uri<U>(
         &self,
         method: Method,
-        uri: Uri,
-    ) -> AsyncTestRequestBuilder<'_, C> {
+        uri: U,
+    ) -> AsyncTestRequestBuilder<'_, C>
+    where
+        Uri: TryFrom<U>,
+        <Uri as TryFrom<U>>::Error: Into<http::Error>,
+    {
         let request_builder = request::Builder::new().uri(uri).method(method);
         AsyncTestRequestBuilder {
             test_client: self,
@@ -334,15 +337,7 @@ impl<'client, C: Connect + Clone + Send + Sync + 'static> AsyncTestRequestBuilde
         mut self,
         replacer: impl FnOnce(request::Builder) -> request::Builder,
     ) -> Self {
-        let mut intermediary = request::Builder::new();
-        // swap out request_builder so it can be modified
-        std::mem::swap(&mut intermediary, &mut self.request_builder);
-
-        intermediary = replacer(intermediary);
-
-        // place it back after modification
-        std::mem::swap(&mut intermediary, &mut self.request_builder);
-
+        self.request_builder = replacer(self.request_builder);
         self
     }
 }
@@ -473,7 +468,6 @@ mod tests {
             .unwrap();
         let response = client_factory(&test_server)
             .get("http://localhost/")
-            .unwrap()
             .perform()
             .await
             .unwrap();
@@ -495,10 +489,8 @@ mod tests {
 
         tokio::time::pause();
         // Spawning the request into the background so the time can be controlled concurrently
-        let request_handle = tokio::spawn(async move {
-            let builder = client.get("http://localhost/timeout").unwrap();
-            builder.perform().await
-        });
+        let request_handle =
+            tokio::spawn(async move { client.get("http://localhost/timeout").perform().await });
         // This exploits Auto-advance, see https://docs.rs/tokio/1.9.0/tokio/time/fn.pause.html#auto-advance
         // Just calling `tokio::time::advance(timeout)` directly won't have any effect here, because the spawned
         // request future hasn't been polled yet so it's timer isn't registered, meaning the advance doesn't affect
@@ -523,7 +515,6 @@ mod tests {
 
         let response = client_factory(&server)
             .post("http://localhost/echo")
-            .unwrap()
             .body(data)
             .perform()
             .await
