@@ -9,14 +9,15 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 
+#[derive(Clone)]
 pub struct AsyncTestServer {
-    data: Arc<AsyncTestServerData>,
+    inner: Arc<AsyncTestServerInner>,
 }
 
-#[derive(Clone)]
-struct AsyncTestServerData {
+struct AsyncTestServerInner {
     addr: SocketAddr,
     timeout: Duration,
+    handle: tokio::task::JoinHandle<()>,
 }
 
 impl AsyncTestServer {
@@ -43,14 +44,17 @@ impl AsyncTestServer {
         let listener = TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?).await?;
         let addr = listener.local_addr()?;
 
-        // TODO: Won't this leak the server?
-        let service_stream = super::bind_server(listener, new_handler, future::ok);
-        let _ = tokio::spawn(service_stream);
-
-        let data = AsyncTestServerData { addr, timeout };
+        let handle = tokio::spawn(async {
+            // TODO: Remove the wrapping async block once ! is stabilized, see https://github.com/rust-lang/rust/issues/35121
+            super::bind_server(listener, new_handler, future::ok).await;
+        });
 
         Ok(AsyncTestServer {
-            data: Arc::new(data),
+            inner: Arc::new(AsyncTestServerInner {
+                addr,
+                timeout,
+                handle,
+            }),
         })
     }
 
@@ -61,9 +65,16 @@ impl AsyncTestServer {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
         let client = Client::builder().build(TestConnect {
-            addr: self.data.addr,
+            addr: self.inner.addr,
         });
-        AsyncTestClient::new(client, self.data.timeout)
+        AsyncTestClient::new(client, self.inner.timeout)
+    }
+}
+
+impl Drop for AsyncTestServer {
+    fn drop(&mut self) {
+        // Prevent leaking the server's main loop
+        self.inner.handle.abort();
     }
 }
 
