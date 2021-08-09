@@ -117,4 +117,23 @@ mod tests {
             .unwrap_err()
             .is::<tokio::time::error::Elapsed>());
     }
+
+    #[tokio::test]
+    async fn echo() {
+        let server = AsyncTestServer::new(TestHandler::default()).await.unwrap();
+
+        let data = "This text should get reflected back to us. Even this fancy piece of unicode: \
+                    \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
+
+        let response = server
+            .client()
+            .post("http://localhost/echo")
+            .unwrap()
+            .body(data)
+            .perform()
+            .await
+            .unwrap();
+        let response_text = response.read_utf8_body().await.unwrap();
+        assert_eq!(response_text, data);
+    }
 }
