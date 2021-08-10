@@ -136,7 +136,7 @@ impl TestServer {
     }
 
     /// Exactly the same as [`TestServer::client`].
-    #[deprecated(note = "does the same as client")]
+    #[deprecated(since = "0.3.0", note = "does the same as client")]
     pub fn client_with_address(
         &self,
         _client_addr: net::SocketAddr,
