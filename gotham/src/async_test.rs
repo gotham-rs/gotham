@@ -426,6 +426,11 @@ mod tests {
         async fn echo() {
             super::echo(AsyncTestServer::client).await;
         }
+
+        #[tokio::test]
+        async fn supports_multiple_servers() {
+            super::supports_multiple_servers(AsyncTestServer::client).await;
+        }
     }
 
     #[cfg(feature = "rustls")]
@@ -449,6 +454,12 @@ mod tests {
         #[ignore]
         async fn echo() {
             super::echo(AsyncTestServer::tls_client).await;
+        }
+
+        #[tokio::test]
+        #[ignore]
+        async fn supports_multiple_servers() {
+            super::supports_multiple_servers(AsyncTestServer::tls_client).await;
         }
     }
 
@@ -514,5 +525,37 @@ mod tests {
             .unwrap();
         let response_text = response.read_utf8_body().await.unwrap();
         assert_eq!(response_text, data);
+    }
+
+    async fn supports_multiple_servers<C>(
+        client_factory: fn(&AsyncTestServer) -> AsyncTestClient<C>,
+    ) where
+        C: Connect + Clone + Send + Sync + 'static,
+    {
+        let server_a = AsyncTestServer::new(TestHandler::from("A")).await.unwrap();
+        let server_b = AsyncTestServer::new(TestHandler::from("B")).await.unwrap();
+
+        let client_a = client_factory(&server_a);
+        let client_b = client_factory(&server_b);
+
+        let response_a = client_a
+            .get("http://localhost/")
+            .perform()
+            .await
+            .unwrap()
+            .read_utf8_body()
+            .await
+            .unwrap();
+        let response_b = client_b
+            .get("http://localhost/")
+            .perform()
+            .await
+            .unwrap()
+            .read_utf8_body()
+            .await
+            .unwrap();
+
+        assert_eq!(response_a, "A");
+        assert_eq!(response_b, "B");
     }
 }
