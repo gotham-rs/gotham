@@ -404,6 +404,11 @@ mod tests {
         fn async_echo() {
             super::async_echo(TestServer::new, TestServer::client)
         }
+
+        #[test]
+        fn supports_multiple_servers() {
+            super::supports_multiple_servers(TestServer::new, TestServer::client)
+        }
     }
 
     #[cfg(feature = "rustls")]
@@ -423,6 +428,11 @@ mod tests {
         #[test]
         fn async_echo() {
             super::async_echo(TestServer::new, TestServer::client)
+        }
+
+        #[test]
+        fn supports_multiple_servers() {
+            super::supports_multiple_servers(TestServer::new, TestServer::client)
         }
     }
 
@@ -500,5 +510,35 @@ mod tests {
 
         assert_eq!(content_length, &format!("{}", buf.len()));
         assert_eq!(data, &buf);
+    }
+
+    fn supports_multiple_servers<TS, C>(
+        server_factory: fn(TestHandler) -> anyhow::Result<TS>,
+        client_factory: fn(&TS) -> TestClient<TS, C>,
+    ) where
+        TS: Server + 'static,
+        C: Connect + Clone + Send + Sync + 'static,
+    {
+        let server_a = server_factory(TestHandler::from("A")).unwrap();
+        let server_b = server_factory(TestHandler::from("B")).unwrap();
+
+        let client_a = client_factory(&server_a);
+        let client_b = client_factory(&server_b);
+
+        let response_a = client_a
+            .get("http://localhost/")
+            .perform()
+            .unwrap()
+            .read_utf8_body()
+            .unwrap();
+        let response_b = client_b
+            .get("http://localhost/")
+            .perform()
+            .unwrap()
+            .read_utf8_body()
+            .unwrap();
+
+        assert_eq!(response_a, "A");
+        assert_eq!(response_b, "B");
     }
 }
