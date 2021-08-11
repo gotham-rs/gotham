@@ -6,16 +6,14 @@ use std::future::Future;
 use std::net::{self, SocketAddr};
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use std::time::Duration;
 
-use futures_util::future::{self, BoxFuture, Ready};
+use futures_util::future::{self, BoxFuture};
 use futures_util::FutureExt;
 use http::Uri;
-use hyper::client::Client;
 use hyper::service::Service;
 use log::info;
 use tokio::net::TcpStream;
-use tokio::time::{sleep, Sleep};
+use tokio::time::Sleep;
 
 use crate::handler::NewHandler;
 use crate::test::{self, TestClient, TestServerData};
@@ -52,21 +50,15 @@ pub struct TestServer {
 }
 
 impl test::Server for TestServer {
-    fn request_expiry(&self) -> Sleep {
-        let runtime = self.data.runtime.write().unwrap();
-        let _guard = runtime.enter();
-        sleep(Duration::from_secs(self.data.timeout))
-    }
-
     fn run_future<F, O>(&self, future: F) -> O
     where
         F: Future<Output = O>,
     {
-        self.data
-            .runtime
-            .write()
-            .expect("unable to acquire write lock")
-            .block_on(future)
+        self.data.run_future(future)
+    }
+
+    fn request_expiry(&self) -> Sleep {
+        self.data.request_expiry()
     }
 }
 
@@ -85,7 +77,7 @@ impl TestServer {
         new_handler: NH,
         timeout: u64,
     ) -> anyhow::Result<TestServer> {
-        let data = TestServerData::new(new_handler, timeout, create_wrap()?)?;
+        let data = TestServerData::new(new_handler, timeout, future::ok)?;
 
         Ok(TestServer {
             data: Arc::new(data),
@@ -94,29 +86,17 @@ impl TestServer {
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally.
     pub fn client(&self) -> TestClient<Self, TestConnect> {
-        // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
-        // it and then immediately discard the listener.
-        let test_connect = TestConnect::from(self.data.addr);
-        let client = Client::builder().build(test_connect);
-
-        TestClient {
-            client,
-            test_server: self.clone(),
-        }
+        self.data.client(self)
     }
 
     /// Spawns the given future on the `TestServer`'s internal runtime.
     /// This allows you to spawn more futures ontop of the `TestServer` in your
     /// tests.
-    pub fn spawn<F>(&self, fut: F)
+    pub fn spawn<F>(&self, future: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        self.data
-            .runtime
-            .write()
-            .expect("unable to acquire read lock")
-            .spawn(fut);
+        self.data.spawn(future)
     }
 
     /// Exactly the same as [`TestServer::client`].
@@ -156,8 +136,4 @@ impl From<SocketAddr> for TestConnect {
     fn from(addr: SocketAddr) -> Self {
         Self { addr }
     }
-}
-
-fn create_wrap() -> anyhow::Result<fn(TcpStream) -> Ready<Result<TcpStream, ()>>> {
-    Ok(future::ok)
 }

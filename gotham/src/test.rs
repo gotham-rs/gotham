@@ -13,13 +13,14 @@ use hyper::client::Client;
 use hyper::header::CONTENT_TYPE;
 use hyper::{body, Body, Method, Response, Uri};
 use log::warn;
-use tokio::time::Sleep;
+use tokio::time::{sleep, Sleep};
 
 use crate::handler::NewHandler;
 pub use crate::plain::test::TestServer;
 pub use request::TestRequest;
 use std::net::SocketAddr;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
+use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
@@ -61,6 +62,50 @@ impl TestServerData {
             timeout,
             runtime: RwLock::new(runtime),
         })
+    }
+
+    pub fn client<TS, TestC>(&self, server: &TS) -> TestClient<TS, TestC>
+    where
+        TS: Server,
+        TestC: From<SocketAddr> + Connect + Clone,
+    {
+        // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
+        // it and then immediately discard the listener.
+        let test_connect = TestC::from(self.addr);
+        let client = Client::builder().build(test_connect);
+
+        TestClient {
+            client,
+            test_server: server.clone(),
+        }
+    }
+
+    pub fn spawn<F>(&self, future: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        self.runtime
+            .write()
+            .expect("unable to acquire read lock")
+            .spawn(future);
+    }
+}
+
+impl Server for Arc<TestServerData> {
+    fn run_future<F, O>(&self, future: F) -> O
+    where
+        F: Future<Output = O>,
+    {
+        self.runtime
+            .write()
+            .expect("unable to acquire write lock")
+            .block_on(future)
+    }
+
+    fn request_expiry(&self) -> Sleep {
+        let runtime = self.runtime.write().unwrap();
+        let _guard = runtime.enter();
+        sleep(Duration::from_secs(self.timeout))
     }
 }
 

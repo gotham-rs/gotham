@@ -8,19 +8,17 @@ use std::net::{self, SocketAddr};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
-use std::time::Duration;
 
-use futures_util::future::{BoxFuture, FutureExt, MapErr};
+use futures_util::future::{BoxFuture, FutureExt};
 use http::Uri;
 use hyper::client::connect::{Connected, Connection};
-use hyper::client::Client;
 use hyper::service::Service;
 use log::info;
 use pin_project::pin_project;
 use rustls::Session;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
-use tokio::time::{sleep, Sleep};
+use tokio::time::Sleep;
 use tokio_rustls::client::TlsStream;
 use tokio_rustls::{
     rustls::{
@@ -35,7 +33,6 @@ use tokio_rustls::{
 use crate::handler::NewHandler;
 use crate::test::{self, TestClient, TestServerData};
 use crate::tls::rustls_wrap;
-use tokio_rustls::Accept;
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
 /// (which Gotham's `Router` is). An instance of `TestServer` is run asynchronously within the
@@ -69,21 +66,15 @@ pub struct TestServer {
 }
 
 impl test::Server for TestServer {
-    fn request_expiry(&self) -> Sleep {
-        let runtime = self.data.runtime.write().unwrap();
-        let _guard = runtime.enter();
-        sleep(Duration::from_secs(self.data.timeout))
-    }
-
     fn run_future<F, O>(&self, future: F) -> O
     where
         F: Future<Output = O>,
     {
-        self.data
-            .runtime
-            .write()
-            .expect("unable to acquire write lock")
-            .block_on(future)
+        self.data.run_future(future)
+    }
+
+    fn request_expiry(&self) -> Sleep {
+        self.data.request_expiry()
     }
 }
 
@@ -102,7 +93,14 @@ impl TestServer {
         new_handler: NH,
         timeout: u64,
     ) -> anyhow::Result<TestServer> {
-        let data = TestServerData::new(new_handler, timeout, create_wrap()?)?;
+        let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
+        let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
+        let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
+        let certs = certs(&mut cert_file).unwrap();
+        let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
+        cfg.set_single_cert(certs, keys.remove(0))?;
+
+        let data = TestServerData::new(new_handler, timeout, rustls_wrap(cfg))?;
 
         Ok(TestServer {
             data: Arc::new(data),
@@ -111,29 +109,17 @@ impl TestServer {
 
     /// Returns a client connected to the `TestServer`. The transport is handled internally.
     pub fn client(&self) -> TestClient<Self, TestConnect> {
-        // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
-        // it and then immediately discard the listener.
-        let test_connect = TestConnect::from(self.data.addr);
-        let client = Client::builder().build(test_connect);
-
-        TestClient {
-            client,
-            test_server: self.clone(),
-        }
+        self.data.client(self)
     }
 
     /// Spawns the given future on the `TestServer`'s internal runtime.
     /// This allows you to spawn more futures ontop of the `TestServer` in your
     /// tests.
-    pub fn spawn<F>(&self, fut: F)
+    pub fn spawn<F>(&self, future: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        self.data
-            .runtime
-            .write()
-            .expect("unable to acquire read lock")
-            .spawn(fut);
+        self.data.spawn(future)
     }
 
     /// Exactly the same as [`TestServer::client`].
@@ -250,16 +236,4 @@ impl From<SocketAddr> for TestConnect {
             config: Arc::new(config),
         }
     }
-}
-
-fn create_wrap(
-) -> anyhow::Result<impl Fn(TcpStream) -> MapErr<Accept<TcpStream>, fn(std::io::Error) -> ()>> {
-    let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
-    let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
-    let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
-    let certs = certs(&mut cert_file).unwrap();
-    let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
-    cfg.set_single_cert(certs, keys.remove(0))?;
-
-    Ok(rustls_wrap(cfg))
 }
