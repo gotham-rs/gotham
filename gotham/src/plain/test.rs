@@ -4,7 +4,7 @@
 
 use std::future::Future;
 use std::net::{self, SocketAddr};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -14,9 +14,7 @@ use http::Uri;
 use hyper::client::Client;
 use hyper::service::Service;
 use log::info;
-use tokio::net::TcpListener;
 use tokio::net::TcpStream;
-use tokio::runtime::Runtime;
 use tokio::time::{sleep, Sleep};
 
 use crate::handler::NewHandler;
@@ -87,20 +85,7 @@ impl TestServer {
         new_handler: NH,
         timeout: u64,
     ) -> anyhow::Result<TestServer> {
-        let runtime = Runtime::new()?;
-        // TODO: Fix this into an async flow
-        let listener = runtime.block_on(TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?))?;
-        let addr = listener.local_addr()?;
-
-        let wrap = create_wrap()?;
-        let service_stream = super::bind_server(listener, new_handler, wrap);
-        runtime.spawn(service_stream); // Ignore the result
-
-        let data = TestServerData {
-            addr,
-            timeout,
-            runtime: RwLock::new(runtime),
-        };
+        let data = TestServerData::new(new_handler, timeout, create_wrap()?)?;
 
         Ok(TestServer {
             data: Arc::new(data),

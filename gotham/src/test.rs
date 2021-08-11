@@ -15,10 +15,13 @@ use hyper::{body, Body, Method, Response, Uri};
 use log::warn;
 use tokio::time::Sleep;
 
+use crate::handler::NewHandler;
 pub use crate::plain::test::TestServer;
 pub use request::TestRequest;
 use std::net::SocketAddr;
 use std::sync::RwLock;
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
 
 pub(crate) trait BodyReader {
@@ -31,6 +34,34 @@ pub(crate) struct TestServerData {
     pub addr: SocketAddr,
     pub timeout: u64,
     pub runtime: RwLock<Runtime>,
+}
+
+impl TestServerData {
+    pub fn new<NH, F, Wrapped, Wrap>(
+        new_handler: NH,
+        timeout: u64,
+        wrap: Wrap,
+    ) -> anyhow::Result<Self>
+    where
+        NH: NewHandler + 'static,
+        F: Future<Output = Result<Wrapped, ()>> + Unpin + Send + 'static,
+        Wrapped: Unpin + AsyncRead + AsyncWrite + Send + 'static,
+        Wrap: Fn(TcpStream) -> F + Send + 'static,
+    {
+        let runtime = Runtime::new()?;
+        // TODO: Fix this into an async flow
+        let listener = runtime.block_on(TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?))?;
+        let addr = listener.local_addr()?;
+
+        let service_stream = super::bind_server(listener, new_handler, wrap);
+        runtime.spawn(service_stream); // Ignore the result
+
+        Ok(TestServerData {
+            addr,
+            timeout,
+            runtime: RwLock::new(runtime),
+        })
+    }
 }
 
 /// An in memory server for testing purposes.
