@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use futures_util::future::{BoxFuture, FutureExt};
+use futures_util::future::{BoxFuture, FutureExt, MapErr};
 use http::Uri;
 use hyper::client::connect::{Connected, Connection};
 use hyper::client::Client;
@@ -37,6 +37,7 @@ use tokio_rustls::{
 use crate::handler::NewHandler;
 use crate::test::{self, TestClient, TestServerData};
 use crate::tls::rustls_wrap;
+use tokio_rustls::Accept;
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
 /// (which Gotham's `Router` is). An instance of `TestServer` is run asynchronously within the
@@ -108,14 +109,7 @@ impl TestServer {
         let listener = runtime.block_on(TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?))?;
         let addr = listener.local_addr()?;
 
-        let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
-        let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
-        let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
-        let certs = certs(&mut cert_file).unwrap();
-        let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
-        cfg.set_single_cert(certs, keys.remove(0))?;
-
-        let wrap = rustls_wrap(cfg);
+        let wrap = create_wrap()?;
         let service_stream = super::bind_server(listener, new_handler, wrap);
         runtime.spawn(service_stream); // Ignore the result
 
@@ -271,4 +265,16 @@ impl From<SocketAddr> for TestConnect {
             config: Arc::new(config),
         }
     }
+}
+
+fn create_wrap(
+) -> anyhow::Result<impl Fn(TcpStream) -> MapErr<Accept<TcpStream>, fn(std::io::Error) -> ()>> {
+    let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
+    let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
+    let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
+    let certs = certs(&mut cert_file).unwrap();
+    let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
+    cfg.set_single_cert(certs, keys.remove(0))?;
+
+    Ok(rustls_wrap(cfg))
 }

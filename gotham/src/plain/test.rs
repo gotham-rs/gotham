@@ -8,7 +8,7 @@ use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use futures_util::future::{self, BoxFuture};
+use futures_util::future::{self, BoxFuture, Ready};
 use futures_util::FutureExt;
 use http::Uri;
 use hyper::client::Client;
@@ -92,7 +92,8 @@ impl TestServer {
         let listener = runtime.block_on(TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?))?;
         let addr = listener.local_addr()?;
 
-        let service_stream = super::bind_server(listener, new_handler, future::ok);
+        let wrap = create_wrap()?;
+        let service_stream = super::bind_server(listener, new_handler, wrap);
         runtime.spawn(service_stream); // Ignore the result
 
         let data = TestServerData {
@@ -170,4 +171,8 @@ impl From<SocketAddr> for TestConnect {
     fn from(addr: SocketAddr) -> Self {
         Self { addr }
     }
+}
+
+fn create_wrap() -> anyhow::Result<fn(TcpStream) -> Ready<Result<TcpStream, ()>>> {
+    Ok(future::ok)
 }
