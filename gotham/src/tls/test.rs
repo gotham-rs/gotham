@@ -134,14 +134,8 @@ impl TestServer {
     pub fn client(&self) -> TestClient<Self, TestConnect> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
-        let mut config = rustls::ClientConfig::new();
-        let mut cert_file = BufReader::new(&include_bytes!("ca_cert.pem")[..]);
-        config.root_store.add_pem_file(&mut cert_file).unwrap();
-
-        let client = Client::builder().build(TestConnect {
-            addr: self.data.addr,
-            config: Arc::new(config),
-        });
+        let test_connect = TestConnect::from(self.data.addr);
+        let client = Client::builder().build(test_connect);
 
         TestClient {
             client,
@@ -263,5 +257,18 @@ impl Service<Uri> for TestConnect {
             }
         }
         .boxed()
+    }
+}
+
+impl From<SocketAddr> for TestConnect {
+    fn from(addr: SocketAddr) -> Self {
+        let mut config = rustls::ClientConfig::new();
+        let mut cert_file = BufReader::new(&include_bytes!("ca_cert.pem")[..]);
+        config.root_store.add_pem_file(&mut cert_file).unwrap();
+
+        Self {
+            addr,
+            config: Arc::new(config),
+        }
     }
 }

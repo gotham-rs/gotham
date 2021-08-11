@@ -110,10 +110,8 @@ impl TestServer {
     pub fn client(&self) -> TestClient<Self, TestConnect> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
-
-        let client = Client::builder().build(TestConnect {
-            addr: self.data.addr,
-        });
+        let test_connect = TestConnect::from(self.data.addr);
+        let client = Client::builder().build(test_connect);
 
         TestClient {
             client,
@@ -165,5 +163,11 @@ impl Service<Uri> for TestConnect {
         TcpStream::connect(self.addr)
             .inspect(|s| info!("Client TcpStream connected: {:?}", s))
             .boxed()
+    }
+}
+
+impl From<SocketAddr> for TestConnect {
+    fn from(addr: SocketAddr) -> Self {
+        Self { addr }
     }
 }
