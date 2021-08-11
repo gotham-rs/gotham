@@ -36,6 +36,7 @@ use tokio_rustls::{
 
 use crate::handler::NewHandler;
 use crate::test::{self, TestClient, TestServerData};
+use crate::tls::rustls_wrap;
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
 /// (which Gotham's `Router` is). An instance of `TestServer` is run asynchronously within the
@@ -114,7 +115,8 @@ impl TestServer {
         let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
         cfg.set_single_cert(certs, keys.remove(0))?;
 
-        let service_stream = super::bind_server_rustls(listener, new_handler, cfg);
+        let wrap = rustls_wrap(cfg);
+        let service_stream = super::bind_server(listener, new_handler, wrap);
         runtime.spawn(service_stream); // Ignore the result
 
         let data = TestServerData {
