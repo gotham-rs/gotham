@@ -14,11 +14,13 @@ use mime::Mime;
 use std::any::Any;
 use std::convert::TryFrom;
 use std::fmt::{Debug, Formatter};
+use std::future::Future;
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::net::TcpListener;
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::time::timeout;
 
 /// An [`AsyncTestServer`], that can be used for testing requests against a server in asynchronous contexts.
@@ -54,10 +56,56 @@ pub struct AsyncTestServer {
     inner: Arc<AsyncTestServerInner>,
 }
 
-struct AsyncTestServerInner {
+pub(crate) struct AsyncTestServerInner {
     addr: SocketAddr,
     timeout: Duration,
     handle: tokio::task::JoinHandle<()>,
+}
+
+impl AsyncTestServerInner {
+    pub async fn new<NH, F, Wrapped, Wrap>(
+        new_handler: NH,
+        timeout: Duration,
+        wrap: Wrap,
+    ) -> anyhow::Result<Self>
+    where
+        NH: NewHandler + 'static,
+        F: Future<Output = Result<Wrapped, ()>> + Unpin + Send + 'static,
+        Wrapped: Unpin + AsyncRead + AsyncWrite + Send + 'static,
+        Wrap: Fn(TcpStream) -> F + Send + 'static,
+    {
+        let listener = TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?).await?;
+        let addr = listener.local_addr()?;
+
+        let handle = tokio::spawn(async {
+            // TODO: Remove the wrapping async block once ! is stabilized, see https://github.com/rust-lang/rust/issues/35121
+            super::bind_server(listener, new_handler, wrap).await;
+        });
+
+        Ok(AsyncTestServerInner {
+            addr,
+            timeout,
+            handle,
+        })
+    }
+
+    pub fn client<TestC>(&self) -> AsyncTestClient<TestC>
+    where
+        TestC: From<SocketAddr> + Connect + Clone + Send + Sync + 'static,
+    {
+        // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
+        // it and then immediately discard the listener.
+        let test_connect = TestC::from(self.addr);
+        let client = Client::builder().build(test_connect);
+        AsyncTestClient::new(client, self.timeout)
+    }
+}
+
+impl Drop for AsyncTestServerInner {
+    fn drop(&mut self) {
+        // Prevent leaking the server's main loop
+        self.handle.abort();
+    }
 }
 
 impl AsyncTestServer {
@@ -75,49 +123,24 @@ impl AsyncTestServer {
         new_handler: NH,
         timeout: Duration,
     ) -> anyhow::Result<AsyncTestServer> {
-        let listener = TcpListener::bind("127.0.0.1:0".parse::<SocketAddr>()?).await?;
-        let addr = listener.local_addr()?;
-
-        let handle = tokio::spawn(async {
-            // TODO: Remove the wrapping async block once ! is stabilized, see https://github.com/rust-lang/rust/issues/35121
-            super::bind_server(listener, new_handler, future::ok).await;
-        });
+        let inner = AsyncTestServerInner::new(new_handler, timeout, future::ok).await?;
 
         Ok(AsyncTestServer {
-            inner: Arc::new(AsyncTestServerInner {
-                addr,
-                timeout,
-                handle,
-            }),
+            inner: Arc::new(inner),
         })
     }
 
     /// Returns a client connected to the [`AsyncTestServer`]. It can be used to make requests against the test server.
     /// The transport is handled internally.
     pub fn client(&self) -> AsyncTestClient<super::plain::test::TestConnect> {
-        // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
-        // it and then immediately discard the listener.
-        let test_connect = super::plain::test::TestConnect::from(self.inner.addr);
-        let client = Client::builder().build(test_connect);
-        AsyncTestClient::new(client, self.inner.timeout)
+        self.inner.client()
     }
 
     #[cfg(feature = "rustls")]
     /// Returns a client connected to the [`AsyncTestServer`] via TLS. It can be used to make requests against the test server.
     /// The transport is handled internally.
     pub fn tls_client(&self) -> AsyncTestClient<super::tls::test::TestConnect> {
-        // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
-        // it and then immediately discard the listener.
-        let test_connect = super::tls::test::TestConnect::from(self.inner.addr);
-        let client = Client::builder().build(test_connect);
-        AsyncTestClient::new(client, self.inner.timeout)
-    }
-}
-
-impl Drop for AsyncTestServer {
-    fn drop(&mut self) {
-        // Prevent leaking the server's main loop
-        self.inner.handle.abort();
+        self.inner.client()
     }
 }
 
