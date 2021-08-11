@@ -14,7 +14,6 @@ use mime::Mime;
 use std::any::Any;
 use std::convert::TryFrom;
 use std::fmt::{Debug, Formatter};
-use std::io::BufReader;
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
@@ -98,9 +97,8 @@ impl AsyncTestServer {
     pub fn client(&self) -> AsyncTestClient<super::plain::test::TestConnect> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
-        let client = Client::builder().build(super::plain::test::TestConnect {
-            addr: self.inner.addr,
-        });
+        let test_connect = super::plain::test::TestConnect::from(self.inner.addr);
+        let client = Client::builder().build(test_connect);
         AsyncTestClient::new(client, self.inner.timeout)
     }
 
@@ -110,14 +108,8 @@ impl AsyncTestServer {
     pub fn tls_client(&self) -> AsyncTestClient<super::tls::test::TestConnect> {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
-        let mut config = tokio_rustls::rustls::ClientConfig::new();
-        let mut cert_file = BufReader::new(&include_bytes!("tls/ca_cert.pem")[..]);
-        config.root_store.add_pem_file(&mut cert_file).unwrap();
-
-        let client = Client::builder().build(super::tls::test::TestConnect {
-            addr: self.inner.addr,
-            config: Arc::new(config),
-        });
+        let test_connect = super::tls::test::TestConnect::from(self.inner.addr);
+        let client = Client::builder().build(test_connect);
         AsyncTestClient::new(client, self.inner.timeout)
     }
 }
