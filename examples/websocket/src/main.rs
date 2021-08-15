@@ -89,42 +89,44 @@ mod test {
         header::{HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE},
         upgrade,
     };
-    use gotham::plain::test::TestServer;
-    use gotham::test::Server;
+    use gotham::plain::async_test::AsyncTestServer;
     use tokio_tungstenite::WebSocketStream;
 
-    fn create_test_server() -> TestServer {
-        TestServer::new(|| Ok(handler)).expect("Failed to create TestServer")
+    async fn create_test_server() -> AsyncTestServer {
+        AsyncTestServer::new(|| Ok(handler))
+            .await
+            .expect("Failed to create TestServer")
     }
 
-    #[test]
-    fn server_should_respond_with_html_if_no_websocket_was_requested() {
-        let server = create_test_server();
+    #[tokio::test]
+    async fn server_should_respond_with_html_if_no_websocket_was_requested() {
+        let server = create_test_server().await;
         let client = server.client();
 
         let response = client
             .get("http://localhost:10000")
             .perform()
+            .await
             .expect("Failed to request HTML");
         let body = response
             .read_utf8_body()
+            .await
             .expect("Failed to read response body.");
 
         assert_eq!(body, INDEX_HTML);
     }
 
-    #[test]
-    fn server_should_echo_websocket_messages() {
-        let server = create_test_server();
+    #[tokio::test]
+    async fn server_should_echo_websocket_messages() {
+        let server = create_test_server().await;
         let client = server.client();
 
-        let mut request = client.get("ws://127.0.0.1:10000");
-        let headers = request.headers_mut();
-        headers.insert(UPGRADE, HeaderValue::from_static("websocket"));
-        headers.insert(SEC_WEBSOCKET_KEY, HeaderValue::from_static("QmF0bWFu"));
-
         let response = client
-            .perform(request)
+            .get("ws://127.0.0.1:10000")
+            .header(UPGRADE, HeaderValue::from_static("websocket"))
+            .header(SEC_WEBSOCKET_KEY, HeaderValue::from_static("QmF0bWFu"))
+            .perform()
+            .await
             .expect("Failed to request websocket upgrade");
 
         let connection_header = response
@@ -146,47 +148,49 @@ mod test {
             "hRHWRk+NDTj5O2GjSexJZg8ImzI=".as_bytes()
         );
 
-        server.run_future(async move {
-            let response: Response<_> = response.into();
-            let upgraded = upgrade::on(response)
-                .await
-                .expect("Failed to upgrade client websocket.");
-            let mut websocket_stream =
-                WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await;
+        let response: Response<_> = response.into();
+        let upgraded = upgrade::on(response)
+            .await
+            .expect("Failed to upgrade client websocket.");
+        let mut websocket_stream =
+            WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await;
 
-            let message = Message::Text("Hello".to_string());
-            websocket_stream
-                .send(message.clone())
-                .await
-                .expect("Failed to send text message.");
+        let message = Message::Text("Hello".to_string());
+        websocket_stream
+            .send(message.clone())
+            .await
+            .expect("Failed to send text message.");
 
-            let response = websocket_stream
-                .next()
-                .await
-                .expect("Socket was closed")
-                .expect("Failed to receive response");
-            assert_eq!(message, response);
+        let response = websocket_stream
+            .next()
+            .await
+            .expect("Socket was closed")
+            .expect("Failed to receive response");
+        assert_eq!(message, response);
 
-            websocket_stream
-                .send(Message::Close(None))
-                .await
-                .expect("Failed to send close message");
-        });
+        websocket_stream
+            .send(Message::Close(None))
+            .await
+            .expect("Failed to send close message");
     }
 
-    #[test]
-    fn should_respond_with_bad_request_if_the_request_is_bad() {
-        let server = create_test_server();
+    #[tokio::test]
+    async fn should_respond_with_bad_request_if_the_request_is_bad() {
+        let server = create_test_server().await;
         let client = server.client();
 
-        let mut request = client.get("ws://127.0.0.1:10000");
-        let headers = request.headers_mut();
-        headers.insert(UPGRADE, HeaderValue::from_static("websocket"));
-
-        let response = request.perform().expect("Failed to perform request.");
+        let response = client
+            .get("ws://127.0.0.1:10000")
+            .header(UPGRADE, HeaderValue::from_static("websocket"))
+            .perform()
+            .await
+            .expect("Failed to perform request");
         assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 
-        let body = response.read_body().expect("Failed to read response body");
+        let body = response
+            .read_body()
+            .await
+            .expect("Failed to read response body");
         assert!(body.is_empty());
     }
 }
