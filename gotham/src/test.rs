@@ -568,4 +568,23 @@ pub(crate) mod common_tests {
         assert_eq!(response_a, "A");
         assert_eq!(response_b, "B");
     }
+
+    pub(crate) fn adds_client_address_to_state<TS, C>(
+        server_factory: fn(TestHandler) -> anyhow::Result<TS>,
+        client_factory: fn(&TS) -> TestClient<TS, C>,
+    ) where
+        TS: Server + 'static,
+        C: Connect + Clone + Send + Sync + 'static,
+    {
+        let server = server_factory(TestHandler::default()).unwrap();
+        let client = client_factory(&server);
+
+        let client_address = client
+            .get("/myaddr")
+            .perform()
+            .unwrap()
+            .read_utf8_body()
+            .unwrap();
+        assert!(client_address.starts_with("127.0.0.1"));
+    }
 }

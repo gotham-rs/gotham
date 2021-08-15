@@ -278,4 +278,9 @@ mod tests {
         });
         assert_eq!(42, server.run_future(run_receiver).unwrap());
     }
+
+    #[test]
+    fn adds_client_address_to_state() {
+        common_tests::adds_client_address_to_state(TestServer::new, TestServer::client);
+    }
 }
