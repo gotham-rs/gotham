@@ -457,4 +457,25 @@ pub(crate) mod common_tests {
         assert_eq!(response_a, "A");
         assert_eq!(response_b, "B");
     }
+
+    pub(crate) async fn adds_client_address_to_state<TS, F, C>(
+        server_factory: fn(TestHandler) -> F,
+        client_factory: fn(&TS) -> AsyncTestClient<C>,
+    ) where
+        F: Future<Output = anyhow::Result<TS>>,
+        C: Connect + Clone + Send + Sync + 'static,
+    {
+        let server = server_factory(TestHandler::default()).await.unwrap();
+        let client = client_factory(&server);
+
+        let client_address = client
+            .get("http://localhost/myaddr")
+            .perform()
+            .await
+            .unwrap()
+            .read_utf8_body()
+            .await
+            .unwrap();
+        assert!(client_address.starts_with("127.0.0.1"));
+    }
 }

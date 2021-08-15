@@ -101,4 +101,10 @@ mod test {
         common_tests::supports_multiple_servers(AsyncTestServer::new, AsyncTestServer::client)
             .await;
     }
+
+    #[tokio::test]
+    async fn adds_client_address_to_state() {
+        common_tests::adds_client_address_to_state(AsyncTestServer::new, AsyncTestServer::client)
+            .await;
+    }
 }
