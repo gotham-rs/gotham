@@ -19,6 +19,7 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// # Examples
 ///
 /// ```rust
+/// # #![allow(deprecated)]
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate mime;

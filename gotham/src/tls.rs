@@ -2,12 +2,14 @@ use futures_util::TryFutureExt;
 use log::{error, info};
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
-use tokio::net::TcpListener;
+use tokio::net::TcpStream;
 use tokio_rustls::{rustls, TlsAcceptor};
 
 use super::{bind_server, new_runtime, tcp_listener};
 
 use super::handler::NewHandler;
+use futures_util::future::MapErr;
+use tokio_rustls::Accept;
 
 pub mod test;
 
@@ -57,24 +59,18 @@ where
     addr
     );
 
-    bind_server_rustls(listener, new_handler, tls_config)
-        .map_err(|_| ())
-        .await
+    let wrap = rustls_wrap(tls_config);
+    bind_server(listener, new_handler, wrap).await
 }
 
-async fn bind_server_rustls<NH>(
-    listener: TcpListener,
-    new_handler: NH,
+pub(crate) fn rustls_wrap(
     tls_config: rustls::ServerConfig,
-) -> Result<(), ()>
-where
-    NH: NewHandler + 'static,
-{
+) -> impl Fn(TcpStream) -> MapErr<Accept<TcpStream>, fn(std::io::Error) -> ()> {
+    // function instead of closure, so the type is nameable, since impl ... impl is not allowed
+    fn log_error(error: std::io::Error) {
+        error!(target: "gotham::tls", "TLS handshake error: {:?}", error);
+    }
+
     let tls = TlsAcceptor::from(Arc::new(tls_config));
-    bind_server(listener, new_handler, move |socket| {
-        tls.accept(socket).map_err(|e| {
-            error!(target: "gotham::tls", "TLS handshake error: {:?}", e);
-        })
-    })
-    .await
+    move |socket| tls.accept(socket).map_err(log_error)
 }
