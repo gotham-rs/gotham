@@ -141,7 +141,9 @@ impl From<SocketAddr> for TestConnect {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test::common_tests;
+    use crate::test::helper::TestHandler;
+    use crate::test::{common_tests, Server};
+    use tokio::sync::oneshot;
 
     #[test]
     fn serves_requests() {
@@ -161,5 +163,19 @@ mod tests {
     #[test]
     fn supports_multiple_servers() {
         common_tests::supports_multiple_servers(TestServer::new, TestServer::client)
+    }
+
+    #[test]
+    fn spawns_and_runs_futures() {
+        let server = TestServer::new(TestHandler::default()).unwrap();
+
+        let (sender, spawn_receiver) = oneshot::channel();
+        let (spawn_sender, run_receiver) = oneshot::channel();
+        sender.send(1).unwrap();
+        server.spawn(async move {
+            assert_eq!(1, spawn_receiver.await.unwrap());
+            spawn_sender.send(42).unwrap();
+        });
+        assert_eq!(42, server.run_future(run_receiver).unwrap());
     }
 }
