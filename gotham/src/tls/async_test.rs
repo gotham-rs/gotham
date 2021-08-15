@@ -1,3 +1,4 @@
+//! Contains the [`AsyncTestServer`] for testing gotham servers from an asynchronous context.
 use crate::async_test::{AsyncTestClient, AsyncTestServerInner};
 use crate::handler::NewHandler;
 use crate::rustls::internal::pemfile::{certs, pkcs8_private_keys};

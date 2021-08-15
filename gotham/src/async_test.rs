@@ -1,5 +1,5 @@
-//! Contains the [`AsyncTestServer`] for testing Gotham applications from an async context, as well
-//! as additional types needed by it.
+//! Behavior and helpers shared between [`tls::async_test::AsyncTestServer`]
+//! and [`plain::async_test::AsyncTestServer`].
 use crate::handler::NewHandler;
 use http::header::CONTENT_TYPE;
 use http::header::{HeaderName, HeaderValue};
