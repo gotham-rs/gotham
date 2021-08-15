@@ -1,7 +1,6 @@
 //! Contains the [`AsyncTestServer`] for testing Gotham applications from an async context, as well
 //! as additional types needed by it.
 use crate::handler::NewHandler;
-use futures_util::future;
 use http::header::CONTENT_TYPE;
 use http::header::{HeaderName, HeaderValue};
 use http::request;
@@ -17,44 +16,10 @@ use std::fmt::{Debug, Formatter};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::time::timeout;
-
-/// An [`AsyncTestServer`], that can be used for testing requests against a server in asynchronous contexts.
-/// The [`AsyncTestServer`] runs in the runtime where it is created and an [`AsyncTestClient`] can be
-/// created to make asynchronous requests to it.
-///
-/// This differs from [`crate::plain::test::TestServer`] in that it doesn't come with it's own runtime and therefore
-/// doesn't crash when used inside of another runtime.
-///
-/// # Example
-///
-/// ```rust
-/// # use gotham::state::State;
-/// # use hyper::{Response, Body};
-/// # use http::StatusCode;
-/// #
-/// # fn my_handler(state: State) -> (State, Response<Body>) {
-/// #     (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
-/// # }
-/// #
-/// # #[tokio::main]
-/// # async fn main() {
-/// use gotham::async_test::AsyncTestServer;
-///
-/// let test_server = AsyncTestServer::new(|| Ok(my_handler)).await.unwrap();
-///
-/// let response = test_server.client().get("http://localhost/").perform().await.unwrap();
-/// assert_eq!(response.status(), StatusCode::ACCEPTED);
-/// # }
-/// ```
-#[derive(Clone)]
-pub struct AsyncTestServer {
-    inner: Arc<AsyncTestServerInner>,
-}
 
 pub(crate) struct AsyncTestServerInner {
     addr: SocketAddr,
@@ -105,42 +70,6 @@ impl Drop for AsyncTestServerInner {
     fn drop(&mut self) {
         // Prevent leaking the server's main loop
         self.handle.abort();
-    }
-}
-
-impl AsyncTestServer {
-    /// Creates an [`AsyncTestServer`] instance for the [`crate::handler::Handler`](`Handler`) spawned by `new_handler`. This server has
-    /// the same guarantee given by [`hyper::server::Server::bind`], that a new service will be spawned
-    /// for each connection.
-    ///
-    /// Requests will time out after 10 seconds by default. Use [`AsyncTestServer::with_timeout`] for a different timeout.
-    pub async fn new<NH: NewHandler + 'static>(new_handler: NH) -> anyhow::Result<AsyncTestServer> {
-        AsyncTestServer::with_timeout(new_handler, Duration::from_secs(10)).await
-    }
-
-    /// Sets the request timeout to `timeout` seconds and returns a new [`AsyncTestServer`].
-    pub async fn with_timeout<NH: NewHandler + 'static>(
-        new_handler: NH,
-        timeout: Duration,
-    ) -> anyhow::Result<AsyncTestServer> {
-        let inner = AsyncTestServerInner::new(new_handler, timeout, future::ok).await?;
-
-        Ok(AsyncTestServer {
-            inner: Arc::new(inner),
-        })
-    }
-
-    /// Returns a client connected to the [`AsyncTestServer`]. It can be used to make requests against the test server.
-    /// The transport is handled internally.
-    pub fn client(&self) -> AsyncTestClient<super::plain::test::TestConnect> {
-        self.inner.client()
-    }
-
-    #[cfg(feature = "rustls")]
-    /// Returns a client connected to the [`AsyncTestServer`] via TLS. It can be used to make requests against the test server.
-    /// The transport is handled internally.
-    pub fn tls_client(&self) -> AsyncTestClient<super::tls::test::TestConnect> {
-        self.inner.client()
     }
 }
 
@@ -419,72 +348,19 @@ impl Debug for AsyncTestResponse {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod common_tests {
     use super::*;
     use crate::test::helper::TestHandler;
     use http::StatusCode;
 
-    mod plain {
-        use crate::async_test::AsyncTestServer;
-
-        #[tokio::test]
-        async fn serves_requests() {
-            super::serves_requests(AsyncTestServer::client).await;
-        }
-
-        #[tokio::test]
-        async fn times_out() {
-            super::times_out(AsyncTestServer::client).await;
-        }
-
-        #[tokio::test]
-        async fn echo() {
-            super::echo(AsyncTestServer::client).await;
-        }
-
-        #[tokio::test]
-        async fn supports_multiple_servers() {
-            super::supports_multiple_servers(AsyncTestServer::client).await;
-        }
-    }
-
-    #[cfg(feature = "rustls")]
-    // FIXME: The TLS tests currently don't work. Still unclear why
-    mod tls {
-        use crate::async_test::AsyncTestServer;
-
-        #[tokio::test]
-        #[ignore]
-        async fn serves_requests() {
-            super::serves_requests(AsyncTestServer::tls_client).await;
-        }
-
-        #[tokio::test]
-        #[ignore]
-        async fn times_out() {
-            super::times_out(AsyncTestServer::tls_client).await;
-        }
-
-        #[tokio::test]
-        #[ignore]
-        async fn echo() {
-            super::echo(AsyncTestServer::tls_client).await;
-        }
-
-        #[tokio::test]
-        #[ignore]
-        async fn supports_multiple_servers() {
-            super::supports_multiple_servers(AsyncTestServer::tls_client).await;
-        }
-    }
-
-    async fn serves_requests<C>(client_factory: fn(&AsyncTestServer) -> AsyncTestClient<C>)
-    where
+    pub(crate) async fn serves_requests<TS, F, C>(
+        server_factory: fn(TestHandler) -> F,
+        client_factory: fn(&TS) -> AsyncTestClient<C>,
+    ) where
+        F: Future<Output = anyhow::Result<TS>>,
         C: Connect + Clone + Send + Sync + 'static,
     {
-        let test_server = AsyncTestServer::new(TestHandler::from("response"))
-            .await
-            .unwrap();
+        let test_server = server_factory(TestHandler::from("response")).await.unwrap();
         let response = client_factory(&test_server)
             .get("http://localhost/")
             .perform()
@@ -495,12 +371,15 @@ mod tests {
         assert_eq!(response.read_utf8_body().await.unwrap(), "response");
     }
 
-    async fn times_out<C>(client_factory: fn(&AsyncTestServer) -> AsyncTestClient<C>)
-    where
+    pub(crate) async fn times_out<TS, F, C>(
+        server_factory: fn(TestHandler, Duration) -> F,
+        client_factory: fn(&TS) -> AsyncTestClient<C>,
+    ) where
+        F: Future<Output = anyhow::Result<TS>>,
         C: Connect + Clone + Send + Sync + 'static,
     {
         let timeout = Duration::from_secs(10);
-        let test_server = AsyncTestServer::with_timeout(TestHandler::default(), timeout)
+        let test_server = server_factory(TestHandler::default(), timeout)
             .await
             .unwrap();
 
@@ -523,11 +402,14 @@ mod tests {
             .is::<tokio::time::error::Elapsed>());
     }
 
-    async fn echo<C>(client_factory: fn(&AsyncTestServer) -> AsyncTestClient<C>)
-    where
+    pub(crate) async fn echo<TS, F, C>(
+        server_factory: fn(TestHandler) -> F,
+        client_factory: fn(&TS) -> AsyncTestClient<C>,
+    ) where
+        F: Future<Output = anyhow::Result<TS>>,
         C: Connect + Clone + Send + Sync + 'static,
     {
-        let server = AsyncTestServer::new(TestHandler::default()).await.unwrap();
+        let server = server_factory(TestHandler::default()).await.unwrap();
 
         let data = "This text should get reflected back to us. Even this fancy piece of unicode: \
                     \u{3044}\u{308d}\u{306f}\u{306b}\u{307b}";
@@ -542,13 +424,15 @@ mod tests {
         assert_eq!(response_text, data);
     }
 
-    async fn supports_multiple_servers<C>(
-        client_factory: fn(&AsyncTestServer) -> AsyncTestClient<C>,
+    pub(crate) async fn supports_multiple_servers<TS, F, C>(
+        server_factory: fn(TestHandler) -> F,
+        client_factory: fn(&TS) -> AsyncTestClient<C>,
     ) where
+        F: Future<Output = anyhow::Result<TS>>,
         C: Connect + Clone + Send + Sync + 'static,
     {
-        let server_a = AsyncTestServer::new(TestHandler::from("A")).await.unwrap();
-        let server_b = AsyncTestServer::new(TestHandler::from("B")).await.unwrap();
+        let server_a = server_factory(TestHandler::from("A")).await.unwrap();
+        let server_b = server_factory(TestHandler::from("B")).await.unwrap();
 
         let client_a = client_factory(&server_a);
         let client_b = client_factory(&server_b);
