@@ -453,7 +453,7 @@ pub(crate) mod helper {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod common_tests {
     use super::*;
 
     use hyper::header::CONTENT_LENGTH;
@@ -463,56 +463,7 @@ mod tests {
     use crate::test::helper::TestHandler;
     use http::header::CONTENT_TYPE;
 
-    mod plain {
-        use crate::plain::test::TestServer;
-
-        #[test]
-        fn serves_requests() {
-            super::serves_requests(TestServer::new, TestServer::client)
-        }
-
-        #[test]
-        fn times_out() {
-            super::times_out(TestServer::with_timeout, TestServer::client)
-        }
-
-        #[test]
-        fn async_echo() {
-            super::async_echo(TestServer::new, TestServer::client)
-        }
-
-        #[test]
-        fn supports_multiple_servers() {
-            super::supports_multiple_servers(TestServer::new, TestServer::client)
-        }
-    }
-
-    #[cfg(feature = "rustls")]
-    mod tls {
-        use crate::tls::test::TestServer;
-
-        #[test]
-        fn serves_requests() {
-            super::serves_requests(TestServer::new, TestServer::client)
-        }
-
-        #[test]
-        fn times_out() {
-            super::times_out(TestServer::with_timeout, TestServer::client)
-        }
-
-        #[test]
-        fn async_echo() {
-            super::async_echo(TestServer::new, TestServer::client)
-        }
-
-        #[test]
-        fn supports_multiple_servers() {
-            super::supports_multiple_servers(TestServer::new, TestServer::client)
-        }
-    }
-
-    fn serves_requests<TS, C>(
+    pub(crate) fn serves_requests<TS, C>(
         server_factory: fn(TestHandler) -> anyhow::Result<TS>,
         client_factory: fn(&TS) -> TestClient<TS, C>,
     ) where
@@ -535,7 +486,7 @@ mod tests {
         assert_eq!(buf, format!("time: {}", ticks));
     }
 
-    fn times_out<TS, C>(
+    pub(crate) fn times_out<TS, C>(
         server_factory: fn(TestHandler, u64) -> anyhow::Result<TS>,
         client_factory: fn(&TS) -> TestClient<TS, C>,
     ) where
@@ -550,7 +501,7 @@ mod tests {
         assert!(result.unwrap_err().to_string().contains("timed out"));
     }
 
-    fn async_echo<TS, C>(
+    pub(crate) fn async_echo<TS, C>(
         server_factory: fn(TestHandler) -> anyhow::Result<TS>,
         client_factory: fn(&TS) -> TestClient<TS, C>,
     ) where
@@ -588,7 +539,7 @@ mod tests {
         assert_eq!(data, &buf);
     }
 
-    fn supports_multiple_servers<TS, C>(
+    pub(crate) fn supports_multiple_servers<TS, C>(
         server_factory: fn(TestHandler) -> anyhow::Result<TS>,
         client_factory: fn(&TS) -> TestClient<TS, C>,
     ) where

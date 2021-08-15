@@ -237,3 +237,29 @@ impl From<SocketAddr> for TestConnect {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test::common_tests;
+
+    #[test]
+    fn serves_requests() {
+        common_tests::serves_requests(TestServer::new, TestServer::client)
+    }
+
+    #[test]
+    fn times_out() {
+        common_tests::times_out(TestServer::with_timeout, TestServer::client)
+    }
+
+    #[test]
+    fn async_echo() {
+        common_tests::async_echo(TestServer::new, TestServer::client)
+    }
+
+    #[test]
+    fn supports_multiple_servers() {
+        common_tests::supports_multiple_servers(TestServer::new, TestServer::client)
+    }
+}
