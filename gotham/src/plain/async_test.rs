@@ -45,11 +45,11 @@ impl AsyncTestServer {
     ///
     /// Requests will time out after 10 seconds by default. Use [`AsyncTestServer::with_timeout`] for a different timeout.
     pub async fn new<NH: NewHandler + 'static>(new_handler: NH) -> anyhow::Result<AsyncTestServer> {
-        AsyncTestServer::with_timeout(new_handler, Duration::from_secs(10)).await
+        AsyncTestServer::new_with_timeout(new_handler, Duration::from_secs(10)).await
     }
 
     /// Sets the request timeout to `timeout` seconds and returns a new [`AsyncTestServer`].
-    pub async fn with_timeout<NH: NewHandler + 'static>(
+    pub async fn new_with_timeout<NH: NewHandler + 'static>(
         new_handler: NH,
         timeout: Duration,
     ) -> anyhow::Result<AsyncTestServer> {
@@ -79,7 +79,7 @@ mod tests {
 
     #[tokio::test]
     async fn times_out() {
-        common_tests::times_out(AsyncTestServer::with_timeout, AsyncTestServer::client).await;
+        common_tests::times_out(AsyncTestServer::new_with_timeout, AsyncTestServer::client).await;
     }
 
     #[tokio::test]
