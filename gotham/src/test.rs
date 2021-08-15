@@ -580,7 +580,7 @@ pub(crate) mod common_tests {
         let client = client_factory(&server);
 
         let client_address = client
-            .get("/myaddr")
+            .get("http://localhost/myaddr")
             .perform()
             .unwrap()
             .read_utf8_body()
