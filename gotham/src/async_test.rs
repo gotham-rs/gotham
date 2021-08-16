@@ -16,6 +16,7 @@ use std::fmt::{Debug, Formatter};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
@@ -54,7 +55,7 @@ impl AsyncTestServerInner {
         })
     }
 
-    pub fn client<TestC>(&self) -> AsyncTestClient<TestC>
+    pub fn client<TestC>(self: &Arc<Self>) -> AsyncTestClient<TestC>
     where
         TestC: From<SocketAddr> + Connect + Clone + Send + Sync + 'static,
     {
@@ -62,7 +63,7 @@ impl AsyncTestServerInner {
         // it and then immediately discard the listener.
         let test_connect = TestC::from(self.addr);
         let client = Client::builder().build(test_connect);
-        AsyncTestClient::new(client, self.timeout)
+        AsyncTestClient::new(client, self.timeout, self.clone())
     }
 }
 
@@ -80,11 +81,21 @@ impl Drop for AsyncTestServerInner {
 pub struct AsyncTestClient<C: Connect> {
     client: Client<C, Body>,
     timeout: Duration,
+    // keeps the test server alive as long as there is still a client.
+    _test_server: Arc<AsyncTestServerInner>,
 }
 
 impl<C: Connect + Clone + Send + Sync + 'static> AsyncTestClient<C> {
-    pub(crate) fn new(client: Client<C, Body>, timeout: Duration) -> Self {
-        Self { client, timeout }
+    pub(crate) fn new(
+        client: Client<C, Body>,
+        timeout: Duration,
+        test_server: Arc<AsyncTestServerInner>,
+    ) -> Self {
+        Self {
+            client,
+            timeout,
+            _test_server: test_server,
+        }
     }
 
     /// Performs the given [`Request`] using this [`AsyncTestClient`]
