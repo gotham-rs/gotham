@@ -54,6 +54,7 @@ uuid = { version = "0.8", features = ["v4"] }
 [dev-dependencies]
 futures-executor = "0.3.14"
 thiserror = "1.0"
+tokio = {version = "1.0", features = ["macros", "test-util"]}
 
 [badges]
 travis-ci = { repository = "gotham-rs/gotham", branch = "master" }
