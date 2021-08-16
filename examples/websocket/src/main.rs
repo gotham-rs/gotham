@@ -89,7 +89,7 @@ mod test {
         header::{HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE},
         upgrade,
     };
-    use gotham::plain::async_test::AsyncTestServer;
+    use gotham::plain::test::AsyncTestServer;
     use tokio_tungstenite::WebSocketStream;
 
     async fn create_test_server() -> AsyncTestServer {

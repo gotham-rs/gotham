@@ -11,7 +11,6 @@ use super::handler::NewHandler;
 use futures_util::future::MapErr;
 use tokio_rustls::Accept;
 
-pub mod async_test;
 pub mod test;
 
 /// Starts a Gotham application with the default number of threads.

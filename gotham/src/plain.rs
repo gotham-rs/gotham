@@ -6,7 +6,6 @@ use std::net::ToSocketAddrs;
 use super::handler::NewHandler;
 use super::{bind_server, new_runtime, tcp_listener};
 
-pub mod async_test;
 pub mod test;
 
 /// Starts a Gotham application on plain, unsecured HTTP.
