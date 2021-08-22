@@ -25,6 +25,11 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
 
+// publicly reexport the AsyncTestServer helper types.
+pub use crate::async_test::AsyncTestClient;
+pub use crate::async_test::AsyncTestRequestBuilder;
+pub use crate::async_test::AsyncTestResponse;
+
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
     /// response holds a buffer containing all bytes of the response body.
