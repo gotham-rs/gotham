@@ -30,8 +30,8 @@ use tokio_rustls::{
     TlsConnector,
 };
 
-use crate::async_test::{AsyncTestClient, AsyncTestServerInner};
 use crate::handler::NewHandler;
+use crate::test::async_test::{AsyncTestClient, AsyncTestServerInner};
 use crate::test::{self, TestClient, TestServerData};
 use crate::tls::rustls_wrap;
 use std::time::Duration;
@@ -311,9 +311,8 @@ impl From<SocketAddr> for TestConnect {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::async_test;
     use crate::test::helper::TestHandler;
-    use crate::test::{self, Server};
+    use crate::test::{self, async_test, Server};
     use tokio::sync::oneshot;
 
     #[test]

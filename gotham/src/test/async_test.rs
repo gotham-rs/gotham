@@ -45,7 +45,7 @@ impl AsyncTestServerInner {
 
         let handle = tokio::spawn(async {
             // TODO: Remove the wrapping async block once ! is stabilized, see https://github.com/rust-lang/rust/issues/35121
-            super::bind_server(listener, new_handler, wrap).await;
+            crate::bind_server(listener, new_handler, wrap).await;
         });
 
         Ok(AsyncTestServerInner {
