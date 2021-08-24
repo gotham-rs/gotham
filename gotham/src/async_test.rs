@@ -29,7 +29,7 @@ pub(crate) struct AsyncTestServerInner {
 }
 
 impl AsyncTestServerInner {
-    pub async fn new<NH, F, Wrapped, Wrap>(
+    pub(crate) async fn new<NH, F, Wrapped, Wrap>(
         new_handler: NH,
         timeout: Duration,
         wrap: Wrap,
@@ -55,7 +55,7 @@ impl AsyncTestServerInner {
         })
     }
 
-    pub fn client<TestC>(self: &Arc<Self>) -> AsyncTestClient<TestC>
+    pub(crate) fn client<TestC>(self: &Arc<Self>) -> AsyncTestClient<TestC>
     where
         TestC: From<SocketAddr> + Connect + Clone + Send + Sync + 'static,
     {

@@ -10,16 +10,16 @@ use std::str::FromStr;
 /// An error returned from the `FromStr` implementation
 /// for `AcceptedEncoding`
 #[derive(Debug)]
-pub enum ParseEncodingError {
+pub(crate) enum ParseEncodingError {
     InvalidEncoding,
 }
 
 /// A value for a single accepted encoding,
 /// with an encoding name and quality value.
 #[derive(PartialEq, Debug)]
-pub struct AcceptedEncoding {
-    pub encoding: String,
-    pub quality: f32,
+pub(crate) struct AcceptedEncoding {
+    pub(crate) encoding: String,
+    pub(crate) quality: f32,
 }
 
 // Parses a single "accept-encoding" value, with optional quality value
@@ -55,7 +55,7 @@ impl FromStr for AcceptedEncoding {
 /// Accept-Encoding: deflate
 /// Accept-Encoding: gzip;q=1.0
 /// Accept-Encoding: *;q=0.5
-pub fn accepted_encodings(headers: &HeaderMap) -> Vec<AcceptedEncoding> {
+pub(crate) fn accepted_encodings(headers: &HeaderMap) -> Vec<AcceptedEncoding> {
     let mut accepted_encodings: Vec<AcceptedEncoding> = headers
         .get_all(ACCEPT_ENCODING)
         .iter()

@@ -22,7 +22,7 @@ use crate::router::tree::segment::SegmentType;
 /// determining if it matches a request.
 ///
 /// See `router::builder::DefineSingleRoute` for an overview of route specification.
-pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
+pub(crate) type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     'a,
     MethodOnlyRouteMatcher,
     C,
@@ -34,12 +34,12 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
 /// The type returned when building a route with explicit matching requirements.
 ///
 /// See `router::builder::DefineSingleRoute` for an overview of route specification.
-pub type ExplicitSingleRouteBuilder<'a, M, C, P> =
+pub(crate) type ExplicitSingleRouteBuilder<'a, M, C, P> =
     SingleRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
 /// The type passed to the function used when building associated routes. See
 /// `AssociatedRouteBuilder` for information about the API available for associated routes.
-pub type DefaultAssociatedRouteBuilder<'a, M, C, P> =
+pub(crate) type DefaultAssociatedRouteBuilder<'a, M, C, P> =
     AssociatedRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
 /// Defines functions used by a builder to determine which request paths will be dispatched to a

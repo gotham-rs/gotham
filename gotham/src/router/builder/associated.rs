@@ -12,8 +12,8 @@ use crate::router::route::matcher::{
 };
 use crate::router::tree::node::Node;
 
-pub type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;
-pub type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;
+pub(crate) type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;
+pub(crate) type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;
 
 /// The default type returned when building a single associated route. See
 /// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.

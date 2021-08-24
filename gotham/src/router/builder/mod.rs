@@ -366,7 +366,7 @@ mod tests {
 
     mod welcome {
         use super::*;
-        pub fn index(state: State) -> (State, Response<Body>) {
+        pub(crate) fn index(state: State) -> (State, Response<Body>) {
             (
                 state,
                 Response::builder()
@@ -376,7 +376,7 @@ mod tests {
             )
         }
 
-        pub fn literal(state: State) -> (State, Response<Body>) {
+        pub(crate) fn literal(state: State) -> (State, Response<Body>) {
             (
                 state,
                 Response::builder()
@@ -386,7 +386,7 @@ mod tests {
             )
         }
 
-        pub fn hello(mut state: State) -> (State, Response<Body>) {
+        pub(crate) fn hello(mut state: State) -> (State, Response<Body>) {
             let params = state.take::<SalutationParams>();
             let response = Response::builder()
                 .status(StatusCode::OK)
@@ -395,7 +395,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn globbed(state: State) -> (State, Response<Body>) {
+        pub(crate) fn globbed(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .body("Globbed".into())
@@ -403,7 +403,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn delegated(state: State) -> (State, Response<Body>) {
+        pub(crate) fn delegated(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .body("Delegated".into())
@@ -411,7 +411,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn goodbye(mut state: State) -> (State, Response<Body>) {
+        pub(crate) fn goodbye(mut state: State) -> (State, Response<Body>) {
             let params = state.take::<SalutationParams>();
             let response = Response::builder()
                 .status(StatusCode::OK)
@@ -420,7 +420,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn add(mut state: State) -> (State, Response<Body>) {
+        pub(crate) fn add(mut state: State) -> (State, Response<Body>) {
             let params = state.take::<AddParams>();
             let response = Response::builder()
                 .status(StatusCode::OK)
@@ -429,7 +429,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn trailing_slash(state: State) -> (State, Response<Body>) {
+        pub(crate) fn trailing_slash(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .body("Trailing slash!".into())
@@ -440,7 +440,7 @@ mod tests {
 
     mod resource {
         use super::*;
-        pub fn create(state: State) -> (State, Response<Body>) {
+        pub(crate) fn create(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::CREATED)
                 .body(Body::empty())
@@ -448,7 +448,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn destroy(state: State) -> (State, Response<Body>) {
+        pub(crate) fn destroy(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::ACCEPTED)
                 .body(Body::empty())
@@ -456,7 +456,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn show(state: State) -> (State, Response<Body>) {
+        pub(crate) fn show(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .body("It's a resource.".into())
@@ -464,7 +464,7 @@ mod tests {
             (state, response)
         }
 
-        pub fn update(state: State) -> (State, Response<Body>) {
+        pub(crate) fn update(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::ACCEPTED)
                 .body(Body::empty())
@@ -475,7 +475,7 @@ mod tests {
 
     mod api {
         use super::*;
-        pub fn submit(state: State) -> (State, Response<Body>) {
+        pub(crate) fn submit(state: State) -> (State, Response<Body>) {
             (
                 state,
                 Response::builder()

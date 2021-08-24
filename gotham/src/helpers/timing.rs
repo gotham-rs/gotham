@@ -7,18 +7,18 @@ use std::fmt::{self, Display, Formatter};
 /// The `elapsed` function returns the elapsed time in an easy to format way,
 /// suitable for use with requset logging middlewares.
 #[derive(Clone, Copy)]
-pub struct Timer {
+pub(crate) struct Timer {
     start: DateTime<Utc>,
 }
 
 impl Timer {
     /// Begins measuring from the current time.
-    pub fn new() -> Timer {
+    pub(crate) fn new() -> Timer {
         Timer { start: Utc::now() }
     }
 
     /// Finishes measuring, and returns the elapsed time as a `Timing` value.
-    pub fn elapsed(&self) -> Timing {
+    pub(crate) fn elapsed(&self) -> Timing {
         let duration = Utc::now()
             .signed_duration_since(self.start)
             .num_microseconds();
@@ -30,14 +30,14 @@ impl Timer {
     }
 
     /// Retrieves the start time of this timer.
-    pub fn start_time(&self) -> &DateTime<Utc> {
+    pub(crate) fn start_time(&self) -> &DateTime<Utc> {
         &self.start
     }
 }
 
 /// Represents an elapsed time measured by `Timer`.
 #[derive(Clone, Copy)]
-pub enum Timing {
+pub(crate) enum Timing {
     /// A number of microseconds measured by `Timer`.
     Microseconds(i64),
 
