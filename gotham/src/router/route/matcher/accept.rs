@@ -48,9 +48,6 @@ impl core::str::FromStr for QMime {
 /// # Examples
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// # extern crate mime;
 /// # fn main() {
 /// #   use hyper::header::{HeaderMap, ACCEPT};
 /// #   use gotham::state::State;

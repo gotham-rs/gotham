@@ -27,11 +27,8 @@ use crate::state::{request_id, State};
 /// # Examples
 ///
 /// ```rust
-/// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
-/// # extern crate hyper;
-/// # extern crate mime;
 /// #
 /// # use std::pin::Pin;
 /// #
@@ -39,8 +36,7 @@ use crate::state::{request_id, State};
 /// # use gotham::state::State;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
-/// # use gotham::pipeline::new_pipeline;
-/// # use gotham::pipeline::single::*;
+/// # use gotham::pipeline::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
 /// # use hyper::{Body, Response, StatusCode};

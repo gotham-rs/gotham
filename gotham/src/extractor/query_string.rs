@@ -20,17 +20,12 @@ use crate::state::{State, StateData};
 /// # Examples
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// # extern crate mime;
-/// # extern crate serde;
-/// #
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::{FromState, State, StateData};
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
-/// # use gotham::router::response::extender::StaticResponseExtender;
+/// # use gotham::router::response::StaticResponseExtender;
 /// # use gotham::test::TestServer;
 /// # use serde::Deserialize;
 /// #

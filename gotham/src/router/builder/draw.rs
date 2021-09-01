@@ -54,8 +54,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -539,8 +537,7 @@ where
     /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::set::{finalize_pipeline_set, new_pipeline_set};
+    /// # use gotham::pipeline::{finalize_pipeline_set, new_pipeline_set, new_pipeline};
     /// # use gotham::test::TestServer;
     /// # use serde::{Deserialize, Serialize};
     /// #
@@ -703,8 +700,7 @@ where
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::single_pipeline;
+    /// # use gotham::pipeline::{new_pipeline, single_pipeline};
     /// # use gotham::state::State;
     /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
     /// # use gotham::test::TestServer;

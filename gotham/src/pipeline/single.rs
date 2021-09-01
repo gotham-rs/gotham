@@ -24,8 +24,7 @@ pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
 ///
 /// ```rust
 /// # extern crate gotham;
-/// # use gotham::pipeline::single::single_pipeline;
-/// # use gotham::pipeline::new_pipeline;
+/// # use gotham::pipeline::{new_pipeline, single_pipeline};
 /// # use gotham::router::builder::build_router;
 /// # use gotham::middleware::session::NewSessionMiddleware;
 /// # use serde::{Deserialize, Serialize};

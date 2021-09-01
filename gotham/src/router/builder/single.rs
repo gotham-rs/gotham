@@ -70,15 +70,11 @@ where
 /// # Examples
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// #
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
-/// # use gotham::pipeline::new_pipeline;
-/// # use gotham::pipeline::single::*;
+/// # use gotham::pipeline::*;
 /// # use gotham::middleware::session::NewSessionMiddleware;
 /// # use gotham::test::TestServer;
 /// #
@@ -115,15 +111,11 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::*;
+    /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
@@ -161,16 +153,12 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::handler::HandlerResult;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::*;
+    /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
@@ -216,16 +204,12 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// #
     /// # use hyper::StatusCode;
     /// # use gotham::handler::{HandlerError, IntoResponse, MapHandlerError};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::*;
+    /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
@@ -274,8 +258,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::*;
+    /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// # use gotham::anyhow;
@@ -329,14 +312,10 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// #
     /// # use hyper::StatusCode;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::*;
+    /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
@@ -375,14 +354,10 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// #
     /// # use hyper::StatusCode;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::*;
+    /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// #
@@ -424,9 +399,8 @@ pub trait DefineSingleRoute {
     /// # use gotham::state::{State, StateData, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::router::response::extender::StaticResponseExtender;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::set::*;
+    /// # use gotham::router::response::StaticResponseExtender;
+    /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// # use serde::Deserialize;
@@ -488,9 +462,8 @@ pub trait DefineSingleRoute {
     /// # use gotham::state::{State, StateData, FromState};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::router::response::extender::StaticResponseExtender;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::set::*;
+    /// # use gotham::router::response::StaticResponseExtender;
+    /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
     /// # use gotham::test::TestServer;
     /// # use serde::Deserialize;
@@ -545,10 +518,6 @@ pub trait DefineSingleRoute {
     /// Adds additional `RouteMatcher` requirements to the current route.
     ///
     /// ```
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # extern crate mime;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use hyper::header::ACCEPT;
     /// # use gotham::state::State;

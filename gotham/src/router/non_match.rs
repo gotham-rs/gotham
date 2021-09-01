@@ -14,7 +14,7 @@ use hyper::{Method, StatusCode};
 /// # extern crate hyper;
 /// #
 /// # use hyper::{Method, StatusCode};
-/// # use gotham::router::non_match::RouteNonMatch;
+/// # use gotham::router::RouteNonMatch;
 /// # use gotham::router::route::matcher::RouteMatcher;
 /// # use gotham::state::State;
 /// #

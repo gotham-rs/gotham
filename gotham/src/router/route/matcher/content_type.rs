@@ -17,14 +17,10 @@ use crate::state::{request_id, FromState, State};
 /// # Examples
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// # extern crate mime;
 /// # fn main() {
 /// #   use hyper::header::{HeaderMap, CONTENT_TYPE};
 /// #   use gotham::state::State;
-/// #   use gotham::router::route::matcher::RouteMatcher;
-/// #   use gotham::router::route::matcher::content_type::ContentTypeHeaderRouteMatcher;
+/// #   use gotham::router::route::matcher::{ContentTypeHeaderRouteMatcher, RouteMatcher};
 /// #
 /// #   State::with_new(|state| {
 /// #

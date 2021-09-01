@@ -139,7 +139,7 @@ where
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::router::response::extender::StaticResponseExtender;
+    /// # use gotham::router::response::StaticResponseExtender;
     /// # use gotham::state::{State, StateData};
     /// # use gotham::test::TestServer;
     /// # use serde::Deserialize;
@@ -198,7 +198,7 @@ where
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::router::response::extender::StaticResponseExtender;
+    /// # use gotham::router::response::StaticResponseExtender;
     /// # use gotham::state::{State, StateData};
     /// # use gotham::test::TestServer;
     /// # use serde::Deserialize;

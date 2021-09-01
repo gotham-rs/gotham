@@ -41,8 +41,7 @@ pub use self::single::DefineSingleRoute;
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
-/// # use gotham::pipeline::new_pipeline;
-/// # use gotham::pipeline::single::*;
+/// # use gotham::pipeline::*;
 /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 /// # use gotham::test::TestServer;
 /// # use serde::{Deserialize, Serialize};
@@ -162,14 +161,11 @@ where
     /// Adds a `ResponseExtender` to the `ResponseFinalizer` in the `Router`.
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use hyper::header::WARNING;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
-    /// # use gotham::router::response::extender::ResponseExtender;
+    /// # use gotham::router::response::ResponseExtender;
     /// # use gotham::router::builder::*;
     /// # use gotham::test::TestServer;
     /// #

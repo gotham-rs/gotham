@@ -57,8 +57,7 @@ pub struct FileHandler {
 ///
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # use gotham::handler::assets::FileOptions;
+/// # use gotham::handler::FileOptions;
 ///
 /// let default_options = FileOptions::from("my_static_path");
 /// let from_builder = FileOptions::new("my_static_path")
