@@ -6,8 +6,7 @@ use log::trace;
 
 use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use crate::helpers::http::request::path::split_path_segments;
-use crate::pipeline::PipelineHandleChain;
-use crate::pipeline::PipelineSet;
+use crate::pipeline::{PipelineHandleChain, PipelineSet};
 use crate::router::builder::{
     AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder,
 };

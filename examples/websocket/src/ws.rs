@@ -1,11 +1,8 @@
 use gotham::hyper::header::{
     HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
 };
-use gotham::hyper::{
-    self,
-    upgrade::{OnUpgrade, Upgraded},
-    Body, HeaderMap, Response, StatusCode,
-};
+use gotham::hyper::upgrade::{OnUpgrade, Upgraded};
+use gotham::hyper::{self, Body, HeaderMap, Response, StatusCode};
 use sha1::Sha1;
 use std::future::Future;
 use tokio_tungstenite::{tungstenite, WebSocketStream};

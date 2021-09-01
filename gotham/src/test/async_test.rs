@@ -1,14 +1,10 @@
 //! Behavior and helpers shared between [`tls::async_test::AsyncTestServer`]
 //! and [`plain::async_test::AsyncTestServer`].
 use crate::handler::NewHandler;
-use http::header::CONTENT_TYPE;
-use http::header::{HeaderName, HeaderValue};
-use http::request;
-use http::Version;
-use http::{Method, Request, Uri};
+use http::header::{HeaderName, HeaderValue, CONTENT_TYPE};
+use http::{request, Method, Request, Uri, Version};
 use hyper::client::connect::Connect;
-use hyper::Client;
-use hyper::{Body, Response};
+use hyper::{Body, Client, Response};
 use mime::Mime;
 use std::any::Any;
 use std::convert::TryFrom;

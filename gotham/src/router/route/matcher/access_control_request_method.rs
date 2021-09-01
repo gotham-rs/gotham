@@ -1,13 +1,10 @@
 //! Defines the `AccessControlRequestMethodMatcher`.
 
-use crate::{
-    router::{non_match::RouteNonMatch, route::matcher::RouteMatcher},
-    state::{FromState, State},
-};
-use hyper::{
-    header::{HeaderMap, ACCESS_CONTROL_REQUEST_METHOD},
-    Method, StatusCode,
-};
+use crate::router::non_match::RouteNonMatch;
+use crate::router::route::matcher::RouteMatcher;
+use crate::state::{FromState, State};
+use hyper::header::{HeaderMap, ACCESS_CONTROL_REQUEST_METHOD};
+use hyper::{Method, StatusCode};
 
 /// A route matcher that checks whether the value of the `Access-Control-Request-Method` header matches the defined value.
 ///

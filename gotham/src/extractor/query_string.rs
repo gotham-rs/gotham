@@ -1,4 +1,5 @@
-use hyper::{body::HttpBody, Body, Response};
+use hyper::body::HttpBody;
+use hyper::{Body, Response};
 use serde::{Deserialize, Deserializer};
 
 use crate::router::response::StaticResponseExtender;

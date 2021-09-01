@@ -24,16 +24,15 @@ use crate::handler::{Handler, HandlerError, HandlerFuture, NewHandler};
 use crate::router::response::StaticResponseExtender;
 use crate::state::{FromState, State, StateData};
 
-use std::cmp;
 use std::convert::From;
 use std::fs::Metadata;
-use std::io;
 use std::iter::FromIterator;
 use std::mem::MaybeUninit;
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
 use std::task::Poll;
 use std::time::UNIX_EPOCH;
+use std::{cmp, io};
 
 /// Represents a handler for any files under a directory.
 #[derive(Clone)]

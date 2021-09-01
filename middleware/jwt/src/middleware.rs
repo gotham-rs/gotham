@@ -1,21 +1,18 @@
 use crate::state_data::AuthorizationToken;
 use futures_util::future::{self, FutureExt, TryFutureExt};
-use gotham::hyper::{
-    header::{HeaderMap, AUTHORIZATION},
-    StatusCode,
-};
-use gotham::{
-    anyhow,
-    handler::HandlerFuture,
-    helpers::http::response::create_empty_response,
-    middleware::{Middleware, NewMiddleware},
-    state::{request_id, FromState, State},
-};
+use gotham::anyhow;
+use gotham::handler::HandlerFuture;
+use gotham::helpers::http::response::create_empty_response;
+use gotham::hyper::header::{HeaderMap, AUTHORIZATION};
+use gotham::hyper::StatusCode;
+use gotham::middleware::{Middleware, NewMiddleware};
+use gotham::state::{request_id, FromState, State};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use log::trace;
 use serde::Deserialize;
+use std::marker::PhantomData;
+use std::panic::RefUnwindSafe;
 use std::pin::Pin;
-use std::{marker::PhantomData, panic::RefUnwindSafe};
 
 const DEFAULT_SCHEME: &str = "Bearer";
 
@@ -34,17 +31,14 @@ const DEFAULT_SCHEME: &str = "Bearer";
 /// Example:
 /// ```rust
 /// use futures_util::future::{self, FutureExt};
+/// use gotham::handler::HandlerFuture;
+/// use gotham::helpers::http::response::create_empty_response;
 /// use gotham::hyper::{Response, StatusCode};
-/// use gotham::{
-///     handler::HandlerFuture,
-///     helpers::http::response::create_empty_response,
-///     pipeline::{
-///         new_pipeline,
-///         set::{finalize_pipeline_set, new_pipeline_set},
-///     },
-///     router::{builder::*, Router},
-///     state::{FromState, State},
-/// };
+/// use gotham::pipeline::new_pipeline;
+/// use gotham::pipeline::set::{finalize_pipeline_set, new_pipeline_set};
+/// use gotham::router::builder::*;
+/// use gotham::router::Router;
+/// use gotham::state::{FromState, State};
 /// use gotham_middleware_jwt::{AuthorizationToken, JwtMiddleware};
 /// use serde::Deserialize;
 /// use std::pin::Pin;
@@ -186,13 +180,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gotham::{
-        handler::HandlerFuture,
-        pipeline::{new_pipeline, single_pipeline},
-        router::{builder::*, Router},
-        state::State,
-        test::TestServer,
-    };
+    use gotham::handler::HandlerFuture;
+    use gotham::pipeline::{new_pipeline, single_pipeline};
+    use gotham::router::builder::*;
+    use gotham::router::Router;
+    use gotham::state::State;
+    use gotham::test::TestServer;
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
     use serde::Serialize;
 

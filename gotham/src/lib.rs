@@ -65,7 +65,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{self, Runtime};
 
-use crate::{handler::NewHandler, service::GothamService};
+use crate::handler::NewHandler;
+use crate::service::GothamService;
 
 pub use plain::*;
 #[cfg(feature = "rustls")]

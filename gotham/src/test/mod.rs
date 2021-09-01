@@ -28,9 +28,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
 
 // publicly reexport the AsyncTestServer helper types.
-pub use async_test::AsyncTestClient;
-pub use async_test::AsyncTestRequestBuilder;
-pub use async_test::AsyncTestResponse;
+pub use async_test::{AsyncTestClient, AsyncTestRequestBuilder, AsyncTestResponse};
 
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
@@ -384,8 +382,7 @@ pub(crate) mod helper {
     use crate::state::{client_addr, FromState, State};
     use futures_util::{future, FutureExt};
     use http::StatusCode;
-    use hyper::Uri;
-    use hyper::{body, Response};
+    use hyper::{body, Response, Uri};
     use log::info;
     use std::pin::Pin;
 

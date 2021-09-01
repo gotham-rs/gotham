@@ -20,15 +20,10 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 use tokio::time::Sleep;
 use tokio_rustls::client::TlsStream;
-use tokio_rustls::{
-    rustls::{
-        self,
-        internal::pemfile::{certs, pkcs8_private_keys},
-        NoClientAuth,
-    },
-    webpki::DNSNameRef,
-    TlsConnector,
-};
+use tokio_rustls::rustls::internal::pemfile::{certs, pkcs8_private_keys};
+use tokio_rustls::rustls::{self, NoClientAuth};
+use tokio_rustls::webpki::DNSNameRef;
+use tokio_rustls::TlsConnector;
 
 use crate::handler::NewHandler;
 use crate::test::async_test::{AsyncTestClient, AsyncTestServerInner};

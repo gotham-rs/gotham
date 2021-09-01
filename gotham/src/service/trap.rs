@@ -1,8 +1,7 @@
 //! Defines functionality for processing a request and trapping errors and panics in response
 //! generation.
 
-use std::panic::catch_unwind;
-use std::panic::{AssertUnwindSafe, UnwindSafe};
+use std::panic::{catch_unwind, AssertUnwindSafe, UnwindSafe};
 
 use futures_util::future::FutureExt;
 use hyper::{Body, Response, StatusCode};

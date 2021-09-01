@@ -1,9 +1,6 @@
 //! A Hello World example application for working with Gotham.
-use gotham::rustls::{
-    self,
-    internal::pemfile::{certs, pkcs8_private_keys},
-    NoClientAuth,
-};
+use gotham::rustls::internal::pemfile::{certs, pkcs8_private_keys};
+use gotham::rustls::{self, NoClientAuth};
 use gotham::state::State;
 use std::io::BufReader;
 

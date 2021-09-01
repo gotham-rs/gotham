@@ -4,8 +4,7 @@ use std::panic::RefUnwindSafe;
 use hyper::{Body, Method};
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
-use crate::pipeline::PipelineHandleChain;
-use crate::pipeline::PipelineSet;
+use crate::pipeline::{PipelineHandleChain, PipelineSet};
 use crate::router::builder::SingleRouteBuilder;
 use crate::router::route::matcher::{
     AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,

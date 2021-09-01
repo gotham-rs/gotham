@@ -1,5 +1,6 @@
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
-use gotham::hyper::{upgrade::OnUpgrade, Body, HeaderMap, Response, StatusCode};
+use gotham::hyper::upgrade::OnUpgrade;
+use gotham::hyper::{Body, HeaderMap, Response, StatusCode};
 use gotham::state::{request_id, FromState, State};
 
 mod ws;
@@ -85,10 +86,10 @@ const INDEX_HTML: &str = include_str!("index.html");
 mod test {
     use super::*;
     use crate::ws::{Message, Role};
-    use gotham::hyper::{
-        header::{HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE},
-        upgrade,
+    use gotham::hyper::header::{
+        HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
     };
+    use gotham::hyper::upgrade;
     use gotham::plain::test::AsyncTestServer;
     use tokio_tungstenite::WebSocketStream;
 

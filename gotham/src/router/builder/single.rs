@@ -6,9 +6,9 @@ use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
-use crate::handler::{DirHandler, FileHandler, FileOptions, FilePathExtractor};
 use crate::handler::{
-    Handler, HandlerError, HandlerFuture, HandlerResult, IntoResponse, NewHandler,
+    DirHandler, FileHandler, FileOptions, FilePathExtractor, Handler, HandlerError, HandlerFuture,
+    HandlerResult, IntoResponse, NewHandler,
 };
 use crate::pipeline::PipelineHandleChain;
 use crate::router::builder::{

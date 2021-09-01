@@ -13,10 +13,8 @@ use hyper::{Body, StatusCode};
 use crate::extractor::{
     NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor,
 };
-use crate::pipeline::PipelineHandleChain;
-use crate::pipeline::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
-use crate::router::response::ResponseExtender;
-use crate::router::response::ResponseFinalizerBuilder;
+use crate::pipeline::{finalize_pipeline_set, new_pipeline_set, PipelineHandleChain, PipelineSet};
+use crate::router::response::{ResponseExtender, ResponseFinalizerBuilder};
 use crate::router::route::dispatch::DispatcherImpl;
 use crate::router::route::matcher::{AndRouteMatcher, RouteMatcher};
 use crate::router::route::{Delegation, Extractors, RouteImpl};
