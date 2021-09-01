@@ -14,7 +14,7 @@ use gotham::handler::{HandlerError, HandlerFuture, MapHandlerError, MapHandlerEr
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{body, Body, StatusCode};
 use gotham::mime::APPLICATION_JSON;
-use gotham::pipeline::{new_pipeline, single::single_pipeline};
+use gotham::pipeline::{new_pipeline, single_pipeline};
 use gotham::router::{builder::*, Router};
 use gotham::state::{FromState, State};
 use gotham_middleware_diesel::DieselMiddleware;

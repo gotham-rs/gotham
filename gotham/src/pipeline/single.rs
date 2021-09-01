@@ -3,8 +3,8 @@
 
 use borrow_bag::{Append, Handle};
 
-use crate::pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
-use crate::pipeline::{NewMiddlewareChain, Pipeline};
+use super::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
+use super::{NewMiddlewareChain, Pipeline};
 
 /// A `PipelineSet` which contains only a single pipeline.
 pub type SinglePipelineSet<C> = PipelineSet<<() as Append<Pipeline<C>>>::Output>;

@@ -9,7 +9,7 @@ use gotham::hyper::header::{HeaderMap, USER_AGENT};
 use gotham::hyper::{Body, Response, StatusCode};
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::pipeline::new_pipeline;
-use gotham::pipeline::single::single_pipeline;
+use gotham::pipeline::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State, StateData};

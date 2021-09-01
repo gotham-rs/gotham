@@ -6,8 +6,8 @@ use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
 use crate::handler::{Handler, HandlerFuture, NewHandler};
-use crate::pipeline::chain::PipelineHandleChain;
-use crate::pipeline::set::PipelineSet;
+use crate::pipeline::PipelineHandleChain;
+use crate::pipeline::PipelineSet;
 use crate::state::{request_id, State};
 
 /// Used by `Router` to dispatch requests via pipelines and finally into the configured `Handler`.
@@ -82,7 +82,7 @@ mod tests {
 
     use crate::middleware::{Middleware, NewMiddleware};
     use crate::pipeline::new_pipeline;
-    use crate::pipeline::set::*;
+    use crate::pipeline::new_pipeline_set;
     use crate::state::StateData;
     use crate::test::TestServer;
 

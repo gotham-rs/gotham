@@ -1,7 +1,7 @@
 //! An finalizer example
 use gotham::hyper::{body::Body, Response, StatusCode};
 use gotham::router::builder::*;
-use gotham::router::response::extender::ResponseExtender;
+use gotham::router::response::ResponseExtender;
 use gotham::router::Router;
 use gotham::state::State;
 

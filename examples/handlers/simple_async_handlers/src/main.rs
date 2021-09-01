@@ -13,7 +13,7 @@ use gotham::hyper::StatusCode;
 use gotham::mime::TEXT_PLAIN;
 use gotham::router::builder::DefineSingleRoute;
 use gotham::router::builder::{build_simple_router, DrawRoutes};
-use gotham::router::response::extender::StaticResponseExtender;
+use gotham::router::response::StaticResponseExtender;
 use gotham::router::Router;
 use gotham::state::{FromState, State, StateData};
 

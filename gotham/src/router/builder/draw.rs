@@ -6,8 +6,8 @@ use log::trace;
 
 use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use crate::helpers::http::request::path::split_path_segments;
-use crate::pipeline::chain::PipelineHandleChain;
-use crate::pipeline::set::PipelineSet;
+use crate::pipeline::PipelineHandleChain;
+use crate::pipeline::PipelineSet;
 use crate::router::builder::{
     AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder,
 };
@@ -951,7 +951,6 @@ mod tests {
     use crate::helpers::http::response::create_empty_response;
     use crate::hyper::header::ACCEPT;
     use crate::middleware::{Middleware, NewMiddleware};
-    use crate::pipeline::single::*;
     use crate::pipeline::*;
     use crate::router::builder::*;
     use crate::router::route::matcher::AcceptHeaderRouteMatcher;

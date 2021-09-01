@@ -2,7 +2,7 @@
 //! Gotham web framework
 
 use gotham::router::builder::*;
-use gotham::router::response::extender::StaticResponseExtender;
+use gotham::router::response::StaticResponseExtender;
 use gotham::router::Router;
 use gotham::state::{FromState, State, StateData};
 use serde::Deserialize;

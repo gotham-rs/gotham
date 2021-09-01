@@ -188,7 +188,7 @@ mod tests {
     use super::*;
     use gotham::{
         handler::HandlerFuture,
-        pipeline::{new_pipeline, single::*},
+        pipeline::{new_pipeline, single_pipeline},
         router::{builder::*, Router},
         state::State,
         test::TestServer,

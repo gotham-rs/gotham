@@ -5,7 +5,7 @@ pub mod response;
 pub mod route;
 pub mod tree;
 
-pub mod non_match;
+mod non_match;
 pub use self::non_match::RouteNonMatch;
 
 use std::pin::Pin;
@@ -19,7 +19,7 @@ use log::{error, trace};
 use crate::handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use crate::helpers::http::request::path::RequestPathSegments;
 use crate::helpers::http::response::create_empty_response;
-use crate::router::response::finalizer::ResponseFinalizer;
+use crate::router::response::ResponseFinalizer;
 use crate::router::route::{Delegation, Route};
 use crate::router::tree::segment::SegmentMapping;
 use crate::router::tree::Tree;
@@ -207,8 +207,8 @@ mod tests {
 
     use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use crate::handler::HandlerError;
-    use crate::pipeline::set::*;
-    use crate::router::response::finalizer::ResponseFinalizerBuilder;
+    use crate::pipeline::{finalize_pipeline_set, new_pipeline_set};
+    use crate::router::response::ResponseFinalizerBuilder;
     use crate::router::route::dispatch::DispatcherImpl;
     use crate::router::route::matcher::{
         AndRouteMatcher, ContentTypeHeaderRouteMatcher, MethodOnlyRouteMatcher,

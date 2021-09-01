@@ -1,10 +1,10 @@
 //! Defines the type `RouteMatcher` and default implementations.
 
-pub mod accept;
-pub mod access_control_request_method;
-pub mod and;
-pub mod any;
-pub mod content_type;
+mod accept;
+mod access_control_request_method;
+mod and;
+mod any;
+mod content_type;
 
 pub use self::accept::AcceptHeaderRouteMatcher;
 pub use self::access_control_request_method::AccessControlRequestMethodMatcher;

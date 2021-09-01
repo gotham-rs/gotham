@@ -13,10 +13,10 @@ use hyper::{Body, StatusCode};
 use crate::extractor::{
     NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor,
 };
-use crate::pipeline::chain::PipelineHandleChain;
-use crate::pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
-use crate::router::response::extender::ResponseExtender;
-use crate::router::response::finalizer::ResponseFinalizerBuilder;
+use crate::pipeline::PipelineHandleChain;
+use crate::pipeline::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
+use crate::router::response::ResponseExtender;
+use crate::router::response::ResponseFinalizerBuilder;
 use crate::router::route::dispatch::DispatcherImpl;
 use crate::router::route::matcher::{AndRouteMatcher, RouteMatcher};
 use crate::router::route::{Delegation, Extractors, RouteImpl};
@@ -335,7 +335,7 @@ mod tests {
     use crate::middleware::cookie::CookieParser;
     use crate::middleware::session::NewSessionMiddleware;
     use crate::pipeline::new_pipeline;
-    use crate::router::response::extender::StaticResponseExtender;
+    use crate::router::response::StaticResponseExtender;
     use crate::service::GothamService;
     use crate::state::{State, StateData};
 

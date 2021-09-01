@@ -7,7 +7,7 @@ use gotham::hyper::{Body, Response, StatusCode};
 use gotham::middleware::cookie::CookieParser;
 use gotham::mime::TEXT_PLAIN;
 use gotham::pipeline::new_pipeline;
-use gotham::pipeline::single::single_pipeline;
+use gotham::pipeline::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};

@@ -5,7 +5,7 @@
 
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::new_pipeline;
-use gotham::pipeline::single::single_pipeline;
+use gotham::pipeline::single_pipeline;
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State};

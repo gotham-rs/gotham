@@ -1,8 +1,13 @@
 //! Defines types for a middleware pipeline
 
-pub mod chain;
-pub mod set;
-pub mod single;
+mod chain;
+pub use chain::PipelineHandleChain;
+
+mod set;
+pub use set::{finalize_pipeline_set, new_pipeline_set, EditablePipelineSet, PipelineSet};
+
+mod single;
+pub use single::{single_pipeline, SinglePipelineChain, SinglePipelineHandle, SinglePipelineSet};
 
 use log::trace;
 use std::pin::Pin;

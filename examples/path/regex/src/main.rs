@@ -1,7 +1,7 @@
 //! An example of the Gotham web framework `Router` that shows how to use Regex patterns in path segments.
 
 use gotham::router::builder::*;
-use gotham::router::response::extender::StaticResponseExtender;
+use gotham::router::response::StaticResponseExtender;
 use gotham::router::Router;
 use gotham::state::{FromState, State, StateData};
 use serde::Deserialize;

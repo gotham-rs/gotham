@@ -14,8 +14,7 @@ use std::pin::Pin;
 use crate::handler::HandlerFuture;
 use crate::helpers::timing::Timer;
 use crate::middleware::{Middleware, NewMiddleware};
-use crate::state::request_id::request_id;
-use crate::state::{client_addr, FromState, State};
+use crate::state::{client_addr, request_id, FromState, State};
 
 /// A struct that can act as a logging middleware for Gotham.
 ///

@@ -21,7 +21,7 @@ use tokio::io::{AsyncRead, ReadBuf};
 
 use self::accepted_encoding::accepted_encodings;
 use crate::handler::{Handler, HandlerError, HandlerFuture, NewHandler};
-use crate::router::response::extender::StaticResponseExtender;
+use crate::router::response::StaticResponseExtender;
 use crate::state::{FromState, State, StateData};
 
 use std::cmp;
