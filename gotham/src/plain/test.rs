@@ -3,7 +3,7 @@
 //! See the [`TestServer`] and [`AsyncTestServer`] types for example usage.
 
 use std::future::Future;
-use std::net::{self, SocketAddr};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
@@ -99,15 +99,6 @@ impl TestServer {
         F: Future<Output = ()> + Send + 'static,
     {
         self.data.spawn(future)
-    }
-
-    /// Exactly the same as [`TestServer::client`].
-    #[deprecated(since = "0.3.0", note = "does the same as client")]
-    pub fn client_with_address(
-        &self,
-        _client_addr: net::SocketAddr,
-    ) -> TestClient<Self, TestConnect> {
-        self.client()
     }
 }
 
