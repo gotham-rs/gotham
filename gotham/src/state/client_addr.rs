@@ -19,7 +19,6 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// # Examples
 ///
 /// ```rust
-/// # #![allow(deprecated)]
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # extern crate mime;
@@ -46,7 +45,7 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// # fn main() {
 /// #   let test_server = TestServer::new(|| Ok(my_handler)).unwrap();
 /// #   let response = test_server
-/// #       .client_with_address("127.0.0.1:9816".parse().unwrap())
+/// #       .client()
 /// #       .get("http://localhost/")
 /// #       .perform()
 /// #       .unwrap();
@@ -55,7 +54,7 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// #
 /// #   let buf = response.read_body().unwrap();
 /// #   // at the moment, can't actually force the client address
-/// #   assert_eq!(buf[..10], b"127.0.0.1:9816"[0..10]);
+/// #   assert!(buf.starts_with(b"127.0.0.1"));
 /// # }
 pub fn client_addr(state: &State) -> Option<SocketAddr> {
     ClientAddr::try_borrow_from(state).map(|c| c.addr)
