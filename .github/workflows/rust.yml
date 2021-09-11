@@ -4,6 +4,32 @@ on:
   pull_request:
 
 jobs:
+  test-gotham:
+    name: test-gotham${{ matrix.flag }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        flag: ["--no-default-features", "", "--all-features"]
+    
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Get Rust Version
+        id: rust-version
+        run: echo "::set-output name=VERSION::$(cargo -V | head -n1 | awk '{print $2}')"
+      
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            target
+          key: ${{ runner.os }}-rust-gotham${{ matrix.flag }}-${{ steps.rust-version.outputs.VERSION }}
+      
+      - run: cargo test -p gotham ${{ matrix.flag }}
+  
   test:
     name: test-${{ matrix.toolchain }}
     runs-on: ubuntu-latest
