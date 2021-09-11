@@ -13,7 +13,7 @@ use futures_util::future::{self, FutureExt, TryFuture, TryFutureExt};
 use hyper::client::connect::Connect;
 use hyper::client::Client;
 use hyper::header::CONTENT_TYPE;
-use hyper::{body, Body, Method, Response, Uri};
+use hyper::{body, http, Body, Method, Response, Uri};
 use log::warn;
 use tokio::time::{sleep, Sleep};
 
@@ -381,8 +381,7 @@ pub(crate) mod helper {
     use crate::hyper::Body;
     use crate::state::{client_addr, FromState, State};
     use futures_util::{future, FutureExt};
-    use http::StatusCode;
-    use hyper::{body, Response, Uri};
+    use hyper::{body, Response, StatusCode, Uri};
     use log::info;
     use std::pin::Pin;
 
@@ -458,14 +457,12 @@ pub(crate) mod helper {
 
 #[cfg(test)]
 pub(crate) mod common_tests {
-    use super::*;
-
-    use hyper::header::CONTENT_LENGTH;
+    use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
     use hyper::StatusCode;
     use std::time::{SystemTime, UNIX_EPOCH};
 
+    use super::*;
     use crate::test::helper::TestHandler;
-    use http::header::CONTENT_TYPE;
 
     pub(crate) fn serves_requests<TS, C>(
         server_factory: fn(TestHandler) -> anyhow::Result<TS>,

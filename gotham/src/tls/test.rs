@@ -10,9 +10,9 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use futures_util::future::{BoxFuture, FutureExt};
-use http::Uri;
 use hyper::client::connect::{Connected, Connection};
 use hyper::service::Service;
+use hyper::Uri;
 use log::info;
 use pin_project::pin_project;
 use rustls::Session;
@@ -131,8 +131,7 @@ impl TestServer {
 ///
 /// ```rust
 /// # use gotham::state::State;
-/// # use hyper::{Response, Body};
-/// # use http::StatusCode;
+/// # use hyper::{Response, Body, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response<Body>) {
 /// #     (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())

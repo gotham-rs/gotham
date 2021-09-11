@@ -1,10 +1,10 @@
 //! Behavior and helpers shared between [`tls::async_test::AsyncTestServer`]
 //! and [`plain::async_test::AsyncTestServer`].
 use crate::handler::NewHandler;
-use http::header::{HeaderName, HeaderValue, CONTENT_TYPE};
-use http::{request, Method, Request, Uri, Version};
 use hyper::client::connect::Connect;
-use hyper::{Body, Client, Response};
+use hyper::header::{HeaderName, HeaderValue, CONTENT_TYPE};
+use hyper::http::{self, request};
+use hyper::{Body, Client, Method, Request, Response, Uri, Version};
 use mime::Mime;
 use std::any::Any;
 use std::convert::TryFrom;
@@ -358,7 +358,7 @@ impl Debug for AsyncTestResponse {
 pub(crate) mod common_tests {
     use super::*;
     use crate::test::helper::TestHandler;
-    use http::StatusCode;
+    use hyper::StatusCode;
 
     pub(crate) async fn serves_requests<TS, F, C>(
         server_factory: fn(TestHandler) -> F,

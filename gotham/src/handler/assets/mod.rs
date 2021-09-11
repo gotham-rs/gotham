@@ -209,7 +209,7 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
     let response_future = File::open(path).and_then(|file| async move {
         let meta = file.metadata().await?;
         if not_modified(&meta, &headers) {
-            return Ok(http::Response::builder()
+            return Ok(hyper::Response::builder()
                 .status(StatusCode::NOT_MODIFIED)
                 .body(Body::empty())
                 .unwrap());
@@ -219,7 +219,7 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
 
         let stream = file_stream(file, buf_size, len);
         let body = Body::wrap_stream(stream.into_stream());
-        let mut response = http::Response::builder()
+        let mut response = hyper::Response::builder()
             .status(StatusCode::OK)
             .header(CONTENT_LENGTH, len)
             .header(CONTENT_TYPE, mime_type.as_ref())
@@ -443,7 +443,6 @@ mod tests {
     use crate::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use crate::router::Router;
     use crate::test::TestServer;
-    use http::header::HeaderValue;
     use hyper::header::*;
     use hyper::StatusCode;
     use std::{fs, str};

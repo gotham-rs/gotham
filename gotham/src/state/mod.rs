@@ -7,7 +7,7 @@ mod request_id;
 
 use log::{debug, trace};
 
-use http::request;
+use hyper::http::request;
 use hyper::upgrade::OnUpgrade;
 use hyper::{Body, Request};
 use std::any::{Any, TypeId};
