@@ -9,15 +9,11 @@ use crate::state::State;
 /// # Examples
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// # extern crate mime;
 /// # fn main() {
 /// #   use hyper::Method;
 /// #   use hyper::header::{HeaderMap, ACCEPT};
 /// #   use gotham::state::State;
-/// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher,
-///                                          AndRouteMatcher, AcceptHeaderRouteMatcher};
+/// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher, AndRouteMatcher, AcceptHeaderRouteMatcher};
 /// #
 /// #   State::with_new(|state| {
 /// #

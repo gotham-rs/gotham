@@ -3,9 +3,9 @@ use mime::Mime;
 use std::collections::HashMap;
 
 /// This type is used to quickly lookup a non-hashed container of mime types by their essence string.
-pub type LookupTable = HashMap<String, Vec<usize>>;
+pub(crate) type LookupTable = HashMap<String, Vec<usize>>;
 
-pub trait LookupTableFromTypes {
+pub(crate) trait LookupTableFromTypes {
     /// Create the lookup table from an iterator of mime types. If `include_stars` is set, the lookup
     /// table will also, for every entry `type/subtype` contain `type/*` and `*/*`.
     fn from_types<'a, I: Iterator<Item = &'a Mime>>(types: I, include_stars: bool) -> Self;

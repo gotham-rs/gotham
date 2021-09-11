@@ -1,5 +1,5 @@
 //! An example of serving static assets with Gotham.
-use gotham::handler::assets::FileOptions;
+use gotham::handler::FileOptions;
 use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
 
 pub fn main() {

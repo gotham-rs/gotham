@@ -7,7 +7,7 @@ pub(crate) fn bad_request_static_response_extender(
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     let expanded = quote! {
-        impl #impl_generics ::gotham::router::response::extender::StaticResponseExtender for #name
+        impl #impl_generics ::gotham::router::response::StaticResponseExtender for #name
             #ty_generics #where_clause
         {
             type ResBody = ::gotham::hyper::body::Body;

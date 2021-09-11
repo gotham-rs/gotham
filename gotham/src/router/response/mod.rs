@@ -1,4 +1,9 @@
 //! Defines `Router` functionality which acts on the `Response`
 
-pub mod extender;
-pub mod finalizer;
+mod extender;
+mod finalizer;
+
+pub use extender::*;
+pub use finalizer::*;
+
+pub use gotham_derive::StaticResponseExtender;

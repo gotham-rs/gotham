@@ -6,16 +6,15 @@
 //!
 //! There is also a `SimpleLogger` which emits only basic request logs.
 use futures_util::future::{self, FutureExt, TryFutureExt};
-use hyper::{header::CONTENT_LENGTH, Method, Uri, Version};
-use log::Level;
-use log::{log, log_enabled};
+use hyper::header::CONTENT_LENGTH;
+use hyper::{Method, Uri, Version};
+use log::{log, log_enabled, Level};
 use std::pin::Pin;
 
 use crate::handler::HandlerFuture;
 use crate::helpers::timing::Timer;
 use crate::middleware::{Middleware, NewMiddleware};
-use crate::state::request_id::request_id;
-use crate::state::{client_addr, FromState, State};
+use crate::state::{client_addr, request_id, FromState, State};
 
 /// A struct that can act as a logging middleware for Gotham.
 ///

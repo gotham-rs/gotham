@@ -1,3 +1,5 @@
+pub(crate) mod async_test;
+
 /// Test request behavior, shared between the tls::test and plain::test modules.
 pub mod request;
 
@@ -26,9 +28,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
 
 // publicly reexport the AsyncTestServer helper types.
-pub use crate::async_test::AsyncTestClient;
-pub use crate::async_test::AsyncTestRequestBuilder;
-pub use crate::async_test::AsyncTestResponse;
+pub use async_test::{AsyncTestClient, AsyncTestRequestBuilder, AsyncTestResponse};
 
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
@@ -37,13 +37,13 @@ pub(crate) trait BodyReader {
 }
 
 pub(crate) struct TestServerData {
-    pub addr: SocketAddr,
-    pub timeout: u64,
-    pub runtime: RwLock<Runtime>,
+    pub(crate) addr: SocketAddr,
+    pub(crate) timeout: u64,
+    pub(crate) runtime: RwLock<Runtime>,
 }
 
 impl TestServerData {
-    pub fn new<NH, F, Wrapped, Wrap>(
+    pub(crate) fn new<NH, F, Wrapped, Wrap>(
         new_handler: NH,
         timeout: u64,
         wrap: Wrap,
@@ -69,7 +69,7 @@ impl TestServerData {
         })
     }
 
-    pub fn client<TS, TestC>(&self, server: &TS) -> TestClient<TS, TestC>
+    pub(crate) fn client<TS, TestC>(&self, server: &TS) -> TestClient<TS, TestC>
     where
         TS: Server,
         TestC: From<SocketAddr> + Connect + Clone,
@@ -85,7 +85,7 @@ impl TestServerData {
         }
     }
 
-    pub fn spawn<F>(&self, future: F)
+    pub(crate) fn spawn<F>(&self, future: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {
@@ -382,14 +382,13 @@ pub(crate) mod helper {
     use crate::state::{client_addr, FromState, State};
     use futures_util::{future, FutureExt};
     use http::StatusCode;
-    use hyper::Uri;
-    use hyper::{body, Response};
+    use hyper::{body, Response, Uri};
     use log::info;
     use std::pin::Pin;
 
     #[derive(Default, Clone)]
     pub(crate) struct TestHandler {
-        pub response: String,
+        pub(crate) response: String,
     }
 
     impl<T: Into<String>> From<T> for TestHandler {

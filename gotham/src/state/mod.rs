@@ -3,7 +3,7 @@
 pub(crate) mod client_addr;
 mod data;
 mod from_state;
-pub mod request_id;
+mod request_id;
 
 use log::{debug, trace};
 

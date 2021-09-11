@@ -6,8 +6,7 @@ use log::trace;
 
 use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
 use crate::helpers::http::request::path::split_path_segments;
-use crate::pipeline::chain::PipelineHandleChain;
-use crate::pipeline::set::PipelineSet;
+use crate::pipeline::{PipelineHandleChain, PipelineSet};
 use crate::router::builder::{
     AssociatedRouteBuilder, DelegateRouteBuilder, RouterBuilder, ScopeBuilder, SingleRouteBuilder,
 };
@@ -22,7 +21,7 @@ use crate::router::tree::segment::SegmentType;
 /// determining if it matches a request.
 ///
 /// See `router::builder::DefineSingleRoute` for an overview of route specification.
-pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
+pub(crate) type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
     'a,
     MethodOnlyRouteMatcher,
     C,
@@ -34,12 +33,12 @@ pub type DefaultSingleRouteBuilder<'a, C, P> = SingleRouteBuilder<
 /// The type returned when building a route with explicit matching requirements.
 ///
 /// See `router::builder::DefineSingleRoute` for an overview of route specification.
-pub type ExplicitSingleRouteBuilder<'a, M, C, P> =
+pub(crate) type ExplicitSingleRouteBuilder<'a, M, C, P> =
     SingleRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
 /// The type passed to the function used when building associated routes. See
 /// `AssociatedRouteBuilder` for information about the API available for associated routes.
-pub type DefaultAssociatedRouteBuilder<'a, M, C, P> =
+pub(crate) type DefaultAssociatedRouteBuilder<'a, M, C, P> =
     AssociatedRouteBuilder<'a, M, C, P, NoopPathExtractor, NoopQueryStringExtractor>;
 
 /// Defines functions used by a builder to determine which request paths will be dispatched to a
@@ -55,8 +54,6 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate gotham;
-    /// # extern crate hyper;
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -540,8 +537,7 @@ where
     /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::set::{finalize_pipeline_set, new_pipeline_set};
+    /// # use gotham::pipeline::{finalize_pipeline_set, new_pipeline_set, new_pipeline};
     /// # use gotham::test::TestServer;
     /// # use serde::{Deserialize, Serialize};
     /// #
@@ -704,8 +700,7 @@ where
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::pipeline::new_pipeline;
-    /// # use gotham::pipeline::single::single_pipeline;
+    /// # use gotham::pipeline::{new_pipeline, single_pipeline};
     /// # use gotham::state::State;
     /// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
     /// # use gotham::test::TestServer;
@@ -951,7 +946,6 @@ mod tests {
     use crate::helpers::http::response::create_empty_response;
     use crate::hyper::header::ACCEPT;
     use crate::middleware::{Middleware, NewMiddleware};
-    use crate::pipeline::single::*;
     use crate::pipeline::*;
     use crate::router::builder::*;
     use crate::router::route::matcher::AcceptHeaderRouteMatcher;

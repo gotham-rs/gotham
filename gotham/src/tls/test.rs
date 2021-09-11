@@ -20,18 +20,13 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 use tokio::time::Sleep;
 use tokio_rustls::client::TlsStream;
-use tokio_rustls::{
-    rustls::{
-        self,
-        internal::pemfile::{certs, pkcs8_private_keys},
-        NoClientAuth,
-    },
-    webpki::DNSNameRef,
-    TlsConnector,
-};
+use tokio_rustls::rustls::internal::pemfile::{certs, pkcs8_private_keys};
+use tokio_rustls::rustls::{self, NoClientAuth};
+use tokio_rustls::webpki::DNSNameRef;
+use tokio_rustls::TlsConnector;
 
-use crate::async_test::{AsyncTestClient, AsyncTestServerInner};
 use crate::handler::NewHandler;
+use crate::test::async_test::{AsyncTestClient, AsyncTestServerInner};
 use crate::test::{self, TestClient, TestServerData};
 use crate::tls::rustls_wrap;
 use std::time::Duration;
@@ -302,9 +297,8 @@ impl From<SocketAddr> for TestConnect {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::async_test;
     use crate::test::helper::TestHandler;
-    use crate::test::{self, Server};
+    use crate::test::{self, async_test, Server};
     use tokio::sync::oneshot;
 
     #[test]

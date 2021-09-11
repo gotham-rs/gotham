@@ -1,7 +1,8 @@
-use hyper::{body::HttpBody, Body, Response};
+use hyper::body::HttpBody;
+use hyper::{Body, Response};
 use serde::{Deserialize, Deserializer};
 
-use crate::router::response::extender::StaticResponseExtender;
+use crate::router::response::StaticResponseExtender;
 use crate::state::{State, StateData};
 
 /// Defines a binding for storing the dynamic segments of the `Request` path in `State`. On failure
@@ -19,17 +20,12 @@ use crate::state::{State, StateData};
 /// # Examples
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// # extern crate mime;
-/// # extern crate serde;
-/// #
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::{FromState, State, StateData};
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
-/// # use gotham::router::response::extender::StaticResponseExtender;
+/// # use gotham::router::response::StaticResponseExtender;
 /// # use gotham::test::TestServer;
 /// # use serde::Deserialize;
 /// #

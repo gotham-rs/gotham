@@ -863,7 +863,7 @@ mod tests {
         use serde::de::*;
         use std::fmt;
 
-        pub fn deserialize<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
+        pub(crate) fn deserialize<'de, D>(de: D) -> Result<Vec<u8>, D::Error>
         where
             D: Deserializer<'de>,
         {
@@ -926,7 +926,7 @@ mod tests {
         use serde::de::*;
         use std::fmt;
 
-        pub fn deserialize<'de, D>(de: D) -> Result<&'de [u8], D::Error>
+        pub(crate) fn deserialize<'de, D>(de: D) -> Result<&'de [u8], D::Error>
         where
             D: Deserializer<'de>,
         {
@@ -989,7 +989,7 @@ mod tests {
         use serde::de::*;
         use std::fmt;
 
-        pub fn deserialize<'de, D>(de: D) -> Result<&'de str, D::Error>
+        pub(crate) fn deserialize<'de, D>(de: D) -> Result<&'de str, D::Error>
         where
             D: Deserializer<'de>,
         {

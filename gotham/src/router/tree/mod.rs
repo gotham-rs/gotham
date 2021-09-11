@@ -69,7 +69,7 @@ mod tests {
     use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use crate::helpers::http::request::path::RequestPathSegments;
     use crate::helpers::http::response::create_empty_response;
-    use crate::pipeline::set::*;
+    use crate::pipeline::{finalize_pipeline_set, new_pipeline_set};
     use crate::router::route::dispatch::DispatcherImpl;
     use crate::router::route::matcher::MethodOnlyRouteMatcher;
     use crate::router::route::{Delegation, Extractors, RouteImpl};

@@ -4,16 +4,15 @@ use std::panic::RefUnwindSafe;
 use hyper::{Body, Method};
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
-use crate::pipeline::chain::PipelineHandleChain;
-use crate::pipeline::set::PipelineSet;
+use crate::pipeline::{PipelineHandleChain, PipelineSet};
 use crate::router::builder::SingleRouteBuilder;
 use crate::router::route::matcher::{
     AndRouteMatcher, AnyRouteMatcher, MethodOnlyRouteMatcher, RouteMatcher,
 };
 use crate::router::tree::node::Node;
 
-pub type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;
-pub type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;
+pub(crate) type AssociatedRouteBuilderMatcher<M, NM> = AndRouteMatcher<M, NM>;
+pub(crate) type AssociatedRouteMatcher<M> = AndRouteMatcher<MethodOnlyRouteMatcher, M>;
 
 /// The default type returned when building a single associated route. See
 /// `router::builder::DefineSingleRoute` for an overview of the ways that a route can be specified.
@@ -140,7 +139,7 @@ where
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::router::response::extender::StaticResponseExtender;
+    /// # use gotham::router::response::StaticResponseExtender;
     /// # use gotham::state::{State, StateData};
     /// # use gotham::test::TestServer;
     /// # use serde::Deserialize;
@@ -199,7 +198,7 @@ where
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
-    /// # use gotham::router::response::extender::StaticResponseExtender;
+    /// # use gotham::router::response::StaticResponseExtender;
     /// # use gotham::state::{State, StateData};
     /// # use gotham::test::TestServer;
     /// # use serde::Deserialize;

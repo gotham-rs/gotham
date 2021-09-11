@@ -21,19 +21,18 @@ use tokio::io::{AsyncRead, ReadBuf};
 
 use self::accepted_encoding::accepted_encodings;
 use crate::handler::{Handler, HandlerError, HandlerFuture, NewHandler};
-use crate::router::response::extender::StaticResponseExtender;
+use crate::router::response::StaticResponseExtender;
 use crate::state::{FromState, State, StateData};
 
-use std::cmp;
 use std::convert::From;
 use std::fs::Metadata;
-use std::io;
 use std::iter::FromIterator;
 use std::mem::MaybeUninit;
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
 use std::task::Poll;
 use std::time::UNIX_EPOCH;
+use std::{cmp, io};
 
 /// Represents a handler for any files under a directory.
 #[derive(Clone)]
@@ -58,8 +57,7 @@ pub struct FileHandler {
 ///
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # use gotham::handler::assets::FileOptions;
+/// # use gotham::handler::FileOptions;
 ///
 /// let default_options = FileOptions::from("my_static_path");
 /// let from_builder = FileOptions::new("my_static_path")

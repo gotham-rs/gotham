@@ -10,7 +10,6 @@
 //! ```rust
 //! # use gotham::router::Router;
 //! # use gotham::router::builder::*;
-//! # use gotham::pipeline::single::*;
 //! # use gotham::pipeline::*;
 //! # use gotham::state::{FromState, State};
 //! # use gotham::helpers::http::response::create_response;

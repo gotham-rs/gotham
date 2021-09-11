@@ -2,13 +2,13 @@
 //! way, with the Gotham web framework.
 
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
-use gotham::pipeline::new_pipeline;
-use gotham::pipeline::single::single_pipeline;
+use gotham::pipeline::{new_pipeline, single_pipeline};
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State, StateData};
 use serde::{Deserialize, Serialize};
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 
 // A custom type for storing data associated with the user's session.
 #[derive(Clone, Deserialize, Serialize, StateData)]

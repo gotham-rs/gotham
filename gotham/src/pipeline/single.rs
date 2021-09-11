@@ -3,8 +3,7 @@
 
 use borrow_bag::{Append, Handle};
 
-use crate::pipeline::set::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
-use crate::pipeline::{NewMiddlewareChain, Pipeline};
+use super::{finalize_pipeline_set, new_pipeline_set, NewMiddlewareChain, Pipeline, PipelineSet};
 
 /// A `PipelineSet` which contains only a single pipeline.
 pub type SinglePipelineSet<C> = PipelineSet<<() as Append<Pipeline<C>>>::Output>;
@@ -25,8 +24,7 @@ pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
 ///
 /// ```rust
 /// # extern crate gotham;
-/// # use gotham::pipeline::single::single_pipeline;
-/// # use gotham::pipeline::new_pipeline;
+/// # use gotham::pipeline::{new_pipeline, single_pipeline};
 /// # use gotham::router::builder::build_router;
 /// # use gotham::middleware::session::NewSessionMiddleware;
 /// # use serde::{Deserialize, Serialize};

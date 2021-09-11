@@ -18,12 +18,11 @@ use mime::{self, Mime};
 use crate::helpers::http::response;
 use crate::state::State;
 
+mod assets;
+pub use assets::*;
+
 mod error;
-
-/// Defines handlers for serving static assets.
-pub mod assets;
-
-pub use self::error::{HandlerError, MapHandlerError, MapHandlerErrorFuture};
+pub use error::{HandlerError, MapHandlerError, MapHandlerErrorFuture};
 
 /// A type alias for the results returned by async fns that can be passed to to_async.
 pub type HandlerResult = std::result::Result<(State, Response<Body>), (State, HandlerError)>;
@@ -324,7 +323,7 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 /// # extern crate hyper;
 /// #
 /// # use gotham::state::State;
-/// # use gotham::pipeline::set::*;
+/// # use gotham::pipeline::*;
 /// # use gotham::router::Router;
 /// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
 /// # use gotham::router::tree::Tree;
@@ -332,7 +331,7 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 /// # use gotham::router::route::dispatch::DispatcherImpl;
 /// # use gotham::handler::IntoResponse;
 /// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-/// # use gotham::router::response::finalizer::ResponseFinalizerBuilder;
+/// # use gotham::router::response::ResponseFinalizerBuilder;
 /// # use hyper::Method;
 /// # use hyper::StatusCode;
 /// # use hyper::{Body, Response};

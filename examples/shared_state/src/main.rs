@@ -7,8 +7,7 @@
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
 
 use gotham::middleware::state::StateMiddleware;
-use gotham::pipeline::single::single_pipeline;
-use gotham::pipeline::single_middleware;
+use gotham::pipeline::{single_middleware, single_pipeline};
 use gotham::router::builder::*;
 use gotham::router::Router;
 use gotham::state::{FromState, State, StateData};

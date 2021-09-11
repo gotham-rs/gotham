@@ -1,13 +1,11 @@
 use std::convert::TryFrom;
-use std::ops::Deref;
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 
 use hyper::client::connect::Connect;
 use hyper::header::{HeaderValue, IntoHeaderName};
 use hyper::{Body, Method, Request, Uri};
 
-use super::Server;
-use super::{TestClient, TestResponse};
+use super::{Server, TestClient, TestResponse};
 
 /// Builder API for constructing `Server` requests. When the request is built,
 /// `RequestBuilder::perform` will issue the request and provide access to the response.

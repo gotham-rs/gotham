@@ -11,7 +11,6 @@ use crate::state::State;
 /// # Examples
 ///
 /// ```rust
-/// # extern crate gotham;
 /// # fn main() {
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{AnyRouteMatcher, RouteMatcher};

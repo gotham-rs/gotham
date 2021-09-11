@@ -1,14 +1,10 @@
 //! Behavior and helpers shared between [`tls::async_test::AsyncTestServer`]
 //! and [`plain::async_test::AsyncTestServer`].
 use crate::handler::NewHandler;
-use http::header::CONTENT_TYPE;
-use http::header::{HeaderName, HeaderValue};
-use http::request;
-use http::Version;
-use http::{Method, Request, Uri};
+use http::header::{HeaderName, HeaderValue, CONTENT_TYPE};
+use http::{request, Method, Request, Uri, Version};
 use hyper::client::connect::Connect;
-use hyper::Client;
-use hyper::{Body, Response};
+use hyper::{Body, Client, Response};
 use mime::Mime;
 use std::any::Any;
 use std::convert::TryFrom;
@@ -29,7 +25,7 @@ pub(crate) struct AsyncTestServerInner {
 }
 
 impl AsyncTestServerInner {
-    pub async fn new<NH, F, Wrapped, Wrap>(
+    pub(crate) async fn new<NH, F, Wrapped, Wrap>(
         new_handler: NH,
         timeout: Duration,
         wrap: Wrap,
@@ -45,7 +41,7 @@ impl AsyncTestServerInner {
 
         let handle = tokio::spawn(async {
             // TODO: Remove the wrapping async block once ! is stabilized, see https://github.com/rust-lang/rust/issues/35121
-            super::bind_server(listener, new_handler, wrap).await;
+            crate::bind_server(listener, new_handler, wrap).await;
         });
 
         Ok(AsyncTestServerInner {
@@ -55,7 +51,7 @@ impl AsyncTestServerInner {
         })
     }
 
-    pub fn client<TestC>(self: &Arc<Self>) -> AsyncTestClient<TestC>
+    pub(crate) fn client<TestC>(self: &Arc<Self>) -> AsyncTestClient<TestC>
     where
         TestC: From<SocketAddr> + Connect + Clone + Send + Sync + 'static,
     {

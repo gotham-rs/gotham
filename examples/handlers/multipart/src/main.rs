@@ -9,8 +9,7 @@ use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes
 use gotham::router::Router;
 use gotham::state::{FromState, State};
 use multipart::server::Multipart;
-use std::io::Cursor;
-use std::io::Read;
+use std::io::{Cursor, Read};
 use std::pin::Pin;
 
 /// Extracts the elements of the POST request and responds with the form keys and values

@@ -31,10 +31,8 @@ pub use gotham_derive::NewMiddleware;
 /// Taking no action, and immediately passing the `Request` through to the rest of the application:
 ///
 /// ```rust
-/// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
-/// # extern crate hyper;
 /// #
 /// # use std::pin::Pin;
 /// #
@@ -42,7 +40,6 @@ pub use gotham_derive::NewMiddleware;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
-/// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::State;
 /// # use gotham::test::TestServer;
@@ -82,10 +79,8 @@ pub use gotham_derive::NewMiddleware;
 /// Recording a piece of state data before passing the request through:
 ///
 /// ```rust
-/// # extern crate gotham;
 /// # #[macro_use]
 /// # extern crate gotham_derive;
-/// # extern crate hyper;
 /// #
 /// # use std::pin::Pin;
 /// #
@@ -93,7 +88,6 @@ pub use gotham_derive::NewMiddleware;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
-/// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::State;
 /// # use gotham::test::TestServer;
@@ -156,7 +150,6 @@ pub use gotham_derive::NewMiddleware;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
-/// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::State;
 /// # use gotham::test::TestServer;
@@ -217,7 +210,6 @@ pub use gotham_derive::NewMiddleware;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
-/// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::{State, FromState};
 /// # use gotham::test::TestServer;
@@ -276,7 +268,6 @@ pub use gotham_derive::NewMiddleware;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
-/// # use gotham::pipeline::single::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::state::State;
 /// # use gotham::test::TestServer;

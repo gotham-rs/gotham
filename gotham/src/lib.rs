@@ -4,7 +4,7 @@
 //!
 //! We look forward to welcoming you into the Gotham community!
 #![doc(html_root_url = "https://docs.rs/gotham/0.6.0")] // Update when changed in Cargo.toml
-#![warn(missing_docs, deprecated)]
+#![warn(deprecated, missing_docs, unreachable_pub)]
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
 #![cfg_attr(
@@ -35,7 +35,6 @@ pub mod router;
 pub mod service;
 pub mod state;
 
-pub(crate) mod async_test;
 /// Test utilities for Gotham and Gotham consumer apps.
 pub mod test;
 
@@ -66,7 +65,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{self, Runtime};
 
-use crate::{handler::NewHandler, service::GothamService};
+use crate::handler::NewHandler;
+use crate::service::GothamService;
 
 pub use plain::*;
 #[cfg(feature = "rustls")]
