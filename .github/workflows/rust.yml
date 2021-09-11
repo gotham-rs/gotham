@@ -10,7 +10,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flag: ["--no-default-features", "", "--all-features"]
+        flag: ["", "--all-features"]
+        command: ["test"]
+        include:
+          - flag: "--no-default-features"
+            command: "check"
     
     steps:
       - uses: actions/checkout@v2
@@ -28,7 +32,7 @@ jobs:
             target
           key: ${{ runner.os }}-rust-gotham${{ matrix.flag }}-${{ steps.rust-version.outputs.VERSION }}
       
-      - run: cargo test -p gotham ${{ matrix.flag }}
+      - run: cargo ${{ matrix.command }} -p gotham ${{ matrix.flag }}
   
   test:
     name: test-${{ matrix.toolchain }}
