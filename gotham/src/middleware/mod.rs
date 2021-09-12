@@ -11,6 +11,7 @@ pub mod chain;
 pub mod cookie;
 pub mod logger;
 pub mod security;
+#[cfg(feature = "session")]
 pub mod session;
 pub mod state;
 pub mod timer;

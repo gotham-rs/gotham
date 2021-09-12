@@ -327,7 +327,6 @@ mod tests {
     use serde::Deserialize;
 
     use crate::middleware::cookie::CookieParser;
-    use crate::middleware::session::NewSessionMiddleware;
     use crate::pipeline::new_pipeline;
     use crate::router::response::StaticResponseExtender;
     use crate::service::GothamService;
@@ -483,12 +482,7 @@ mod tests {
     #[test]
     fn build_router_test() {
         let pipelines = new_pipeline_set();
-        let (pipelines, default) = pipelines.add(
-            new_pipeline()
-                .add(CookieParser)
-                .add(NewSessionMiddleware::default())
-                .build(),
-        );
+        let (pipelines, default) = pipelines.add(new_pipeline().add(CookieParser).build());
 
         let pipelines = finalize_pipeline_set(pipelines);
 
