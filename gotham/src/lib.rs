@@ -36,6 +36,7 @@ pub mod service;
 pub mod state;
 
 /// Test utilities for Gotham and Gotham consumer apps.
+#[cfg(feature = "testing")]
 pub mod test;
 
 /// Functions for creating a Gotham service using HTTP.

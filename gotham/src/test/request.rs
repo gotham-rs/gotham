@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 
 use hyper::client::connect::Connect;
 use hyper::header::{HeaderValue, IntoHeaderName};
-use hyper::{Body, Method, Request, Uri};
+use hyper::{http, Body, Method, Request, Uri};
 
 use super::{Server, TestClient, TestResponse};
 

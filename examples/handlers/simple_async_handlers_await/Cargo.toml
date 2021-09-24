@@ -10,4 +10,4 @@ edition = "2018"
 gotham = { path = "../../../gotham" }
 
 serde = "1.0"
-tokio = "1.0"
+tokio = "1.11.0"
