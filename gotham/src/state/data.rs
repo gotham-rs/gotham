@@ -7,6 +7,7 @@ use hyper::{Body, HeaderMap, Method, Uri, Version};
 use crate::helpers::http::request::path::RequestPathSegments;
 use crate::state::request_id::RequestId;
 
+#[cfg(feature = "derive")]
 pub use gotham_derive::StateData;
 
 /// A marker trait for types that can be stored in `State`.
