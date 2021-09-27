@@ -21,7 +21,7 @@ default = ["derive", "http2", "session", "testing"]
 derive = ["gotham_derive"]
 http2 = ["hyper/http2"]
 rustls = ["tokio-rustls"]
-session = ["bincode"]
+session = ["bincode", "linked-hash-map"]
 testing = ["hyper/client"]
 
 [dependencies]
@@ -37,7 +37,7 @@ cookie = "0.15"
 futures-util = "0.3.14"
 httpdate = "1.0"
 hyper = { version = "0.14.12", features = ["http1", "runtime", "server", "stream"] }
-linked-hash-map = "0.5.3"
+linked-hash-map = { version = "0.5.3", optional = true }
 log = "0.4"
 mime = "0.3.15"
 mime_guess = "2.0.1"
