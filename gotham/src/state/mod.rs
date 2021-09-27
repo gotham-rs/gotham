@@ -5,13 +5,13 @@ mod data;
 mod from_state;
 mod request_id;
 
-use log::{debug, trace};
-
 use hyper::http::request;
 use hyper::upgrade::OnUpgrade;
 use hyper::{Body, Request};
+use log::{debug, trace};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, Hasher};
 use std::net::SocketAddr;
 
 pub use crate::state::client_addr::client_addr;
@@ -22,6 +22,29 @@ pub use crate::state::request_id::request_id;
 use crate::helpers::http::request::path::RequestPathSegments;
 use crate::state::client_addr::put_client_addr;
 pub(crate) use crate::state::request_id::set_request_id;
+
+// https://docs.rs/http/0.2.5/src/http/extensions.rs.html#8-28
+// With TypeIds as keys, there's no need to hash them. They are already hashes
+// themselves, coming from the compiler. The IdHasher just holds the u64 of
+// the TypeId, and then returns it, instead of doing any bit fiddling.
+#[derive(Default)]
+struct IdHasher(u64);
+
+impl Hasher for IdHasher {
+    fn write(&mut self, _: &[u8]) {
+        unreachable!("TypeId calls write_u64");
+    }
+
+    #[inline]
+    fn write_u64(&mut self, id: u64) {
+        self.0 = id;
+    }
+
+    #[inline]
+    fn finish(&self) -> u64 {
+        self.0
+    }
+}
 
 /// Provides storage for request state, and stores one item of each type. The types used for
 /// storage must implement the `gotham::state::StateData` trait to allow its storage. The
@@ -51,7 +74,7 @@ pub(crate) use crate::state::request_id::set_request_id;
 /// # }
 /// ```
 pub struct State {
-    data: HashMap<TypeId, Box<dyn Any + Send>>,
+    data: HashMap<TypeId, Box<dyn Any + Send>, BuildHasherDefault<IdHasher>>,
 }
 
 impl State {
@@ -60,7 +83,7 @@ impl State {
     /// incorrectly discard important internal data.
     pub(crate) fn new() -> State {
         State {
-            data: HashMap::new(),
+            data: HashMap::default(),
         }
     }
 
