@@ -316,25 +316,10 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 ///
 /// # Examples
 ///
-/// ```rust
-/// # #![allow(deprecated)] // TODO: Refactor this.
-/// #
-/// # extern crate gotham;
-/// # extern crate hyper;
-/// #
+/// ```rust,no_run
 /// # use gotham::state::State;
-/// # use gotham::pipeline::*;
-/// # use gotham::router::Router;
-/// # use gotham::router::route::{RouteImpl, Extractors, Delegation};
-/// # use gotham::router::tree::Tree;
-/// # use gotham::router::route::matcher::MethodOnlyRouteMatcher;
-/// # use gotham::router::route::dispatch::DispatcherImpl;
 /// # use gotham::handler::IntoResponse;
-/// # use gotham::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
-/// # use gotham::router::response::ResponseFinalizerBuilder;
-/// # use hyper::Method;
-/// # use hyper::StatusCode;
-/// # use hyper::{Body, Response};
+/// # use hyper::{Body, Response, StatusCode};
 /// #
 /// struct MyStruct {
 ///     value: String
@@ -360,19 +345,8 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 ///     (state, MyStruct::new())
 /// }
 ///
-/// # fn main() {
-/// #   let mut tree = Tree::new();
-/// #   let pipeline_set = finalize_pipeline_set(new_pipeline_set());
-/// #   let finalizer = ResponseFinalizerBuilder::new().finalize();
-/// #   let matcher = MethodOnlyRouteMatcher::new(vec![Method::GET]);
-/// #   let dispatcher = DispatcherImpl::new(|| Ok(handler), (), pipeline_set);
-/// #   let extractors: Extractors<NoopPathExtractor, NoopQueryStringExtractor> = Extractors::new();
-/// #   let route = RouteImpl::new(matcher, Box::new(dispatcher), extractors, Delegation::Internal);
-///     tree.add_route(Box::new(route));
-///     Router::new(tree, finalizer);
-/// # }
+/// gotham::start("127.0.0.1:7878", || Ok(handler));
 /// ```
-
 pub trait IntoResponse {
     /// Converts this value into a `hyper::Response`
     fn into_response(self, state: &State) -> Response<Body>;
