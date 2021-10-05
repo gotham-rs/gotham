@@ -1,8 +1,8 @@
 //!  An example of the Gotham web framework `Router` that shows how to combine `Routes`
 //!  under a common root using scopes.
 use gotham::hyper::Method;
-use gotham::router::builder::*;
-use gotham::router::Router;
+use gotham::prelude::*;
+use gotham::router::{build_simple_router, Router};
 
 mod handlers;
 use self::handlers::*;

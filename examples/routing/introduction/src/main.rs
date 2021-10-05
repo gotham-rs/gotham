@@ -1,6 +1,6 @@
 //! An introduction to fundamental `Router` and `Router Builder` concepts to create a routing tree.
-use gotham::router::builder::*;
-use gotham::router::Router;
+use gotham::prelude::*;
+use gotham::router::{build_simple_router, Router};
 use gotham::state::State;
 
 const HELLO_ROUTER: &str = "Hello Router!";

@@ -8,9 +8,9 @@
 
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::{single_middleware, single_pipeline};
-use gotham::router::builder::*;
-use gotham::router::Router;
-use gotham::state::{FromState, State, StateData};
+use gotham::prelude::*;
+use gotham::router::{build_router, Router};
+use gotham::state::{State, StateData};
 
 use std::sync::{Arc, Mutex};
 

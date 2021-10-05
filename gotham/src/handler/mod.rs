@@ -372,7 +372,6 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 ///     Router::new(tree, finalizer);
 /// # }
 /// ```
-
 pub trait IntoResponse {
     /// Converts this value into a `hyper::Response`
     fn into_response(self, state: &State) -> Response<Body>;

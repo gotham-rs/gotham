@@ -11,10 +11,11 @@ use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::StatusCode;
 use gotham::mime::TEXT_PLAIN;
-use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
+use gotham::prelude::*;
+use gotham::router::builder::build_simple_router;
 use gotham::router::response::StaticResponseExtender;
 use gotham::router::Router;
-use gotham::state::{FromState, State, StateData};
+use gotham::state::{State, StateData};
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {

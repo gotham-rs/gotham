@@ -7,10 +7,10 @@ use std::pin::Pin;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
-use gotham::anyhow::Result;
-use gotham::handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
-use gotham::router::builder::*;
-use gotham::router::Router;
+use gotham::anyhow;
+use gotham::handler::{Handler, HandlerFuture, NewHandler};
+use gotham::prelude::*;
+use gotham::router::{build_simple_router, Router};
 use gotham::state::State;
 
 // A struct which can store the state which it needs.
@@ -61,7 +61,7 @@ impl Handler for CountingHandler {
 impl NewHandler for CountingHandler {
     type Instance = Self;
 
-    fn new_handler(&self) -> Result<Self::Instance> {
+    fn new_handler(&self) -> anyhow::Result<Self::Instance> {
         Ok(self.clone())
     }
 }

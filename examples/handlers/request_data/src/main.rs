@@ -1,13 +1,14 @@
 //! A basic example showing the request components
 use futures_util::future::{self, FutureExt};
-use gotham::hyper::{body, Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
 use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_empty_response;
-use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
+use gotham::hyper::{body, Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
+use gotham::prelude::*;
+use gotham::router::builder::build_simple_router;
 use gotham::router::Router;
-use gotham::state::{FromState, State};
+use gotham::state::State;
 
 /// Extract the main elements of the request except for the `Body`
 fn print_request_elements(state: &State) {

@@ -9,9 +9,9 @@ use gotham::hyper::header::{HeaderMap, USER_AGENT};
 use gotham::hyper::{Body, Response, StatusCode};
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::pipeline::{new_pipeline, single_pipeline};
-use gotham::router::builder::*;
-use gotham::router::Router;
-use gotham::state::{FromState, State, StateData};
+use gotham::prelude::*;
+use gotham::router::{build_router, Router};
+use gotham::state::{State, StateData};
 
 /// A simple struct which holds an identifier for the user agent which made the request.
 ///

@@ -1,6 +1,8 @@
 //! Defines the Gotham `Router` and supporting types.
 
 pub mod builder;
+pub use builder::{build_router, build_simple_router};
+
 pub mod response;
 pub mod route;
 pub mod tree;

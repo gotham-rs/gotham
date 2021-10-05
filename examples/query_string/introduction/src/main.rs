@@ -2,10 +2,10 @@
 //! Gotham web framework
 
 use gotham::mime::{Mime, APPLICATION_JSON};
-use gotham::router::builder::*;
+use gotham::prelude::*;
 use gotham::router::response::StaticResponseExtender;
-use gotham::router::Router;
-use gotham::state::{FromState, State, StateData};
+use gotham::router::{build_simple_router, Router};
+use gotham::state::{State, StateData};
 use serde::{Deserialize, Serialize};
 
 /// Holds data extracted from the Request query string.

@@ -22,9 +22,9 @@ use gotham::helpers::http::response::create_response;
 use gotham::middleware::session::NewSessionMiddleware;
 use gotham::middleware::{Middleware, NewMiddleware};
 use gotham::pipeline::{finalize_pipeline_set, new_pipeline, new_pipeline_set, single_pipeline};
-use gotham::router::builder::*;
-use gotham::router::Router;
-use gotham::state::{FromState, State};
+use gotham::prelude::*;
+use gotham::router::{build_router, Router};
+use gotham::state::State;
 use serde::{Deserialize, Serialize};
 
 /// A simple struct to represent our default session data.
