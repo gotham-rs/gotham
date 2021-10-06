@@ -87,10 +87,9 @@ async fn tcp_listener<A>(addr: A) -> io::Result<TcpListener>
 where
     A: ToSocketAddrs + 'static,
 {
-    let addr = addr.to_socket_addrs()?.next().ok_or(io::Error::new(
-        io::ErrorKind::Other,
-        "unable to resolve listener address",
-    ))?;
+    let addr = addr.to_socket_addrs()?.next().ok_or_else(|| {
+        io::Error::new(io::ErrorKind::Other, "unable to resolve listener address")
+    })?;
     TcpListener::bind(addr).await
 }
 
