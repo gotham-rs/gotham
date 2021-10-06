@@ -60,6 +60,7 @@ pub use tokio_rustls::rustls;
 use futures_util::TryFutureExt;
 use hyper::server::conn::Http;
 use std::future::Future;
+use std::io;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -82,16 +83,14 @@ fn new_runtime(threads: usize) -> Runtime {
         .unwrap()
 }
 
-async fn tcp_listener<A>(addr: A) -> std::io::Result<TcpListener>
+async fn tcp_listener<A>(addr: A) -> io::Result<TcpListener>
 where
     A: ToSocketAddrs + 'static,
 {
-    let addr = addr
-        .to_socket_addrs()
-        .expect("unable to parse listener address")
-        .next()
-        .expect("unable to resolve listener address");
-
+    let addr = addr.to_socket_addrs()?.next().ok_or(io::Error::new(
+        io::ErrorKind::Other,
+        "unable to resolve listener address",
+    ))?;
     TcpListener::bind(addr).await
 }
 

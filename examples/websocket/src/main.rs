@@ -11,7 +11,7 @@ fn main() {
     let addr = "127.0.0.1:7878";
     println!("Listening on http://{}/", addr);
 
-    gotham::start(addr, || Ok(handler));
+    gotham::start(addr, || Ok(handler)).unwrap();
 }
 
 fn handler(mut state: State) -> (State, Response<Body>) {

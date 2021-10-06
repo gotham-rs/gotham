@@ -1,4 +1,5 @@
 //! A Hello World example application for working with Gotham.
+use gotham::anyhow;
 use gotham::rustls::internal::pemfile::{certs, pkcs8_private_keys};
 use gotham::rustls::{self, NoClientAuth};
 use gotham::state::State;
@@ -16,10 +17,10 @@ pub fn say_hello(state: State) -> (State, &'static str) {
 }
 
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.
-pub fn main() -> Result<(), rustls::TLSError> {
+pub fn main() -> anyhow::Result<()> {
     let addr = "127.0.0.1:7878";
     println!("Listening for requests at http://{}", addr);
-    gotham::start_with_tls(addr, || Ok(say_hello), build_config()?);
+    gotham::start_with_tls(addr, || Ok(say_hello), build_config()?)?;
     Ok(())
 }
 

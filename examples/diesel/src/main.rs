@@ -123,7 +123,7 @@ fn main() {
     let addr = "127.0.0.1:7878";
 
     println!("Listening for requests at http://{}", addr);
-    gotham::start(addr, router(Repo::new(DATABASE_URL)));
+    gotham::start(addr, router(Repo::new(DATABASE_URL))).unwrap();
 }
 
 // In tests `Repo::with_test_transactions` allows queries to run
