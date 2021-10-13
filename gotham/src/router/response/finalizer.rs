@@ -30,15 +30,7 @@ pub struct ResponseFinalizerBuilder {
 
 impl ResponseFinalizerBuilder {
     /// Creates a new ResponseFinalizer instance.
-    #[deprecated(
-        since = "0.2.0",
-        note = "use the new `gotham::router::builder` API to configure ResponseExtenders"
-    )]
-    pub fn new() -> Self {
-        ResponseFinalizerBuilder::internal_new()
-    }
-
-    pub(in crate::router) fn internal_new() -> Self {
+    pub(in crate::router) fn new() -> Self {
         let handlers = HashMap::new();
         ResponseFinalizerBuilder { data: handlers }
     }

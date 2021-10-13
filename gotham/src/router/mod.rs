@@ -123,16 +123,7 @@ impl Handler for Router {
 
 impl Router {
     /// Manually assembles a `Router` instance from a provided `Tree`.
-    #[deprecated(
-        since = "0.2.0",
-        note = "use the new `gotham::router::builder` API to construct a Router"
-    )]
-    pub fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
-        Router::internal_new(tree, response_finalizer)
-    }
-
-    /// Same as `new`, but private and not deprecated.
-    fn internal_new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
+    fn new(tree: Tree, response_finalizer: ResponseFinalizer) -> Router {
         let router_data = RouterData::new(tree, response_finalizer);
         Router {
             data: Arc::new(router_data),
@@ -247,7 +238,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
     fn internal_server_error_if_no_request_path_segments() {
         let tree = Tree::new();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
@@ -270,7 +260,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
     fn not_found_error_if_request_path_is_not_found() {
         let tree = Tree::new();
         let router = Router::new(tree, ResponseFinalizerBuilder::new().finalize());
@@ -284,7 +273,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
     fn custom_error_if_leaf_found_but_matching_route_not_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut tree = Tree::new();
@@ -329,7 +317,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
     fn success_if_leaf_and_route_found() {
         let pipeline_set = finalize_pipeline_set(new_pipeline_set());
         let mut tree = Tree::new();
@@ -355,7 +342,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
     fn delegates_to_secondary_router() {
         let delegated_router = {
             let pipeline_set = finalize_pipeline_set(new_pipeline_set());
@@ -411,7 +397,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
     fn executes_response_finalizer_when_present() {
         let tree = Tree::new();
 

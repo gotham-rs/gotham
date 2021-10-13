@@ -88,7 +88,7 @@ where
             node_builder: tree.borrow_root_mut(),
             pipeline_chain,
             pipelines,
-            response_finalizer_builder: ResponseFinalizerBuilder::internal_new(),
+            response_finalizer_builder: ResponseFinalizerBuilder::new(),
         };
 
         f(&mut builder);
@@ -96,7 +96,7 @@ where
         builder.response_finalizer_builder.finalize()
     };
 
-    Router::internal_new(tree, response_finalizer)
+    Router::new(tree, response_finalizer)
 }
 
 /// Builds a `Router` with **no** middleware using the provided closure. Routes are defined using
