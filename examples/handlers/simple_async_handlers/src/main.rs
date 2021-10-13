@@ -13,9 +13,8 @@ use gotham::hyper::StatusCode;
 use gotham::mime::TEXT_PLAIN;
 use gotham::prelude::*;
 use gotham::router::builder::build_simple_router;
-use gotham::router::response::StaticResponseExtender;
 use gotham::router::Router;
-use gotham::state::{State, StateData};
+use gotham::state::State;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {

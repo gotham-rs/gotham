@@ -20,7 +20,7 @@ use std::pin::Pin;
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::middleware::session::NewSessionMiddleware;
-use gotham::middleware::{Middleware, NewMiddleware};
+use gotham::middleware::Middleware;
 use gotham::pipeline::{finalize_pipeline_set, new_pipeline, new_pipeline_set, single_pipeline};
 use gotham::prelude::*;
 use gotham::router::{build_router, Router};

@@ -5,7 +5,7 @@ use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::{new_pipeline, single_pipeline};
 use gotham::prelude::*;
 use gotham::router::{build_router, Router};
-use gotham::state::{State, StateData};
+use gotham::state::State;
 use serde::{Deserialize, Serialize};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;

@@ -10,7 +10,7 @@ use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::{single_middleware, single_pipeline};
 use gotham::prelude::*;
 use gotham::router::{build_router, Router};
-use gotham::state::{State, StateData};
+use gotham::state::State;
 
 use std::sync::{Arc, Mutex};
 
