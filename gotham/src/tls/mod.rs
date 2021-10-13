@@ -1,19 +1,22 @@
 use futures_util::future::{MapErr, TryFutureExt};
 use log::{error, info};
-use std::io;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use tokio::net::TcpStream;
 use tokio_rustls::{rustls, Accept, TlsAcceptor};
 
 use super::handler::NewHandler;
-use super::{bind_server, new_runtime, tcp_listener};
+use super::{bind_server, new_runtime, tcp_listener, StartError};
 
 #[cfg(feature = "testing")]
 pub mod test;
 
 /// Starts a Gotham application with the default number of threads.
-pub fn start<NH, A>(addr: A, new_handler: NH, tls_config: rustls::ServerConfig) -> io::Result<()>
+pub fn start<NH, A>(
+    addr: A,
+    new_handler: NH,
+    tls_config: rustls::ServerConfig,
+) -> Result<(), StartError>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
@@ -27,7 +30,7 @@ pub fn start_with_num_threads<NH, A>(
     new_handler: NH,
     tls_config: rustls::ServerConfig,
     threads: usize,
-) -> io::Result<()>
+) -> Result<(), StartError>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
@@ -45,7 +48,7 @@ pub async fn init_server<NH, A>(
     addr: A,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> io::Result<()>
+) -> Result<(), StartError>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
