@@ -147,7 +147,7 @@ fn router() -> Router {
 pub fn main() {
     let addr = "127.0.0.1:7878";
     println!("Listening for requests at http://{}", addr);
-    gotham::start(addr, router())
+    gotham::start(addr, router()).unwrap();
 }
 
 #[cfg(test)]

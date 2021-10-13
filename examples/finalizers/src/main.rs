@@ -49,7 +49,7 @@ pub fn main() {
     println!("Listening for requests at http://{}", addr);
 
     // All incoming requests are delegated to the router for further analysis and dispatch
-    gotham::start(addr, router())
+    gotham::start(addr, router()).unwrap();
 }
 
 #[cfg(test)]

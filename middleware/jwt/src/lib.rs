@@ -13,8 +13,3 @@ mod state_data;
 
 pub use self::middleware::JwtMiddleware;
 pub use self::state_data::AuthorizationToken;
-
-/// This type alias is deprecated. Use `JwtMiddleware` instead.
-#[deprecated(since = "0.6.1", note = "Please use `JwtMiddleware` instead")]
-#[allow(clippy::upper_case_acronyms)]
-pub type JWTMiddleware<T> = JwtMiddleware<T>;

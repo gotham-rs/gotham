@@ -28,5 +28,5 @@ pub fn main() {
         );
     });
 
-    gotham::start(addr, router)
+    gotham::start(addr, router).unwrap();
 }
