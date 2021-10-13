@@ -72,7 +72,7 @@ where
     /// # use hyper::header::ACCEPT;
     /// # use gotham::state::State;
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
-    /// # use gotham::router::Router;
+    /// # use gotham::router::{build_simple_router, Router};
     /// # use gotham::prelude::*;
     /// # use gotham::test::TestServer;
     /// #
@@ -133,7 +133,7 @@ where
     ///
     /// ```rust
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use gotham::router::Router;
+    /// # use gotham::router::{build_simple_router, Router};
     /// # use gotham::prelude::*;
     /// # use gotham::state::State;
     /// # use gotham::test::TestServer;
@@ -191,7 +191,7 @@ where
     ///
     /// ```rust
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use gotham::router::Router;
+    /// # use gotham::router::{build_simple_router, Router};
     /// # use gotham::prelude::*;
     /// # use gotham::state::State;
     /// # use gotham::test::TestServer;

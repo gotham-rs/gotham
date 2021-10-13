@@ -23,7 +23,7 @@ use crate::state::{State, StateData};
 /// # use hyper::{Body, Response, StatusCode};
 /// # use gotham::state::{FromState, State};
 /// # use gotham::helpers::http::response::create_response;
-/// # use gotham::router::Router;
+/// # use gotham::router::{build_simple_router, Router};
 /// # use gotham::prelude::*;
 /// # use gotham::test::TestServer;
 /// # use serde::Deserialize;

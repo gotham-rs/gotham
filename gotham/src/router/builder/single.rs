@@ -397,7 +397,7 @@ pub trait DefineSingleRoute {
     /// ```rust
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::{State, FromState};
-    /// # use gotham::router::Router;
+    /// # use gotham::router::{build_router, Router};
     /// # use gotham::prelude::*;
     /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
@@ -459,7 +459,7 @@ pub trait DefineSingleRoute {
     /// ```rust
     /// # use hyper::{Body, Response, StatusCode};
     /// # use gotham::state::{State, FromState};
-    /// # use gotham::router::Router;
+    /// # use gotham::router::{build_router, Router};
     /// # use gotham::prelude::*;
     /// # use gotham::pipeline::*;
     /// # use gotham::middleware::session::NewSessionMiddleware;
