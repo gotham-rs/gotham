@@ -112,7 +112,7 @@ jobs:
       
       - name: Get Tarpaulin Version
         id: tarpaulin-version
-        run: echo "::set-output name=VERSION::$(wget -qO- 'https://api.github.com/repos/xd009642/tarpaulin/releases/latest' | jq -r '.tag_name')"
+        run: echo "::set-output name=VERSION::$(wget -qO- 'https://crates.io/api/v1/crates/cargo-tarpaulin' | jq -r '.crate.max_stable_version')"
       
       - uses: actions/cache@v2
         with:
@@ -126,6 +126,6 @@ jobs:
       - name: Install Tarpaulin
         run: test -e ~/.cargo/bin/cargo-tarpaulin || cargo install cargo-tarpaulin --version ${{ steps.tarpaulin-version.outputs.VERSION }}
       
-      - run: |
-          cargo tarpaulin --workspace --forward --out Xml
-          bash <(curl -s https://codecov.io/bash)
+      - run: cargo tarpaulin --workspace --forward --out Xml
+      
+      - uses: codecov/codecov-action@v2
