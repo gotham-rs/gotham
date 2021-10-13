@@ -26,7 +26,7 @@ pub fn main() {
     println!("{:?}", std::env::current_exe());
     let addr = "127.0.0.1:7878";
     println!("Listening for requests at http://{}", addr);
-    gotham::start(addr, || Ok(say_hello))
+    gotham::start(addr, || Ok(say_hello)).unwrap();
 }
 
 #[cfg(test)]

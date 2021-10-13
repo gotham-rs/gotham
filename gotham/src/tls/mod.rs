@@ -1,21 +1,19 @@
-use futures_util::TryFutureExt;
+use futures_util::future::{MapErr, TryFutureExt};
 use log::{error, info};
+use std::io;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use tokio::net::TcpStream;
-use tokio_rustls::{rustls, TlsAcceptor};
-
-use super::{bind_server, new_runtime, tcp_listener};
+use tokio_rustls::{rustls, Accept, TlsAcceptor};
 
 use super::handler::NewHandler;
-use futures_util::future::MapErr;
-use tokio_rustls::Accept;
+use super::{bind_server, new_runtime, tcp_listener};
 
 #[cfg(feature = "testing")]
 pub mod test;
 
 /// Starts a Gotham application with the default number of threads.
-pub fn start<NH, A>(addr: A, new_handler: NH, tls_config: rustls::ServerConfig)
+pub fn start<NH, A>(addr: A, new_handler: NH, tls_config: rustls::ServerConfig) -> io::Result<()>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
@@ -29,12 +27,13 @@ pub fn start_with_num_threads<NH, A>(
     new_handler: NH,
     tls_config: rustls::ServerConfig,
     threads: usize,
-) where
+) -> io::Result<()>
+where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
 {
     let runtime = new_runtime(threads);
-    let _ = runtime.block_on(async { init_server(addr, new_handler, tls_config).await });
+    runtime.block_on(init_server(addr, new_handler, tls_config))
 }
 
 /// Returns a `Future` used to spawn an Gotham application.
@@ -46,19 +45,18 @@ pub async fn init_server<NH, A>(
     addr: A,
     new_handler: NH,
     tls_config: rustls::ServerConfig,
-) -> Result<(), ()>
+) -> io::Result<()>
 where
     NH: NewHandler + 'static,
     A: ToSocketAddrs + 'static + Send,
 {
-    let listener = tcp_listener(addr).map_err(|_| ()).await?;
+    let listener = tcp_listener(addr).await?;
     let addr = listener.local_addr().unwrap();
 
-    info!(
-    target: "gotham::start",
-    " Gotham listening on http://{}",
-    addr
-    );
+    info! {
+        target: "gotham::start",
+        " Gotham listening on http://{}", addr
+    }
 
     let wrap = rustls_wrap(tls_config);
     bind_server(listener, new_handler, wrap).await

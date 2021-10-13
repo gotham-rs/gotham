@@ -4,7 +4,7 @@
 #[cfg(all(test, unix))]
 extern crate nix;
 
-use futures_util::future::{self, FutureExt, TryFutureExt};
+use futures_util::future::{self, Either, FutureExt};
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{Body, Response, StatusCode};
 use gotham::mime::TEXT_PLAIN;
@@ -35,13 +35,16 @@ pub async fn main() {
     let server = gotham::init_server(addr, || Ok(say_hello));
     // Future to wait for Ctrl+C.
     let signal = async {
-        signal::ctrl_c().map_err(|_| ()).await?;
+        signal::ctrl_c().await.expect("failed to listen for event");
         println!("Ctrl+C pressed");
-        Ok::<(), ()>(())
     };
 
-    future::select(server.boxed(), signal.boxed()).await;
-    println!("Shutting down gracefully");
+    let res = future::select(server.boxed(), signal.boxed()).await;
+    if let Either::Left((Err(err), _)) = res {
+        println!("Error starting gotham: {}", err);
+    } else {
+        println!("Shutting down gracefully");
+    }
 }
 
 #[cfg(test)]
