@@ -345,7 +345,7 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 ///     (state, MyStruct::new())
 /// }
 ///
-/// gotham::start("127.0.0.1:7878", || Ok(handler));
+/// gotham::start("127.0.0.1:7878", || Ok(handler)).unwrap();
 /// ```
 pub trait IntoResponse {
     /// Converts this value into a `hyper::Response`
