@@ -2,12 +2,14 @@
 //!
 //! See the [`TestServer`] and [`AsyncTestServer`] types for example usage.
 
+use std::convert::TryFrom;
 use std::future::Future;
 use std::io::{self, BufReader};
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
+use std::time::Duration;
 
 use futures_util::future::{BoxFuture, FutureExt};
 use hyper::client::connect::{Connected, Connection};
@@ -15,21 +17,35 @@ use hyper::service::Service;
 use hyper::Uri;
 use log::info;
 use pin_project::pin_project;
-use rustls::Session;
+use rustls_pemfile::{certs, pkcs8_private_keys};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 use tokio::time::Sleep;
 use tokio_rustls::client::TlsStream;
-use tokio_rustls::rustls::internal::pemfile::{certs, pkcs8_private_keys};
-use tokio_rustls::rustls::{self, NoClientAuth};
-use tokio_rustls::webpki::DNSNameRef;
+use tokio_rustls::rustls::{
+    self, Certificate, ClientConfig, PrivateKey, RootCertStore, ServerConfig, ServerName,
+};
 use tokio_rustls::TlsConnector;
 
 use crate::handler::NewHandler;
 use crate::test::async_test::{AsyncTestClient, AsyncTestServerInner};
 use crate::test::{self, TestClient, TestServerData};
 use crate::tls::rustls_wrap;
-use std::time::Duration;
+
+fn server_config() -> Result<ServerConfig, rustls::Error> {
+    let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
+    let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
+    let certs = certs(&mut cert_file)
+        .unwrap()
+        .into_iter()
+        .map(Certificate)
+        .collect();
+    let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
+    ServerConfig::builder()
+        .with_safe_defaults()
+        .with_no_client_auth()
+        .with_single_cert(certs, PrivateKey(keys.remove(0)))
+}
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
 /// (which Gotham's `Router` is). An instance of `TestServer` is run asynchronously within the
@@ -90,15 +106,8 @@ impl TestServer {
         new_handler: NH,
         timeout: u64,
     ) -> anyhow::Result<TestServer> {
-        let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
-        let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
-        let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
-        let certs = certs(&mut cert_file).unwrap();
-        let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
-        cfg.set_single_cert(certs, keys.remove(0))?;
-
+        let cfg = server_config()?;
         let data = TestServerData::new(new_handler, timeout, rustls_wrap(cfg))?;
-
         Ok(TestServer {
             data: Arc::new(data),
         })
@@ -167,13 +176,7 @@ impl AsyncTestServer {
         new_handler: NH,
         timeout: Duration,
     ) -> anyhow::Result<AsyncTestServer> {
-        let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
-        let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
-        let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
-        let certs = certs(&mut cert_file).unwrap();
-        let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
-        cfg.set_single_cert(certs, keys.remove(0))?;
-
+        let cfg = server_config()?;
         let inner = AsyncTestServerInner::new(new_handler, timeout, rustls_wrap(cfg)).await?;
         Ok(AsyncTestServer {
             inner: Arc::new(inner),
@@ -194,7 +197,7 @@ pub struct TlsConnectionStream<IO>(#[pin] TlsStream<IO>);
 impl<IO: AsyncRead + AsyncWrite + Connection + Unpin> Connection for TlsConnectionStream<IO> {
     fn connected(&self) -> Connected {
         let (tcp, tls) = self.0.get_ref();
-        if tls.get_alpn_protocol() == Some(b"h2") {
+        if tls.alpn_protocol() == Some(b"h2") {
             tcp.connected().negotiated_h2()
         } else {
             tcp.connected()
@@ -261,7 +264,7 @@ impl Service<Uri> for TestConnect {
         async move {
             match TcpStream::connect(address).await {
                 Ok(stream) => {
-                    let domain = DNSNameRef::try_from_ascii_str(req.host().unwrap()).unwrap();
+                    let domain = ServerName::try_from(req.host().unwrap()).unwrap();
                     match tls.connect(domain, stream).await {
                         Ok(tls_stream) => {
                             info!("Client TcpStream connected: {:?}", tls_stream);
@@ -282,13 +285,18 @@ impl Service<Uri> for TestConnect {
 
 impl From<SocketAddr> for TestConnect {
     fn from(addr: SocketAddr) -> Self {
-        let mut config = rustls::ClientConfig::new();
         let mut cert_file = BufReader::new(&include_bytes!("ca_cert.pem")[..]);
-        config.root_store.add_pem_file(&mut cert_file).unwrap();
+        let certs = certs(&mut cert_file).unwrap();
+        let mut root_store = RootCertStore::empty();
+        root_store.add_parsable_certificates(&certs);
+        let cfg = ClientConfig::builder()
+            .with_safe_defaults()
+            .with_root_certificates(root_store)
+            .with_no_client_auth();
 
         Self {
             addr,
-            config: Arc::new(config),
+            config: Arc::new(cfg),
         }
     }
 }
