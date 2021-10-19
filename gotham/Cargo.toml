@@ -3,7 +3,7 @@ name = "gotham"
 version = "0.6.0" # Alter html_root_url in lib.rs also
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
           "Colin Bankier <colinbankier@gmail.com>",
-		  "Dominic Meiser <git@msrd0.de>",
+          "Dominic Meiser <git@msrd0.de>",
           "Isaac Whitfield <iw@whitfin.io>",
           "Judson Lester <nyarly@gmail.com>",
           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
@@ -15,6 +15,7 @@ readme = "README.md"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "server"]
 edition = "2018"
+exclude = ["src/tls/tls_new_cert.sh"]
 
 [features]
 default = ["derive", "http2", "session", "testing"]
@@ -49,7 +50,7 @@ rand_chacha = "0.3"
 regex = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.11.0", features = ["net", "rt-multi-thread", "time", "fs", "io-util"] }
-tokio-rustls = { version = "0.22", optional = true }
+tokio-rustls = { version = "0.23", optional = true }
 uuid = { version = "0.8", features = ["v4"] }
 
 [dev-dependencies]
