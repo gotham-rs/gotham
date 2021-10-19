@@ -4,7 +4,7 @@
 
 use std::convert::TryFrom;
 use std::future::Future;
-use std::io::{self, BufReader};
+use std::io;
 use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -17,7 +17,6 @@ use hyper::service::Service;
 use hyper::Uri;
 use log::info;
 use pin_project::pin_project;
-use rustls_pemfile::{certs, pkcs8_private_keys};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 use tokio::time::Sleep;
@@ -32,19 +31,14 @@ use crate::test::async_test::{AsyncTestClient, AsyncTestServerInner};
 use crate::test::{self, TestClient, TestServerData};
 use crate::tls::rustls_wrap;
 
-fn server_config() -> Result<ServerConfig, rustls::Error> {
-    let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
-    let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
-    let certs = certs(&mut cert_file)
-        .unwrap()
-        .into_iter()
-        .map(Certificate)
-        .collect();
-    let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
+fn server_config() -> ServerConfig {
+    let cert = Certificate(include_bytes!("tls_cert.der").to_vec());
+    let key = PrivateKey(include_bytes!("tls_key.der").to_vec());
     ServerConfig::builder()
         .with_safe_defaults()
         .with_no_client_auth()
-        .with_single_cert(certs, PrivateKey(keys.remove(0)))
+        .with_single_cert(vec![cert], key)
+        .expect("Unable to create TLS server config")
 }
 
 /// The `TestServer` type, which is used as a harness when writing test cases for Hyper services
@@ -106,7 +100,7 @@ impl TestServer {
         new_handler: NH,
         timeout: u64,
     ) -> anyhow::Result<TestServer> {
-        let cfg = server_config()?;
+        let cfg = server_config();
         let data = TestServerData::new(new_handler, timeout, rustls_wrap(cfg))?;
         Ok(TestServer {
             data: Arc::new(data),
@@ -176,7 +170,7 @@ impl AsyncTestServer {
         new_handler: NH,
         timeout: Duration,
     ) -> anyhow::Result<AsyncTestServer> {
-        let cfg = server_config()?;
+        let cfg = server_config();
         let inner = AsyncTestServerInner::new(new_handler, timeout, rustls_wrap(cfg)).await?;
         Ok(AsyncTestServer {
             inner: Arc::new(inner),
@@ -285,10 +279,9 @@ impl Service<Uri> for TestConnect {
 
 impl From<SocketAddr> for TestConnect {
     fn from(addr: SocketAddr) -> Self {
-        let mut cert_file = BufReader::new(&include_bytes!("ca_cert.pem")[..]);
-        let certs = certs(&mut cert_file).unwrap();
         let mut root_store = RootCertStore::empty();
-        root_store.add_parsable_certificates(&certs);
+        let ca_cert = include_bytes!("tls_ca_cert.der").to_vec();
+        root_store.add(&Certificate(ca_cert)).unwrap();
         let cfg = ClientConfig::builder()
             .with_safe_defaults()
             .with_root_certificates(root_store)
