@@ -1,8 +1,8 @@
 //! A Hello World example application for working with Gotham.
 use gotham::anyhow;
-use gotham::rustls::internal::pemfile::{certs, pkcs8_private_keys};
-use gotham::rustls::{self, NoClientAuth};
+use gotham::rustls::{self, Certificate, PrivateKey, ServerConfig};
 use gotham::state::State;
+use rustls_pemfile::{certs, pkcs8_private_keys};
 use std::io::BufReader;
 
 const HELLO_WORLD: &str = "Hello World!";
@@ -19,19 +19,24 @@ pub fn say_hello(state: State) -> (State, &'static str) {
 /// Start a server and call the `Handler` we've defined above for each `Request` we receive.
 pub fn main() -> anyhow::Result<()> {
     let addr = "127.0.0.1:7878";
-    println!("Listening for requests at http://{}", addr);
+    println!("Listening for requests at https://{}", addr);
     gotham::start_with_tls(addr, || Ok(say_hello), build_config()?)?;
     Ok(())
 }
 
-fn build_config() -> Result<rustls::ServerConfig, rustls::TLSError> {
-    let mut cfg = rustls::ServerConfig::new(NoClientAuth::new());
+fn build_config() -> Result<ServerConfig, rustls::Error> {
     let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
     let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
-    let certs = certs(&mut cert_file).unwrap();
+    let certs = certs(&mut cert_file)
+        .unwrap()
+        .into_iter()
+        .map(Certificate)
+        .collect();
     let mut keys = pkcs8_private_keys(&mut key_file).unwrap();
-    cfg.set_single_cert(certs, keys.remove(0))?;
-    Ok(cfg)
+    ServerConfig::builder()
+        .with_safe_defaults()
+        .with_no_client_auth()
+        .with_single_cert(certs, PrivateKey(keys.remove(0)))
 }
 
 #[cfg(test)]
@@ -45,7 +50,7 @@ mod tests {
         let test_server = TestServer::new(|| Ok(say_hello)).unwrap();
         let response = test_server
             .client()
-            .get("http://localhost")
+            .get("https://localhost")
             .perform()
             .unwrap();
 
