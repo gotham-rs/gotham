@@ -64,6 +64,7 @@ use std::future::Future;
 use std::io;
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{self, Runtime};
@@ -74,6 +75,15 @@ use crate::service::GothamService;
 pub use plain::*;
 #[cfg(feature = "rustls")]
 pub use tls::start as start_with_tls;
+
+/// The error that can occur when starting the gotham server.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum StartError {
+    /// I/O error.
+    #[error("I/O Error: {0}")]
+    IoError(#[from] io::Error),
+}
 
 fn new_runtime(threads: usize) -> Runtime {
     runtime::Builder::new_multi_thread()
