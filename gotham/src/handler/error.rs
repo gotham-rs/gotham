@@ -81,6 +81,16 @@ impl HandlerError {
         }
     }
 
+    /// Returns the cause of this error by reference.
+    pub fn cause(&self) -> &anyhow::Error {
+        &self.cause
+    }
+
+    /// Returns the cause of this error.
+    pub fn into_cause(self) -> anyhow::Error {
+        self.cause
+    }
+
     /// Attempt to downcast the cause by reference.
     pub fn downcast_cause_ref<E>(&self) -> Option<&E>
     where
