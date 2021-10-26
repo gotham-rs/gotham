@@ -1,3 +1,6 @@
+//! This crate is a private implementation detail of `gotham`. You should never have to
+//! use this crate directly.
+
 mod extenders;
 mod new_middleware;
 mod state;
