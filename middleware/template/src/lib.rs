@@ -9,10 +9,6 @@
 #[macro_use]
 extern crate log;
 
-// Enable to use #[derive(StateData)] below
-//#[macro_use]
-//extern crate gotham_derive;
-
 use std::pin::Pin;
 
 use futures_util::future::{self, FutureExt, TryFutureExt};
