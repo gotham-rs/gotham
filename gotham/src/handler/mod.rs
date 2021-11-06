@@ -322,7 +322,7 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 /// # use hyper::{Body, Response, StatusCode};
 /// #
 /// struct MyStruct {
-///     value: String
+///     value: String,
 /// }
 ///
 /// impl MyStruct {
