@@ -47,23 +47,18 @@ impl Hasher for IdHasher {
 }
 
 /// Provides storage for request state, and stores one item of each type. The types used for
-/// storage must implement the `gotham::state::StateData` trait to allow its storage. The
-/// `gotham_derive` crate provides a custom derive for `StateData` to make this more convenient.
+/// storage must implement the [`StateData`] trait to allow its storage, which is usually done
+/// by adding `#[derive(StateData)]` on the type in question.
 ///
 /// # Examples
 ///
 /// ```rust
-/// extern crate gotham;
-/// #[macro_use]
-/// extern crate gotham_derive;
-///
-/// use gotham::state::State;
+/// use gotham::state::{State, StateData};
 ///
 /// #[derive(StateData)]
 /// struct MyStruct {
 ///     value: i32,
 /// }
-///
 /// # fn main() {
 /// #   State::with_new(|state| {
 /// #

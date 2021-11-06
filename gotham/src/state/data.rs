@@ -12,16 +12,12 @@ pub use gotham_derive::StateData;
 
 /// A marker trait for types that can be stored in `State`.
 ///
-/// This is typically implemented using `#[derive(StateData)]`, which is provided by the
-/// `gotham_derive` crate.
+/// This is typically implemented using `#[derive(StateData)]`.
 ///
 /// ```rust
-/// # extern crate gotham;
-/// # #[macro_use]
-/// # extern crate gotham_derive;
-/// #
 /// # use gotham::state::{FromState, State};
-/// #
+/// use gotham::state::StateData;
+///
 /// #[derive(StateData)]
 /// struct MyStateData {
 ///     x: u32,
