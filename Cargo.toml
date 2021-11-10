@@ -48,6 +48,7 @@ members = [
 
     # middleware
     "examples/middleware/introduction",
+    "examples/middleware/introduction_await",
     "examples/middleware/multiple_pipelines",
 
     # into_response
