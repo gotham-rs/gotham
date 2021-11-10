@@ -62,8 +62,16 @@ impl Middleware for RequestLogger {
 
         // hook onto the end of the request to log the access
         let f = chain(state).and_then(move |(state, response)| {
+
             // format the start time to the CLF formats
-            let datetime = timer.start_time().format("%d/%b/%Y:%H:%M:%S %z");
+            let datetime = {
+                use time::format_description::FormatItem;
+                use time::macros::format_description;
+                const DT_FORMAT: &[FormatItem<'static>]
+                    = format_description!("[day]/[month repr:short]/[year]:[hour repr:24]:[minute]:[second] [offset_hour][offset_minute]");
+
+                timer.start_time().format(&DT_FORMAT).expect("Failed to format time")
+            };
 
             // grab the ip address from the state
             let ip = client_addr(&state).unwrap().ip();
