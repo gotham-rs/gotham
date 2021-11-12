@@ -1,15 +1,17 @@
 //! An example of decoding requests from an HTML form element
+
 use futures_util::future::{self, FutureExt};
+use std::pin::Pin;
+use url::form_urlencoded;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{body, Body, StatusCode};
 use gotham::mime::TEXT_PLAIN;
-use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
+use gotham::prelude::*;
+use gotham::router::builder::build_simple_router;
 use gotham::router::Router;
-use gotham::state::{FromState, State};
-use std::pin::Pin;
-use url::form_urlencoded;
+use gotham::state::State;
 
 /// Extracts the elements of the POST request and responds with the form keys and values
 fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {

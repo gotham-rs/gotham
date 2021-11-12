@@ -7,9 +7,9 @@ use gotham::hyper::{Body, Response, StatusCode};
 use gotham::middleware::cookie::CookieParser;
 use gotham::mime::TEXT_PLAIN;
 use gotham::pipeline::{new_pipeline, single_pipeline};
-use gotham::router::builder::*;
-use gotham::router::Router;
-use gotham::state::{FromState, State};
+use gotham::prelude::*;
+use gotham::router::{build_router, Router};
+use gotham::state::State;
 
 /// The first request will set a cookie, and subsequent requests will echo it back.
 fn handler(state: State) -> (State, Response<Body>) {

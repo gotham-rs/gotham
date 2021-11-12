@@ -1,13 +1,13 @@
 //! A basic example showing the request components
 
-use gotham::handler::{HandlerError, HandlerResult, IntoResponse};
+use gotham::handler::{HandlerError, HandlerResult};
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::{Body, StatusCode};
 use gotham::mime::TEXT_PLAIN;
-use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
-use gotham::router::response::StaticResponseExtender;
+use gotham::prelude::*;
+use gotham::router::builder::build_simple_router;
 use gotham::router::Router;
-use gotham::state::{FromState, State, StateData};
+use gotham::state::State;
 use serde::Deserialize;
 use std::time::Duration;
 use tokio::time::sleep;

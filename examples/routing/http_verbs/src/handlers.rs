@@ -3,7 +3,7 @@
 //! We've used a macro here for brevity but this is NOT how you would implement a handler in
 //! a real world application.
 
-use gotham::handler::IntoResponse;
+use gotham::prelude::*;
 use gotham::state::State;
 
 macro_rules! generic_handler {

@@ -1,9 +1,9 @@
 //! An finalizer example
 use gotham::hyper::body::Body;
 use gotham::hyper::{Response, StatusCode};
-use gotham::router::builder::*;
+use gotham::prelude::*;
 use gotham::router::response::ResponseExtender;
-use gotham::router::Router;
+use gotham::router::{build_simple_router, Router};
 use gotham::state::State;
 
 const HELLO_ROUTER: &str = "Hello Router!";

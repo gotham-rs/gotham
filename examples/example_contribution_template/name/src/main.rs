@@ -21,8 +21,8 @@
 //! you're writing an example for setting Cookies.
 use gotham::helpers::http::response::create_empty_response;
 use gotham::hyper::{Body, Response, StatusCode};
-use gotham::router::builder::*;
-use gotham::router::Router;
+use gotham::prelude::*;
+use gotham::router::{build_simple_router, Router};
 use gotham::state::State;
 
 /// Create a `Handler` that ...

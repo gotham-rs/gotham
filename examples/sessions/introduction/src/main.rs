@@ -5,9 +5,9 @@
 
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::{new_pipeline, single_pipeline};
-use gotham::router::builder::*;
-use gotham::router::Router;
-use gotham::state::{FromState, State};
+use gotham::prelude::*;
+use gotham::router::{build_router, Router};
+use gotham::state::State;
 
 /// Handler function for `GET` requests directed to `/`
 ///

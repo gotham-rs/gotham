@@ -31,6 +31,7 @@ pub mod handler;
 pub mod helpers;
 pub mod middleware;
 pub mod pipeline;
+pub mod prelude;
 pub mod router;
 pub mod service;
 pub mod state;

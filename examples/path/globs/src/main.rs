@@ -1,9 +1,8 @@
 //! Shows how to match arbitrarily many path segments.
 
-use gotham::router::builder::*;
-use gotham::router::response::StaticResponseExtender;
-use gotham::router::Router;
-use gotham::state::{FromState, State, StateData};
+use gotham::prelude::*;
+use gotham::router::{build_simple_router, Router};
+use gotham::state::State;
 use serde::Deserialize;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]

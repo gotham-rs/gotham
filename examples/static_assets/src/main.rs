@@ -1,6 +1,7 @@
 //! An example of serving static assets with Gotham.
 use gotham::handler::FileOptions;
-use gotham::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
+use gotham::prelude::*;
+use gotham::router::builder::build_simple_router;
 
 pub fn main() {
     let path = std::env::args()

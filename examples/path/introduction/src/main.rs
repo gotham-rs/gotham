@@ -1,10 +1,9 @@
 //! An introduction to extracting request path segments, in a type safe way, with the
 //! Gotham web framework
 
-use gotham::router::builder::*;
-use gotham::router::response::StaticResponseExtender;
-use gotham::router::Router;
-use gotham::state::{FromState, State, StateData};
+use gotham::prelude::*;
+use gotham::router::{build_simple_router, Router};
+use gotham::state::State;
 use serde::Deserialize;
 
 /// Holds data extracted from the Request path.

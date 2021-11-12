@@ -1,7 +1,8 @@
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use gotham::hyper::upgrade::OnUpgrade;
 use gotham::hyper::{Body, HeaderMap, Response, StatusCode};
-use gotham::state::{request_id, FromState, State};
+use gotham::prelude::*;
+use gotham::state::{request_id, State};
 
 mod ws;
 

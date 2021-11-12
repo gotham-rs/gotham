@@ -68,16 +68,12 @@ where
     /// # Examples
     ///
     /// ```
-    /// # extern crate gotham;
-    /// # extern crate hyper;
-    /// # extern crate mime;
-    /// #
     /// # use hyper::{Body, Response, StatusCode};
     /// # use hyper::header::ACCEPT;
     /// # use gotham::state::State;
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
-    /// # use gotham::router::Router;
-    /// # use gotham::router::builder::*;
+    /// # use gotham::router::{build_simple_router, Router};
+    /// # use gotham::prelude::*;
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
@@ -137,10 +133,9 @@ where
     ///
     /// ```rust
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use gotham::router::Router;
-    /// # use gotham::router::builder::*;
-    /// # use gotham::router::response::StaticResponseExtender;
-    /// # use gotham::state::{State, StateData};
+    /// # use gotham::router::{build_simple_router, Router};
+    /// # use gotham::prelude::*;
+    /// # use gotham::state::State;
     /// # use gotham::test::TestServer;
     /// # use serde::Deserialize;
     /// #
@@ -196,10 +191,9 @@ where
     ///
     /// ```rust
     /// # use hyper::{Body, Response, StatusCode};
-    /// # use gotham::router::Router;
-    /// # use gotham::router::builder::*;
-    /// # use gotham::router::response::StaticResponseExtender;
-    /// # use gotham::state::{State, StateData};
+    /// # use gotham::router::{build_simple_router, Router};
+    /// # use gotham::prelude::*;
+    /// # use gotham::state::State;
     /// # use gotham::test::TestServer;
     /// # use serde::Deserialize;
     /// #
