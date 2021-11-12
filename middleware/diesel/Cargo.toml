@@ -1,6 +1,6 @@
 [package]
 name = "gotham_middleware_diesel"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["colinbankier <colinbankier@gmail.com>"]
 edition = "2018"
 description = "A Gotham Middleware that provides access to a Diesel connection via an R2D2 pool to allow other Middleware and Handlers to interact with a database."
@@ -13,7 +13,7 @@ keywords = ["http", "async", "web", "gotham", "diesel"]
 
 [dependencies]
 futures-util = "0.3.14"
-gotham = { path = "../../gotham", version = "0.6.0", default-features = false, features = ["derive"] }
+gotham = { path = "../../gotham", version = "0.7.0", default-features = false, features = ["derive"] }
 diesel = { version = "1.4.6", features = ["r2d2"] }
 r2d2 = "0.8"
 tokio = { version = "1.0", features = ["full"] }
