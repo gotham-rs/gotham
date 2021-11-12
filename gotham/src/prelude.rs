@@ -1,4 +1,4 @@
-//! A collection of useful traits that should always be imported.
+//! A collection of useful traits and macros that should always be imported.
 
 #[cfg(feature = "derive")]
 pub use gotham_derive::*;
