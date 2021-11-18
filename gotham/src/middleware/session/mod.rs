@@ -1214,18 +1214,20 @@ mod tests {
         assert_eq!(updated.val, session.val + 1);
 
         let handler = move |mut state: State| {
-            {
-                let session_data = state.take::<SessionData<TestSession>>();
-                session_data.discard(&mut state);
-            }
+            async move {
+                {
+                    let session_data = state.take::<SessionData<TestSession>>();
+                    session_data.discard(&mut state).await.unwrap();
+                }
 
-            future::ok((
-                state,
-                Response::builder()
-                    .status(StatusCode::NO_CONTENT)
-                    .body(Body::empty())
-                    .unwrap(),
-            ))
+                Ok((
+                    state,
+                    Response::builder()
+                        .status(StatusCode::NO_CONTENT)
+                        .body(Body::empty())
+                        .unwrap(),
+                ))
+            }
             .boxed()
         };
 
