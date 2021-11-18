@@ -284,11 +284,10 @@ where
 {
     /// Discards the session, invalidating it for future use and removing the data from the
     /// `Backend`.
-    // TODO: Add test case that covers this.
     pub fn discard(
         self,
         state: &mut State,
-    ) -> Pin<Box<dyn Future<Output = Result<(), SessionError>>>> {
+    ) -> Pin<Box<dyn Future<Output = Result<(), SessionError>> + Send>> {
         state.put(SessionDropData {
             cookie_config: self.cookie_config,
         });
@@ -1207,11 +1206,46 @@ mod tests {
 
         let state = State::new();
         let m = nm.new_middleware().unwrap();
-        let bytes = futures_executor::block_on(m.backend.read_session(&state, identifier))
+        let bytes = futures_executor::block_on(m.backend.read_session(&state, identifier.clone()))
             .unwrap()
             .unwrap();
         let updated = bincode::deserialize::<TestSession>(&bytes[..]).unwrap();
 
         assert_eq!(updated.val, session.val + 1);
+
+        let handler = move |mut state: State| {
+            async move {
+                {
+                    let session_data = state.take::<SessionData<TestSession>>();
+                    session_data.discard(&mut state).await.unwrap();
+                }
+
+                Ok((
+                    state,
+                    Response::builder()
+                        .status(StatusCode::NO_CONTENT)
+                        .body(Body::empty())
+                        .unwrap(),
+                ))
+            }
+            .boxed()
+        };
+
+        let mut state = State::new();
+        let mut headers = HeaderMap::new();
+        let cookie = Cookie::build("_gotham_session", identifier.value.clone()).finish();
+        headers.insert(COOKIE, cookie.to_string().parse().unwrap());
+        state.put(headers);
+
+        let m = nm.new_middleware().unwrap();
+        let r = m.call(state, handler);
+        if let Err((_, e)) = futures_executor::block_on(r) {
+            panic!("error: {:?}", e);
+        }
+
+        let state = State::new();
+        let m = nm.new_middleware().unwrap();
+        let data = futures_executor::block_on(m.backend.read_session(&state, identifier)).unwrap();
+        assert_eq!(data, None);
     }
 }
