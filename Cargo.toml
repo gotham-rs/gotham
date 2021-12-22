@@ -86,8 +86,3 @@ members = [
     "examples/custom_service/",
 
 ]
-
-[patch.crates-io]
-# bitvec doesn't compile when tarpaulin-specific cfg is set
-# however, bitvec isn't required by nom, so we patch it out
-nom = { git = "https://github.com/djc/nom", rev = "9e999b1e110b26a275ecd8e17f7d091400836599" } # branch = "bitvec-not-default"
