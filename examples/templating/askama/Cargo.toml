@@ -6,7 +6,4 @@ edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
-askama = "0.10.3"
-
-# see comment in the workspace root
-nom = "=6.2.0"
+askama = { version = "0.11.0", default-features = false }
