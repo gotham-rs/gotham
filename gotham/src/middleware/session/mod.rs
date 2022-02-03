@@ -813,7 +813,7 @@ where
                 self.backend
                     .read_session(&state, id.clone())
                     .then(move |r| self.load_session_into_state(state, id, r))
-                    .and_then(move |state| chain(state))
+                    .and_then(chain)
                     .and_then(persist_session::<T>)
                     .boxed()
             }
