@@ -913,11 +913,7 @@ where
     P: RefUnwindSafe + Send + Sync + 'static,
 {
     fn component_refs(&mut self) -> (&mut Node, &mut C, &PipelineSet<P>) {
-        (
-            &mut self.node_builder,
-            &mut self.pipeline_chain,
-            &self.pipelines,
-        )
+        (self.node_builder, &mut self.pipeline_chain, &self.pipelines)
     }
 }
 
@@ -927,11 +923,7 @@ where
     P: RefUnwindSafe + Send + Sync + 'static,
 {
     fn component_refs(&mut self) -> (&mut Node, &mut C, &PipelineSet<P>) {
-        (
-            &mut self.node_builder,
-            &mut self.pipeline_chain,
-            &self.pipelines,
-        )
+        (self.node_builder, &mut self.pipeline_chain, &self.pipelines)
     }
 }
 
