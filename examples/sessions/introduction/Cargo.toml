@@ -8,4 +8,4 @@ edition = "2018"
 
 [dependencies]
 gotham = { path = "../../../gotham" }
-cookie = "0.15"
+cookie = "0.16"
