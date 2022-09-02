@@ -1,5 +1,9 @@
 //! Holds the two possible structs that are `Queryable` and
 //! `Insertable` in the DB
+
+// This warning is triggered by diesel's derive macros
+#![allow(clippy::extra_unused_lifetimes)]
+
 use diesel::{Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 

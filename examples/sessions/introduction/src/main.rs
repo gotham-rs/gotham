@@ -1,8 +1,6 @@
 //! An introduction to storing and retrieving session data, in a type safe way, with the Gotham
 //! web framework.
 
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::get_unwrap))]
-
 use gotham::middleware::session::{NewSessionMiddleware, SessionData};
 use gotham::pipeline::{new_pipeline, single_pipeline};
 use gotham::prelude::*;
@@ -87,7 +85,7 @@ mod tests {
                 .flat_map(|hv| hv.to_str())
                 .collect();
             assert!(set_cookie.len() == 1);
-            set_cookie.get(0).unwrap().to_string().parse().unwrap()
+            set_cookie.first().unwrap().to_string().parse().unwrap()
         };
 
         let body = response.read_body().unwrap();
