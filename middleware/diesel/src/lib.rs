@@ -8,6 +8,9 @@
 //! Usage example:
 //!
 //! ```rust
+//! # use diesel::{RunQueryDsl, SqliteConnection};
+//! # use diesel::sql_types::Int8;
+//! # use futures_util::FutureExt;
 //! # use gotham::router::Router;
 //! # use gotham::router::builder::*;
 //! # use gotham::pipeline::*;
@@ -15,12 +18,10 @@
 //! # use gotham::helpers::http::response::create_response;
 //! # use gotham::handler::HandlerFuture;
 //! # use gotham_middleware_diesel::{self, DieselMiddleware};
-//! # use diesel::{RunQueryDsl, SqliteConnection};
 //! # use gotham::hyper::StatusCode;
-//! # use futures_util::FutureExt;
 //! # use gotham::test::TestServer;
-//! # use std::pin::Pin;
 //! # use gotham::mime::TEXT_PLAIN;
+//! # use std::pin::Pin;
 //!
 //! pub type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 //!
@@ -43,9 +44,9 @@
 //!     // `SELECT 1`
 //!     async move {
 //!         let result = repo
-//!             .run(move |conn| {
-//!                 diesel::select(diesel::dsl::sql("1"))
-//!                     .load::<i64>(&conn)
+//!             .run(move |mut conn| {
+//!                 diesel::select(diesel::dsl::sql::<Int8>("1"))
+//!                     .load::<i64>(&mut conn)
 //!                     .map(|v| v.into_iter().next().expect("no results"))
 //!             })
 //!             .await;
@@ -75,7 +76,7 @@
 //! ```
 #![doc(test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
-use diesel::{ r2d2::R2D2Connection};
+use diesel::r2d2::R2D2Connection;
 use futures_util::future::{self, FutureExt, TryFutureExt};
 use log::{error, trace};
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -83,7 +84,7 @@ use std::pin::Pin;
 use std::process;
 
 use gotham::handler::HandlerFuture;
-use gotham::middleware::{Middleware};
+use gotham::middleware::Middleware;
 use gotham::prelude::*;
 use gotham::state::{request_id, State};
 
@@ -96,7 +97,7 @@ pub use repo::Repo;
 #[derive(NewMiddleware)]
 pub struct DieselMiddleware<T>
 where
-    T: R2D2Connection + 'static
+    T: R2D2Connection + 'static,
 {
     repo: AssertUnwindSafe<Repo<T>>,
 }

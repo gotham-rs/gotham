@@ -1,7 +1,7 @@
+use diesel::r2d2::{self, CustomizeConnection, Pool, PooledConnection};
 use diesel::r2d2::{ConnectionManager, R2D2Connection};
 use gotham::prelude::*;
 use log::error;
-use r2d2::{CustomizeConnection, Pool, PooledConnection};
 use tokio::task;
 
 /// A database "repository", for running database workloads.
@@ -14,18 +14,19 @@ use tokio::task;
 /// # use diesel::prelude::*;
 /// # use diesel::Queryable;
 /// # use diesel::sqlite::SqliteConnection;
+/// # use diesel::connection::SimpleConnection as _;
 /// # use tokio::runtime::Runtime;
 ///
 /// # let runtime = Runtime::new().unwrap();
 ///
 /// # let database_url = ":memory:";
 /// # mod schema {
-/// # table! {
-/// #     users {
-/// #         id -> Integer,
-/// #         name -> VarChar,
-/// #    }
-/// # }
+/// #     table! {
+/// #         users {
+/// #             id -> Integer,
+/// #             name -> VarChar,
+/// #        }
+/// #     }
 /// # }
 ///
 /// #[derive(Queryable, Debug)]
@@ -36,16 +37,16 @@ use tokio::task;
 ///
 /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 /// let repo = Repo::new(database_url);
-/// # runtime.block_on(repo.run(|conn| {
-/// #     conn.execute("CREATE TABLE IF NOT EXISTS users (
-/// #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-/// #         name VARCHAR NOT NULL
-/// #         )")
+/// # runtime.block_on(repo.run(|mut conn| {
+/// #     conn.batch_execute("CREATE TABLE IF NOT EXISTS users (
+/// #                             id INTEGER PRIMARY KEY AUTOINCREMENT,
+/// #                             name VARCHAR NOT NULL
+/// #                         )")
 /// # })).unwrap();
 /// let result = runtime
-///     .block_on(repo.run(|conn| {
+///     .block_on(repo.run(|mut conn| {
 ///         use schema::users::dsl::*;
-///         users.load::<User>(&conn)
+///         users.load::<User>(&mut conn)
 ///     }))
 ///     .unwrap();
 /// ```
@@ -93,7 +94,7 @@ where
     /// ```rust
     /// # use diesel::sqlite::SqliteConnection;
     /// use core::time::Duration;
-    /// use r2d2::Pool;
+    /// use diesel::r2d2::Pool;
     ///
     /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
     /// let database_url = ":memory:";
