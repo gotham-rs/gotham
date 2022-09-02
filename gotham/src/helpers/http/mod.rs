@@ -8,7 +8,7 @@ use log::trace;
 use percent_encoding::percent_decode;
 
 /// Represents data that has been successfully percent decoded and is valid UTF-8
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PercentDecoded {
     val: String,
 }
@@ -45,7 +45,7 @@ impl AsRef<str> for PercentDecoded {
 /// Decode form-urlencoded strings (e.g. query string, or request body with Content-Type:
 /// application/x-www-form-urlencoded
 fn form_url_decode(raw: &str) -> Result<String, std::str::Utf8Error> {
-    match percent_decode(raw.replace("+", " ").as_bytes()).decode_utf8() {
+    match percent_decode(raw.replace('+', " ").as_bytes()).decode_utf8() {
         Ok(pd) => {
             trace!(" form_url_decode: {}, src: {}", pd, raw);
             Ok(pd.into_owned())

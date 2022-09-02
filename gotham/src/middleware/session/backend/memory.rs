@@ -278,7 +278,7 @@ mod tests {
         .expect("failed to persist");
 
         {
-            let mut storage = backend.storage.lock().expect("couldn't lock storage");
+            let storage = backend.storage.lock().expect("couldn't lock storage");
             assert_eq!(
                 storage.front().expect("no front element").0,
                 &identifier.value
@@ -295,7 +295,7 @@ mod tests {
 
         {
             // Identifiers have swapped
-            let mut storage = backend.storage.lock().expect("couldn't lock storage");
+            let storage = backend.storage.lock().expect("couldn't lock storage");
             assert_eq!(
                 storage.front().expect("no front element").0,
                 &identifier2.value
