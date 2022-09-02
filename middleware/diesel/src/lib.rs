@@ -75,35 +75,35 @@
 //! ```
 #![doc(test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
-use diesel::Connection;
+use diesel::{ r2d2::R2D2Connection};
 use futures_util::future::{self, FutureExt, TryFutureExt};
 use log::{error, trace};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::pin::Pin;
 use std::process;
 
-use gotham::anyhow;
 use gotham::handler::HandlerFuture;
-use gotham::middleware::{Middleware, NewMiddleware};
+use gotham::middleware::{Middleware};
+use gotham::prelude::*;
 use gotham::state::{request_id, State};
 
 mod repo;
-
-pub use crate::repo::Repo;
+pub use repo::Repo;
 
 /// A Gotham compatible Middleware that manages a pool of Diesel connections via a `Repo` and hands
 /// out connections to other Middleware and Handlers that require them via the Gotham `State`
 /// mechanism.
+#[derive(NewMiddleware)]
 pub struct DieselMiddleware<T>
 where
-    T: Connection + 'static,
+    T: R2D2Connection + 'static
 {
     repo: AssertUnwindSafe<Repo<T>>,
 }
 
 impl<T> DieselMiddleware<T>
 where
-    T: Connection,
+    T: R2D2Connection,
 {
     pub fn new(repo: Repo<T>) -> Self {
         DieselMiddleware {
@@ -114,7 +114,7 @@ where
 
 impl<T> Clone for DieselMiddleware<T>
 where
-    T: Connection + 'static,
+    T: R2D2Connection + 'static,
 {
     fn clone(&self) -> Self {
         match catch_unwind(|| self.repo.clone()) {
@@ -129,30 +129,9 @@ where
     }
 }
 
-impl<T> NewMiddleware for DieselMiddleware<T>
-where
-    T: Connection + 'static,
-{
-    type Instance = DieselMiddleware<T>;
-
-    fn new_middleware(&self) -> anyhow::Result<Self::Instance> {
-        match catch_unwind(|| self.repo.clone()) {
-            Ok(repo) => Ok(DieselMiddleware {
-                repo: AssertUnwindSafe(repo),
-            }),
-            Err(_) => {
-                error!(
-                    "PANIC: r2d2::Pool::clone caused a panic, unable to rescue with a HTTP error"
-                );
-                process::abort()
-            }
-        }
-    }
-}
-
 impl<T> Middleware for DieselMiddleware<T>
 where
-    T: Connection + 'static,
+    T: R2D2Connection + 'static,
 {
     fn call<Chain>(self, mut state: State, chain: Chain) -> Pin<Box<HandlerFuture>>
     where

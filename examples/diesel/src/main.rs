@@ -1,12 +1,5 @@
 //! An example application working with the diesel middleware.
 
-#[macro_use]
-extern crate diesel;
-
-#[cfg(test)]
-#[macro_use]
-extern crate diesel_migrations;
-
 use diesel::prelude::*;
 use diesel::sqlite::SqliteConnection;
 use futures_util::FutureExt;
@@ -55,10 +48,10 @@ fn create_product_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
         };
 
         let query_result = repo
-            .run(move |conn| {
+            .run(move |mut conn| {
                 diesel::insert_into(products::table)
                     .values(&product)
-                    .execute(&conn)
+                    .execute(&mut conn)
             })
             .await;
 
@@ -80,7 +73,9 @@ fn get_products_handler(state: State) -> Pin<Box<HandlerFuture>> {
 
     let repo = Repo::borrow_from(&state).clone();
     async move {
-        let result = repo.run(move |conn| products.load::<Product>(&conn)).await;
+        let result = repo
+            .run(move |mut conn| products.load::<Product>(&mut conn))
+            .await;
         match result {
             Ok(users) => {
                 let body = serde_json::to_string(&users).expect("Failed to serialize users.");
@@ -135,6 +130,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness as _};
     use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
     use gotham_middleware_diesel::Repo;
@@ -146,13 +142,14 @@ mod tests {
     // You could also choose to do this separately using something like
     // `cargo-make` (https://sagiegurari.github.io/cargo-make/) to run
     // migrations before the test suite.
-    embed_migrations!();
+    const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
     #[test]
     fn get_empty_products() {
-        let repo = Repo::with_test_transactions(DATABASE_URL);
+        let repo: Repo<SqliteConnection> = Repo::with_test_transactions(DATABASE_URL);
         let runtime = tokio::runtime::Runtime::new().unwrap();
-        let _ = runtime.block_on(repo.run(|conn| embedded_migrations::run(&conn)));
+        _ = runtime
+            .block_on(repo.run(|mut conn| conn.run_pending_migrations(MIGRATIONS).map(|_| ())));
         let test_server = TestServer::new(router(repo)).unwrap();
         let response = test_server
             .client()
@@ -170,9 +167,10 @@ mod tests {
 
     #[test]
     fn create_and_retrieve_product() {
-        let repo = Repo::with_test_transactions(DATABASE_URL);
+        let repo: Repo<SqliteConnection> = Repo::with_test_transactions(DATABASE_URL);
         let runtime = tokio::runtime::Runtime::new().unwrap();
-        let _ = runtime.block_on(repo.run(|conn| embedded_migrations::run(&conn)));
+        _ = runtime
+            .block_on(repo.run(|mut conn| conn.run_pending_migrations(MIGRATIONS).map(|_| ())));
         let test_server = TestServer::new(router(repo)).unwrap();
 
         //  First we'll insert something into the DB with a post

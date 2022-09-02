@@ -1,5 +1,4 @@
-use diesel::r2d2::ConnectionManager;
-use diesel::Connection;
+use diesel::r2d2::{ConnectionManager, R2D2Connection};
 use gotham::prelude::*;
 use log::error;
 use r2d2::{CustomizeConnection, Pool, PooledConnection};
@@ -53,14 +52,14 @@ use tokio::task;
 #[derive(StateData)]
 pub struct Repo<T>
 where
-    T: Connection + 'static,
+    T: R2D2Connection + 'static,
 {
     connection_pool: Pool<ConnectionManager<T>>,
 }
 
 impl<T> Clone for Repo<T>
 where
-    T: Connection + 'static,
+    T: R2D2Connection + 'static,
 {
     fn clone(&self) -> Repo<T> {
         Repo {
@@ -71,7 +70,7 @@ where
 
 impl<T> Repo<T>
 where
-    T: Connection + 'static,
+    T: R2D2Connection + 'static,
 {
     /// Creates a repo with default connection pool settings.
     /// The default connection pool is `r2d2::Builder::default()`
@@ -128,7 +127,7 @@ where
     /// ```
     pub fn with_test_transactions(database_url: &str) -> Self {
         let customizer = TestConnectionCustomizer {};
-        let builder = Pool::builder().connection_customizer(Box::new(customizer));
+        let builder = Pool::builder().connection_customizer(Box::new(customizer) as _);
         Self::from_pool_builder(database_url, builder)
     }
 
