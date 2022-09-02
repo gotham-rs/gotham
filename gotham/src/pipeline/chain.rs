@@ -35,7 +35,7 @@ pub trait PipelineHandleChain<P>: RefUnwindSafe {
 }
 
 /// Part of a `PipelineHandleChain` which references a `Pipeline` and continues with a tail element.
-impl<'a, P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
+impl<P, T, N, U> PipelineHandleChain<P> for (Handle<Pipeline<T>, N>, U)
 where
     T: NewMiddlewareChain,
     T::Instance: Send + 'static,

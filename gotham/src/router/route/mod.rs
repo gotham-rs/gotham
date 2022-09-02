@@ -23,7 +23,7 @@ use crate::router::route::matcher::RouteMatcher;
 use crate::router::tree::segment::SegmentMapping;
 use crate::state::{request_id, State};
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 /// Indicates whether this `Route` will dispatch the request to an inner `Router` instance. To
 /// support inner `Router` instances which handle a subtree, the `Dispatcher` stores additional
 /// context information.
