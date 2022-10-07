@@ -14,10 +14,10 @@ keywords = ["http", "async", "web", "gotham", "diesel"]
 [dependencies]
 futures-util = "0.3.14"
 gotham = { path = "../../gotham", version = "0.7.1", default-features = false, features = ["derive"] }
-diesel = { version = "1.4.6", features = ["r2d2"] }
+diesel = { version = "2.0.1", features = ["r2d2"] }
 r2d2 = "0.8"
 tokio = { version = "1.0", features = ["full"] }
 log = "0.4"
 
 [dev-dependencies]
-diesel = { version = "1.4.6", features = ["sqlite"] }
+diesel = { version = "2.0.1", features = ["sqlite"] }
