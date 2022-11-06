@@ -1,9 +1,6 @@
 //! Holds the two possible structs that are `Queryable` and
 //! `Insertable` in the DB
 
-// This warning is triggered by diesel's derive macros
-#![allow(clippy::extra_unused_lifetimes)]
-
 use diesel::{Insertable, Queryable};
 use serde::{Deserialize, Serialize};
 
@@ -21,7 +18,7 @@ pub struct Product {
 
 /// Represents a new product to insert in the DB.
 #[derive(Insertable, Deserialize)]
-#[table_name = "products"]
+#[diesel(table_name = products)]
 pub struct NewProduct {
     pub title: String,
     pub price: f32,
