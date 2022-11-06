@@ -1,5 +1,6 @@
-use diesel::r2d2::{self, CustomizeConnection, Pool, PooledConnection};
-use diesel::r2d2::{ConnectionManager, R2D2Connection};
+use diesel::r2d2::{
+    self, ConnectionManager, CustomizeConnection, Pool, PooledConnection, R2D2Connection,
+};
 use gotham::prelude::*;
 use log::error;
 use tokio::task;
