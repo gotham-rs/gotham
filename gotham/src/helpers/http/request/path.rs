@@ -7,7 +7,7 @@ const EXCLUDED_SEGMENTS: [&str; 1] = [""];
 /// Holder for `Request` URI path segments that have been split into individual segments.
 ///
 /// Used internally by the `Router` when traversing its internal `Tree`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RequestPathSegments {
     segments: Vec<PercentDecoded>,
 }

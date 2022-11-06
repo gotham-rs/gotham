@@ -1,8 +1,7 @@
-use diesel::r2d2::ConnectionManager;
-use diesel::Connection;
+use diesel::r2d2::{self, CustomizeConnection, Pool, PooledConnection};
+use diesel::r2d2::{ConnectionManager, R2D2Connection};
 use gotham::prelude::*;
 use log::error;
-use r2d2::{CustomizeConnection, Pool, PooledConnection};
 use tokio::task;
 
 /// A database "repository", for running database workloads.
@@ -15,18 +14,19 @@ use tokio::task;
 /// # use diesel::prelude::*;
 /// # use diesel::Queryable;
 /// # use diesel::sqlite::SqliteConnection;
+/// # use diesel::connection::SimpleConnection as _;
 /// # use tokio::runtime::Runtime;
 ///
 /// # let runtime = Runtime::new().unwrap();
 ///
 /// # let database_url = ":memory:";
 /// # mod schema {
-/// # table! {
-/// #     users {
-/// #         id -> Integer,
-/// #         name -> VarChar,
-/// #    }
-/// # }
+/// #     table! {
+/// #         users {
+/// #             id -> Integer,
+/// #             name -> VarChar,
+/// #        }
+/// #     }
 /// # }
 ///
 /// #[derive(Queryable, Debug)]
@@ -37,30 +37,30 @@ use tokio::task;
 ///
 /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
 /// let repo = Repo::new(database_url);
-/// # runtime.block_on(repo.run(|conn| {
-/// #     conn.execute("CREATE TABLE IF NOT EXISTS users (
-/// #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-/// #         name VARCHAR NOT NULL
-/// #         )")
+/// # runtime.block_on(repo.run(|mut conn| {
+/// #     conn.batch_execute("CREATE TABLE IF NOT EXISTS users (
+/// #                             id INTEGER PRIMARY KEY AUTOINCREMENT,
+/// #                             name VARCHAR NOT NULL
+/// #                         )")
 /// # })).unwrap();
 /// let result = runtime
-///     .block_on(repo.run(|conn| {
+///     .block_on(repo.run(|mut conn| {
 ///         use schema::users::dsl::*;
-///         users.load::<User>(&conn)
+///         users.load::<User>(&mut conn)
 ///     }))
 ///     .unwrap();
 /// ```
 #[derive(StateData)]
 pub struct Repo<T>
 where
-    T: Connection + 'static,
+    T: R2D2Connection + 'static,
 {
     connection_pool: Pool<ConnectionManager<T>>,
 }
 
 impl<T> Clone for Repo<T>
 where
-    T: Connection + 'static,
+    T: R2D2Connection + 'static,
 {
     fn clone(&self) -> Repo<T> {
         Repo {
@@ -71,7 +71,7 @@ where
 
 impl<T> Repo<T>
 where
-    T: Connection + 'static,
+    T: R2D2Connection + 'static,
 {
     /// Creates a repo with default connection pool settings.
     /// The default connection pool is `r2d2::Builder::default()`
@@ -94,7 +94,7 @@ where
     /// ```rust
     /// # use diesel::sqlite::SqliteConnection;
     /// use core::time::Duration;
-    /// use r2d2::Pool;
+    /// use diesel::r2d2::Pool;
     ///
     /// type Repo = gotham_middleware_diesel::Repo<SqliteConnection>;
     /// let database_url = ":memory:";
@@ -128,7 +128,7 @@ where
     /// ```
     pub fn with_test_transactions(database_url: &str) -> Self {
         let customizer = TestConnectionCustomizer {};
-        let builder = Pool::builder().connection_customizer(Box::new(customizer));
+        let builder = Pool::builder().connection_customizer(Box::new(customizer) as _);
         Self::from_pool_builder(database_url, builder)
     }
 

@@ -32,7 +32,7 @@ pub(crate) fn set_request_id<'a>(state: &'a mut State) -> &'a str {
                 RequestId { val: id }
             }
             None => {
-                let val = Uuid::new_v4().to_hyphenated().to_string();
+                let val = Uuid::new_v4().hyphenated().to_string();
                 trace!("[{}] RequestId generated internally", val);
                 RequestId { val }
             }

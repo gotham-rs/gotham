@@ -68,7 +68,7 @@ pub struct FileHandler {
 ///
 /// assert_eq!(default_options, from_builder);
 /// ```
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FileOptions {
     path: PathBuf,
     cache_control: String,
@@ -121,7 +121,7 @@ impl FileOptions {
 /// which have a constraint `FileOptions: From<P>` for default options.
 macro_rules! derive_from {
     ($type:ty) => {
-        impl<'a> From<$type> for FileOptions {
+        impl From<$type> for FileOptions {
             fn from(t: $type) -> FileOptions {
                 FileOptions::new(t)
             }
@@ -129,10 +129,10 @@ macro_rules! derive_from {
     };
 }
 
-derive_from!(&'a Path);
+derive_from!(&Path);
 derive_from!(PathBuf);
-derive_from!(&'a str);
-derive_from!(&'a String);
+derive_from!(&str);
+derive_from!(&String);
 derive_from!(String);
 
 impl FileHandler {
