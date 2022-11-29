@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 gotham = { path = "../../gotham" }
 futures-util = "0.3.14"
-tokio-tungstenite = "0.17"
+tokio-tungstenite = "0.18"
 tokio = "1.11.0"
 pretty_env_logger = "0.4"
 sha1 = "0.10"
