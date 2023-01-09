@@ -8,6 +8,7 @@ use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex, PoisonError};
 
+use base64::prelude::*;
 use cookie::{Cookie, CookieJar};
 use futures_util::future::{self, FutureExt, TryFutureExt};
 use hyper::header::SET_COOKIE;
@@ -847,7 +848,7 @@ where
         };
 
         SessionIdentifier {
-            value: base64::encode_config(&bytes[..], base64::URL_SAFE_NO_PAD),
+            value: BASE64_URL_SAFE_NO_PAD.encode(&bytes[..]),
         }
     }
 }
