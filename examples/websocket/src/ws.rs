@@ -1,3 +1,4 @@
+use base64::prelude::*;
 use gotham::hyper::header::{
     HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
 };
@@ -57,7 +58,7 @@ fn accept_key(key: &[u8]) -> String {
     let mut sha1 = Sha1::default();
     sha1.update(key);
     sha1.update(WS_GUID);
-    base64::encode(&sha1.finalize())
+    BASE64_STANDARD.encode(&sha1.finalize())
 }
 
 #[cfg(test)]
