@@ -37,7 +37,7 @@ cookie = "0.15"
 futures-util = "0.3.14"
 httpdate = "1.0"
 hyper = { version = "0.14.12", features = ["http1", "runtime", "server", "stream"] }
-linked-hash-map = { version = "0.5.3", optional = true }
+linked-hash-map = { version = "0.5.6", optional = true }
 log = "0.4"
 mime = "0.3.15"
 mime_guess = "2.0.1"
