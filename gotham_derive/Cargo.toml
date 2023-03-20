@@ -1,12 +1,12 @@
 [package]
 name = "gotham_derive"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
-          "Colin Bankier",
-		  "Dominic Meiser <git@msrd0.de>",
-          "Isaac Whitfield <iw@whitfin.io>",
-          "Judson Lester <nyarly@gmail.com>",
-          "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
+           "Colin Bankier",
+           "Dominic Meiser <git@msrd0.de>",
+           "Isaac Whitfield <iw@whitfin.io>",
+           "Judson Lester <nyarly@gmail.com>",
+           "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
 description = "Private implementation detail of the gotham framework"
 license = "MIT/Apache-2.0"
 repository = "https://github.com/gotham-rs/gotham"
