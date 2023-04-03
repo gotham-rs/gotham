@@ -51,7 +51,7 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"
 time = {version = "0.3.4", default-features = false, features = ["std", "formatting", "macros"]}
 tokio = { version = "1.11.0", features = ["net", "rt-multi-thread", "time", "fs", "io-util"] }
-tokio-rustls = { version = "0.23", optional = true }
+tokio-rustls = { version = "0.24", optional = true }
 uuid = { version = "1.0", features = ["v4"] }
 
 [dev-dependencies]
