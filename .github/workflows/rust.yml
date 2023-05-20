@@ -21,7 +21,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         id: rust-toolchain
       
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/git
@@ -51,7 +51,7 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
       
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/git
@@ -80,7 +80,7 @@ jobs:
           toolchain: "1.69"
           components: clippy
       
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/git
@@ -102,7 +102,7 @@ jobs:
         id: tarpaulin-version
         run: echo "::set-output name=VERSION::$(wget -qO- 'https://crates.io/api/v1/crates/cargo-tarpaulin' | jq -r '.crate.max_stable_version')"
       
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/bin/cargo-tarpaulin
