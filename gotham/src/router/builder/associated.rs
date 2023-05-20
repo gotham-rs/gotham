@@ -308,7 +308,7 @@ where
         } = *self;
 
         SingleRouteBuilder {
-            node_builder: *node_builder,
+            node_builder,
             matcher: AndRouteMatcher::new(MethodOnlyRouteMatcher::new(methods), matcher.clone()),
             pipeline_chain: *pipeline_chain,
             pipelines: pipelines.clone(),
