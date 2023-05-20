@@ -41,7 +41,7 @@ pub type SinglePipelineChain<C> = (SinglePipelineHandle<C>, ());
 ///
 /// build_router(chain, pipelines, |route| {
 ///     // Implementation elided
-/// #   drop(route);
+/// #   _ = route;
 /// });
 /// # }
 /// ```
