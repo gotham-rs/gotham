@@ -97,7 +97,7 @@ mod tests {
         let response = test_server
             .client()
             .get("http://localhost/")
-            .with_header(COOKIE, (&cookie.to_string()).parse().unwrap())
+            .with_header(COOKIE, cookie.to_string().parse().unwrap())
             .perform()
             .unwrap();
 

@@ -13,8 +13,6 @@ use tokio::task;
 /// # #[macro_use] extern crate diesel;
 /// # extern crate tokio;
 /// # use diesel::prelude::*;
-/// # use diesel::Queryable;
-/// # use diesel::sqlite::SqliteConnection;
 /// # use diesel::connection::SimpleConnection as _;
 /// # use tokio::runtime::Runtime;
 ///

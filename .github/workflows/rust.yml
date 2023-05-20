@@ -19,10 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@stable
-      
-      - name: Get Rust Version
-        id: rust-version
-        run: echo "::set-output name=VERSION::$(cargo -V | head -n1 | awk '{print $2}')"
+        id: rust-toolchain
       
       - uses: actions/cache@v2
         with:
@@ -30,7 +27,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
             target
-          key: ${{ runner.os }}-rust-gotham${{ matrix.flag }}-${{ steps.rust-version.outputs.VERSION }}
+          key: ${{ runner.os }}-rust-gotham${{ matrix.flag }}-${{ steps.rust-toolchain.outputs.cachekey }}
       
       - run: cargo ${{ matrix.command }} -p gotham ${{ matrix.flag }}
   
@@ -50,12 +47,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@master
+        id: rust-toolchain
         with:
           toolchain: ${{ matrix.toolchain }}
-      
-      - name: Get Rust Version
-        id: rust-version
-        run: echo "::set-output name=VERSION::$(cargo -V | head -n1 | awk '{print $2}')"
       
       - uses: actions/cache@v2
         with:
@@ -63,7 +57,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
             target
-          key: ${{ runner.os }}-rust-${{ steps.rust-version.outputs.VERSION }}
+          key: ${{ runner.os }}-rust-${{ steps.rust-toolchain.outputs.cache-key }}
       
       - run: cargo test --workspace
   
@@ -81,13 +75,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@master
+        id: rust-toolchain
         with:
-          toolchain: "1.63"
+          toolchain: "1.69"
           components: clippy
-      
-      - name: Get Rust Version
-        id: rust-version
-        run: echo "::set-output name=VERSION::$(cargo -V | head -n1 | awk '{print $2}')"
       
       - uses: actions/cache@v2
         with:
@@ -95,7 +86,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
             target
-          key: ${{ runner.os }}-rust-${{ steps.rust-version.outputs.VERSION }}-clippy
+          key: ${{ runner.os }}-rust-${{ steps.rust-toolchain.outputs.cachekey }}-clippy
       
       - run: cargo clippy --workspace --profile test -- -Dclippy::all
   
@@ -105,10 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@stable
-      
-      - name: Get Rust Version
-        id: rust-version
-        run: echo "::set-output name=VERSION::$(cargo -V | head -n1 | awk '{print $2}')"
+        id: rust-toolchain
       
       - name: Get Tarpaulin Version
         id: tarpaulin-version
@@ -121,7 +109,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
             target
-          key: ${{ runner.os }}-rust-${{ steps.rust-version.outputs.VERSION }}-tarpaulin-${{ steps.tarpaulin-version.outputs.VERSION }}
+          key: ${{ runner.os }}-rust-${{ steps.rust-toolchain.outputs.cachekey }}-tarpaulin-${{ steps.tarpaulin-version.outputs.VERSION }}
       
       - name: Install Tarpaulin
         run: test -e ~/.cargo/bin/cargo-tarpaulin || cargo install cargo-tarpaulin --version ${{ steps.tarpaulin-version.outputs.VERSION }}

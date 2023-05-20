@@ -54,7 +54,7 @@ mod tests {
             })
             .collect();
 
-        pairs.sort_by(|&(ref a, ref _a_val), &(ref b, ref _b_val)| a.cmp(b));
+        pairs.sort_by(|(a, _), (b, _)| a.cmp(b));
         pairs
     }
 
