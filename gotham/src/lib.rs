@@ -49,6 +49,8 @@ pub mod tls;
 
 /// Re-export anyhow
 pub use anyhow;
+/// Re-export cookie
+pub use cookie;
 /// Re-export hyper
 pub use hyper;
 /// Re-export mime
