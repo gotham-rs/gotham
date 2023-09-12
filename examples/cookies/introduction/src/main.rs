@@ -1,6 +1,6 @@
 //! An introduction to storing and retrieving cookie data, with the Gotham
 //! web framework.
-use cookie::{Cookie, CookieJar};
+use gotham::cookie::{Cookie, CookieJar};
 use gotham::helpers::http::response::create_response;
 use gotham::hyper::header::SET_COOKIE;
 use gotham::hyper::{Body, Response, StatusCode};
@@ -59,7 +59,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cookie::Cookie;
+    use gotham::cookie::Cookie;
     use gotham::hyper::header::COOKIE;
     use gotham::test::TestServer;
 
