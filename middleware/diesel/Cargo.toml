@@ -14,7 +14,7 @@ keywords = ["http", "async", "web", "gotham", "diesel"]
 [dependencies]
 gotham = { path = "../../gotham", version = "0.7.1", default-features = false, features = ["derive"] }
 
-diesel = { version = "2.0", features = ["r2d2"] }
+diesel = { version = "2.1", features = ["r2d2"] }
 futures-util = "0.3.14"
 log = "0.4"
 tokio = { version = "1.0", features = ["full"] }
@@ -22,4 +22,4 @@ tokio = { version = "1.0", features = ["full"] }
 [dev-dependencies]
 gotham = { path = "../../gotham", version = "0.7.1", default-features = false, features = ["testing"] }
 
-diesel = { version = "2.0.0", features = ["sqlite"] }
+diesel = { version = "2.1", features = ["sqlite"] }
