@@ -284,7 +284,7 @@ impl From<MethodSet> for Vec<Method> {
         let mut result = methods_with_flags
             .iter()
             .filter_map(|&(ref method, flag)| if flag { Some(method.clone()) } else { None })
-            .chain(method_set.other.into_iter())
+            .chain(method_set.other)
             .collect::<Vec<Method>>();
 
         result.sort_unstable_by(|a, b| a.as_ref().cmp(b.as_ref()));

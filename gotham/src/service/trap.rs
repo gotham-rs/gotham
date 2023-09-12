@@ -141,6 +141,7 @@ mod tests {
 
     #[test]
     fn panic() {
+        #[allow(clippy::unnecessary_literal_unwrap)] // false positive? or bad description?
         let new_handler = || {
             Ok(|_| {
                 let val: Option<Pin<Box<HandlerFuture>>> = None;
