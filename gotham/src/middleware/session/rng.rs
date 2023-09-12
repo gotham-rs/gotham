@@ -11,7 +11,7 @@ use rand_chacha::ChaChaCore;
 pub(super) type SessionIdentifierRng = ReseedingRng<ChaChaCore, OsRng>;
 
 pub(super) fn session_identifier_rng() -> SessionIdentifierRng {
-    let os_rng = OsRng::default();
+    let os_rng = OsRng;
     let rng = ChaChaCore::from_entropy();
 
     // Reseed every 32KiB.

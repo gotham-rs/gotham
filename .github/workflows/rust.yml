@@ -77,7 +77,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         id: rust-toolchain
         with:
-          toolchain: "1.69"
+          toolchain: "1.72"
           components: clippy
       
       - uses: actions/cache@v3

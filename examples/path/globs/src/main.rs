@@ -91,7 +91,7 @@ fn multi_parts_handler(state: State) -> (State, String) {
             bottom.push_str(part);
         }
 
-        vec![top, bottom].join("\n\n")
+        [top, bottom].join("\n\n")
     };
 
     (state, res)
