@@ -61,7 +61,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cookie::Cookie;
+    use gotham::cookie::Cookie;
     use gotham::hyper::header::{COOKIE, SET_COOKIE};
     use gotham::hyper::StatusCode;
     use gotham::test::TestServer;
