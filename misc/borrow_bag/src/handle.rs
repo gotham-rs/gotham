@@ -24,7 +24,7 @@ pub(crate) fn new_handle<T, N>() -> Handle<T, N> {
 
 impl<T, N> Clone for Handle<T, N> {
     fn clone(&self) -> Handle<T, N> {
-        new_handle()
+        *self
     }
 }
 
