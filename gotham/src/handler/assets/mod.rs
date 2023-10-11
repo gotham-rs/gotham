@@ -17,7 +17,7 @@ use mime::{self, Mime};
 use mime_guess::from_path;
 use serde::Deserialize;
 use tokio::fs::File;
-use tokio::io::{AsyncRead, ReadBuf};
+use tokio::io::{AsyncRead, AsyncSeekExt, ReadBuf};
 
 use self::accepted_encoding::accepted_encodings;
 use crate::handler::{Handler, HandlerError, HandlerFuture, NewHandler};
@@ -26,6 +26,7 @@ use crate::state::{FromState, State, StateData};
 
 use std::convert::From;
 use std::fs::Metadata;
+use std::io::{ErrorKind, SeekFrom};
 use std::iter::FromIterator;
 use std::mem::MaybeUninit;
 use std::path::{Component, Path, PathBuf};
@@ -206,7 +207,7 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
 
     let (path, encoding) = check_compressed_options(&options, &headers);
 
-    let response_future = File::open(path).and_then(|file| async move {
+    let response_future = File::open(path).and_then(move |mut file| async move {
         let meta = file.metadata().await?;
         if not_modified(&meta, &headers) {
             return Ok(hyper::Response::builder()
@@ -214,8 +215,18 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
                 .body(Body::empty())
                 .unwrap());
         }
-        let len = meta.len();
         let buf_size = optimal_buf_size(&meta);
+        let resolve_range_result = resolve_range(meta.len(), &headers);
+        if let Err(e) = resolve_range_result {
+            return Ok(hyper::Response::builder()
+                .status(StatusCode::RANGE_NOT_SATISFIABLE)
+                .body(Body::from(e))
+                .unwrap());
+        }
+        let (len, range_start) = resolve_range_result.unwrap();
+        if let Some(seek_to) = range_start {
+            file.seek(SeekFrom::Start(seek_to)).await?;
+        };
 
         let stream = file_stream(file, buf_size, len);
         let body = Body::wrap_stream(stream.into_stream());
@@ -230,6 +241,19 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
         }
         if let Some(content_encoding) = encoding {
             response = response.header(CONTENT_ENCODING, content_encoding);
+        }
+
+        if let Some(range_start) = range_start {
+            let val = format!(
+                "bytes {}-{}/{}",
+                range_start,
+                (range_start + len).saturating_sub(1),
+                meta.len()
+            );
+            response = response.header(
+                CONTENT_RANGE,
+                HeaderValue::from_str(&val).map_err(|e| io::Error::new(ErrorKind::Other, e))?,
+            );
         }
 
         Ok(response.body(body).unwrap())
@@ -249,6 +273,52 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
             }
         })
         .boxed()
+}
+
+// Checks for existence of "Range" header and whether it is in supported format
+// This implementations only supports single part ranges.
+// Returns a result of length and optional starting position, or an error if range value is invalid
+// If range header does not exist or is unsupported the length is the whole file length and start position is none.
+fn resolve_range(len: u64, headers: &HeaderMap) -> Result<(u64, Option<u64>), &'static str> {
+    headers
+        .get(RANGE)
+        .and_then(|range_val| {
+            range_val.to_str().ok().and_then(|range_val| {
+                regex::Regex::new(r"^bytes=(\d*)-(\d*)$")
+                    .unwrap()
+                    .captures(range_val)
+                    .map(|captures| {
+                        let begin = captures
+                            .get(1)
+                            .and_then(|digits| digits.as_str().parse::<u64>().ok());
+                        let end = captures
+                            .get(2)
+                            .and_then(|digits| digits.as_str().parse::<u64>().ok());
+                        match (begin, end) {
+                            (Some(begin), Some(end)) => {
+                                let end = cmp::min(end, len.saturating_sub(1));
+                                if end < begin {
+                                    Err("invalid range")
+                                } else {
+                                    let begin = cmp::min(begin, end);
+                                    Ok(((1 + end).saturating_sub(begin), Some(begin)))
+                                }
+                            }
+                            (Some(begin), None) => {
+                                let end = len.saturating_sub(1);
+                                let begin = cmp::min(begin, len);
+                                Ok((1 + end.saturating_sub(begin), Some(begin)))
+                            }
+                            (None, Some(end)) => {
+                                let begin = len.saturating_sub(end);
+                                Ok((end, Some(begin)))
+                            }
+                            (None, None) => Err("invalid range"),
+                        }
+                    })
+            })
+        })
+        .unwrap_or(Ok((len, None)))
 }
 
 // Checks for existence of compressed files if `FileOptions` and
@@ -445,8 +515,10 @@ mod tests {
     use crate::test::TestServer;
     use hyper::header::*;
     use hyper::StatusCode;
+    use std::fs::File;
+    use std::io::{Read, SeekFrom};
+    use std::path::PathBuf;
     use std::{fs, str};
-
     #[test]
     fn assets_guesses_content_type() {
         let expected_docs = vec![
@@ -839,6 +911,62 @@ mod tests {
         );
         let expected_body = fs::read("resources/test/assets/doc.html.br").unwrap();
         assert_eq!(response.read_body().unwrap(), expected_body);
+    }
+
+    #[test]
+    fn assets_range_request() {
+        let root = PathBuf::from("resources/test/assets");
+        let file_name = "doc.html";
+        let mut file = File::open(root.join(file_name)).unwrap();
+        let file_len = file.metadata().unwrap().len();
+        let router = build_simple_router(|route| route.get("/*").to_dir(root));
+        let server = TestServer::new(router).unwrap();
+
+        let tests = [
+            (Some(1), Some(123456789), 1, file_len - 1),
+            (None, Some(5), file_len - 5, 5),
+            (Some(5), None, 5, file_len - 5),
+            (Some(5), Some(5), 5, 1),
+            (Some(6), Some(5), 0, 0),
+        ];
+
+        for (range_begin, range_end, range_start, range_len) in tests {
+            let range_header = format!(
+                "bytes={}-{}",
+                range_begin.map(|i| i.to_string()).unwrap_or("".to_string()),
+                range_end.map(|i| i.to_string()).unwrap_or("".to_string())
+            );
+            let response = server
+                .client()
+                .get(format!("http://localhost/{file_name}"))
+                .with_header(RANGE, HeaderValue::from_str(&range_header).unwrap())
+                .perform()
+                .unwrap();
+            if range_start == 0 && range_len == 0 {
+                assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
+                break;
+            }
+            std::io::Seek::seek(&mut file, SeekFrom::Start(range_start)).unwrap();
+
+            let expected_content_range = format!(
+                "bytes {}-{}/{}",
+                range_start,
+                range_start + range_len - 1,
+                file_len
+            );
+            assert_eq!(
+                response
+                    .headers()
+                    .get(CONTENT_RANGE)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+                expected_content_range
+            );
+            let mut expected_body = vec![0; range_len as usize];
+            file.read_exact(&mut expected_body).unwrap();
+            assert_eq!(response.read_body().unwrap(), expected_body);
+        }
     }
 
     fn test_server() -> TestServer {
