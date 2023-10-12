@@ -216,14 +216,15 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
                 .unwrap());
         }
         let buf_size = optimal_buf_size(&meta);
-        let resolve_range_result = resolve_range(meta.len(), &headers);
-        if let Err(e) = resolve_range_result {
-            return Ok(hyper::Response::builder()
-                .status(StatusCode::RANGE_NOT_SATISFIABLE)
-                .body(Body::from(e))
-                .unwrap());
-        }
-        let (len, range_start) = resolve_range_result.unwrap();
+        let (len, range_start) = match resolve_range(meta.len(), &headers) {
+            Ok((len, range_start)) => (len, range_start),
+            Err(e) => {
+                return Ok(hyper::Response::builder()
+                    .status(StatusCode::RANGE_NOT_SATISFIABLE)
+                    .body(Body::from(e))
+                    .unwrap());
+            }
+        };
         if let Some(seek_to) = range_start {
             file.seek(SeekFrom::Start(seek_to)).await?;
         };
@@ -275,48 +276,50 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
         .boxed()
 }
 
-// Checks for existence of "Range" header and whether it is in supported format
-// This implementations only supports single part ranges.
-// Returns a result of length and optional starting position, or an error if range value is invalid
-// If range header does not exist or is unsupported the length is the whole file length and start position is none.
+/// Checks for existence of "Range" header and whether it is in supported format
+/// This implementations only supports single part ranges.
+/// Returns a result of length and optional starting position, or an error if range value is invalid
+/// If range header does not exist or is unsupported the length is the whole file length and start position is none.
 fn resolve_range(len: u64, headers: &HeaderMap) -> Result<(u64, Option<u64>), &'static str> {
-    headers
-        .get(RANGE)
+    let Some(range_val) = headers.get(RANGE) else {
+        return Ok((len, None));
+    };
+    range_val
+        .to_str()
+        .ok()
         .and_then(|range_val| {
-            range_val.to_str().ok().and_then(|range_val| {
-                regex::Regex::new(r"^bytes=(\d*)-(\d*)$")
-                    .unwrap()
-                    .captures(range_val)
-                    .map(|captures| {
-                        let begin = captures
-                            .get(1)
-                            .and_then(|digits| digits.as_str().parse::<u64>().ok());
-                        let end = captures
-                            .get(2)
-                            .and_then(|digits| digits.as_str().parse::<u64>().ok());
-                        match (begin, end) {
-                            (Some(begin), Some(end)) => {
-                                let end = cmp::min(end, len.saturating_sub(1));
-                                if end < begin {
-                                    Err("invalid range")
-                                } else {
-                                    let begin = cmp::min(begin, end);
-                                    Ok(((1 + end).saturating_sub(begin), Some(begin)))
-                                }
+            regex::Regex::new(r"^bytes=(\d*)-(\d*)$")
+                .unwrap()
+                .captures(range_val)
+                .map(|captures| {
+                    let begin = captures
+                        .get(1)
+                        .and_then(|digits| digits.as_str().parse::<u64>().ok());
+                    let end = captures
+                        .get(2)
+                        .and_then(|digits| digits.as_str().parse::<u64>().ok());
+                    match (begin, end) {
+                        (Some(begin), Some(end)) => {
+                            let end = cmp::min(end, len.saturating_sub(1));
+                            if end < begin {
+                                Err("invalid range")
+                            } else {
+                                let begin = cmp::min(begin, end);
+                                Ok(((1 + end).saturating_sub(begin), Some(begin)))
                             }
-                            (Some(begin), None) => {
-                                let end = len.saturating_sub(1);
-                                let begin = cmp::min(begin, len);
-                                Ok((1 + end.saturating_sub(begin), Some(begin)))
-                            }
-                            (None, Some(end)) => {
-                                let begin = len.saturating_sub(end);
-                                Ok((end, Some(begin)))
-                            }
-                            (None, None) => Err("invalid range"),
                         }
-                    })
-            })
+                        (Some(begin), None) => {
+                            let end = len.saturating_sub(1);
+                            let begin = cmp::min(begin, len);
+                            Ok((1 + end.saturating_sub(begin), Some(begin)))
+                        }
+                        (None, Some(end)) => {
+                            let begin = len.saturating_sub(end);
+                            Ok((end, Some(begin)))
+                        }
+                        (None, None) => Err("invalid range"),
+                    }
+                })
         })
         .unwrap_or(Ok((len, None)))
 }
