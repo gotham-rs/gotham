@@ -519,7 +519,7 @@ mod tests {
     use hyper::header::*;
     use hyper::StatusCode;
     use std::fs::File;
-    use std::io::{Read, SeekFrom};
+    use std::io::{Read, Seek, SeekFrom};
     use std::path::PathBuf;
     use std::{fs, str};
     #[test]
@@ -949,7 +949,7 @@ mod tests {
                 assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
                 break;
             }
-            std::io::Seek::seek(&mut file, SeekFrom::Start(range_start)).unwrap();
+            file.seek(SeekFrom::Start(range_start)).unwrap();
 
             let expected_content_range = format!(
                 "bytes {}-{}/{}",
