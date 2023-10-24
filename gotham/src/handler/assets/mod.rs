@@ -251,7 +251,9 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
                 (range_start + len).saturating_sub(1),
                 meta.len()
             );
-            response = response.header(
+            response = response
+                .status(StatusCode::PARTIAL_CONTENT)
+                .header(
                 CONTENT_RANGE,
                 HeaderValue::from_str(&val).map_err(|e| io::Error::new(ErrorKind::Other, e))?,
             );
@@ -949,6 +951,7 @@ mod tests {
                 assert_eq!(response.status(), StatusCode::RANGE_NOT_SATISFIABLE);
                 break;
             }
+            assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
             file.seek(SeekFrom::Start(range_start)).unwrap();
 
             let expected_content_range = format!(
