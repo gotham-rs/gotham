@@ -116,4 +116,4 @@ jobs:
       
       - run: cargo tarpaulin --workspace --forward --out Xml
       
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
