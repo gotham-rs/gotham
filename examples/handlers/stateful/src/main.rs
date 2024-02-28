@@ -1,6 +1,6 @@
 //! An example of using stateful handlers with the Gotahm web framework.
 
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
+#![allow(clippy::mutex_atomic)]
 
 use futures_util::future::{self, FutureExt};
 use std::pin::Pin;

@@ -7,19 +7,16 @@
 #![warn(deprecated, missing_docs, unreachable_pub)]
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(
-        clippy::needless_lifetimes,
-        clippy::should_implement_trait,
-        clippy::unit_arg,
-        clippy::match_wild_err_arm,
-        clippy::new_without_default,
-        clippy::wrong_self_convention,
-        clippy::mutex_atomic,
-        clippy::borrowed_box,
-        clippy::get_unwrap,
-    )
+#![allow(
+    clippy::needless_lifetimes,
+    clippy::should_implement_trait,
+    clippy::unit_arg,
+    clippy::match_wild_err_arm,
+    clippy::new_without_default,
+    clippy::wrong_self_convention,
+    clippy::mutex_atomic,
+    clippy::borrowed_box,
+    clippy::get_unwrap
 )]
 #![doc(test(no_crate_inject, attr(deny(warnings))))]
 // TODO: Remove this when it's a hard error by default (error E0446).

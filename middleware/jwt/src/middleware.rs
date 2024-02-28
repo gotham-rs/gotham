@@ -196,7 +196,7 @@ mod tests {
         exp: usize,
     }
 
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::match_wild_err_arm))]
+    #[allow(clippy::match_wild_err_arm)]
     fn token(alg: Algorithm) -> String {
         let claims = &Claims {
             sub: "test@example.net".to_owned(),
