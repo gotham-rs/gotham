@@ -7,4 +7,4 @@ edition = "2018"
 
 [dependencies]
 gotham = { path = "../../gotham", features = ["rustls"] }
-rustls-pemfile = "1.0"
+rustls-pemfile = "2.1"
