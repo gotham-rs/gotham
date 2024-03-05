@@ -4,7 +4,7 @@
 //! used across server threads, and be used to track the number of
 //! requests sent to the backend.
 
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::mutex_atomic))]
+#![allow(clippy::mutex_atomic)]
 
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::{single_middleware, single_pipeline};
