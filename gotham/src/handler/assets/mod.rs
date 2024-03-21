@@ -75,6 +75,7 @@ pub struct FileOptions {
     cache_control: String,
     gzip: bool,
     brotli: bool,
+    buffer_size: Option<usize>,
 }
 
 impl FileOptions {
@@ -88,6 +89,7 @@ impl FileOptions {
             cache_control: "public".to_string(),
             gzip: false,
             brotli: false,
+            buffer_size: None,
         }
     }
 
@@ -108,6 +110,13 @@ impl FileOptions {
     /// if the accept-encoding header is set to allow brotli content (defaults to false).
     pub fn with_brotli(&mut self, brotli: bool) -> &mut Self {
         self.brotli = brotli;
+        self
+    }
+
+    /// Sets the maximum buffer size to be used when serving the file.
+    /// If unset, the default maximum buffer size corresponding to file system block size will be used.
+    pub fn with_buffer_size(&mut self, buf_sz: usize) -> &mut Self {
+        self.buffer_size = Some(buf_sz);
         self
     }
 
@@ -215,7 +224,7 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
                 .body(Body::empty())
                 .unwrap());
         }
-        let buf_size = optimal_buf_size(&meta);
+        let buf_size = options.buffer_size.unwrap_or_else(|| optimal_buf_size(&meta));
         let (len, range_start) = match resolve_range(meta.len(), &headers) {
             Ok((len, range_start)) => (len, range_start),
             Err(e) => {
@@ -229,7 +238,7 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
             file.seek(SeekFrom::Start(seek_to)).await?;
         };
 
-        let stream = file_stream(file, buf_size, len);
+        let stream = file_stream(file, cmp::min(buf_size, len as usize), len);
         let body = Body::wrap_stream(stream.into_stream());
         let mut response = hyper::Response::builder()
             .status(StatusCode::OK)

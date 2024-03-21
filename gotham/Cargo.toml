@@ -55,8 +55,15 @@ tokio-rustls = { version = "0.23", optional = true }
 uuid = { version = "1.0", features = ["v4"] }
 
 [dev-dependencies]
+criterion = { version = "0.5.1", features = ["cargo_bench_support", "plotters", "rayon", "async_futures", "async_tokio"] }
 futures-executor = "0.3.14"
+reqwest = "0.12.2"
+tempfile = "3.10.1"
 tokio = { version = "1.11.0", features = ["macros", "test-util"] }
 
 [package.metadata.docs.rs]
 all-features = true
+
+[[bench]]
+name = "file_handler"
+harness = false
