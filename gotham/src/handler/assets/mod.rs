@@ -224,7 +224,9 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
                 .body(Body::empty())
                 .unwrap());
         }
-        let buf_size = options.buffer_size.unwrap_or_else(|| optimal_buf_size(&meta));
+        let buf_size = options
+            .buffer_size
+            .unwrap_or_else(|| optimal_buf_size(&meta));
         let (len, range_start) = match resolve_range(meta.len(), &headers) {
             Ok((len, range_start)) => (len, range_start),
             Err(e) => {
