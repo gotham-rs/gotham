@@ -191,7 +191,7 @@ mod tests {
     const SECRET: &str = "some-secret";
 
     #[derive(Debug, Deserialize, Serialize)]
-    pub struct Claims {
+    struct Claims {
         sub: String,
         exp: usize,
     }

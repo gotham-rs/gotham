@@ -171,7 +171,7 @@ pub struct TestClient<TS: Server, C: Connect> {
 
 impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClient<TS, C> {
     /// Begin constructing a HEAD request using this `TestClient`.
-    pub fn head<U>(&self, uri: U) -> TestRequest<TS, C>
+    pub fn head<U>(&self, uri: U) -> TestRequest<'_, TS, C>
     where
         Uri: TryFrom<U>,
         <Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -180,7 +180,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
     }
 
     /// Begin constructing a GET request using this `TestClient`.
-    pub fn get<U>(&self, uri: U) -> TestRequest<TS, C>
+    pub fn get<U>(&self, uri: U) -> TestRequest<'_, TS, C>
     where
         Uri: TryFrom<U>,
         <Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -189,7 +189,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
     }
 
     /// Begin constructing an OPTIONS request using this `TestClient`.
-    pub fn options<U>(&self, uri: U) -> TestRequest<TS, C>
+    pub fn options<U>(&self, uri: U) -> TestRequest<'_, TS, C>
     where
         Uri: TryFrom<U>,
         <Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -198,7 +198,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS, C>
+    pub fn post<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<'_, TS, C>
     where
         B: Into<Body>,
         Uri: TryFrom<U>,
@@ -208,7 +208,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS, C>
+    pub fn put<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<'_, TS, C>
     where
         B: Into<Body>,
         Uri: TryFrom<U>,
@@ -218,7 +218,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<TS, C>
+    pub fn patch<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<'_, TS, C>
     where
         B: Into<Body>,
         Uri: TryFrom<U>,
@@ -228,7 +228,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
-    pub fn delete<U>(&self, uri: U) -> TestRequest<TS, C>
+    pub fn delete<U>(&self, uri: U) -> TestRequest<'_, TS, C>
     where
         Uri: TryFrom<U>,
         <Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -237,7 +237,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
     }
 
     /// Begin constructing a request with the given HTTP method and URI.
-    pub fn build_request<U>(&self, method: Method, uri: U) -> TestRequest<TS, C>
+    pub fn build_request<U>(&self, method: Method, uri: U) -> TestRequest<'_, TS, C>
     where
         Uri: TryFrom<U>,
         <Uri as TryFrom<U>>::Error: Into<http::Error>,
@@ -252,7 +252,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
         uri: U,
         body: B,
         mime: mime::Mime,
-    ) -> TestRequest<TS, C>
+    ) -> TestRequest<'_, TS, C>
     where
         B: Into<Body>,
         Uri: TryFrom<U>,
@@ -271,7 +271,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
     }
 
     /// Send a constructed request using this `TestClient`, and await the response.
-    pub fn perform(&self, req: TestRequest<TS, C>) -> anyhow::Result<TestResponse> {
+    pub fn perform(&self, req: TestRequest<'_, TS, C>) -> anyhow::Result<TestResponse> {
         let req_future = self.client.request(req.request()).map_err(|e| {
             warn!("Error from test client request {:?}", e);
             e
@@ -346,7 +346,7 @@ impl DerefMut for TestResponse {
 }
 
 impl fmt::Debug for TestResponse {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "TestResponse")
     }
 }

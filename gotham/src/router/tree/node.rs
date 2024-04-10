@@ -203,10 +203,7 @@ impl Node {
                 // Globbing matches everything, so we append the segment value
                 // to the parameters against the child segment name.
                 SegmentType::Glob => {
-                    params
-                        .entry(&child.segment)
-                        .or_insert_with(Vec::new)
-                        .push(segment);
+                    params.entry(&child.segment).or_default().push(segment);
                 }
 
                 // Static matches based on a raw string match, so we simply

@@ -152,7 +152,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct TestConnectionCustomizer;
+struct TestConnectionCustomizer;
 
 impl<C, E> CustomizeConnection<C, E> for TestConnectionCustomizer
 where

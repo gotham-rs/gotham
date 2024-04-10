@@ -206,8 +206,8 @@ where
     #[inline]
     fn poll_read(
         self: Pin<&mut Self>,
-        cx: &mut Context,
-        buf: &mut ReadBuf,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
     ) -> Poll<Result<(), io::Error>> {
         self.project().0.poll_read(cx, buf)
     }

@@ -74,6 +74,8 @@
 //! #    assert_eq!(&body, "result: 1");
 //! # }
 //! ```
+#![warn(rust_2018_idioms, unreachable_pub)]
+#![forbid(elided_lifetimes_in_paths, unsafe_code)]
 #![doc(test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
 use diesel::r2d2::R2D2Connection;

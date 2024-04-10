@@ -47,7 +47,7 @@ impl Timer {
 pub(crate) struct Timing(Duration);
 
 impl Display for Timing {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let duration = self.0;
         match duration.as_micros() {
             i if i < 1000 => {

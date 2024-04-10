@@ -1,5 +1,5 @@
 use gotham::prelude::*;
-pub use jsonwebtoken::TokenData;
+use jsonwebtoken::TokenData;
 
 /// Struct to contain the JSON Web Token on a per-request basis.
 #[derive(StateData, Debug)]

@@ -1,4 +1,5 @@
 //! Defines the types for connecting multiple middleware into a "chain" when forming a pipeline.
+#![allow(unsafe_code)]
 
 use log::trace;
 

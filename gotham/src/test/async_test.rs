@@ -349,7 +349,7 @@ impl DerefMut for AsyncTestResponse {
 }
 
 impl Debug for AsyncTestResponse {
-    fn fmt(&self, formatter: &mut Formatter) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
         formatter.write_str("AsyncTestResponse")
     }
 }

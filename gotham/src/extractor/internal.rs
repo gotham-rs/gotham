@@ -85,7 +85,7 @@ pub(crate) enum ExtractorError {
 }
 
 impl Display for ExtractorError {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
         out.write_fmt(format_args!("{:?}", self))
     }
 }
@@ -875,7 +875,7 @@ mod tests {
         impl<'de> Visitor<'de> for ByteBufVisitor {
             type Value = Vec<u8>;
 
-            fn expecting(&self, out: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
                 out.write_str("string")
             }
 
@@ -938,7 +938,7 @@ mod tests {
         impl<'de> Visitor<'de> for BorrowedBytesVisitor {
             type Value = &'de [u8];
 
-            fn expecting(&self, out: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
                 out.write_str("borrowed bytes")
             }
 
@@ -958,7 +958,7 @@ mod tests {
         let mut sm = SegmentMapping::new();
         sm.insert("bytes_val", vec![&bytes_val]);
 
-        let p = from_segment_mapping::<WithBorrowedBytes>(sm).unwrap();
+        let p = from_segment_mapping::<WithBorrowedBytes<'_>>(sm).unwrap();
 
         assert_eq!(p.bytes_val, b"borrowed_bytes");
     }
@@ -971,7 +971,7 @@ mod tests {
             vec![FormUrlDecoded::new("borrowed_bytes").unwrap()],
         );
 
-        let p = from_query_string_mapping::<WithBorrowedBytes>(&qsm).unwrap();
+        let p = from_query_string_mapping::<WithBorrowedBytes<'_>>(&qsm).unwrap();
 
         assert_eq!(p.bytes_val, b"borrowed_bytes");
     }
@@ -1001,7 +1001,7 @@ mod tests {
         impl<'de> Visitor<'de> for BorrowedStrVisitor {
             type Value = &'de str;
 
-            fn expecting(&self, out: &mut fmt::Formatter) -> fmt::Result {
+            fn expecting(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
                 out.write_str("borrowed string")
             }
 
@@ -1018,7 +1018,7 @@ mod tests {
         let mut sm = SegmentMapping::new();
         sm.insert("str_val", vec![&str_val]);
 
-        let p = from_segment_mapping::<WithBorrowedString>(sm).unwrap();
+        let p = from_segment_mapping::<WithBorrowedString<'_>>(sm).unwrap();
 
         assert_eq!(p.str_val, "borrowed_str");
     }
@@ -1031,7 +1031,7 @@ mod tests {
             vec![FormUrlDecoded::new("borrowed_str").unwrap()],
         );
 
-        let p = from_query_string_mapping::<WithBorrowedString>(&qsm).unwrap();
+        let p = from_query_string_mapping::<WithBorrowedString<'_>>(&qsm).unwrap();
 
         assert_eq!(p.str_val, "borrowed_str");
     }

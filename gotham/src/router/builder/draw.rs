@@ -513,7 +513,7 @@ where
     /// ```
     fn scope<F>(&mut self, path: &str, f: F)
     where
-        F: FnOnce(&mut ScopeBuilder<C, P>),
+        F: FnOnce(&mut ScopeBuilder<'_, C, P>),
     {
         let (node_builder, pipeline_chain, pipelines) = self.component_refs();
         let node_builder = descend(node_builder, path);
@@ -625,7 +625,7 @@ where
     /// ```
     fn with_pipeline_chain<F, NC>(&mut self, pipeline_chain: NC, f: F)
     where
-        F: FnOnce(&mut ScopeBuilder<NC, P>),
+        F: FnOnce(&mut ScopeBuilder<'_, NC, P>),
         NC: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     {
         let (node_builder, _pipeline_chain, pipelines) = self.component_refs();

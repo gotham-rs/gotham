@@ -14,7 +14,7 @@ fn insert<T>(into: &mut LookupTable, key: T, value: usize)
 where
     T: Into<String> + ?Sized,
 {
-    into.entry(key.into()).or_insert_with(Vec::new).push(value);
+    into.entry(key.into()).or_default().push(value);
 }
 
 impl LookupTableFromTypes for LookupTable {

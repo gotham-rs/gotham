@@ -5,14 +5,10 @@
 //! lifetime of the `BorrowBag`.
 
 #![doc(html_root_url = "https://docs.rs/borrow-bag/1.1.1")] // Update when changed in Cargo.toml
-#![warn(missing_docs, deprecated)]
-// Stricter requirements once we get to pull request stage, all warnings must be resolved.
-#![cfg_attr(feature = "ci", deny(warnings))]
 #![allow(clippy::should_implement_trait)]
+#![warn(missing_docs)]
+#![forbid(elided_lifetimes_in_paths, unsafe_code)]
 #![doc(test(attr(deny(warnings))))]
-// TODO: Remove this when it's a hard error by default (error E0446).
-// See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
-#![deny(private_in_public)]
 
 mod append;
 mod handle;

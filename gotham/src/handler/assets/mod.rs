@@ -450,6 +450,7 @@ impl StaticResponseExtender for FilePathExtractor {
 // Inspired by Warp https://github.com/seanmonstar/warp/blob/master/src/filters/fs.rs
 // Inspired by tokio https://github.com/tokio-rs/tokio/blob/master/tokio/src/io/util/read_buf.rs
 // Thanks @seanmonstar and @carllerche.
+#[allow(unsafe_code)]
 fn file_stream(
     mut f: File,
     buf_size: usize,

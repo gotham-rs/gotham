@@ -79,7 +79,7 @@ pub fn build_router<C, P, F>(pipeline_chain: C, pipelines: PipelineSet<P>, f: F)
 where
     C: PipelineHandleChain<P> + Copy + Send + Sync + 'static,
     P: Send + Sync + 'static,
-    F: FnOnce(&mut RouterBuilder<C, P>),
+    F: FnOnce(&mut RouterBuilder<'_, C, P>),
 {
     let mut tree = Tree::new();
 
@@ -134,7 +134,7 @@ where
 /// ```
 pub fn build_simple_router<F>(f: F) -> Router
 where
-    F: FnOnce(&mut RouterBuilder<(), ()>),
+    F: FnOnce(&mut RouterBuilder<'_, (), ()>),
 {
     let pipelines = finalize_pipeline_set(new_pipeline_set());
     build_router((), pipelines, f)

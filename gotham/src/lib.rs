@@ -3,8 +3,8 @@
 //! You can find out more about Gotham, including where to get help, at <https://gotham.rs>.
 //!
 //! We look forward to welcoming you into the Gotham community!
-#![doc(html_root_url = "https://docs.rs/gotham/0.7.3")] // Update when changed in Cargo.toml
-#![warn(deprecated, missing_docs, unreachable_pub)]
+#![doc(html_root_url = "https://docs.rs/gotham/0.7.3")]
+// Update when changed in Cargo.toml
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
 #![allow(
@@ -18,10 +18,9 @@
     clippy::borrowed_box,
     clippy::get_unwrap
 )]
+#![warn(missing_docs, rust_2018_idioms, unreachable_pub)]
+#![deny(elided_lifetimes_in_paths, unsafe_code)]
 #![doc(test(no_crate_inject, attr(deny(warnings))))]
-// TODO: Remove this when it's a hard error by default (error E0446).
-// See Rust issue #34537 <https://github.com/rust-lang/rust/issues/34537>
-#![deny(private_in_public)]
 
 pub mod extractor;
 pub mod handler;

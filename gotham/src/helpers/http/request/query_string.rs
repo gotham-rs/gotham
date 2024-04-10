@@ -24,7 +24,7 @@ pub(crate) fn split<'r>(query: Option<&'r str>) -> QueryStringMapping {
             let (k, v) = (sp.next().unwrap(), sp.next().unwrap());
 
             if let Ok(k) = form_url_decode(k) {
-                let vec = query_string_mapping.entry(k).or_insert_with(Vec::new);
+                let vec = query_string_mapping.entry(k).or_default();
                 if let Some(dv) = FormUrlDecoded::new(v) {
                     vec.push(dv);
                 }
