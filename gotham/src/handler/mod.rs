@@ -133,7 +133,6 @@ pub type HandlerFuture = dyn Future<Output = HandlerResult> + Send;
 /// #
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
-/// # use gotham::anyhow;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -191,7 +190,6 @@ where
 /// #
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
-/// # use gotham::anyhow;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]
@@ -227,7 +225,6 @@ where
 /// #
 /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
 /// # use gotham::state::State;
-/// # use gotham::anyhow;
 /// #
 /// # fn main() {
 /// #[derive(Copy, Clone)]

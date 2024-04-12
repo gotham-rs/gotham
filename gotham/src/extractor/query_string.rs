@@ -21,7 +21,7 @@ use crate::state::{State, StateData};
 ///
 /// ```rust
 /// # use hyper::{Body, Response, StatusCode};
-/// # use gotham::state::{FromState, State};
+/// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::router::{build_simple_router, Router};
 /// # use gotham::prelude::*;
