@@ -1,27 +1,20 @@
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{BufWriter, Write},
-    net::{SocketAddr, ToSocketAddrs},
-    sync::atomic::{AtomicU64, Ordering::Relaxed},
-    time::{Duration, SystemTime},
-};
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering::Relaxed;
+use std::time::{Duration, SystemTime};
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use futures_util::future;
-use gotham::{
-    bind_server,
-    handler::FileOptions,
-    router::{
-        build_simple_router,
-        builder::{DefineSingleRoute, DrawRoutes},
-    },
-};
+use gotham::bind_server;
+use gotham::handler::FileOptions;
+use gotham::router::build_simple_router;
+use gotham::router::builder::{DefineSingleRoute, DrawRoutes};
 use tempfile::TempDir;
-use tokio::{
-    net::TcpListener,
-    runtime::{self, Runtime},
-};
+use tokio::net::TcpListener;
+use tokio::runtime::{self, Runtime};
 
 struct BenchServer {
     runtime: Runtime,

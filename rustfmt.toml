@@ -1,0 +1,8 @@
+edition = "2018"
+
+# this rustfmt config does set some nightly flags but don't worry
+# you can still use stable rustfmt and it will just ignore these
+# we don't require you to have these enabled
+unstable_features = true
+format_code_in_doc_comments = true
+imports_granularity = "Module"
