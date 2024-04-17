@@ -12,7 +12,7 @@ categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "gotham", "diesel"]
 
 [dependencies]
-gotham = { path = "../../gotham", version = "0.7.3", default-features = false, features = ["derive"] }
+gotham = { path = "../../gotham", version = "0.7.4", default-features = false, features = ["derive"] }
 
 diesel = { version = "2.1", features = ["r2d2"] }
 futures-util = "0.3.14"
@@ -20,6 +20,6 @@ log = "0.4"
 tokio = { version = "1.0", features = ["full"] }
 
 [dev-dependencies]
-gotham = { path = "../../gotham", version = "0.7.3", default-features = false, features = ["testing"] }
+gotham = { path = "../../gotham", version = "0.7.4", default-features = false, features = ["testing"] }
 
 diesel = { version = "2.1", features = ["sqlite"] }
