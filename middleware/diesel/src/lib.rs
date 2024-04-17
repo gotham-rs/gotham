@@ -17,7 +17,7 @@
 //! # use gotham::state::{FromState, State};
 //! # use gotham::helpers::http::response::create_response;
 //! # use gotham::handler::HandlerFuture;
-//! # use gotham_middleware_diesel::{self, DieselMiddleware};
+//! # use gotham_middleware_diesel::DieselMiddleware;
 //! # use gotham::hyper::StatusCode;
 //! # use gotham::test::TestServer;
 //! # use gotham::mime::TEXT_PLAIN;
