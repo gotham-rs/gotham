@@ -4,10 +4,10 @@ version = "0.5.1"
 authors = ["colinbankier <colinbankier@gmail.com>"]
 edition = "2018"
 description = "A Gotham Middleware that provides access to a Diesel connection via an R2D2 pool to allow other Middleware and Handlers to interact with a database."
-license = "MIT/Apache-2.0"
-homepage = "https://gotham.rs"
+license.workspace = true
+homepage.workspace = true
 repository = "https://github.com/gotham-rs/gotham"
-readme = "README.md"
+readme.workspace = true
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "gotham", "diesel"]
 

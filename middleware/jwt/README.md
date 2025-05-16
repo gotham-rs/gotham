@@ -1,6 +1,6 @@
 # gotham_middleware_jwt
 
-A middleware for the [Gotham](https://gotham.rs) Web
+A middleware for the [Gotham][gotham.rs] Web
 Framework that verifies JSON Web Tokens, returning
 `StatusCode::UNAUTHORIZED` if a request fails validation.
 
@@ -60,10 +60,12 @@ fn router() -> Router {
 
 This middleware crate was originally created by [Nicholas
 Young](https://www.secretfader.com) of Uptime Ventures, Ltd.,
-and is maintained by the [Gotham](https://gotham.rs) core
+and is maintained by the [Gotham][gotham.rs] core
 team.
 
 Licensed under your option of:
 
 * [MIT License](../../LICENSE-MIT)
 * [Apache License, Version 2.0](../../LICENSE-APACHE)
+
+ [gotham.rs]: https://gotham-rs.github.io/gotham.rs/

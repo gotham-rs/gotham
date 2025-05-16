@@ -15,7 +15,7 @@ We recommend reviewing our request query string examples in the order shown belo
 
 You can get help for the Gotham web framework at:
 
-* [The Gotham web framework website](https://gotham.rs)
+* [The Gotham web framework website](https://gotham-rs.github.io/gotham.rs/)
 * [Gotham web framework API documentation](https://docs.rs/gotham/)
 * [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
 * [Twitter](https://twitter.com/gotham_rs)

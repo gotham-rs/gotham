@@ -1,3 +1,8 @@
+[workspace.package]
+license = "MIT/Apache-2.0"
+homepage = "https://gotham-rs.github.io/gotham.rs/"
+repository = "https://github.com/gotham-rs/gotham"
+
 [workspace]
 members = [
     ## Gotham Core
@@ -84,5 +89,4 @@ members = [
 
     # custom_service
     "examples/custom_service/",
-
 ]

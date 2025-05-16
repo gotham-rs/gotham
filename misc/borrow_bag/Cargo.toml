@@ -4,6 +4,6 @@ version = "1.1.1" # Alter html_root_url in lib.rs also
 authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
            "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 description = "A type-safe, heterogeneous collection with zero-cost add and borrow"
-license = "MIT/Apache-2.0"
-homepage = "https://gotham.rs"
-repository = "https://github.com/gotham-rs/gotham"
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true

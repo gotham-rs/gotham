@@ -7,11 +7,11 @@ authors = ["Nicholas Young <nyoung@uptime.ventures>",
           "Judson Lester <nyarly@gmail.com>",
           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 description = "JWT middleware for the Gotham web framework."
-repository = "https://github.com/gotham-rs/gotham"
+repository.workspace = true
 keywords = ["gotham-middleware", "jwt", "jsonwebtoken", "authentication"]
-homepage = "https://gotham.rs"
+homepage.workspace = true
 readme = "README.md"
-license = "MIT/Apache-2.0"
+license.workspace = true
 edition = "2018"
 
 [dependencies]

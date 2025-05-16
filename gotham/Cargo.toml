@@ -8,9 +8,9 @@ authors = ["Shaun Mangelsdorf <s.mangelsdorf@gmail.com>",
           "Judson Lester <nyarly@gmail.com>",
           "Bradley Beddoes <bradleybeddoes@gmail.com>"]
 description = "A flexible web framework that promotes stability, safety, security and speed."
-license = "MIT/Apache-2.0"
-homepage = "https://gotham.rs"
-repository = "https://github.com/gotham-rs/gotham"
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 readme = "README.md"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "server"]

@@ -1,10 +1,11 @@
 <p align="center">
-  <img src="https://gotham.rs/assets/brand/logo.svg" alt="The Gotham web framework" width="400" height="276">
+  <img src="https://gotham-rs.github.io/gotham.rs/assets/brand/logo.svg" alt="The Gotham web framework" width="400" height="276">
 </p>
 
 A flexible web framework that promotes **stability, safety, security and speed**.
 
 [![Join the chat at https://gitter.im/gotham-rs/gotham](https://badges.gitter.im/gotham-rs/gotham.svg)](https://gitter.im/gotham-rs/gotham?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Chat](https://img.shields.io/badge/chat-on%20matrix-brightgreen?logoWidth=16&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAMAAAAoLQ9TAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAAEZ0FNQQAAsY8L/GEFAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDIwLTExLTA5VDE2OjQxOjMxKzAwOjAwWDZBzgAAAAd0SU1FB+QLChI0GgCGX9IAAACfUExURQ29iw29iw29iw29iw29iw29iw29iw29i/j9/PT8+vP8+fL7+fH7+Ov69ur59d3279z17s7y6M7y57Lq2rHq2qzo16Dl0ZfjzZbizYbexXvbwHrbv2vXuGnWt2PUtFrSsFLQrEvOqUbNp0bNpkPMpTbInzDGnC7GmyTDlha/jw++jA+9jA69iw29iwy9iwu9igu8igq8igm8iQi8iQe7iMqi3Q4AAAAIdFJOUwhsbd7g8f3+M9WqDQAAAAFiS0dENd622WsAAADFSURBVHheJc9HgoJQEEDBVhQDihEUA2Ekw4Pmw/3PNgvqBiWyWG1gGE0Hm9VCZLkG+PuklQLrpVgAjb/d3zIFLLFB2zKJA/daKNgCWjxOx3CKDs8WEDS7ON4r19o7lw1IV93dqDY95u0m/m8QkzrBpECfh/HuO8r43cVh3gM6BU5qZPj5ifs29KaO3HvVCTTl2as1f3nOJVMEaJ+HaAqPp0ehIDZocXWDOClbBVssQLPbfus3ANac0yr9/Jhzc78z4zD3/wGAlyDwGzAPLAAAAABJRU5ErkJggg==)](https://matrix.to/#/#gotham-rs:matrix.org)
 [![GitHub actions](https://github.com/gotham-rs/gotham/workflows/Rust/badge.svg)](https://github.com/gotham-rs/gotham/actions?query=workflow%3ARust)
 [![Dependency status](https://deps.rs/repo/github/gotham-rs/gotham/status.svg)](https://deps.rs/repo/github/gotham-rs/gotham)
 
@@ -47,7 +48,7 @@ framework:
 * [API documentation](https://docs.rs/gotham/)
 * [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
 * [Twitter](https://twitter.com/gotham_rs)
-* [The Gotham web framework website](https://gotham.rs)
+* [The Gotham web framework website](https://gotham-rs.github.io/gotham.rs/)
 
 ## Projects Using Gotham
 

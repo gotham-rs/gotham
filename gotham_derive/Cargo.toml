@@ -8,8 +8,9 @@ authors = ["Bradley Beddoes <bradleybeddoes@gmail.com>",
            "Judson Lester <nyarly@gmail.com>",
            "Shaun Mangelsdorf <s.mangelsdorf@gmail.com>"]
 description = "Private implementation detail of the gotham framework"
-license = "MIT/Apache-2.0"
-repository = "https://github.com/gotham-rs/gotham"
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "framework", "gotham"]
 edition = "2018"
