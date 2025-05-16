@@ -554,7 +554,7 @@ mod tests {
             ),
             (
                 "scripts/script.js",
-                HeaderValue::from_static("application/javascript"),
+                HeaderValue::from_static("text/javascript"),
                 "console.log('I am javascript!');",
             ),
         ];
