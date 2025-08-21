@@ -1,6 +1,6 @@
 [workspace.package]
 license = "MIT/Apache-2.0"
-homepage = "https://gotham-rs.github.io/gotham.rs/"
+homepage = "https://gotham.rs/"
 repository = "https://github.com/gotham-rs/gotham"
 
 [workspace]

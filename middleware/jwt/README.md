@@ -68,4 +68,4 @@ Licensed under your option of:
 * [MIT License](../../LICENSE-MIT)
 * [Apache License, Version 2.0](../../LICENSE-APACHE)
 
- [gotham.rs]: https://gotham-rs.github.io/gotham.rs/
+ [gotham.rs]: https://gotham.rs/

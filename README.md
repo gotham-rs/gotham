@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://gotham-rs.github.io/gotham.rs/assets/brand/logo.svg" alt="The Gotham web framework" width="400" height="276">
+  <img src="https://gotham.rs/assets/brand/logo.svg" alt="The Gotham web framework" width="400" height="276">
 </p>
 
 A flexible web framework that promotes **stability, safety, security and speed**.
@@ -48,7 +48,7 @@ framework:
 * [API documentation](https://docs.rs/gotham/)
 * [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
 * [Twitter](https://twitter.com/gotham_rs)
-* [The Gotham web framework website](https://gotham-rs.github.io/gotham.rs/)
+* [The Gotham web framework website](https://gotham.rs/)
 
 ## Projects Using Gotham
 
