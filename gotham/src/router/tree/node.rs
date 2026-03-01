@@ -1,9 +1,9 @@
 //! Defines `Node` for `Tree`.
 
-use hyper::{Body, StatusCode};
+use http::StatusCode;
 use log::trace;
 
-use crate::helpers::http::PercentDecoded;
+use crate::helpers::http::{Body, PercentDecoded};
 use crate::router::non_match::RouteNonMatch;
 use crate::router::route::{Delegation, Route};
 use crate::router::tree::segment::{SegmentMapping, SegmentType};
@@ -287,11 +287,11 @@ mod tests {
 
     use std::panic::RefUnwindSafe;
 
-    use hyper::{HeaderMap, Method, Response};
+    use http::{HeaderMap, Method, Response};
 
     use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use crate::helpers::http::request::path::RequestPathSegments;
-    use crate::helpers::http::PercentDecoded;
+    use crate::helpers::http::{Body, PercentDecoded};
     use crate::pipeline::{finalize_pipeline_set, new_pipeline_set, PipelineSet};
     use crate::router::route::dispatch::DispatcherImpl;
     use crate::router::route::matcher::MethodOnlyRouteMatcher;
@@ -300,7 +300,7 @@ mod tests {
     use crate::state::{set_request_id, State};
 
     fn handler(state: State) -> (State, Response<Body>) {
-        (state, Response::new(Body::empty()))
+        (state, Response::new(Body::default()))
     }
 
     fn get_route<P>(pipeline_set: PipelineSet<P>) -> Box<dyn Route<ResBody = Body> + Send + Sync>

@@ -2,7 +2,7 @@
 //! values in requests, used to determine whether compressed versions
 //! of static assets are supported by the client.
 
-use hyper::header::{HeaderMap, ACCEPT_ENCODING};
+use http::header::{HeaderMap, ACCEPT_ENCODING};
 
 use std::result;
 use std::str::FromStr;
@@ -71,7 +71,7 @@ pub(crate) fn accepted_encodings(headers: &HeaderMap) -> Vec<AcceptedEncoding> {
 #[cfg(test)]
 mod tests {
     use super::{accepted_encodings, AcceptedEncoding};
-    use hyper::header::{HeaderMap, ACCEPT_ENCODING};
+    use http::header::{HeaderMap, ACCEPT_ENCODING};
 
     #[test]
     fn accepted_encoding_single() {

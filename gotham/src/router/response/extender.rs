@@ -1,14 +1,15 @@
 //! Defines functionality for extending a Response.
 
+use crate::helpers::http::Body;
 use crate::state::{request_id, State};
-use hyper::body::HttpBody;
-use hyper::{Body, Response};
+use http::Response;
+use http_body::Body as HttpBody;
 use log::trace;
 use std::panic::RefUnwindSafe;
 
 /// Extend the `Response` based on current `State` and `Response` data.
 pub trait StaticResponseExtender: RefUnwindSafe {
-    /// The type of the response body. Almost always `hyper::Body`.
+    /// The type of the response body. Almost always `UnsyncBoxBody<Bytes, std::io::Error>`.
     type ResBody: HttpBody;
 
     /// Extend the response.

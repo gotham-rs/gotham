@@ -1,11 +1,13 @@
-use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::ops::{Deref, DerefMut};
 
-use hyper::client::connect::Connect;
-use hyper::header::{HeaderValue, IntoHeaderName};
-use hyper::{http, Body, Method, Request, Uri};
+use http::header::{HeaderValue, IntoHeaderName};
+use http::{Method, Request, Uri};
+use http_body_util::combinators::UnsyncBoxBody;
+use hyper_util::client::legacy::connect::Connect;
 
 use super::{Server, TestClient, TestResponse};
+use crate::helpers::http::Body;
 
 /// Builder API for constructing `Server` requests. When the request is built,
 /// `RequestBuilder::perform` will issue the request and provide access to the response.
@@ -29,17 +31,17 @@ impl<'a, S: Server, C: Connect> DerefMut for TestRequest<'a, S, C> {
 }
 
 impl<'a, S: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestRequest<'a, S, C> {
-    pub(crate) fn new<U>(client: &'a TestClient<S, C>, method: Method, uri: U) -> Self
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub(crate) fn new(
+        client: &'a TestClient<S, C>,
+        method: Method,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> Self {
         TestRequest {
             client,
             request: Request::builder()
                 .method(method)
                 .uri(uri)
-                .body(Body::empty())
+                .body(UnsyncBoxBody::default())
                 .unwrap(),
         }
     }

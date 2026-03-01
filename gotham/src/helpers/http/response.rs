@@ -1,11 +1,17 @@
 //! Helpers for HTTP response generation
 
-use hyper::header::{CONTENT_TYPE, LOCATION};
-use hyper::{Body, Method, Response, StatusCode};
+use crate::helpers::http::Body;
+use http::header::{CONTENT_TYPE, LOCATION};
+use http::{Method, Response, StatusCode};
+use http_body_util::combinators::UnsyncBoxBody;
 use mime::Mime;
 use std::borrow::Cow;
+use std::convert::Infallible;
+use std::io;
 
+use crate::handler::IntoBody;
 use crate::helpers::http::header::X_REQUEST_ID;
+use crate::helpers::http::response::sealed::Sealed;
 use crate::state::{request_id, FromState, State};
 
 /// Creates a `Response` object and populates it with a set of default headers that help to improve
@@ -21,11 +27,12 @@ use crate::state::{request_id, FromState, State};
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Body, Response, StatusCode};
-/// # use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
+/// # use http::{Response, StatusCode};
+/// # use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::header::X_REQUEST_ID;
 /// # use gotham::helpers::http::response::create_response;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::test::TestServer;
 /// #
 /// static BODY: &'static [u8] = b"Hello, world!";
@@ -58,10 +65,12 @@ use crate::state::{request_id, FromState, State};
 /// #     );
 /// # }
 /// ```
-pub fn create_response<B>(state: &State, status: StatusCode, mime: Mime, body: B) -> Response<Body>
-where
-    B: Into<Body>,
-{
+pub fn create_response(
+    state: &State,
+    status: StatusCode,
+    mime: Mime,
+    body: impl IntoBody,
+) -> Response<Body> {
     // use the basic empty response as a base
     let mut res = create_empty_response(state, status);
 
@@ -71,7 +80,7 @@ where
 
     // add the body on non-HEAD requests
     if Method::borrow_from(state) != Method::HEAD {
-        *res.body_mut() = body.into();
+        *res.body_mut() = body.into_body();
     }
 
     res
@@ -85,9 +94,10 @@ where
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_empty_response;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::test::TestServer;
 /// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_empty_response(&state, StatusCode::NO_CONTENT);
@@ -112,7 +122,7 @@ pub fn create_empty_response(state: &State, status: StatusCode) -> Response<Body
         .status(status)
         .header(X_REQUEST_ID, request_id(state))
         // attach an empty body by default
-        .body(Body::empty());
+        .body(UnsyncBoxBody::default());
 
     // this expect should be safe due to generic bounds
     built.expect("Response built from a compatible type")
@@ -127,11 +137,12 @@ pub fn create_empty_response(state: &State, status: StatusCode) -> Response<Body
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_permanent_redirect;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::test::TestServer;
-/// # use hyper::header::LOCATION;
+/// # use http::header::LOCATION;
 /// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_permanent_redirect(&state, "/over-there");
 ///
@@ -171,11 +182,12 @@ pub fn create_permanent_redirect<L: Into<Cow<'static, str>>>(
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_temporary_redirect;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::test::TestServer;
-/// # use hyper::header::LOCATION;
+/// # use http::header::LOCATION;
 /// fn handler(state: State) -> (State, Response<Body>) {
 ///     let resp = create_temporary_redirect(&state, "/quick-detour");
 ///
@@ -204,4 +216,34 @@ pub fn create_temporary_redirect<L: Into<Cow<'static, str>>>(
     res.headers_mut()
         .insert(LOCATION, location.into().to_string().parse().unwrap());
     res
+}
+
+#[doc(hidden)]
+pub trait Error: Sealed {}
+impl Error for Infallible {}
+impl Error for io::Error {}
+
+pub(crate) fn no_error(_infallible: Infallible) -> io::Error {
+    match _infallible {}
+}
+
+mod sealed {
+    use std::convert::Infallible;
+    use std::io;
+
+    pub trait Sealed {
+        fn into_io_error(self) -> io::Error;
+    }
+
+    impl Sealed for Infallible {
+        fn into_io_error(self) -> io::Error {
+            super::no_error(self)
+        }
+    }
+
+    impl Sealed for io::Error {
+        fn into_io_error(self) -> io::Error {
+            self
+        }
+    }
 }

@@ -35,11 +35,12 @@ use crate::state::{request_id, State};
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::state::State;
 /// # use gotham::handler::HandlerFuture;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
 /// #
 /// #[derive(StateData)]
 /// struct MiddlewareData {
@@ -294,9 +295,10 @@ mod tests {
     use super::*;
 
     use futures_util::future::{self, FutureExt};
-    use hyper::{Body, Response, StatusCode};
+    use http::{Response, StatusCode};
 
-    use crate::handler::Handler;
+    use crate::handler::{Handler, IntoBody};
+    use crate::helpers::http::Body;
     use crate::middleware::Middleware;
     use crate::state::StateData;
     use crate::test::TestServer;
@@ -307,7 +309,7 @@ mod tests {
             state,
             Response::builder()
                 .status(StatusCode::OK)
-                .body(format!("{}", number).into())
+                .body(format!("{}", number).into_body())
                 .unwrap(),
         )
     }

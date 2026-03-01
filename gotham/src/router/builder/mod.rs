@@ -8,11 +8,12 @@ mod single;
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use hyper::{Body, StatusCode};
+use http::StatusCode;
 
 use crate::extractor::{
     NoopPathExtractor, NoopQueryStringExtractor, PathExtractor, QueryStringExtractor,
 };
+use crate::helpers::http::Body;
 use crate::pipeline::{finalize_pipeline_set, new_pipeline_set, PipelineHandleChain, PipelineSet};
 use crate::router::response::{ResponseExtender, ResponseFinalizerBuilder};
 use crate::router::route::dispatch::DispatcherImpl;
@@ -37,12 +38,13 @@ pub use self::single::DefineSingleRoute;
 /// `route.get("/foo/bar/baz")`
 ///
 /// ```rust
-/// # use hyper::{Body, Response, StatusCode};
-/// # use gotham::state::State;
+/// # use http::{Response, StatusCode};
+/// # use gotham::helpers::http::Body;
+/// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
+/// # use gotham::pipeline::*;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
-/// # use gotham::pipeline::*;
-/// # use gotham::middleware::session::{NewSessionMiddleware, SessionData};
+/// # use gotham::state::State;
 /// # use gotham::test::TestServer;
 /// # use serde::{Deserialize, Serialize};
 /// #
@@ -51,7 +53,7 @@ pub use self::single::DefineSingleRoute;
 /// #
 /// # fn my_handler(state: State) -> (State, Response<Body>) {
 /// #   assert!(state.has::<SessionData<Session>>());
-/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
 /// # }
 /// #
 /// fn router() -> Router {
@@ -107,14 +109,15 @@ where
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
+/// # use gotham::helpers::http::Body;
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
 /// # use gotham::test::TestServer;
 /// #
 /// # fn my_handler(state: State) -> (State, Response<Body>) {
-/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
 /// # }
 /// #
 /// fn router() -> Router {
@@ -161,8 +164,9 @@ where
     /// Adds a `ResponseExtender` to the `ResponseFinalizer` in the `Router`.
     ///
     /// ```rust
-    /// # use hyper::{Body, Response, StatusCode};
-    /// # use hyper::header::WARNING;
+    /// # use http::{Response, StatusCode};
+    /// # use http::header::WARNING;
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::response::ResponseExtender;
@@ -170,7 +174,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
-    /// #   (state, Response::builder().status(StatusCode::INTERNAL_SERVER_ERROR).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::INTERNAL_SERVER_ERROR).body(Body::default()).unwrap())
     /// # }
     /// #
     /// struct MyExtender;
@@ -322,10 +326,12 @@ where
 mod tests {
     use super::*;
 
-    use hyper::service::Service;
-    use hyper::{body, Body, Request, Response, StatusCode};
+    use http::{Request, Response, StatusCode};
+    use http_body_util::BodyExt as _;
     use serde::Deserialize;
+    use tower_service::Service;
 
+    use crate::handler::IntoBody;
     use crate::middleware::cookie::CookieParser;
     use crate::pipeline::new_pipeline;
     use crate::router::response::StaticResponseExtender;
@@ -364,7 +370,7 @@ mod tests {
                 state,
                 Response::builder()
                     .status(StatusCode::OK)
-                    .body(Body::empty())
+                    .body(Body::default())
                     .unwrap(),
             )
         }
@@ -374,7 +380,7 @@ mod tests {
                 state,
                 Response::builder()
                     .status(StatusCode::CREATED)
-                    .body(Body::empty())
+                    .body(Body::default())
                     .unwrap(),
             )
         }
@@ -383,7 +389,7 @@ mod tests {
             let params = state.take::<SalutationParams>();
             let response = Response::builder()
                 .status(StatusCode::OK)
-                .body(format!("Hello, {}!", params.name).into())
+                .body(format!("Hello, {}!", params.name).into_body())
                 .unwrap();
             (state, response)
         }
@@ -391,7 +397,7 @@ mod tests {
         pub(crate) fn globbed(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::OK)
-                .body("Globbed".into())
+                .body("Globbed".into_body())
                 .unwrap();
             (state, response)
         }
@@ -399,7 +405,7 @@ mod tests {
         pub(crate) fn delegated(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::OK)
-                .body("Delegated".into())
+                .body("Delegated".into_body())
                 .unwrap();
             (state, response)
         }
@@ -408,7 +414,7 @@ mod tests {
             let params = state.take::<SalutationParams>();
             let response = Response::builder()
                 .status(StatusCode::OK)
-                .body(format!("Goodbye, {}!", params.name).into())
+                .body(format!("Goodbye, {}!", params.name).into_body())
                 .unwrap();
             (state, response)
         }
@@ -417,7 +423,7 @@ mod tests {
             let params = state.take::<AddParams>();
             let response = Response::builder()
                 .status(StatusCode::OK)
-                .body(format!("{} + {} = {}", params.x, params.y, params.x + params.y,).into())
+                .body(format!("{} + {} = {}", params.x, params.y, params.x + params.y,).into_body())
                 .unwrap();
             (state, response)
         }
@@ -425,7 +431,7 @@ mod tests {
         pub(crate) fn trailing_slash(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::OK)
-                .body("Trailing slash!".into())
+                .body("Trailing slash!".into_body())
                 .unwrap();
             (state, response)
         }
@@ -436,7 +442,7 @@ mod tests {
         pub(crate) fn create(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::CREATED)
-                .body(Body::empty())
+                .body(Body::default())
                 .unwrap();
             (state, response)
         }
@@ -444,7 +450,7 @@ mod tests {
         pub(crate) fn destroy(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::ACCEPTED)
-                .body(Body::empty())
+                .body(Body::default())
                 .unwrap();
             (state, response)
         }
@@ -452,7 +458,7 @@ mod tests {
         pub(crate) fn show(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::OK)
-                .body("It's a resource.".into())
+                .body("It's a resource.".into_body())
                 .unwrap();
             (state, response)
         }
@@ -460,7 +466,7 @@ mod tests {
         pub(crate) fn update(state: State) -> (State, Response<Body>) {
             let response = Response::builder()
                 .status(StatusCode::ACCEPTED)
-                .body(Body::empty())
+                .body(Body::default())
                 .unwrap();
             (state, response)
         }
@@ -473,7 +479,7 @@ mod tests {
                 state,
                 Response::builder()
                     .status(StatusCode::ACCEPTED)
-                    .body(Body::empty())
+                    .body(Body::default())
                     .unwrap(),
             )
         }
@@ -540,90 +546,99 @@ mod tests {
             futures_executor::block_on(service.call(req)).unwrap()
         };
 
-        let response = call(Request::get("/").body(Body::empty()).unwrap());
+        let response = call(Request::get("/").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
 
-        let response = call(Request::post("/api/submit").body(Body::empty()).unwrap());
+        let response = call(Request::post("/api/submit").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::ACCEPTED);
 
-        let response = call(Request::get("/hello/world").body(Body::empty()).unwrap());
+        let response = call(Request::get("/hello/world").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = futures_executor::block_on(body::to_bytes(response.into_body()))
+        let response_bytes = futures_executor::block_on(response.into_body().collect())
             .unwrap()
-            .to_vec();
-        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Hello, world!");
+            .to_bytes();
+        assert_eq!(str::from_utf8(&response_bytes).unwrap(), "Hello, world!");
 
         let response = call(
             Request::get("/hello/world/more/path/here/handled/by/glob")
-                .body(Body::empty())
+                .body(Body::default())
                 .unwrap(),
         );
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = futures_executor::block_on(body::to_bytes(response.into_body()))
+        let response_bytes = futures_executor::block_on(response.into_body().collect())
             .unwrap()
-            .to_vec();
-        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Globbed");
+            .to_bytes();
+        assert_eq!(str::from_utf8(&response_bytes).unwrap(), "Globbed");
 
-        let response = call(Request::get("/delegated/b").body(Body::empty()).unwrap());
+        let response = call(Request::get("/delegated/b").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = futures_executor::block_on(body::to_bytes(response.into_body()))
+        let response_bytes = futures_executor::block_on(response.into_body().collect())
             .unwrap()
-            .to_vec();
-        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "Delegated");
+            .to_bytes();
+        assert_eq!(str::from_utf8(&response_bytes).unwrap(), "Delegated");
 
-        let response = call(Request::get("/goodbye/world").body(Body::empty()).unwrap());
-        assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = futures_executor::block_on(body::to_bytes(response.into_body()))
-            .unwrap()
-            .to_vec();
-        assert_eq!(
-            &String::from_utf8(response_bytes).unwrap(),
-            "Goodbye, world!"
+        let response = call(
+            Request::get("/goodbye/world")
+                .body(Body::default())
+                .unwrap(),
         );
+        assert_eq!(response.status(), StatusCode::OK);
+        let response_bytes = futures_executor::block_on(response.into_body().collect())
+            .unwrap()
+            .to_bytes();
+        assert_eq!(str::from_utf8(&response_bytes).unwrap(), "Goodbye, world!");
 
-        let response = call(Request::get("/goodbye/9875").body(Body::empty()).unwrap());
+        let response = call(Request::get("/goodbye/9875").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
         let response = call(
             Request::get("/literal/:param/*")
-                .body(Body::empty())
+                .body(Body::default())
                 .unwrap(),
         );
         assert_eq!(response.status(), StatusCode::CREATED);
 
-        let response = call(Request::get("/literal/a/b").body(Body::empty()).unwrap());
+        let response = call(Request::get("/literal/a/b").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
-        let response = call(Request::get("/add?x=16&y=71").body(Body::empty()).unwrap());
+        let response = call(
+            Request::get("/add?x=16&y=71")
+                .body(Body::default())
+                .unwrap(),
+        );
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = futures_executor::block_on(body::to_bytes(response.into_body()))
+        let response_bytes = futures_executor::block_on(response.into_body().collect())
             .unwrap()
-            .to_vec();
-        assert_eq!(&String::from_utf8(response_bytes).unwrap(), "16 + 71 = 87");
+            .to_bytes();
+        assert_eq!(str::from_utf8(&response_bytes).unwrap(), "16 + 71 = 87");
 
-        let response = call(Request::post("/resource").body(Body::empty()).unwrap());
+        let response = call(Request::post("/resource").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::CREATED);
 
-        let response = call(Request::patch("/resource").body(Body::empty()).unwrap());
+        let response = call(Request::patch("/resource").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::ACCEPTED);
 
-        let response = call(Request::delete("/resource").body(Body::empty()).unwrap());
+        let response = call(Request::delete("/resource").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::ACCEPTED);
 
-        let response = call(Request::get("/resource").body(Body::empty()).unwrap());
+        let response = call(Request::get("/resource").body(Body::default()).unwrap());
         assert_eq!(response.status(), StatusCode::OK);
-        let response_bytes = futures_executor::block_on(body::to_bytes(response.into_body()))
+        let response_bytes = futures_executor::block_on(response.into_body().collect())
             .unwrap()
-            .to_vec();
-        assert_eq!(&response_bytes[..], b"It's a resource.");
+            .to_bytes();
+        assert_eq!(&*response_bytes, b"It's a resource.");
 
         let response = call(
             Request::get("/trailing-slash/")
-                .body(Body::empty())
+                .body(Body::default())
                 .unwrap(),
         );
         assert_eq!(response.status(), StatusCode::OK);
-        let response = call(Request::get("/trailing-slash").body(Body::empty()).unwrap());
+        let response = call(
+            Request::get("/trailing-slash")
+                .body(Body::default())
+                .unwrap(),
+        );
         assert_eq!(response.status(), StatusCode::OK);
     }
 }

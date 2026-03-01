@@ -8,12 +8,13 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use futures_util::future::{self, BoxFuture};
-use futures_util::FutureExt;
-use hyper::service::Service;
-use hyper::Uri;
+use futures_util::{FutureExt as _, TryFutureExt as _};
+use http::Uri;
+use hyper_util::rt::TokioIo;
 use log::info;
 use tokio::net::TcpStream;
 use tokio::time::Sleep;
+use tower_service::Service;
 
 use crate::handler::NewHandler;
 use crate::test::async_test::{AsyncTestClient, AsyncTestServerInner};
@@ -30,11 +31,12 @@ use std::time::Duration;
 /// # extern crate hyper;
 /// # extern crate gotham;
 /// #
+/// # use gotham::helpers::http::Body;
 /// # use gotham::state::State;
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response<Body>) {
-/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
 /// # }
 /// #
 /// # fn main() {
@@ -112,11 +114,12 @@ impl TestServer {
 /// # Example
 ///
 /// ```rust
+/// # use gotham::helpers::http::Body;
 /// # use gotham::state::State;
-/// # use hyper::{Response, Body, StatusCode};
+/// # use http::{Response, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response<Body>) {
-/// #     (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+/// #     (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
 /// # }
 /// #
 /// # #[tokio::main]
@@ -171,7 +174,7 @@ pub struct TestConnect {
 }
 
 impl Service<Uri> for TestConnect {
-    type Response = TcpStream;
+    type Response = TokioIo<TcpStream>;
     type Error = tokio::io::Error;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
@@ -182,6 +185,7 @@ impl Service<Uri> for TestConnect {
     fn call(&mut self, _req: Uri) -> Self::Future {
         TcpStream::connect(self.addr)
             .inspect(|s| info!("Client TcpStream connected: {:?}", s))
+            .map_ok(TokioIo::new)
             .boxed()
     }
 }

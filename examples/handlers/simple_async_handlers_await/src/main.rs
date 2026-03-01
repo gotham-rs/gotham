@@ -2,7 +2,7 @@
 
 use gotham::handler::{HandlerError, HandlerResult};
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::{Body, StatusCode};
+use gotham::http::StatusCode;
 use gotham::mime::TEXT_PLAIN;
 use gotham::prelude::*;
 use gotham::router::builder::build_simple_router;
@@ -65,7 +65,7 @@ async fn sleep_handler(state: &mut State) -> Result<impl IntoResponse, HandlerEr
 
     // We return a `Result<impl IntoResponse, HandlerError>` directly
     // where the success type can be anything implementing `IntoResponse`
-    // (including a `Response<Body>`)
+    // (including a `Response<UnsyncBoxBody<Bytes, io::Error>>`)
     println!("sleep for {} seconds once: finished", seconds);
     Ok((StatusCode::OK, TEXT_PLAIN, data))
 }
@@ -87,7 +87,7 @@ async fn loop_handler(mut state: State) -> HandlerResult {
         accumulator.extend(body)
     }
 
-    let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, Body::from(accumulator));
+    let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, accumulator);
     println!("sleep for one second {} times: finished", seconds);
     Ok((state, res))
 }

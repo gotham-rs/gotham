@@ -1,7 +1,8 @@
 //! An introduction to the Gotham web framework's `IntoResponse` trait.
 
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::{Body, Response, StatusCode};
+use gotham::helpers::http::Body;
+use gotham::http::{Response, StatusCode};
 use gotham::mime::APPLICATION_JSON;
 use gotham::prelude::*;
 use gotham::router::{build_simple_router, Router};

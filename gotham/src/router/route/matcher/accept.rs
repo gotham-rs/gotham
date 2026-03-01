@@ -1,7 +1,7 @@
 //! Defines the `AcceptHeaderRouterMatcher`.
 
-use hyper::header::{HeaderMap, ACCEPT};
-use hyper::StatusCode;
+use http::header::{HeaderMap, ACCEPT};
+use http::StatusCode;
 use log::trace;
 use mime::Mime;
 
@@ -49,7 +49,7 @@ impl core::str::FromStr for QMime {
 ///
 /// ```rust
 /// # fn main() {
-/// #   use hyper::header::{HeaderMap, ACCEPT};
+/// #   use http::header::{HeaderMap, ACCEPT};
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{AcceptHeaderRouteMatcher, RouteMatcher};
 /// #

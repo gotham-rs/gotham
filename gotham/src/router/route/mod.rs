@@ -11,12 +11,13 @@ use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
 
-use hyper::{Body, Response, Uri};
+use http::{Response, Uri};
 use log::debug;
 
 use crate::extractor::{self, PathExtractor, QueryStringExtractor};
 use crate::handler::HandlerFuture;
 use crate::helpers::http::request::query_string;
+use crate::helpers::http::Body;
 use crate::router::non_match::RouteNonMatch;
 use crate::router::route::dispatch::Dispatcher;
 use crate::router::route::matcher::RouteMatcher;
@@ -52,7 +53,7 @@ pub enum Delegation {
 /// trait should not be implemented outside of Gotham.
 pub trait Route: RefUnwindSafe {
     /// The type of the response body. The requirements of Hyper are that this implements `HttpBody`.
-    /// Almost always, it will want to be `hyper::Body`.
+    /// Almost always, it will want to be `UnsyncBoxBody<Bytes, std::io::Error>`.
     type ResBody;
     /// Determines if this `Route` should be invoked, based on the request data in `State.
     fn is_match(&self, state: &State) -> Result<(), RouteNonMatch>;
@@ -222,7 +223,7 @@ mod tests {
     use super::*;
 
     use futures_util::FutureExt;
-    use hyper::{HeaderMap, Method, StatusCode, Uri};
+    use http::{HeaderMap, Method, StatusCode, Uri};
     use std::str::FromStr;
 
     use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};

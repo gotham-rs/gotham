@@ -5,7 +5,9 @@ use diesel::sqlite::SqliteConnection;
 use futures_util::FutureExt;
 use gotham::handler::{HandlerError, HandlerFuture};
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::{body, Body, StatusCode};
+use gotham::http::StatusCode;
+use gotham::http_body_util::combinators::UnsyncBoxBody;
+use gotham::http_body_util::BodyExt as _;
 use gotham::mime::APPLICATION_JSON;
 use gotham::pipeline::{new_pipeline, single_pipeline};
 use gotham::prelude::*;
@@ -14,7 +16,6 @@ use gotham::state::State;
 use gotham_middleware_diesel::DieselMiddleware;
 use serde::Serialize;
 use std::pin::Pin;
-use std::str::from_utf8;
 
 mod models;
 mod schema;
@@ -104,11 +105,12 @@ async fn extract_json<T>(state: &mut State) -> Result<T, HandlerError>
 where
     T: serde::de::DeserializeOwned,
 {
-    let body = body::to_bytes(Body::take_from(state))
+    let body = UnsyncBoxBody::take_from(state)
+        .collect()
         .map_err_with_status(StatusCode::BAD_REQUEST)
         .await?;
-    let b = body.to_vec();
-    from_utf8(&b)
+    let b = body.to_bytes();
+    str::from_utf8(&b)
         .map_err_with_status(StatusCode::BAD_REQUEST)
         .and_then(|s| serde_json::from_str::<T>(s).map_err_with_status(StatusCode::BAD_REQUEST))
 }
@@ -131,7 +133,7 @@ fn main() {
 mod tests {
     use super::*;
     use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness as _};
-    use gotham::hyper::StatusCode;
+    use gotham::http::StatusCode;
     use gotham::test::TestServer;
     use gotham_middleware_diesel::Repo;
     use std::str;

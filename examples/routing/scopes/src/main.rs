@@ -1,6 +1,6 @@
 //!  An example of the Gotham web framework `Router` that shows how to combine `Routes`
 //!  under a common root using scopes.
-use gotham::hyper::Method;
+use gotham::http::Method;
 use gotham::prelude::*;
 use gotham::router::{build_simple_router, Router};
 
@@ -72,7 +72,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gotham::hyper::StatusCode;
+    use gotham::http::StatusCode;
     use gotham::mime::TEXT_PLAIN;
     use gotham::test::TestServer;
 

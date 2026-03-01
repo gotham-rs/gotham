@@ -17,7 +17,7 @@ use self::lookup_table::{LookupTable, LookupTableFromTypes};
 
 use std::panic::RefUnwindSafe;
 
-use hyper::{Method, StatusCode};
+use http::{Method, StatusCode};
 use log::trace;
 
 use crate::router::non_match::RouteNonMatch;
@@ -67,7 +67,7 @@ where
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// # fn main() {
-/// #   use hyper::Method;
+/// #   use http::Method;
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher};
 /// #

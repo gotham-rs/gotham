@@ -4,10 +4,12 @@
 use std::panic::{catch_unwind, AssertUnwindSafe, UnwindSafe};
 
 use futures_util::future::FutureExt;
-use hyper::{Body, Response, StatusCode};
+use http::{Response, StatusCode};
+use http_body_util::combinators::UnsyncBoxBody;
 use log::error;
 
 use crate::handler::{Handler, HandlerError, IntoResponse, NewHandler};
+use crate::helpers::http::Body;
 use crate::state::{request_id, State};
 
 async fn handle<H>(
@@ -61,7 +63,7 @@ fn finalize_panic_response() -> Response<Body> {
 
     Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
-        .body(Body::default())
+        .body(UnsyncBoxBody::default())
         .unwrap()
 }
 
@@ -70,7 +72,7 @@ mod tests {
     use super::*;
 
     use futures_util::future;
-    use hyper::{HeaderMap, Method, StatusCode};
+    use http::{HeaderMap, Method, StatusCode};
     use std::io;
     use std::pin::Pin;
 

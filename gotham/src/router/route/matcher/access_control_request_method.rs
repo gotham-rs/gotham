@@ -3,8 +3,8 @@
 use crate::router::non_match::RouteNonMatch;
 use crate::router::route::matcher::RouteMatcher;
 use crate::state::{FromState, State};
-use hyper::header::{HeaderMap, ACCESS_CONTROL_REQUEST_METHOD};
-use hyper::{Method, StatusCode};
+use http::header::{HeaderMap, ACCESS_CONTROL_REQUEST_METHOD};
+use http::{Method, StatusCode};
 
 /// A route matcher that checks whether the value of the `Access-Control-Request-Method` header matches the defined value.
 ///
@@ -12,7 +12,7 @@ use hyper::{Method, StatusCode};
 ///
 /// ```rust
 /// # use gotham::{helpers::http::response::create_empty_response,
-/// #   hyper::{header::ACCESS_CONTROL_ALLOW_METHODS, Method, StatusCode},
+/// #   http::{header::ACCESS_CONTROL_ALLOW_METHODS, Method, StatusCode},
 /// #   router::{builder::*, route::matcher::AccessControlRequestMethodMatcher}
 /// # };
 /// let matcher = AccessControlRequestMethodMatcher::new(Method::PUT);

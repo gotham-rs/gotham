@@ -5,13 +5,17 @@ mod data;
 mod from_state;
 mod request_id;
 
-use hyper::http::request;
+use bytes::Bytes;
+use http::{request, Request};
+use http_body::Body as HttpBody;
+use http_body_util::combinators::UnsyncBoxBody;
+use http_body_util::BodyExt as _;
 use hyper::upgrade::OnUpgrade;
-use hyper::{Body, Request};
 use log::{debug, trace};
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::hash::{BuildHasherDefault, Hasher};
+use std::io;
 use std::net::SocketAddr;
 
 pub use crate::state::client_addr::client_addr;
@@ -95,7 +99,11 @@ impl State {
 
     /// Instantiate a new `State` for a given `Request`. This is primarily useful if you're calling
     /// Gotham from your own Hyper service.
-    pub fn from_request(req: Request<Body>, client_addr: SocketAddr) -> Self {
+    pub fn from_request<B>(req: Request<B>, client_addr: SocketAddr) -> Self
+    where
+        B: HttpBody<Data = Bytes> + Send + 'static,
+        B::Error: std::error::Error + Send + Sync,
+    {
         let mut state = Self::new();
 
         put_client_addr(&mut state, client_addr);
@@ -117,7 +125,7 @@ impl State {
         state.put(uri);
         state.put(version);
         state.put(headers);
-        state.put(body);
+        state.put(UnsyncBoxBody::new(body.map_err(io::Error::other)));
 
         if let Some(on_upgrade) = extensions.remove::<OnUpgrade>() {
             state.put(on_upgrade);

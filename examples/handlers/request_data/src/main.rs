@@ -4,7 +4,10 @@ use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_empty_response;
-use gotham::hyper::{body, Body, HeaderMap, Method, Response, StatusCode, Uri, Version};
+use gotham::helpers::http::Body;
+use gotham::http::{HeaderMap, Method, Response, StatusCode, Uri, Version};
+use gotham::http_body_util::combinators::UnsyncBoxBody;
+use gotham::http_body_util::BodyExt as _;
 use gotham::prelude::*;
 use gotham::router::builder::build_simple_router;
 use gotham::router::Router;
@@ -25,15 +28,17 @@ fn print_request_elements(state: &State) {
 /// Extracts the elements of the POST request and prints them
 fn post_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     print_request_elements(&state);
-    let f = body::to_bytes(Body::take_from(&mut state)).then(|full_body| match full_body {
-        Ok(valid_body) => {
-            let body_content = String::from_utf8(valid_body.to_vec()).unwrap();
-            println!("Body: {}", body_content);
-            let res = create_empty_response(&state, StatusCode::OK);
-            future::ok((state, res))
-        }
-        Err(e) => future::err((state, e.into())),
-    });
+    let f = UnsyncBoxBody::take_from(&mut state)
+        .collect()
+        .then(|full_body| match full_body {
+            Ok(valid_body) => {
+                let body_content = String::from_utf8(valid_body.to_bytes().to_vec()).unwrap();
+                println!("Body: {}", body_content);
+                let res = create_empty_response(&state, StatusCode::OK);
+                future::ok((state, res))
+            }
+            Err(e) => future::err((state, e.into())),
+        });
 
     f.boxed()
 }

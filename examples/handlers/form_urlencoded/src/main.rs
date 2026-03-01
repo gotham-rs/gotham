@@ -6,7 +6,9 @@ use url::form_urlencoded;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::{body, Body, StatusCode};
+use gotham::http::StatusCode;
+use gotham::http_body_util::combinators::UnsyncBoxBody;
+use gotham::http_body_util::BodyExt as _;
 use gotham::mime::TEXT_PLAIN;
 use gotham::prelude::*;
 use gotham::router::builder::build_simple_router;
@@ -15,21 +17,24 @@ use gotham::state::State;
 
 /// Extracts the elements of the POST request and responds with the form keys and values
 fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
-    let f = body::to_bytes(Body::take_from(&mut state)).then(|full_body| match full_body {
-        Ok(body_content) => {
-            // Perform decoding on request body
-            let form_data = form_urlencoded::parse(&body_content).into_owned();
-            // Add form keys and values to response body
-            let mut res_body = String::new();
-            for (key, value) in form_data {
-                let res_body_line = format!("{}: {}\n", key, value);
-                res_body.push_str(&res_body_line);
+    let f = UnsyncBoxBody::take_from(&mut state)
+        .collect()
+        .then(|full_body| match full_body {
+            Ok(body_content) => {
+                // Perform decoding on request body
+                let body_content_bytes = body_content.to_bytes();
+                let form_data = form_urlencoded::parse(&body_content_bytes).into_owned();
+                // Add form keys and values to response body
+                let mut res_body = String::new();
+                for (key, value) in form_data {
+                    let res_body_line = format!("{}: {}\n", key, value);
+                    res_body.push_str(&res_body_line);
+                }
+                let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, res_body);
+                future::ok((state, res))
             }
-            let res = create_response(&state, StatusCode::OK, TEXT_PLAIN, res_body);
-            future::ok((state, res))
-        }
-        Err(e) => future::err((state, e.into())),
-    });
+            Err(e) => future::err((state, e.into())),
+        });
 
     f.boxed()
 }

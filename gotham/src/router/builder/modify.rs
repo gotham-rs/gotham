@@ -1,8 +1,7 @@
-use hyper::Body;
-
 use std::panic::RefUnwindSafe;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
+use crate::helpers::http::Body;
 use crate::pipeline::PipelineHandleChain;
 use crate::router::builder::single::DefineSingleRoute;
 use crate::router::builder::SingleRouteBuilder;

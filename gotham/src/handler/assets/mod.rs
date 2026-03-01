@@ -9,9 +9,12 @@ mod accepted_encoding;
 use bytes::{BufMut, Bytes, BytesMut};
 use futures_util::stream::{self, TryStream, TryStreamExt};
 use futures_util::{ready, FutureExt, TryFutureExt};
+use http::header::*;
+use http::{Response, StatusCode};
+use http_body::Frame;
+use http_body_util::combinators::UnsyncBoxBody;
+use http_body_util::{BodyExt as _, Full, StreamBody};
 use httpdate::parse_http_date;
-use hyper::header::*;
-use hyper::{Body, Response, StatusCode};
 use log::debug;
 use mime::{self, Mime};
 use mime_guess::from_path;
@@ -21,19 +24,20 @@ use tokio::io::{AsyncRead, AsyncSeekExt, ReadBuf};
 
 use self::accepted_encoding::accepted_encodings;
 use crate::handler::{Handler, HandlerError, HandlerFuture, NewHandler};
+use crate::helpers::http::response::no_error;
+use crate::helpers::http::Body;
 use crate::router::response::StaticResponseExtender;
 use crate::state::{FromState, State, StateData};
 
-use std::convert::From;
+use std::cmp;
 use std::fs::Metadata;
-use std::io::SeekFrom;
+use std::io::{self, SeekFrom};
 use std::iter::FromIterator;
 use std::mem::MaybeUninit;
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
 use std::task::Poll;
 use std::time::UNIX_EPOCH;
-use std::{cmp, io};
 
 /// Represents a handler for any files under a directory.
 #[derive(Clone)]
@@ -219,9 +223,9 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
     let response_future = File::open(path).and_then(move |mut file| async move {
         let meta = file.metadata().await?;
         if not_modified(&meta, &headers) {
-            return Ok(hyper::Response::builder()
+            return Ok(http::Response::builder()
                 .status(StatusCode::NOT_MODIFIED)
-                .body(Body::empty())
+                .body(UnsyncBoxBody::default())
                 .unwrap());
         }
         let buf_size = options
@@ -230,9 +234,11 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
         let (len, range_start) = match resolve_range(meta.len(), &headers) {
             Ok((len, range_start)) => (len, range_start),
             Err(e) => {
-                return Ok(hyper::Response::builder()
+                return Ok(http::Response::builder()
                     .status(StatusCode::RANGE_NOT_SATISFIABLE)
-                    .body(Body::from(e))
+                    .body(UnsyncBoxBody::new(
+                        Full::new(Bytes::from(e)).map_err(no_error),
+                    ))
                     .unwrap());
             }
         };
@@ -241,8 +247,8 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
         };
 
         let stream = file_stream(file, cmp::min(buf_size, len as usize), len);
-        let body = Body::wrap_stream(stream.into_stream());
-        let mut response = hyper::Response::builder()
+        let body = StreamBody::new(stream.into_stream().map_ok(Frame::data));
+        let mut response = http::Response::builder()
             .status(StatusCode::OK)
             .header(CONTENT_LENGTH, len)
             .header(CONTENT_TYPE, mime_type.as_ref())
@@ -268,7 +274,7 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
             );
         }
 
-        Ok(response.body(body).unwrap())
+        Ok(response.body(UnsyncBoxBody::new(body)).unwrap())
     });
 
     response_future
@@ -528,8 +534,8 @@ mod tests {
     use crate::router::builder::{build_simple_router, DefineSingleRoute, DrawRoutes};
     use crate::router::Router;
     use crate::test::TestServer;
-    use hyper::header::*;
-    use hyper::StatusCode;
+    use http::header::*;
+    use http::StatusCode;
     use std::fs::File;
     use std::io::{Read, Seek, SeekFrom};
     use std::path::PathBuf;
@@ -562,7 +568,7 @@ mod tests {
         for doc in expected_docs {
             let response = test_server()
                 .client()
-                .get(&format!("http://localhost/{}", doc.0))
+                .get(format!("http://localhost/{}", doc.0))
                 .perform()
                 .unwrap();
 
@@ -594,7 +600,7 @@ mod tests {
         for attempt in traversal_attempts {
             let response = test_server()
                 .client()
-                .get(&format!("http://localhost/{}", attempt))
+                .get(format!("http://localhost/{}", attempt))
                 .perform()
                 .unwrap();
 
@@ -624,7 +630,7 @@ mod tests {
 
     #[test]
     fn assets_if_none_match_etag() {
-        use hyper::header::{ETAG, IF_NONE_MATCH};
+        use http::header::{ETAG, IF_NONE_MATCH};
         use std::fs::File;
 
         let path = "resources/test/assets/doc.html";
@@ -666,8 +672,8 @@ mod tests {
 
     #[test]
     fn assets_if_modified_since() {
+        use http::header::IF_MODIFIED_SINCE;
         use httpdate::fmt_http_date;
-        use hyper::header::IF_MODIFIED_SINCE;
         use std::fs::File;
         use std::time::Duration;
 

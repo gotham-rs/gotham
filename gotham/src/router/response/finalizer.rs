@@ -6,12 +6,13 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use futures_util::future::{self, FutureExt};
-use hyper::{Body, Response, StatusCode};
+use http::{Response, StatusCode};
 use log::trace;
 
 use crate::handler::HandlerFuture;
 use crate::state::{request_id, State};
 
+use crate::helpers::http::Body;
 use crate::router::response::extender::ResponseExtender;
 
 /// Holds an immutable collection of `ResponseExtender` values, as configured using

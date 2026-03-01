@@ -10,8 +10,8 @@ use crate::state::State;
 ///
 /// ```rust
 /// # fn main() {
-/// #   use hyper::Method;
-/// #   use hyper::header::{HeaderMap, ACCEPT};
+/// #   use http::Method;
+/// #   use http::header::{HeaderMap, ACCEPT};
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{RouteMatcher, MethodOnlyRouteMatcher, AndRouteMatcher, AcceptHeaderRouteMatcher};
 /// #

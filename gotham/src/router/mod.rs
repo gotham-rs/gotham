@@ -14,13 +14,15 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use futures_util::future::{self, FutureExt, TryFutureExt};
-use hyper::header::ALLOW;
-use hyper::{Body, Response, StatusCode};
+use http::header::ALLOW;
+use http::{Response, StatusCode};
+use http_body_util::combinators::UnsyncBoxBody;
 use log::{error, trace};
 
 use crate::handler::{Handler, HandlerFuture, IntoResponse, NewHandler};
 use crate::helpers::http::request::path::RequestPathSegments;
 use crate::helpers::http::response::create_empty_response;
+use crate::helpers::http::Body;
 use crate::router::response::ResponseFinalizer;
 use crate::router::route::{Delegation, Route};
 use crate::router::tree::segment::SegmentMapping;
@@ -151,7 +153,7 @@ impl Router {
                         error!("[{}] the server cannot or will not process the request due to a client error within the query string",
                                request_id(&state));
 
-                        let mut res = Response::new(Body::empty());
+                        let mut res = Response::new(UnsyncBoxBody::default());
                         route.extend_response_on_query_string_error(&mut state, &mut res);
                         future::ok((state, res)).boxed()
                     }
@@ -162,7 +164,7 @@ impl Router {
                     "[{}] the server cannot or will not process the request due to a client error on the request path",
                     request_id(&state)
                 );
-                let mut res = Response::new(Body::empty());
+                let mut res = Response::new(UnsyncBoxBody::default());
                 route.extend_response_on_path_error(&mut state, &mut res);
                 future::ok((state, res)).boxed()
             }
@@ -193,13 +195,14 @@ impl Router {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hyper::header::{HeaderMap, CONTENT_LENGTH, CONTENT_TYPE};
-    use hyper::{Body, Method, Uri};
+    use http::header::{HeaderMap, CONTENT_LENGTH, CONTENT_TYPE};
+    use http::{Method, Uri};
     use mime::TEXT_PLAIN;
     use std::str::FromStr;
 
     use crate::extractor::{NoopPathExtractor, NoopQueryStringExtractor};
     use crate::handler::HandlerError;
+    use crate::helpers::http::Body;
     use crate::pipeline::{finalize_pipeline_set, new_pipeline_set};
     use crate::router::response::ResponseFinalizerBuilder;
     use crate::router::route::dispatch::DispatcherImpl;
@@ -213,7 +216,7 @@ mod tests {
     use crate::state::set_request_id;
 
     fn handler(state: State) -> (State, Response<Body>) {
-        (state, Response::new(Body::empty()))
+        (state, Response::new(Body::default()))
     }
 
     fn send_request(

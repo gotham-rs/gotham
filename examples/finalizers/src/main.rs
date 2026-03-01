@@ -1,6 +1,7 @@
 //! An finalizer example
-use gotham::hyper::body::Body;
-use gotham::hyper::{Response, StatusCode};
+use gotham::handler::IntoBody;
+use gotham::helpers::http::Body;
+use gotham::http::{Response, StatusCode};
 use gotham::prelude::*;
 use gotham::router::response::ResponseExtender;
 use gotham::router::{build_simple_router, Router};
@@ -21,7 +22,7 @@ struct ErrorExtender;
 impl ResponseExtender<Body> for ErrorExtender {
     fn extend(&self, _state: &mut State, response: &mut Response<Body>) {
         let body = format!("The status code is {}", response.status());
-        *response.body_mut() = body.into();
+        *response.body_mut() = body.into_body();
     }
 }
 
@@ -55,7 +56,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gotham::hyper::StatusCode;
+    use gotham::http::StatusCode;
     use gotham::test::TestServer;
 
     #[test]

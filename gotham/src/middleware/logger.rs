@@ -6,8 +6,8 @@
 //!
 //! There is also a `SimpleLogger` which emits only basic request logs.
 use futures_util::future::{self, FutureExt, TryFutureExt};
-use hyper::header::CONTENT_LENGTH;
-use hyper::{Method, Uri, Version};
+use http::header::CONTENT_LENGTH;
+use http::{Method, Uri, Version};
 use log::{log, log_enabled, Level};
 use std::pin::Pin;
 

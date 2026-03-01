@@ -11,8 +11,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 use base64::prelude::*;
 use cookie::{Cookie, CookieJar};
 use futures_util::future::{self, FutureExt, TryFutureExt};
-use hyper::header::SET_COOKIE;
-use hyper::{Body, Response, StatusCode};
+use http::header::SET_COOKIE;
+use http::{Response, StatusCode};
 use log::{error, trace, warn};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -21,6 +21,7 @@ use super::cookie::CookieParser;
 use super::{Middleware, NewMiddleware};
 use crate::handler::{HandlerError, HandlerFuture, HandlerResult};
 use crate::helpers::http::response::create_empty_response;
+use crate::helpers::http::Body;
 use crate::state::{self, FromState, State, StateData};
 
 mod backend;
@@ -188,14 +189,15 @@ impl SessionCookieConfig {
 /// # use std::sync::Arc;
 /// # use std::time::Duration;
 /// # use futures_util::future::{self, FutureExt};
-/// # use gotham::state::{State, FromState};
+/// # use gotham::helpers::http::response::create_response;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::middleware::{NewMiddleware, Middleware};
 /// # use gotham::middleware::session::{SessionData, NewSessionMiddleware, Backend, MemoryBackend,
 /// #                                   SessionIdentifier};
-/// # use gotham::helpers::http::response::create_response;
+/// # use gotham::state::{State, FromState};
 /// # use gotham::test::TestServer;
-/// # use hyper::{Body, Response, StatusCode};
-/// # use hyper::header::COOKIE;
+/// # use http::{Response, StatusCode};
+/// # use http::header::COOKIE;
 /// # use serde::{Deserialize, Serialize};
 /// #[derive(Default, Deserialize, Serialize)]
 /// struct MySessionType {
@@ -1029,8 +1031,8 @@ where
 mod tests {
     use super::*;
     use cookie::Cookie;
-    use hyper::header::{HeaderMap, COOKIE};
-    use hyper::{Response, StatusCode};
+    use http::header::{HeaderMap, COOKIE};
+    use http::{Response, StatusCode};
     use serde::{Deserialize, Serialize};
     use std::sync::Mutex;
     use std::time::Duration;
@@ -1178,7 +1180,7 @@ mod tests {
                 state,
                 Response::builder()
                     .status(StatusCode::ACCEPTED)
-                    .body(Body::empty())
+                    .body(Body::default())
                     .unwrap(),
             ))
             .boxed()
@@ -1222,7 +1224,7 @@ mod tests {
                     state,
                     Response::builder()
                         .status(StatusCode::NO_CONTENT)
-                        .body(Body::empty())
+                        .body(Body::default())
                         .unwrap(),
                 ))
             }

@@ -6,11 +6,14 @@ use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 use std::task::{self, Poll};
 
+use bytes::Bytes;
 use futures_util::future::{BoxFuture, FutureExt};
-use hyper::service::Service;
-use hyper::{Body, Request, Response};
+use http::{Request, Response};
+use http_body::Body as HttpBody;
+use tower_service::Service;
 
 use crate::handler::NewHandler;
+use crate::helpers::http::Body;
 use crate::state::State;
 
 mod trap;
@@ -54,8 +57,22 @@ where
     client_addr: SocketAddr,
 }
 
-impl<T> Service<Request<Body>> for ConnectedGothamService<T>
+impl<T> Clone for ConnectedGothamService<T>
 where
+    T: NewHandler + 'static,
+{
+    fn clone(&self) -> Self {
+        ConnectedGothamService {
+            handler: Arc::clone(&self.handler),
+            client_addr: self.client_addr,
+        }
+    }
+}
+
+impl<B, T> Service<Request<B>> for ConnectedGothamService<T>
+where
+    B: HttpBody<Data = Bytes> + Send + 'static,
+    B::Error: std::error::Error + Send + Sync,
     T: NewHandler,
 {
     type Response = Response<Body>;
@@ -69,7 +86,7 @@ where
         Poll::Ready(Ok(()))
     }
 
-    fn call<'a>(&'a mut self, req: Request<Body>) -> Self::Future {
+    fn call<'a>(&'a mut self, req: Request<B>) -> Self::Future {
         let state = State::from_request(req, self.client_addr);
         call_handler(self.handler.clone(), AssertUnwindSafe(state)).boxed()
     }
@@ -79,9 +96,10 @@ where
 mod tests {
     use super::*;
 
-    use hyper::{Body, StatusCode};
+    use http::StatusCode;
 
     use crate::helpers::http::response::create_empty_response;
+    use crate::helpers::http::Body;
     use crate::router::builder::*;
     use crate::state::State;
 
@@ -95,7 +113,7 @@ mod tests {
         let service = GothamService::new(|| Ok(handler));
 
         let req = Request::get("http://localhost/")
-            .body(Body::empty())
+            .body(Body::default())
             .unwrap();
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())
@@ -113,7 +131,7 @@ mod tests {
         let service = GothamService::new(router);
 
         let req = Request::get("http://localhost/")
-            .body(Body::empty())
+            .body(Body::default())
             .unwrap();
         let f = service
             .connect("127.0.0.1:10000".parse().unwrap())

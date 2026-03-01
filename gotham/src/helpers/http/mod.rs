@@ -4,8 +4,14 @@ pub mod header;
 pub mod request;
 pub mod response;
 
+use bytes::Bytes;
+use http_body_util::combinators::UnsyncBoxBody;
 use log::trace;
 use percent_encoding::percent_decode;
+use std::io;
+
+/// Type-erased body type.
+pub type Body = UnsyncBoxBody<Bytes, io::Error>;
 
 /// Represents data that has been successfully percent decoded and is valid UTF-8
 #[derive(Clone, Debug, Eq, PartialEq)]

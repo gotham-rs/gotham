@@ -1,6 +1,7 @@
 //! Setting a header value for a Gotham web framework response
 use gotham::helpers::http::response::create_empty_response;
-use gotham::hyper::{Body, Response, StatusCode};
+use gotham::helpers::http::Body;
+use gotham::http::{Response, StatusCode};
 use gotham::prelude::*;
 use gotham::router::{build_simple_router, Router};
 use gotham::state::State;

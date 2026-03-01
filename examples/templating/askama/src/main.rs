@@ -1,6 +1,7 @@
 use askama::Template;
 use gotham::helpers::http::response::{create_empty_response, create_response};
-use gotham::hyper::{Body, Response, StatusCode};
+use gotham::helpers::http::Body;
+use gotham::http::{Response, StatusCode};
 use gotham::mime::TEXT_HTML_UTF_8;
 use gotham::state::State;
 
