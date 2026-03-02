@@ -56,7 +56,7 @@ impl Tree {
     pub(crate) fn traverse<'a>(
         &'a self,
         req_path_segments: &'a [PercentDecoded],
-    ) -> Option<(&Node, SegmentMapping<'a>, usize)> {
+    ) -> Option<(&'a Node, SegmentMapping<'a>, usize)> {
         trace!(" starting tree traversal");
         self.root.match_node(req_path_segments)
     }
