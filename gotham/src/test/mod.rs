@@ -107,6 +107,7 @@ impl Server for Arc<TestServerData> {
             .block_on(future)
     }
 
+    #[allow(clippy::readonly_write_lock)]
     fn request_expiry(&self) -> Sleep {
         let runtime = self.runtime.write().unwrap();
         let _guard = runtime.enter();
