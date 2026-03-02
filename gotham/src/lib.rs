@@ -97,9 +97,10 @@ async fn tcp_listener<A>(addr: A) -> io::Result<TcpListener>
 where
     A: ToSocketAddrs + 'static,
 {
-    let addr = addr.to_socket_addrs()?.next().ok_or_else(|| {
-        io::Error::new(io::ErrorKind::Other, "unable to resolve listener address")
-    })?;
+    let addr = addr
+        .to_socket_addrs()?
+        .next()
+        .ok_or_else(|| io::Error::other("unable to resolve listener address"))?;
     TcpListener::bind(addr).await
 }
 
@@ -109,7 +110,7 @@ where
 /// support. The wrap argument is a function that will receive a tokio-io TcpStream and should wrap
 /// the socket as necessary. Errors returned by this function will be ignored and the connection
 /// will be dropped if the future returned by the wrapper resolves to an error.
-pub async fn bind_server<'a, NH, F, Wrapped, Wrap>(
+pub async fn bind_server<NH, F, Wrapped, Wrap>(
     listener: TcpListener,
     new_handler: NH,
     wrap: Wrap,

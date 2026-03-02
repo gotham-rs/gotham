@@ -1000,10 +1000,7 @@ where
                     e
                 );
 
-                let e = io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("backend failed to return session: {:?}", e),
-                );
+                let e = io::Error::other(format!("backend failed to return session: {:?}", e));
 
                 future::err((state, e.into()))
             }

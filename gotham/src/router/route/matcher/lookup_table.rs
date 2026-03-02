@@ -12,7 +12,7 @@ pub(crate) trait LookupTableFromTypes {
 
 fn insert<T>(into: &mut LookupTable, key: T, value: usize)
 where
-    T: Into<String> + ?Sized,
+    T: Into<String>,
 {
     into.entry(key.into()).or_default().push(value);
 }

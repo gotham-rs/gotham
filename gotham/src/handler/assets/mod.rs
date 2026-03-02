@@ -26,7 +26,7 @@ use crate::state::{FromState, State, StateData};
 
 use std::convert::From;
 use std::fs::Metadata;
-use std::io::{ErrorKind, SeekFrom};
+use std::io::SeekFrom;
 use std::iter::FromIterator;
 use std::mem::MaybeUninit;
 use std::path::{Component, Path, PathBuf};
@@ -264,7 +264,7 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
             );
             response = response.status(StatusCode::PARTIAL_CONTENT).header(
                 CONTENT_RANGE,
-                HeaderValue::from_str(&val).map_err(|e| io::Error::new(ErrorKind::Other, e))?,
+                HeaderValue::from_str(&val).map_err(io::Error::other)?,
             );
         }
 

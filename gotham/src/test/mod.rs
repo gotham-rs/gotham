@@ -107,6 +107,7 @@ impl Server for Arc<TestServerData> {
             .block_on(future)
     }
 
+    #[allow(clippy::readonly_write_lock)]
     fn request_expiry(&self) -> Sleep {
         let runtime = self.runtime.write().unwrap();
         let _guard = runtime.enter();
@@ -529,7 +530,7 @@ pub(crate) mod common_tests {
 
         let content_length = {
             let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
-            assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
+            assert_eq!(content_length, &format!("{}", data.len()));
             content_length.clone()
         };
 

@@ -24,7 +24,7 @@ pub(crate) enum ExtractorError {
     /// The `PathExtractor` type is not one which can be deserialized from a
     /// `ExtractorDeserializer`.  This deserializer requires a structured type (usually a custom
     /// struct) which can be deserialized from key / value pairs.
-    UnexpectedTargetType(&'static str),
+    UnexpectedTargetType(#[allow(dead_code)] &'static str),
 
     /// An invalid state occurred wherein a "key" (i.e. the name of a route segment) was
     /// deserialized as something other than an `identifier`.
@@ -38,7 +38,7 @@ pub(crate) enum ExtractorError {
     /// Attempting to deserialize a value into a struct is one example where this error will be
     /// triggered, since a list of `0..n` values can't be converted into key/value pairs for
     /// mapping into the struct fields.
-    UnexpectedValueType(&'static str),
+    UnexpectedValueType(#[allow(dead_code)] &'static str),
 
     /// The enum variant is not able to be deserialized from the value, because the variant is not
     /// of the correct type. Only unit variants are supported - that is, enum variants with no data
@@ -59,7 +59,7 @@ pub(crate) enum ExtractorError {
     /// #
     /// # fn main() {}
     /// ```
-    UnexpectedEnumVariantType(&'static str),
+    UnexpectedEnumVariantType(#[allow(dead_code)] &'static str),
 
     /// An invalid internal state occurred where a segment mapping had no values. This should never
     /// occur because the presence of a key implies the presence of a value.
@@ -76,12 +76,12 @@ pub(crate) enum ExtractorError {
     /// An error occurred while parsing a string into a value type for one of the fields. For
     /// example, in a route for `/resource/:id`, and with `id: i32` in the `PathExtractor` struct,
     /// a request for `/resource/abc` would result in a parse error trying to convert to `i32`.
-    ParseError(String),
+    ParseError(#[allow(dead_code)] String),
 
     /// An error occurred, and a `Deserialize` impl provided a custom error message. This is used
     /// in the implementation of the `serde::de::Error` trait for external types to provide
     /// informative error messages.
-    Custom(String),
+    Custom(#[allow(dead_code)] String),
 }
 
 impl Display for ExtractorError {
@@ -766,8 +766,8 @@ mod tests {
         assert_eq!(p.u16_val, 40511);
         assert_eq!(p.u32_val, 4_000_000_000);
         assert_eq!(p.u64_val, 9_000_000_000);
-        assert!((p.f32_val - 1.4).abs() < std::f32::EPSILON);
-        assert!((p.f64_val - 2.6).abs() < std::f64::EPSILON);
+        assert!((p.f32_val - 1.4).abs() < f32::EPSILON);
+        assert!((p.f64_val - 2.6).abs() < f64::EPSILON);
         assert_eq!(p.string_val, "this is an owned string");
         assert_eq!(p.char_val, 'a');
         assert_eq!(p.optional_val, Some("this is optional".to_owned()));
@@ -845,8 +845,8 @@ mod tests {
         assert_eq!(p.u16_val, 40511);
         assert_eq!(p.u32_val, 4_000_000_000);
         assert_eq!(p.u64_val, 9_000_000_000);
-        assert!((p.f32_val - 1.4).abs() < std::f32::EPSILON);
-        assert!((p.f64_val - 2.6).abs() < std::f64::EPSILON);
+        assert!((p.f32_val - 1.4).abs() < f32::EPSILON);
+        assert!((p.f64_val - 2.6).abs() < f64::EPSILON);
         assert_eq!(p.string_val, "this is an owned string");
         assert_eq!(p.char_val, 'a');
         assert_eq!(p.optional_val, Some("this is optional".to_owned()));
