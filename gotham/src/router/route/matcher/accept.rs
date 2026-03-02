@@ -86,7 +86,7 @@ impl core::str::FromStr for QMime {
 /// headers.insert(ACCEPT, "application/json".parse().unwrap());
 /// state.put(headers);
 /// assert!(matcher.is_match(&state).is_ok());
-
+///
 /// // Accept header of `image/*`
 /// let mut headers = HeaderMap::new();
 /// headers.insert(ACCEPT, "image/*".parse().unwrap());
