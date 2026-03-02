@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use base64::prelude::*;
 use gotham::hyper::header::{
     HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
