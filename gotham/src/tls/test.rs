@@ -2,7 +2,7 @@
 //!
 //! See the [`TestServer`] and [`AsyncTestServer`] types for example usage.
 
-use std::convert::TryFrom;
+use std::convert::TryFrom as _;
 use std::future::Future;
 use std::io;
 use std::net::SocketAddr;
@@ -12,9 +12,9 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use futures_util::future::{BoxFuture, FutureExt};
-use hyper::client::connect::{Connected, Connection};
-use hyper::service::Service;
-use hyper::Uri;
+use http::Uri;
+use hyper_util::client::legacy::connect::{Connected, Connection};
+use hyper_util::rt::TokioIo;
 use log::info;
 use pin_project::pin_project;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
@@ -25,6 +25,7 @@ use tokio_rustls::rustls::{
     self, Certificate, ClientConfig, PrivateKey, RootCertStore, ServerConfig, ServerName,
 };
 use tokio_rustls::TlsConnector;
+use tower_service::Service;
 
 use crate::handler::NewHandler;
 use crate::test::async_test::{AsyncTestClient, AsyncTestServerInner};
@@ -51,11 +52,12 @@ fn server_config() -> ServerConfig {
 /// # extern crate hyper;
 /// # extern crate gotham;
 /// #
+/// # use gotham::helpers::http::Body;
 /// # use gotham::state::State;
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response<Body>) {
-/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
 /// # }
 /// #
 /// # fn main() {
@@ -133,11 +135,12 @@ impl TestServer {
 /// # Example
 ///
 /// ```rust
+/// # use gotham::helpers::http::Body;
 /// # use gotham::state::State;
-/// # use hyper::{Response, Body, StatusCode};
+/// # use http::{Response, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response<Body>) {
-/// #     (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+/// #     (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
 /// # }
 /// #
 /// # #[tokio::main]
@@ -243,7 +246,7 @@ pub struct TestConnect {
 }
 
 impl Service<Uri> for TestConnect {
-    type Response = TlsConnectionStream<TcpStream>;
+    type Response = TokioIo<TlsConnectionStream<TcpStream>>;
     type Error = tokio::io::Error;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
@@ -262,7 +265,7 @@ impl Service<Uri> for TestConnect {
                     match tls.connect(domain, stream).await {
                         Ok(tls_stream) => {
                             info!("Client TcpStream connected: {:?}", tls_stream);
-                            Ok(TlsConnectionStream(tls_stream))
+                            Ok(TokioIo::new(TlsConnectionStream(tls_stream)))
                         }
                         Err(error) => {
                             info!("TLS TestClient error: {:?}", error);

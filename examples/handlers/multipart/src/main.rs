@@ -2,8 +2,10 @@
 use futures_util::future::{self, FutureExt};
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::header::CONTENT_TYPE;
-use gotham::hyper::{body, Body, HeaderMap, StatusCode};
+use gotham::http::header::CONTENT_TYPE;
+use gotham::http::{HeaderMap, StatusCode};
+use gotham::http_body_util::combinators::UnsyncBoxBody;
+use gotham::http_body_util::BodyExt as _;
 use gotham::mime::TEXT_PLAIN;
 use gotham::prelude::*;
 use gotham::router::builder::build_simple_router;
@@ -26,10 +28,11 @@ fn form_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
         })
         .unwrap();
 
-    body::to_bytes(Body::take_from(&mut state))
+    UnsyncBoxBody::take_from(&mut state)
+        .collect()
         .then(|full_body| match full_body {
             Ok(valid_body) => {
-                let mut m = Multipart::with_body(Cursor::new(valid_body), boundary);
+                let mut m = Multipart::with_body(Cursor::new(valid_body.to_bytes()), boundary);
                 match m.read_entry() {
                     Ok(Some(mut field)) => {
                         let mut data = Vec::new();
@@ -80,7 +83,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gotham::hyper::header::HeaderValue;
+    use gotham::http::header::HeaderValue;
     use gotham::mime::MULTIPART_FORM_DATA;
     use gotham::test::TestServer;
 

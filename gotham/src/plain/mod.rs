@@ -55,8 +55,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::helpers::http::Body;
     use crate::state::State;
-    use hyper::{Body, Response};
+    use http::Response;
 
     fn handler(_: State) -> (State, Response<Body>) {
         unimplemented!()

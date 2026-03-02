@@ -6,36 +6,49 @@ use serde::Deserialize;
 use std::future::Future;
 use std::pin::Pin;
 
+use gotham::bytes::{BufMut as _, Bytes, BytesMut};
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::StatusCode;
+use gotham::http::StatusCode;
 #[cfg(not(test))]
-use gotham::hyper::{body, Client, Uri};
+use gotham::http::Uri;
+#[cfg(not(test))]
+use gotham::http_body_util::{BodyExt as _, Collected, Full};
+#[cfg(not(test))]
+use gotham::hyper_util::client::legacy::Client;
+#[cfg(not(test))]
+use gotham::hyper_util::rt::TokioExecutor;
 use gotham::mime::TEXT_PLAIN;
 use gotham::prelude::*;
 use gotham::router::builder::build_simple_router;
 use gotham::router::Router;
 use gotham::state::State;
 
-type ResponseContentFuture =
-    Pin<Box<dyn Future<Output = Result<Vec<u8>, gotham::hyper::Error>> + Send>>;
+type ResponseContentFuture = Pin<Box<dyn Future<Output = anyhow::Result<Bytes>> + Send>>;
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct QueryStringExtractor {
     length: i8,
 }
 
-/// This helper function does an HTTP GET, and returns the body as a `Vec`, so that it can be passed
+/// This helper function does an HTTP GET, and returns the body as a `Bytes`, so that it can be passed
 /// into `create_response` easily, and the example handlers can focus on the business logic.
 /// You may notice that the body collecting looks very similar to the POST example in
 /// `examples/handlers/request_data`.
 #[cfg(not(test))]
 fn http_get(url_str: &str) -> ResponseContentFuture {
-    let client = Client::new();
+    let client = Client::builder(TokioExecutor::new()).build_http::<Full<Bytes>>();
     let url: Uri = url_str.parse().unwrap();
-    let f = client.get(url).and_then(|response| {
-        body::to_bytes(response.into_body()).and_then(|full_body| future::ok(full_body.to_vec()))
-    });
+    let f = client
+        .get(url)
+        .map_err(anyhow::Error::from)
+        .and_then(|response| {
+            response
+                .into_body()
+                .collect()
+                .map_ok(Collected::to_bytes)
+                .map_err(anyhow::Error::from)
+        });
 
     f.boxed()
 }
@@ -49,7 +62,7 @@ fn http_get(url_str: &str) -> ResponseContentFuture {
 fn http_get(_url_str: &str) -> ResponseContentFuture {
     // We make the test version return something different from what a real view would, to make
     // it easier to spot in the tests.
-    future::ok(b"y".to_vec()).boxed()
+    future::ok(Bytes::from_static(b"y")).boxed()
 }
 
 /// Now we come to the business end of the example.
@@ -72,9 +85,9 @@ fn series_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
     // Note that we pick a signature for our future that makes lives easier for our business logic,
     // and then convert it into a `Box<HandlerFuture>` in the end.
     let data_future: ResponseContentFuture = if length == 0 {
-        future::ok(Vec::new()).boxed()
+        future::ok(Bytes::new()).boxed()
     } else if length == 1 {
-        future::ok(b"z".to_vec()).boxed()
+        future::ok(Bytes::from_static(b"z")).boxed()
     } else {
         // These are the two URLs we're going to request. We're just splitting the length into
         // two roughly equal parts and calling ourselves. In a real application, these might
@@ -88,10 +101,11 @@ fn series_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
         // Here, we get the first URL, and then get the second URL, and then concatenate the
         // two together. Notice that we have to move body_a into the second closure, and so our
         // code drifts to the right.
-        let f = http_get(&url_a).and_then(move |mut body_a| {
+        let f = http_get(&url_a).and_then(move |body_a| {
             http_get(&url_b).and_then(move |body_b| {
+                let mut body_a = BytesMut::from(body_a);
                 body_a.extend(body_b);
-                future::ok(body_a)
+                future::ok(Bytes::from(body_a))
             })
         });
 
@@ -126,9 +140,9 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
 
     // The structure is the same as `series_handler`, above.
     let data_future: ResponseContentFuture = if length == 0 {
-        future::ok(Vec::new()).boxed()
+        future::ok(Bytes::new()).boxed()
     } else if length == 1 {
-        future::ok(b"z".to_vec()).boxed()
+        future::ok(Bytes::from_static(b"z")).boxed()
     } else {
         let url_a = format!("http://127.0.0.1:7878/loop?length={}", length / 2);
         let url_b = format!(
@@ -139,17 +153,17 @@ fn loop_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
         // Here, we create a stream that contains our two URLs, and call fold to loop over all URLs
         // and get the urls, concatenating the results into the accumulator (which starts off as the
         // empty `Vec`).
-        let f = stream::iter(vec![url_a, url_b]).map(Ok).try_fold(
-            Vec::new(),
-            move |mut accumulator, url| {
+        let f = stream::iter(vec![url_a, url_b])
+            .map(Ok)
+            .try_fold(BytesMut::new(), move |mut accumulator, url| {
                 // Do the http_get(), and append the result to the accumulator so that it can
                 // be returned.
                 http_get(&url).and_then(move |body| {
-                    accumulator.extend(body);
+                    accumulator.put(body);
                     future::ok(accumulator)
                 })
-            },
-        );
+            })
+            .map_ok(Bytes::from);
 
         f.boxed()
     };
@@ -198,9 +212,9 @@ fn parallel_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
 
     // The structure is the same as in `series_handler`, above.
     let data_future: ResponseContentFuture = if length == 0 {
-        future::ok(Vec::new()).boxed()
+        future::ok(Bytes::new()).boxed()
     } else if length == 1 {
-        future::ok(b"z".to_vec()).boxed()
+        future::ok(Bytes::from_static(b"z")).boxed()
     } else {
         let url_a = format!("http://127.0.0.1:7878/parallel?length={}", length / 2);
         let url_b = format!(
@@ -214,9 +228,10 @@ fn parallel_handler(mut state: State) -> Pin<Box<HandlerFuture>> {
         let f2 = http_get(&url_b);
 
         future::try_join(f1, f2)
-            .and_then(|(mut body_a, body_b)| {
-                body_a.extend(body_b);
-                future::ok(body_a)
+            .and_then(|(body_a, body_b)| {
+                let mut body_a = BytesMut::from(body_a);
+                body_a.put(body_b);
+                future::ok(Bytes::from(body_a))
             })
             .boxed()
     };

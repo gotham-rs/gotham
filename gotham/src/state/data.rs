@@ -1,8 +1,11 @@
 use std::any::Any;
+use std::io;
 
+use bytes::Bytes;
 use cookie::CookieJar;
+use http::{HeaderMap, Method, Uri, Version};
+use http_body_util::combinators::UnsyncBoxBody;
 use hyper::upgrade::OnUpgrade;
-use hyper::{Body, HeaderMap, Method, Uri, Version};
 
 use crate::helpers::http::request::path::RequestPathSegments;
 use crate::state::request_id::RequestId;
@@ -31,7 +34,7 @@ pub use gotham_derive::StateData;
 /// ```
 pub trait StateData: Any + Send {}
 
-impl StateData for Body {}
+impl StateData for UnsyncBoxBody<Bytes, io::Error> {}
 impl StateData for Method {}
 impl StateData for Uri {}
 impl StateData for Version {}

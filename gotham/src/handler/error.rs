@@ -1,14 +1,15 @@
-use futures_util::future::FusedFuture;
 use std::fmt::{Debug, Display};
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-use hyper::{Body, Response, StatusCode};
+use futures_util::future::FusedFuture;
+use http::{Response, StatusCode};
 use log::{debug, trace};
 
 use crate::handler::IntoResponse;
 use crate::helpers::http::response::create_empty_response;
+use crate::helpers::http::Body;
 use crate::state::{request_id, State};
 
 /// Describes an error which occurred during handler execution, and allows the creation of a HTTP
@@ -48,7 +49,7 @@ impl HandlerError {
     /// # use std::pin::Pin;
     /// #
     /// # use futures_util::future::{self, FutureExt};
-    /// # use hyper::StatusCode;
+    /// # use http::StatusCode;
     /// # use gotham::state::State;
     /// # use gotham::handler::{HandlerError, HandlerFuture};
     /// # use gotham::test::TestServer;
@@ -132,7 +133,7 @@ impl IntoResponse for HandlerError {
 /// # extern crate gotham;
 /// # use gotham::anyhow::anyhow;
 /// # use gotham::handler::{HandlerError, MapHandlerError};
-/// # use gotham::hyper::StatusCode;
+/// # use gotham::http::StatusCode;
 /// fn handler() -> Result<(), HandlerError> {
 ///     let result = Err(anyhow!("just a test"));
 ///     result.map_err_with_status(StatusCode::IM_A_TEAPOT)?;
@@ -235,7 +236,7 @@ where
 /// # use futures_executor::block_on;
 /// # use gotham::anyhow::anyhow;
 /// # use gotham::handler::{HandlerError, MapHandlerErrorFuture};
-/// # use gotham::hyper::StatusCode;
+/// # use gotham::http::StatusCode;
 /// # use std::future::Future;
 /// fn handler() -> impl Future<Output = Result<(), HandlerError>> {
 ///     let result = async { Err(anyhow!("just a test")) };

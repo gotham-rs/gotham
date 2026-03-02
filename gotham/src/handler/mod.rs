@@ -4,7 +4,9 @@
 //! `Handler`, but the traits can also be implemented directly for greater control. See the
 //! `Handler` trait for some examples of valid handlers.
 use std::borrow::Cow;
+use std::convert::Infallible;
 use std::future::Future;
+use std::io;
 use std::ops::Deref;
 use std::panic::RefUnwindSafe;
 use std::pin::Pin;
@@ -12,10 +14,13 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use futures_util::future::{self, FutureExt};
-use hyper::{Body, Response, StatusCode};
+use http::{Response, StatusCode};
+use http_body_util::combinators::UnsyncBoxBody;
+use http_body_util::{BodyExt as _, Full};
 use mime::{self, Mime};
 
-use crate::helpers::http::response;
+use crate::helpers::http::response::{self, no_error};
+use crate::helpers::http::Body;
 use crate::state::State;
 
 mod assets;
@@ -56,8 +61,9 @@ pub type HandlerFuture = dyn Future<Output = HandlerResult> + Send;
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Body, Response};
+/// # use http::Response;
 /// # use gotham::handler::Handler;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::state::State;
 /// #
 /// # fn main() {
@@ -103,7 +109,7 @@ pub type HandlerFuture = dyn Future<Output = HandlerResult> + Send;
 /// # use gotham::handler::{NewHandler, IntoHandlerFuture};
 /// # use gotham::helpers::http::response::create_empty_response;
 /// # use gotham::state::State;
-/// # use hyper::StatusCode;
+/// # use http::StatusCode;
 /// #
 /// # fn main() {
 /// let new_handler = || {
@@ -315,8 +321,9 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 ///
 /// ```rust,no_run
 /// # use gotham::state::State;
-/// # use gotham::handler::IntoResponse;
-/// # use hyper::{Body, Response, StatusCode};
+/// # use gotham::handler::{IntoBody, IntoResponse};
+/// # use gotham::helpers::http::Body;
+/// # use http::{Response, StatusCode};
 /// #
 /// struct MyStruct {
 ///     value: String,
@@ -333,7 +340,7 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 ///     fn into_response(self, _state: &State) -> Response<Body> {
 ///         Response::builder()
 ///             .status(StatusCode::OK)
-///             .body(self.value.into())
+///             .body(self.value.into_body())
 ///             .unwrap()
 ///     }
 /// }
@@ -345,11 +352,17 @@ impl IntoHandlerFuture for Pin<Box<HandlerFuture>> {
 /// gotham::start("127.0.0.1:7878", || Ok(handler)).unwrap();
 /// ```
 pub trait IntoResponse {
-    /// Converts this value into a `hyper::Response`
+    /// Converts this value into an `http::Response`
     fn into_response(self, state: &State) -> Response<Body>;
 }
 
-impl IntoResponse for Response<Body> {
+impl IntoResponse for Response<UnsyncBoxBody<Bytes, Infallible>> {
+    fn into_response(self, _state: &State) -> Response<Body> {
+        self.map(|body| UnsyncBoxBody::new(body.map_err(no_error)))
+    }
+}
+
+impl IntoResponse for Response<UnsyncBoxBody<Bytes, io::Error>> {
     fn into_response(self, _state: &State) -> Response<Body> {
         self
     }
@@ -368,9 +381,18 @@ where
     }
 }
 
+impl<B> IntoResponse for B
+where
+    B: IntoBody,
+{
+    fn into_response(self, state: &State) -> Response<Body> {
+        (StatusCode::OK, mime::TEXT_PLAIN, self).into_response(state)
+    }
+}
+
 impl<B> IntoResponse for (Mime, B)
 where
-    B: Into<Body>,
+    B: IntoBody,
 {
     fn into_response(self, state: &State) -> Response<Body> {
         (StatusCode::OK, self.0, self.1).into_response(state)
@@ -379,31 +401,33 @@ where
 
 impl<B> IntoResponse for (StatusCode, Mime, B)
 where
-    B: Into<Body>,
+    B: IntoBody,
 {
     fn into_response(self, state: &State) -> Response<Body> {
         response::create_response(state, self.0, self.1, self.2)
     }
 }
 
-// derive IntoResponse for Into<Body> types
-macro_rules! derive_into_response {
+/// Different body types usable with [`IntoResponse`].
+pub trait IntoBody {
+    /// Converts this value into a request body
+    fn into_body(self) -> Body;
+}
+
+macro_rules! impl_into_body {
     ($type:ty) => {
-        impl IntoResponse for $type {
-            fn into_response(self, state: &State) -> Response<Body> {
-                (StatusCode::OK, mime::TEXT_PLAIN, self).into_response(state)
+        impl IntoBody for $type {
+            fn into_body(self) -> Body {
+                UnsyncBoxBody::new(Full::<Bytes>::from(self).map_err(no_error))
             }
         }
     };
 }
 
-// derive Into<Body> types - this is required because we
-// can't impl IntoResponse for Into<Body> due to Response<T>
-// and the potential it will add Into<Body> in the future
-derive_into_response!(Bytes);
-derive_into_response!(String);
-derive_into_response!(Vec<u8>);
-derive_into_response!(&'static str);
-derive_into_response!(&'static [u8]);
-derive_into_response!(Cow<'static, str>);
-derive_into_response!(Cow<'static, [u8]>);
+impl_into_body!(Bytes);
+impl_into_body!(String);
+impl_into_body!(Vec<u8>);
+impl_into_body!(&'static str);
+impl_into_body!(&'static [u8]);
+impl_into_body!(Cow<'static, str>);
+impl_into_body!(Cow<'static, [u8]>);

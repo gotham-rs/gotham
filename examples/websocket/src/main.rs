@@ -1,6 +1,9 @@
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
+use gotham::handler::IntoBody;
+use gotham::helpers::http::Body;
+use gotham::http::{HeaderMap, Response, StatusCode};
+use gotham::http_body_util::combinators::UnsyncBoxBody;
 use gotham::hyper::upgrade::OnUpgrade;
-use gotham::hyper::{Body, HeaderMap, Response, StatusCode};
 use gotham::prelude::*;
 use gotham::state::{request_id, State};
 
@@ -40,7 +43,7 @@ fn handler(mut state: State) -> (State, Response<Body>) {
 
             (state, response)
         }
-        _ => (state, Response::new(Body::from(INDEX_HTML))),
+        _ => (state, Response::new(INDEX_HTML.into_body())),
     }
 }
 
@@ -77,7 +80,7 @@ where
 fn bad_request() -> Response<Body> {
     Response::builder()
         .status(StatusCode::BAD_REQUEST)
-        .body(Body::empty())
+        .body(UnsyncBoxBody::default())
         .unwrap()
 }
 
@@ -87,10 +90,11 @@ const INDEX_HTML: &str = include_str!("index.html");
 mod test {
     use super::*;
     use crate::ws::{Message, Role};
-    use gotham::hyper::header::{
+    use gotham::http::header::{
         HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
     };
     use gotham::hyper::upgrade;
+    use gotham::hyper_util::rt::TokioIo;
     use gotham::plain::test::AsyncTestServer;
     use tokio_tungstenite::WebSocketStream;
 
@@ -155,7 +159,7 @@ mod test {
             .await
             .expect("Failed to upgrade client websocket.");
         let mut websocket_stream =
-            WebSocketStream::from_raw_socket(upgraded, Role::Client, None).await;
+            WebSocketStream::from_raw_socket(TokioIo::new(upgraded), Role::Client, None).await;
 
         let message = Message::Text("Hello".to_string());
         websocket_stream

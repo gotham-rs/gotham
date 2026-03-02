@@ -25,7 +25,7 @@ use gotham::{
   state::{State, FromState},
 };
 use gotham_middleware_jwt::{JwtMiddleware, AuthorizationToken};
-use gotham::hyper::{Response, StatusCode};
+use gotham::http::{Response, StatusCode};
 
 #[derive(Deserialize, Debug)]
 struct Claims {

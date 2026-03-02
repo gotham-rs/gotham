@@ -9,7 +9,7 @@ use tokio::time::sleep;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::StatusCode;
+use gotham::http::StatusCode;
 use gotham::mime::TEXT_PLAIN;
 use gotham::prelude::*;
 use gotham::router::builder::build_simple_router;

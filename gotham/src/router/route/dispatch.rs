@@ -77,8 +77,10 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    use hyper::{Body, Response, StatusCode};
+    use http::{Response, StatusCode};
 
+    use crate::handler::IntoBody;
+    use crate::helpers::http::Body;
     use crate::middleware::{Middleware, NewMiddleware};
     use crate::pipeline::{new_pipeline, new_pipeline_set};
     use crate::state::StateData;
@@ -90,7 +92,7 @@ mod tests {
             state,
             Response::builder()
                 .status(StatusCode::OK)
-                .body(format!("{}", number).into())
+                .body(format!("{}", number).into_body())
                 .unwrap(),
         )
     }

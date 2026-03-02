@@ -1,15 +1,23 @@
 //! Behavior and helpers shared between [`tls::async_test::AsyncTestServer`]
 //! and [`plain::async_test::AsyncTestServer`].
 use crate::handler::NewHandler;
-use hyper::client::connect::Connect;
-use hyper::header::{HeaderName, HeaderValue, CONTENT_TYPE};
-use hyper::http::{self, request};
-use hyper::{Body, Client, Method, Request, Response, Uri, Version};
+use crate::helpers::http::Body;
+use bytes::Bytes;
+use http::header::{HeaderName, HeaderValue, CONTENT_TYPE};
+use http::{request, Method, Request, Response, Uri, Version};
+use http_body::Body as HttpBody;
+use http_body_util::combinators::UnsyncBoxBody;
+use http_body_util::BodyExt as _;
+use hyper::body::Incoming;
+use hyper_util::client::legacy::connect::Connect;
+use hyper_util::client::legacy::Client;
+use hyper_util::rt::TokioExecutor;
 use mime::Mime;
 use std::any::Any;
-use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::fmt::{Debug, Formatter};
 use std::future::Future;
+use std::io;
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
@@ -58,7 +66,7 @@ impl AsyncTestServerInner {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
         let test_connect = TestC::from(self.addr);
-        let client = Client::builder().build(test_connect);
+        let client = Client::builder(TokioExecutor::new()).build(test_connect);
         AsyncTestClient::new(client, self.timeout, self.clone())
     }
 }
@@ -101,65 +109,58 @@ impl<C: Connect + Clone + Send + Sync + 'static> AsyncTestClient<C> {
     }
 
     /// Begin constructing a `HEAD` request using this [`AsyncTestClient`]
-    pub fn head<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn head(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> AsyncTestRequestBuilder<'_, C> {
         self.request_builder_with_method_and_uri(Method::HEAD, uri)
     }
 
     /// Begin constructing a `GET` request using this [`AsyncTestClient`]
-    pub fn get<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn get(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> AsyncTestRequestBuilder<'_, C> {
         self.request_builder_with_method_and_uri(Method::GET, uri)
     }
 
     /// Begin constructing an `OPTIONS` request using this [`AsyncTestClient`]
-    pub fn options<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn options(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> AsyncTestRequestBuilder<'_, C> {
         self.request_builder_with_method_and_uri(Method::OPTIONS, uri)
     }
 
     /// Begin constructing a `POST` request using this [`AsyncTestClient`]
-    pub fn post<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn post(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> AsyncTestRequestBuilder<'_, C> {
         self.request_builder_with_method_and_uri(Method::POST, uri)
     }
 
     /// Begin constructing a `PUT` request using this [`AsyncTestClient`]
-    pub fn put<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn put(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> AsyncTestRequestBuilder<'_, C> {
         self.request_builder_with_method_and_uri(Method::PUT, uri)
     }
 
     /// Begin constructing a `PATCH` request using this [`AsyncTestClient`]
-    pub fn patch<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn patch(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> AsyncTestRequestBuilder<'_, C> {
         self.request_builder_with_method_and_uri(Method::PATCH, uri)
     }
 
     /// Begin constructing a `DELETE` request using this [`AsyncTestClient`]
-    pub fn delete<U>(&self, uri: U) -> AsyncTestRequestBuilder<'_, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn delete(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> AsyncTestRequestBuilder<'_, C> {
         self.request_builder_with_method_and_uri(Method::DELETE, uri)
     }
 
@@ -172,15 +173,11 @@ impl<C: Connect + Clone + Send + Sync + 'static> AsyncTestClient<C> {
         }
     }
 
-    fn request_builder_with_method_and_uri<U>(
+    fn request_builder_with_method_and_uri(
         &self,
         method: Method,
-        uri: U,
-    ) -> AsyncTestRequestBuilder<'_, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> AsyncTestRequestBuilder<'_, C> {
         let request_builder = request::Builder::new().uri(uri).method(method);
         AsyncTestRequestBuilder {
             test_client: self,
@@ -190,7 +187,7 @@ impl<C: Connect + Clone + Send + Sync + 'static> AsyncTestClient<C> {
     }
 }
 
-impl<C: Connect> From<AsyncTestClient<C>> for Client<C> {
+impl<C: Connect> From<AsyncTestClient<C>> for Client<C, Body> {
     fn from(test_client: AsyncTestClient<C>) -> Self {
         test_client.client
     }
@@ -229,46 +226,36 @@ impl<'client, C: Connect + Clone + Send + Sync + 'static> AsyncTestRequestBuilde
     /// Set a Body for this request. See [`http::request::Builder::body`].
     /// Other than the [`http::request::Builder::body`] it doesn't finish building
     /// the request though, instead if called multiple times, only the last one is kept.
-    /// Defaults to [`Body::empty`] if never called.
-    pub fn body<B: Into<Body>>(mut self, body: B) -> Self {
-        self.body.replace(body.into());
+    /// Defaults to [`Body::default`] if never called.
+    pub fn body(
+        mut self,
+        body: impl HttpBody<Data = Bytes, Error = io::Error> + Send + 'static,
+    ) -> Self {
+        self.body.replace(UnsyncBoxBody::new(body));
         self
     }
 
     /// Add a custom value to this request. See [`http::request::Builder::extension`]
-    pub fn extension<T>(self, extension: T) -> Self
-    where
-        T: Any + Send + Sync + 'static,
-    {
+    pub fn extension(self, extension: impl Clone + Any + Send + Sync + 'static) -> Self {
         self.replace_request_builder(|builder| builder.extension(extension))
     }
 
     /// Add a header to this request. See [`http::request::Builder::header`]
-    pub fn header<K, V>(self, key: K, value: V) -> Self
-    where
-        HeaderName: TryFrom<K>,
-        <HeaderName as TryFrom<K>>::Error: Into<http::Error>,
-        HeaderValue: TryFrom<V>,
-        <HeaderValue as TryFrom<V>>::Error: Into<http::Error>,
-    {
+    pub fn header(
+        self,
+        key: impl TryInto<HeaderName, Error: Into<http::Error>>,
+        value: impl TryInto<HeaderValue, Error: Into<http::Error>>,
+    ) -> Self {
         self.replace_request_builder(|builder| builder.header(key, value))
     }
 
     /// Set the method of this request. See [`http::request::Builder::method`]
-    pub fn method<M>(self, method: M) -> Self
-    where
-        Method: TryFrom<M>,
-        <Method as TryFrom<M>>::Error: Into<http::Error>,
-    {
+    pub fn method(self, method: impl TryInto<Method, Error: Into<http::Error>>) -> Self {
         self.replace_request_builder(|builder| builder.method(method))
     }
 
     /// Set the [`Uri`] of this request. See [`http::request::Builder::uri`]
-    pub fn uri<U>(self, uri: U) -> Self
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn uri(self, uri: impl TryInto<Uri, Error: Into<http::Error>>) -> Self {
         self.replace_request_builder(|builder| builder.uri(uri))
     }
 
@@ -303,14 +290,14 @@ impl<'client, C: Connect> DerefMut for AsyncTestRequestBuilder<'client, C> {
 /// Wrapper around a [`Response`] with some helper methods.
 /// `Response::from(test_response)` can be used to get the underlying [`Response`]
 pub struct AsyncTestResponse {
-    response: Response<Body>,
+    response: Response<Incoming>,
 }
 
 impl AsyncTestResponse {
     /// Awaits the body of the underlying [`Response`] and returns it. This will run until
     /// all data has been received.
     pub async fn read_body(self) -> anyhow::Result<Vec<u8>> {
-        let bytes = hyper::body::to_bytes(self.response.into_body()).await?;
+        let bytes = self.response.into_body().collect().await?.to_bytes();
         Ok(bytes.to_vec())
     }
 
@@ -322,20 +309,20 @@ impl AsyncTestResponse {
     }
 }
 
-impl From<Response<Body>> for AsyncTestResponse {
-    fn from(response: Response<Body>) -> Self {
+impl From<Response<Incoming>> for AsyncTestResponse {
+    fn from(response: Response<Incoming>) -> Self {
         Self { response }
     }
 }
 
-impl From<AsyncTestResponse> for Response<Body> {
+impl From<AsyncTestResponse> for Response<Incoming> {
     fn from(test_response: AsyncTestResponse) -> Self {
         test_response.response
     }
 }
 
 impl Deref for AsyncTestResponse {
-    type Target = Response<Body>;
+    type Target = Response<Incoming>;
 
     fn deref(&self) -> &Self::Target {
         &self.response
@@ -357,8 +344,9 @@ impl Debug for AsyncTestResponse {
 #[cfg(test)]
 pub(crate) mod common_tests {
     use super::*;
+    use crate::handler::IntoBody;
     use crate::test::helper::TestHandler;
-    use hyper::StatusCode;
+    use http::StatusCode;
 
     pub(crate) async fn serves_requests<TS, F, C>(
         server_factory: fn(TestHandler) -> F,
@@ -423,7 +411,7 @@ pub(crate) mod common_tests {
 
         let response = client_factory(&server)
             .post("http://localhost/echo")
-            .body(data)
+            .body(data.into_body())
             .perform()
             .await
             .unwrap();

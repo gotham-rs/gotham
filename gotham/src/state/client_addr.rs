@@ -23,7 +23,8 @@ pub(crate) fn put_client_addr(state: &mut State, addr: SocketAddr) {
 /// # extern crate hyper;
 /// # extern crate mime;
 /// #
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
+/// # use gotham::helpers::http::Body;
 /// # use gotham::helpers::http::response::create_response;
 /// # use gotham::state::{State, client_addr};
 /// # use gotham::test::TestServer;

@@ -1,11 +1,15 @@
 #![allow(clippy::type_complexity)]
 
 use base64::prelude::*;
-use gotham::hyper::header::{
+use gotham::helpers::http::Body;
+use gotham::http::header::{
     HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE,
 };
+use gotham::http::{HeaderMap, Response, StatusCode};
+use gotham::http_body_util::combinators::UnsyncBoxBody;
+use gotham::hyper;
 use gotham::hyper::upgrade::{OnUpgrade, Upgraded};
-use gotham::hyper::{self, Body, HeaderMap, Response, StatusCode};
+use gotham::hyper_util::rt::TokioIo;
 use sha1::{Digest, Sha1};
 use std::future::Future;
 use tokio_tungstenite::{tungstenite, WebSocketStream};
@@ -30,14 +34,14 @@ pub fn accept(
 ) -> Result<
     (
         Response<Body>,
-        impl Future<Output = Result<WebSocketStream<Upgraded>, hyper::Error>>,
+        impl Future<Output = Result<WebSocketStream<TokioIo<Upgraded>>, hyper::Error>>,
     ),
     (),
 > {
     let res = response(headers)?;
     let ws = async move {
         let upgraded = on_upgrade.await?;
-        Ok(WebSocketStream::from_raw_socket(upgraded, Role::Server, None).await)
+        Ok(WebSocketStream::from_raw_socket(TokioIo::new(upgraded), Role::Server, None).await)
     };
 
     Ok((res, ws))
@@ -51,7 +55,7 @@ fn response(headers: &HeaderMap) -> Result<Response<Body>, ()> {
         .header(CONNECTION, "upgrade")
         .header(SEC_WEBSOCKET_ACCEPT, accept_key(key.as_bytes()))
         .status(StatusCode::SWITCHING_PROTOCOLS)
-        .body(Body::empty())
+        .body(UnsyncBoxBody::default())
         .unwrap())
 }
 

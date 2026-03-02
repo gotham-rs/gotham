@@ -5,8 +5,9 @@ use std::pin::Pin;
 
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_empty_response;
-use gotham::hyper::header::{HeaderMap, USER_AGENT};
-use gotham::hyper::{Body, Response, StatusCode};
+use gotham::helpers::http::Body;
+use gotham::http::header::{HeaderMap, USER_AGENT};
+use gotham::http::{Response, StatusCode};
 use gotham::middleware::Middleware;
 use gotham::pipeline::{new_pipeline, single_pipeline};
 use gotham::prelude::*;

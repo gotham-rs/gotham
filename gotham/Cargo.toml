@@ -20,7 +20,7 @@ exclude = ["src/tls/tls_new_cert.sh"]
 [features]
 default = ["derive", "http2", "session", "testing"]
 derive = ["gotham_derive"]
-http2 = ["hyper/http2"]
+http2 = ["hyper/http2", "hyper-util/http2"]
 rustls = ["tokio-rustls"]
 session = ["bincode", "linked-hash-map"]
 testing = ["hyper/client"]
@@ -35,8 +35,12 @@ bincode = { version = "1.0", optional = true }
 bytes = "1.0"
 cookie = "0.15"
 futures-util = "0.3.14"
+http = "1"
+http-body = "1"
+http-body-util = "0.1"
 httpdate = "1.0"
-hyper = { version = "0.14.12", features = ["http1", "runtime", "server", "stream"] }
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "http1", "server", "service"] }
 linked-hash-map = { version = "0.5.6", optional = true }
 log = "0.4"
 mime = "0.3.15"
@@ -52,6 +56,7 @@ thiserror = "1.0.2"
 time = { version = "0.3.4", default-features = false, features = ["std", "formatting", "macros"] }
 tokio = { version = "1.11.0", features = ["net", "rt-multi-thread", "time", "fs", "io-util"] }
 tokio-rustls = { version = "0.23", optional = true }
+tower-service = "0.3"
 uuid = { version = "1.0", features = ["v4"] }
 
 [dev-dependencies]

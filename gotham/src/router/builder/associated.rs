@@ -1,9 +1,10 @@
 use std::marker::PhantomData;
 use std::panic::RefUnwindSafe;
 
-use hyper::{Body, Method};
+use http::Method;
 
 use crate::extractor::{PathExtractor, QueryStringExtractor};
+use crate::helpers::http::Body;
 use crate::pipeline::{PipelineHandleChain, PipelineSet};
 use crate::router::builder::SingleRouteBuilder;
 use crate::router::route::matcher::{
@@ -68,8 +69,9 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use hyper::{Body, Response, StatusCode};
-    /// # use hyper::header::ACCEPT;
+    /// # use http::{Response, StatusCode};
+    /// # use http::header::ACCEPT;
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::state::State;
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
     /// # use gotham::router::{build_simple_router, Router};
@@ -77,7 +79,7 @@ where
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {
@@ -132,9 +134,10 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # use hyper::{Body, Response, StatusCode};
-    /// # use gotham::router::{build_simple_router, Router};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::prelude::*;
+    /// # use gotham::router::{build_simple_router, Router};
     /// # use gotham::state::State;
     /// # use gotham::test::TestServer;
     /// # use serde::Deserialize;
@@ -142,7 +145,7 @@ where
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
     /// #   assert_eq!(state.borrow::<MyPathExtractor>().id, 42);
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #[derive(Deserialize, StateData, StaticResponseExtender)]
@@ -190,7 +193,8 @@ where
     /// # Examples
     ///
     /// ```rust
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::{build_simple_router, Router};
     /// # use gotham::prelude::*;
     /// # use gotham::state::State;
@@ -200,7 +204,7 @@ where
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
     /// #   assert_eq!(state.borrow::<MyQueryStringExtractor>().val.as_str(), "test_val");
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #[derive(StateData, Deserialize, StaticResponseExtender)]
@@ -253,7 +257,8 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Body, Response, Method, StatusCode};
+    /// # use http::{Response, Method, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -261,7 +266,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #
@@ -324,7 +329,8 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -332,7 +338,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #
@@ -367,7 +373,8 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -375,7 +382,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #
@@ -417,7 +424,8 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -425,7 +433,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #
@@ -461,7 +469,8 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -469,7 +478,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #
@@ -505,7 +514,8 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -513,7 +523,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #
@@ -549,7 +559,8 @@ where
     /// # extern crate hyper;
     /// # extern crate mime;
     /// #
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -557,7 +568,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #
@@ -592,7 +603,8 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -600,7 +612,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #
@@ -635,7 +647,8 @@ where
     /// # extern crate gotham;
     /// # extern crate hyper;
     /// #
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::state::State;
@@ -643,7 +656,7 @@ where
     /// #
     /// fn handler(state: State) -> (State, Response<Body>) {
     ///     // Implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     ///
     /// #

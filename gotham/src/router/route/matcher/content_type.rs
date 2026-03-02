@@ -1,7 +1,7 @@
 //! Defines the `ContentTypeHeaderRouteMatcher`.
 
-use hyper::header::{HeaderMap, CONTENT_TYPE};
-use hyper::StatusCode;
+use http::header::{HeaderMap, CONTENT_TYPE};
+use http::StatusCode;
 use log::trace;
 use mime::Mime;
 
@@ -18,7 +18,7 @@ use crate::state::{request_id, FromState, State};
 ///
 /// ```rust
 /// # fn main() {
-/// #   use hyper::header::{HeaderMap, CONTENT_TYPE};
+/// #   use http::header::{HeaderMap, CONTENT_TYPE};
 /// #   use gotham::state::State;
 /// #   use gotham::router::route::matcher::{ContentTypeHeaderRouteMatcher, RouteMatcher};
 /// #

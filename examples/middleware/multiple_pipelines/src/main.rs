@@ -12,20 +12,20 @@
 //! Finally, our app exposes an JSON endpoint, which needs its own middleware.
 
 use futures_util::future::{self, FutureExt};
-use gotham::hyper::header::{HeaderMap, ACCEPT};
-use gotham::hyper::{Body, Response, StatusCode};
-use gotham::mime::{APPLICATION_JSON, TEXT_HTML_UTF_8};
-use std::pin::Pin;
-
 use gotham::handler::HandlerFuture;
 use gotham::helpers::http::response::create_response;
+use gotham::helpers::http::Body;
+use gotham::http::header::{HeaderMap, ACCEPT};
+use gotham::http::{Response, StatusCode};
 use gotham::middleware::session::NewSessionMiddleware;
 use gotham::middleware::Middleware;
+use gotham::mime::{APPLICATION_JSON, TEXT_HTML_UTF_8};
 use gotham::pipeline::{finalize_pipeline_set, new_pipeline, new_pipeline_set, single_pipeline};
 use gotham::prelude::*;
 use gotham::router::{build_router, Router};
 use gotham::state::State;
 use serde::{Deserialize, Serialize};
+use std::pin::Pin;
 
 /// A simple struct to represent our default session data.
 #[derive(Default, Serialize, Deserialize)]
@@ -172,7 +172,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gotham::hyper::header::HeaderValue;
+    use gotham::http::header::HeaderValue;
     use gotham::test::TestServer;
 
     #[test]

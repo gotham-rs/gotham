@@ -46,19 +46,31 @@ pub mod tls;
 
 /// Re-export anyhow
 pub use anyhow;
+/// Re-export bytes
+pub use bytes;
 /// Re-export cookie
 pub use cookie;
+/// Re-export http
+pub use http;
+/// Re-export http-body
+pub use http_body;
+/// Re-export http-body-util
+pub use http_body_util;
 /// Re-export hyper
 pub use hyper;
+/// Re-export hyper-util
+pub use hyper_util;
 /// Re-export mime
 pub use mime;
+/// Re-export tower-service
+pub use tower_service;
 
 /// Re-export rustls
 #[cfg(feature = "rustls")]
 pub use tokio_rustls::rustls;
 
 use futures_util::TryFutureExt;
-use hyper::server::conn::Http;
+use hyper_util::rt::{TokioExecutor, TokioIo};
 use std::future::Future;
 use std::io;
 use std::net::ToSocketAddrs;
@@ -121,7 +133,9 @@ where
     Wrapped: Unpin + AsyncRead + AsyncWrite + Send + 'static,
     Wrap: Fn(TcpStream) -> F,
 {
-    let protocol = Arc::new(Http::new());
+    let protocol = Arc::new(hyper_util::server::conn::auto::Builder::new(
+        TokioExecutor::new(),
+    ));
     let gotham_service = GothamService::new(new_handler);
 
     loop {
@@ -134,7 +148,7 @@ where
         };
 
         let service = gotham_service.connect(addr);
-        let accepted_protocol = protocol.clone();
+        let accepted_protocol = Arc::clone(&protocol);
         let wrapper = wrap(socket);
 
         // NOTE: HTTP protocol errors and handshake errors are ignored here (i.e. so the socket
@@ -143,9 +157,8 @@ where
             let socket = wrapper.await?;
 
             accepted_protocol
-                .serve_connection(socket, service)
-                .with_upgrades()
-                .map_err(|_| ())
+                .serve_connection_with_upgrades(TokioIo::new(socket), service)
+                .map_err(drop)
                 .await?;
 
             Result::<_, ()>::Ok(())

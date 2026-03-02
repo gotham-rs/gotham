@@ -1,5 +1,4 @@
 use futures_util::FutureExt;
-use hyper::Body;
 
 use std::future::Future;
 use std::panic::RefUnwindSafe;
@@ -10,6 +9,7 @@ use crate::handler::{
     DirHandler, FileHandler, FileOptions, FilePathExtractor, Handler, HandlerError, HandlerFuture,
     HandlerResult, IntoResponse, NewHandler,
 };
+use crate::helpers::http::Body;
 use crate::pipeline::PipelineHandleChain;
 use crate::router::builder::{
     ExtendRouteMatcher, ReplacePathExtractor, ReplaceQueryStringExtractor, SingleRouteBuilder,
@@ -70,7 +70,8 @@ where
 /// # Examples
 ///
 /// ```rust
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
+/// # use gotham::helpers::http::Body;
 /// # use gotham::state::State;
 /// # use gotham::router::Router;
 /// # use gotham::router::builder::*;
@@ -80,7 +81,7 @@ where
 /// #
 /// fn my_handler(state: State) -> (State, Response<Body>) {
 ///     // Handler implementation elided.
-/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+/// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
 /// }
 /// #
 /// # fn router() -> Router {
@@ -111,7 +112,8 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -121,7 +123,7 @@ pub trait DefineSingleRoute {
     /// #
     /// fn my_handler(state: State) -> (State, Response<Body>) {
     ///     // Handler implementation elided.
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     /// #
     /// # fn router() -> Router {
@@ -153,8 +155,9 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
     /// # use gotham::handler::HandlerResult;
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -164,7 +167,7 @@ pub trait DefineSingleRoute {
     /// #
     /// async fn my_handler(state: State) -> HandlerResult {
     ///     // Handler implementation elided.
-    /// #   Ok((state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
+    /// #   Ok((state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap()))
     /// }
     /// #
     /// # fn router() -> Router {
@@ -204,7 +207,7 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # use hyper::StatusCode;
+    /// # use http::StatusCode;
     /// # use gotham::handler::{HandlerError, IntoResponse, MapHandlerError};
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
@@ -253,8 +256,9 @@ pub trait DefineSingleRoute {
     /// # use std::pin::Pin;
     /// #
     /// # use futures_util::future::{self, FutureExt};
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
     /// # use gotham::handler::{Handler, HandlerFuture, NewHandler};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::state::State;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
@@ -276,7 +280,7 @@ pub trait DefineSingleRoute {
     /// impl Handler for MyHandler {
     ///     fn handle(self, state: State) -> Pin<Box<HandlerFuture>> {
     ///         // Handler implementation elided.
-    /// #       let response = Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap();
+    /// #       let response = Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap();
     /// #       future::ok((state, response)).boxed()
     ///     }
     /// }
@@ -311,7 +315,7 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # use hyper::StatusCode;
+    /// # use http::StatusCode;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::*;
@@ -353,7 +357,7 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # use hyper::StatusCode;
+    /// # use http::StatusCode;
     /// # use gotham::router::Router;
     /// # use gotham::router::builder::*;
     /// # use gotham::pipeline::*;
@@ -394,7 +398,8 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::state::State;
     /// # use gotham::router::{build_router, Router};
     /// # use gotham::prelude::*;
@@ -416,7 +421,7 @@ pub trait DefineSingleRoute {
     ///     // Handler implementation elided.
     /// #   assert_eq!(params.name, "world");
     /// #   }
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     /// #
     /// # fn router() -> Router {
@@ -456,7 +461,8 @@ pub trait DefineSingleRoute {
     /// # Examples
     ///
     /// ```rust
-    /// # use hyper::{Body, Response, StatusCode};
+    /// # use http::{Response, StatusCode};
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::state::State;
     /// # use gotham::router::{build_router, Router};
     /// # use gotham::prelude::*;
@@ -476,7 +482,7 @@ pub trait DefineSingleRoute {
     ///
     ///     // Handler implementation elided.
     /// #   assert_eq!(id, 42);
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// }
     /// #
     /// # fn router() -> Router {
@@ -515,8 +521,9 @@ pub trait DefineSingleRoute {
     /// Adds additional `RouteMatcher` requirements to the current route.
     ///
     /// ```
-    /// # use hyper::{Body, Response, StatusCode};
-    /// # use hyper::header::ACCEPT;
+    /// # use http::{Response, StatusCode};
+    /// # use http::header::ACCEPT;
+    /// # use gotham::helpers::http::Body;
     /// # use gotham::state::State;
     /// # use gotham::router::route::matcher::AcceptHeaderRouteMatcher;
     /// # use gotham::router::Router;
@@ -524,7 +531,7 @@ pub trait DefineSingleRoute {
     /// # use gotham::test::TestServer;
     /// #
     /// # fn my_handler(state: State) -> (State, Response<Body>) {
-    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap())
+    /// #   (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap())
     /// # }
     /// #
     /// # fn router() -> Router {

@@ -1,7 +1,8 @@
-use hyper::body::HttpBody;
-use hyper::{Body, Response};
+use http::Response;
+use http_body::Body as HttpBody;
 use serde::{Deserialize, Deserializer};
 
+use crate::helpers::http::Body;
 use crate::router::response::StaticResponseExtender;
 use crate::state::{State, StateData};
 
@@ -20,9 +21,10 @@ use crate::state::{State, StateData};
 /// # Examples
 ///
 /// ```rust
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_response;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::router::{build_simple_router, Router};
 /// # use gotham::prelude::*;
 /// # use gotham::test::TestServer;

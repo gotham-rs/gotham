@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 
-use hyper::{Method, StatusCode};
+use http::{Method, StatusCode};
 
 /// The error type used for a non-matching route, as returned by `RouteMatcher::is_match`. Multiple
 /// values of this type can be combined by matchers that are wrapping other matchers, using the
@@ -13,7 +13,7 @@ use hyper::{Method, StatusCode};
 /// # extern crate gotham;
 /// # extern crate hyper;
 /// #
-/// # use hyper::{Method, StatusCode};
+/// # use http::{Method, StatusCode};
 /// # use gotham::router::RouteNonMatch;
 /// # use gotham::router::route::matcher::RouteMatcher;
 /// # use gotham::state::State;
@@ -133,7 +133,7 @@ impl From<RouteNonMatch> for StatusCode {
 }
 
 // This customised set prevents memory allocations while computing `Allow` lists, except in the
-// case where extension methods are provided using the `hyper::Method::Extension` variant.
+// case where extension methods are provided using the `http::Method::Extension` variant.
 #[derive(Clone, Default)]
 struct MethodSet {
     connect: bool,
@@ -296,7 +296,7 @@ impl From<MethodSet> for Vec<Method> {
 mod tests {
     use super::*;
 
-    use hyper::{Method, StatusCode};
+    use http::{Method, StatusCode};
 
     trait AllowList {
         fn apply_allow_list(self, list: Option<&[Method]>) -> Self;

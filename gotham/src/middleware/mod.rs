@@ -38,8 +38,9 @@ pub use gotham_derive::NewMiddleware;
 /// #
 /// # use std::pin::Pin;
 /// #
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
 /// # use gotham::router::builder::*;
@@ -68,7 +69,7 @@ pub use gotham_derive::NewMiddleware;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap()))
 /// #           });
 /// #   });
 /// #
@@ -86,8 +87,8 @@ pub use gotham_derive::NewMiddleware;
 /// #
 /// # use std::pin::Pin;
 /// #
-/// # use hyper::{Response, StatusCode};
-/// # use gotham::handler::HandlerFuture;
+/// # use http::{Response, StatusCode};
+/// # use gotham::handler::{HandlerFuture, IntoBody};
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
 /// # use gotham::router::builder::*;
@@ -124,8 +125,8 @@ pub use gotham_derive::NewMiddleware;
 /// #           .to_new_handler(|| {
 /// #               Ok(|mut state: State| {
 /// #                   let data = state.take::<MiddlewareStateData>();
-/// #                   let body = format!("{}", data.i).into_bytes();
-/// #                   (state, Response::builder().status(StatusCode::OK).body(body.into()).unwrap())
+/// #                   let body = format!("{}", data.i).into_body();
+/// #                   (state, Response::builder().status(StatusCode::OK).body(body).unwrap())
 /// #               })
 /// #           });
 /// #   });
@@ -147,9 +148,10 @@ pub use gotham_derive::NewMiddleware;
 /// # use std::pin::Pin;
 /// #
 /// # use futures_util::{FutureExt, TryFutureExt};
-/// # use hyper::{Body, Response, StatusCode};
-/// # use hyper::header::WARNING;
+/// # use http::{Response, StatusCode};
+/// # use http::header::WARNING;
 /// # use gotham::handler::HandlerFuture;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
 /// # use gotham::router::builder::*;
@@ -183,7 +185,7 @@ pub use gotham_derive::NewMiddleware;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap()))
 /// #           });
 /// #   });
 /// #
@@ -206,9 +208,10 @@ pub use gotham_derive::NewMiddleware;
 /// #
 /// # use std::pin::Pin;
 /// #
-/// # use hyper::{Body, Response, Method, StatusCode};
+/// # use http::{Response, Method, StatusCode};
 /// # use futures_util::future::{self, FutureExt};
 /// # use gotham::helpers::http::response::create_empty_response;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::handler::HandlerFuture;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
@@ -243,7 +246,7 @@ pub use gotham_derive::NewMiddleware;
 /// #       route
 /// #           .get_or_head("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap()))
 /// #           });
 /// #   });
 /// #
@@ -266,8 +269,9 @@ pub use gotham_derive::NewMiddleware;
 /// # use std::pin::Pin;
 /// #
 /// # use futures_util::future::{self, FutureExt, TryFutureExt};
-/// # use hyper::{Body, Response, StatusCode};
+/// # use http::{Response, StatusCode};
 /// # use gotham::handler::HandlerFuture;
+/// # use gotham::helpers::http::Body;
 /// # use gotham::middleware::Middleware;
 /// # use gotham::pipeline::*;
 /// # use gotham::router::builder::*;
@@ -299,7 +303,7 @@ pub use gotham_derive::NewMiddleware;
 /// #       route
 /// #           .get("/")
 /// #           .to_new_handler(|| {
-/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::empty()).unwrap()))
+/// #               Ok(|state| (state, Response::builder().status(StatusCode::ACCEPTED).body(Body::default()).unwrap()))
 /// #           });
 /// #   });
 /// #

@@ -20,7 +20,8 @@
 //! of your specific example i.e. That a 404 is correctly returned for a missing endpoint when
 //! you're writing an example for setting Cookies.
 use gotham::helpers::http::response::create_empty_response;
-use gotham::hyper::{Body, Response, StatusCode};
+use gotham::helpers::http::Body;
+use gotham::http::{Response, StatusCode};
 use gotham::prelude::*;
 use gotham::router::{build_simple_router, Router};
 use gotham::state::State;

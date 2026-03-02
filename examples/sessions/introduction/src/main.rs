@@ -62,8 +62,8 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::cookie::Cookie;
-    use gotham::hyper::header::{COOKIE, SET_COOKIE};
-    use gotham::hyper::StatusCode;
+    use gotham::http::header::{COOKIE, SET_COOKIE};
+    use gotham::http::StatusCode;
     use gotham::test::TestServer;
 
     #[test]

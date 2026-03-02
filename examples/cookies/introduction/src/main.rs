@@ -2,8 +2,9 @@
 //! web framework.
 use gotham::cookie::{Cookie, CookieJar};
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::header::SET_COOKIE;
-use gotham::hyper::{Body, Response, StatusCode};
+use gotham::helpers::http::Body;
+use gotham::http::header::SET_COOKIE;
+use gotham::http::{Response, StatusCode};
 use gotham::middleware::cookie::CookieParser;
 use gotham::mime::TEXT_PLAIN;
 use gotham::pipeline::{new_pipeline, single_pipeline};
@@ -60,7 +61,7 @@ pub fn main() {
 mod tests {
     use super::*;
     use gotham::cookie::Cookie;
-    use gotham::hyper::header::COOKIE;
+    use gotham::http::header::COOKIE;
     use gotham::test::TestServer;
 
     #[test]

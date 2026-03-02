@@ -3,29 +3,33 @@ pub(crate) mod async_test;
 /// Test request behavior, shared between the tls::test and plain::test modules.
 pub mod request;
 
-use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::fmt;
 use std::future::Future;
+use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, RwLock};
+use std::time::Duration;
 
 use anyhow::anyhow;
 use futures_util::future::{self, FutureExt, TryFuture, TryFutureExt};
-use hyper::client::connect::Connect;
-use hyper::client::Client;
-use hyper::header::CONTENT_TYPE;
-use hyper::{body, http, Body, Method, Response, Uri};
+use http::header::CONTENT_TYPE;
+use http::{Method, Response, Uri};
+use http_body_util::BodyExt as _;
+use hyper::body::Incoming;
+use hyper_util::client::legacy::connect::Connect;
+use hyper_util::client::legacy::Client;
+use hyper_util::rt::TokioExecutor;
 use log::warn;
-use tokio::time::{sleep, Sleep};
-
-use crate::handler::NewHandler;
-pub use crate::plain::test::TestServer;
-pub use request::TestRequest;
-use std::net::SocketAddr;
-use std::sync::{Arc, RwLock};
-use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Runtime;
+use tokio::time::{sleep, Sleep};
+
+pub use self::request::TestRequest;
+use crate::handler::{IntoBody, NewHandler};
+use crate::helpers::http::Body;
+pub use crate::plain::test::TestServer;
 
 // publicly reexport the AsyncTestServer helper types.
 pub use async_test::{AsyncTestClient, AsyncTestRequestBuilder, AsyncTestResponse};
@@ -33,7 +37,7 @@ pub use async_test::{AsyncTestClient, AsyncTestRequestBuilder, AsyncTestResponse
 pub(crate) trait BodyReader {
     /// Runs the underlying event loop until the response body has been fully read. An `Ok(_)`
     /// response holds a buffer containing all bytes of the response body.
-    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>, hyper::Error>;
+    fn read_body(&mut self, response: Response<Incoming>) -> Result<Vec<u8>, hyper::Error>;
 }
 
 pub(crate) struct TestServerData {
@@ -77,7 +81,7 @@ impl TestServerData {
         // We're creating a private TCP-based pipe here. Bind to an ephemeral port, connect to
         // it and then immediately discard the listener.
         let test_connect = TestC::from(self.addr);
-        let client = Client::builder().build(test_connect);
+        let client = Client::builder(TokioExecutor::new()).build(test_connect);
 
         TestClient {
             client,
@@ -158,8 +162,11 @@ pub trait Server: Clone {
 }
 
 impl<T: Server> BodyReader for T {
-    fn read_body(&mut self, response: Response<Body>) -> Result<Vec<u8>, hyper::Error> {
-        let f = body::to_bytes(response.into_body()).and_then(|b| future::ok(b.to_vec()));
+    fn read_body(&mut self, response: Response<Incoming>) -> Result<Vec<u8>, hyper::Error> {
+        let f = response
+            .into_body()
+            .collect()
+            .and_then(|b| future::ok(b.to_bytes().to_vec()));
         self.run_future(f)
     }
 }
@@ -172,93 +179,78 @@ pub struct TestClient<TS: Server, C: Connect> {
 
 impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClient<TS, C> {
     /// Begin constructing a HEAD request using this `TestClient`.
-    pub fn head<U>(&self, uri: U) -> TestRequest<'_, TS, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn head(&self, uri: impl TryInto<Uri, Error: Into<http::Error>>) -> TestRequest<'_, TS, C> {
         self.build_request(Method::HEAD, uri)
     }
 
     /// Begin constructing a GET request using this `TestClient`.
-    pub fn get<U>(&self, uri: U) -> TestRequest<'_, TS, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn get(&self, uri: impl TryInto<Uri, Error: Into<http::Error>>) -> TestRequest<'_, TS, C> {
         self.build_request(Method::GET, uri)
     }
 
     /// Begin constructing an OPTIONS request using this `TestClient`.
-    pub fn options<U>(&self, uri: U) -> TestRequest<'_, TS, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn options(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> TestRequest<'_, TS, C> {
         self.build_request(Method::OPTIONS, uri)
     }
 
     /// Begin constructing a POST request using this `TestClient`.
-    pub fn post<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<'_, TS, C>
-    where
-        B: Into<Body>,
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn post(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+        body: impl IntoBody,
+        mime: mime::Mime,
+    ) -> TestRequest<'_, TS, C> {
         self.build_request_with_body(Method::POST, uri, body, mime)
     }
 
     /// Begin constructing a PUT request using this `TestClient`.
-    pub fn put<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<'_, TS, C>
-    where
-        B: Into<Body>,
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn put(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+        body: impl IntoBody,
+        mime: mime::Mime,
+    ) -> TestRequest<'_, TS, C> {
         self.build_request_with_body(Method::PUT, uri, body, mime)
     }
 
     /// Begin constructing a PATCH request using this `TestClient`.
-    pub fn patch<B, U>(&self, uri: U, body: B, mime: mime::Mime) -> TestRequest<'_, TS, C>
-    where
-        B: Into<Body>,
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn patch(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+        body: impl IntoBody,
+        mime: mime::Mime,
+    ) -> TestRequest<'_, TS, C> {
         self.build_request_with_body(Method::PATCH, uri, body, mime)
     }
 
     /// Begin constructing a DELETE request using this `TestClient`.
-    pub fn delete<U>(&self, uri: U) -> TestRequest<'_, TS, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn delete(
+        &self,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> TestRequest<'_, TS, C> {
         self.build_request(Method::DELETE, uri)
     }
 
     /// Begin constructing a request with the given HTTP method and URI.
-    pub fn build_request<U>(&self, method: Method, uri: U) -> TestRequest<'_, TS, C>
-    where
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    pub fn build_request(
+        &self,
+        method: Method,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+    ) -> TestRequest<'_, TS, C> {
         TestRequest::new(self, method, uri)
     }
 
     /// Begin constructing a request with the given HTTP method, URI and body.
-    pub fn build_request_with_body<B, U>(
+    pub fn build_request_with_body(
         &self,
         method: Method,
-        uri: U,
-        body: B,
+        uri: impl TryInto<Uri, Error: Into<http::Error>>,
+        body: impl IntoBody,
         mime: mime::Mime,
-    ) -> TestRequest<'_, TS, C>
-    where
-        B: Into<Body>,
-        Uri: TryFrom<U>,
-        <Uri as TryFrom<U>>::Error: Into<http::Error>,
-    {
+    ) -> TestRequest<'_, TS, C> {
         let mut request = self.build_request(method, uri);
 
         {
@@ -266,7 +258,7 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
             headers.insert(CONTENT_TYPE, mime.to_string().parse().unwrap());
         }
 
-        *request.body_mut() = body.into();
+        *request.body_mut() = body.into_body();
 
         request
     }
@@ -300,7 +292,8 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
 /// #
 /// # use gotham::state::State;
 /// # use gotham::helpers::http::response::create_response;
-/// # use hyper::{Body, Response, StatusCode};
+/// # use gotham::helpers::http::Body;
+/// # use http::{Response, StatusCode};
 /// #
 /// # fn my_handler(state: State) -> (State, Response<Body>) {
 /// #   let body = "This is the body content.".to_string();
@@ -328,20 +321,20 @@ impl<TS: Server + 'static, C: Connect + Clone + Send + Sync + 'static> TestClien
 /// # }
 /// ```
 pub struct TestResponse {
-    response: Response<Body>,
+    response: Response<Incoming>,
     reader: Box<dyn BodyReader>,
 }
 
 impl Deref for TestResponse {
-    type Target = Response<Body>;
+    type Target = Response<Incoming>;
 
-    fn deref(&self) -> &Response<Body> {
+    fn deref(&self) -> &Response<Incoming> {
         &self.response
     }
 }
 
 impl DerefMut for TestResponse {
-    fn deref_mut(&mut self) -> &mut Response<Body> {
+    fn deref_mut(&mut self) -> &mut Response<Incoming> {
         &mut self.response
     }
 }
@@ -352,8 +345,8 @@ impl fmt::Debug for TestResponse {
     }
 }
 
-impl From<TestResponse> for Response<Body> {
-    fn from(response: TestResponse) -> Response<Body> {
+impl From<TestResponse> for Response<Incoming> {
+    fn from(response: TestResponse) -> Response<Incoming> {
         response.response
     }
 }
@@ -377,12 +370,13 @@ impl TestResponse {
 
 #[cfg(test)]
 pub(crate) mod helper {
-    use crate::handler::{Handler, HandlerFuture, NewHandler};
+    use crate::handler::{Handler, HandlerFuture, IntoBody, NewHandler};
     use crate::helpers::http::response::create_response;
-    use crate::hyper::Body;
     use crate::state::{client_addr, FromState, State};
     use futures_util::{future, FutureExt};
-    use hyper::{body, Response, StatusCode, Uri};
+    use http::{Response, StatusCode, Uri};
+    use http_body_util::combinators::UnsyncBoxBody;
+    use http_body_util::BodyExt as _;
     use log::info;
     use std::pin::Pin;
 
@@ -407,7 +401,7 @@ pub(crate) mod helper {
                     info!("TestHandler responding to /");
                     let response = Response::builder()
                         .status(StatusCode::OK)
-                        .body(self.response.into())
+                        .body(self.response.into_body())
                         .unwrap();
 
                     future::ok((state, response)).boxed()
@@ -420,16 +414,16 @@ pub(crate) mod helper {
                     info!("TestHandler responding to /myaddr");
                     let response = Response::builder()
                         .status(StatusCode::OK)
-                        .body(format!("{}", client_addr(&state).unwrap()).into())
+                        .body(format!("{}", client_addr(&state).unwrap()).into_body())
                         .unwrap();
 
                     future::ok((state, response)).boxed()
                 }
                 "/echo" => async move {
-                    let body = Body::take_from(&mut state);
-                    match body::to_bytes(body).await {
+                    let body = UnsyncBoxBody::take_from(&mut state);
+                    match body.collect().await {
                         Ok(body) => {
-                            let response_data = body.to_vec();
+                            let response_data = body.to_bytes();
                             let response = create_response(
                                 &state,
                                 StatusCode::OK,
@@ -458,8 +452,8 @@ pub(crate) mod helper {
 
 #[cfg(test)]
 pub(crate) mod common_tests {
-    use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
-    use hyper::StatusCode;
+    use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
+    use http::StatusCode;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::*;

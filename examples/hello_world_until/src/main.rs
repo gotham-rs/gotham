@@ -6,7 +6,8 @@ extern crate nix;
 
 use futures_util::future::{self, Either, FutureExt};
 use gotham::helpers::http::response::create_response;
-use gotham::hyper::{Body, Response, StatusCode};
+use gotham::helpers::http::Body;
+use gotham::http::{Response, StatusCode};
 use gotham::mime::TEXT_PLAIN;
 use gotham::state::State;
 use tokio::signal;
@@ -51,7 +52,13 @@ pub async fn main() {
 mod tests {
     use super::*;
     #[cfg(unix)]
-    use gotham::hyper::Client;
+    use gotham::bytes::Bytes;
+    #[cfg(unix)]
+    use gotham::http_body_util::Empty;
+    #[cfg(unix)]
+    use gotham::hyper_util::client::legacy::Client;
+    #[cfg(unix)]
+    use gotham::hyper_util::rt::TokioExecutor;
     use gotham::test::TestServer;
     #[cfg(unix)]
     use nix::sys::signal::{kill, Signal};
@@ -77,7 +84,7 @@ mod tests {
 
     #[cfg(unix)]
     fn try_request() -> bool {
-        let client = Client::new();
+        let client = Client::builder(TokioExecutor::new()).build_http::<Empty<Bytes>>();
 
         let uri = "http://127.0.0.1:7878/";
         let uri_parsed = uri.parse().unwrap();

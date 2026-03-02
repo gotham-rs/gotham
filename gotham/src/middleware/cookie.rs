@@ -2,7 +2,7 @@
 use std::pin::Pin;
 
 use cookie::{Cookie, CookieJar};
-use hyper::header::{HeaderMap, HeaderValue, COOKIE};
+use http::header::{HeaderMap, HeaderValue, COOKIE};
 
 use super::{Middleware, NewMiddleware};
 use crate::handler::HandlerFuture;
