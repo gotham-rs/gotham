@@ -110,7 +110,7 @@ where
 /// support. The wrap argument is a function that will receive a tokio-io TcpStream and should wrap
 /// the socket as necessary. Errors returned by this function will be ignored and the connection
 /// will be dropped if the future returned by the wrapper resolves to an error.
-pub async fn bind_server<'a, NH, F, Wrapped, Wrap>(
+pub async fn bind_server<NH, F, Wrapped, Wrap>(
     listener: TcpListener,
     new_handler: NH,
     wrap: Wrap,
