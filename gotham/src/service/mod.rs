@@ -4,13 +4,12 @@
 use std::net::SocketAddr;
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
-use std::task::{self, Poll};
 
 use bytes::Bytes;
 use futures_util::future::{BoxFuture, FutureExt};
 use http::{Request, Response};
 use http_body::Body as HttpBody;
-use tower_service::Service;
+use hyper::service::Service;
 
 use crate::handler::NewHandler;
 use crate::helpers::http::Body;
@@ -57,18 +56,6 @@ where
     client_addr: SocketAddr,
 }
 
-impl<T> Clone for ConnectedGothamService<T>
-where
-    T: NewHandler + 'static,
-{
-    fn clone(&self) -> Self {
-        ConnectedGothamService {
-            handler: Arc::clone(&self.handler),
-            client_addr: self.client_addr,
-        }
-    }
-}
-
 impl<B, T> Service<Request<B>> for ConnectedGothamService<T>
 where
     B: HttpBody<Data = Bytes> + Send + 'static,
@@ -79,14 +66,7 @@ where
     type Error = anyhow::Error;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn poll_ready(
-        &mut self,
-        _cx: &mut task::Context<'_>,
-    ) -> Poll<std::result::Result<(), Self::Error>> {
-        Poll::Ready(Ok(()))
-    }
-
-    fn call<'a>(&'a mut self, req: Request<B>) -> Self::Future {
+    fn call(&self, req: Request<B>) -> Self::Future {
         let state = State::from_request(req, self.client_addr);
         call_handler(self.handler.clone(), AssertUnwindSafe(state)).boxed()
     }

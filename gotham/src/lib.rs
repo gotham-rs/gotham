@@ -71,7 +71,6 @@ pub use tokio_rustls::rustls;
 
 use futures_util::TryFutureExt;
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use hyper_util::service::TowerToHyperService;
 use std::future::Future;
 use std::io;
 use std::net::ToSocketAddrs;
@@ -158,10 +157,7 @@ where
             let socket = wrapper.await?;
 
             accepted_protocol
-                .serve_connection_with_upgrades(
-                    TokioIo::new(socket),
-                    TowerToHyperService::new(service),
-                )
+                .serve_connection_with_upgrades(TokioIo::new(socket), service)
                 .map_err(drop)
                 .await?;
 

@@ -328,8 +328,8 @@ mod tests {
 
     use http::{Request, Response, StatusCode};
     use http_body_util::BodyExt as _;
+    use hyper::service::Service;
     use serde::Deserialize;
-    use tower_service::Service;
 
     use crate::handler::IntoBody;
     use crate::middleware::cookie::CookieParser;
@@ -542,7 +542,7 @@ mod tests {
         let new_service = GothamService::new(router);
 
         let call = move |req| {
-            let mut service = new_service.connect("127.0.0.1:10000".parse().unwrap());
+            let service = new_service.connect("127.0.0.1:10000".parse().unwrap());
             futures_executor::block_on(service.call(req)).unwrap()
         };
 
