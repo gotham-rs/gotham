@@ -264,7 +264,7 @@ fn create_file_response(options: FileOptions, state: State) -> Pin<Box<HandlerFu
             );
             response = response.status(StatusCode::PARTIAL_CONTENT).header(
                 CONTENT_RANGE,
-                HeaderValue::from_str(&val).map_err(|e| io::Error::other(e))?,
+                HeaderValue::from_str(&val).map_err(io::Error::other)?,
             );
         }
 
