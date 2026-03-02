@@ -50,7 +50,7 @@ impl Eq for ConstrainedSegmentRegex {}
 
 impl PartialOrd for ConstrainedSegmentRegex {
     fn partial_cmp(&self, other: &ConstrainedSegmentRegex) -> Option<Ordering> {
-        Some(self.as_str().cmp(other.as_str()))
+        Some(self.cmp(other))
     }
 }
 
