@@ -218,7 +218,7 @@ impl State {
         T: StateData,
     {
         let type_id = TypeId::of::<T>();
-        self.data.get(&type_id).is_some()
+        self.data.contains_key(&type_id)
     }
 
     /// Tries to borrow a value from the `State` storage.
