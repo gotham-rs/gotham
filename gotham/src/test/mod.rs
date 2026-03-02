@@ -529,7 +529,7 @@ pub(crate) mod common_tests {
 
         let content_length = {
             let content_length = res.headers().get(CONTENT_LENGTH).expect("ContentLength");
-            assert_eq!(content_length, &format!("{}", data.as_bytes().len()));
+            assert_eq!(content_length, &format!("{}", data.len()));
             content_length.clone()
         };
 
