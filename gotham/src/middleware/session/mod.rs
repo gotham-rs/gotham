@@ -1187,7 +1187,7 @@ mod tests {
         };
 
         let mut headers = HeaderMap::new();
-        let cookie = Cookie::build("_gotham_session", identifier.value.clone()).finish();
+        let cookie = Cookie::new("_gotham_session", identifier.value.clone());
         headers.insert(COOKIE, cookie.to_string().parse().unwrap());
         state.put(headers);
 
@@ -1233,7 +1233,7 @@ mod tests {
 
         let mut state = State::new();
         let mut headers = HeaderMap::new();
-        let cookie = Cookie::build("_gotham_session", identifier.value.clone()).finish();
+        let cookie = Cookie::new("_gotham_session", identifier.value.clone());
         headers.insert(COOKIE, cookie.to_string().parse().unwrap());
         state.put(headers);
 

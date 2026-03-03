@@ -31,9 +31,9 @@ fn handler(state: State) -> (State, Response<Body>) {
     );
 
     {
-        let cookie = Cookie::build("adjective", "repeat")
+        let cookie = Cookie::build(("adjective", "repeat"))
             .http_only(true)
-            .finish();
+            .build();
         response
             .headers_mut()
             .append(SET_COOKIE, cookie.to_string().parse().unwrap());
