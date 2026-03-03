@@ -9,7 +9,7 @@ publish = false
 
 [dependencies]
 gotham.workspace = true
-gotham_middleware_diesel = { path = "../../middleware/diesel"}
+gotham_middleware_diesel.workspace = true
 
 diesel = { version = "2.1", features = ["r2d2", "sqlite"] }
 diesel_migrations = { version = "2.1", features = ["sqlite"] }
