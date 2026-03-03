@@ -2,8 +2,7 @@
 //! type is populated by the `Router` while traversing the tree, and the `Route` implementation
 //! performs deserialization before dispatching to the `Handler`.
 
-use std::error::Error;
-use std::fmt::{self, Display};
+use std::fmt::Display;
 use std::marker::PhantomData;
 use std::str::FromStr;
 
@@ -12,22 +11,25 @@ use serde::de::{
     VariantAccess, Visitor,
 };
 use serde::forward_to_deserialize_any;
+use thiserror::Error;
 
 use crate::helpers::http::request::query_string::QueryStringMapping;
 use crate::router::tree::segment::SegmentMapping;
 
 /// Describes the error cases which can result from deserializing a `ExtractorDeserializer` into a
 /// `PathExtractor` provided by the application.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 #[non_exhaustive]
 pub(crate) enum ExtractorError {
     /// The `PathExtractor` type is not one which can be deserialized from a
     /// `ExtractorDeserializer`.  This deserializer requires a structured type (usually a custom
     /// struct) which can be deserialized from key / value pairs.
-    UnexpectedTargetType(#[allow(dead_code)] &'static str),
+    #[error("Unexpected target type: {0}")]
+    UnexpectedTargetType(&'static str),
 
     /// An invalid state occurred wherein a "key" (i.e. the name of a route segment) was
     /// deserialized as something other than an `identifier`.
+    #[error("Unexpected key type")]
     UnexpectedKeyType,
 
     /// The type of a value is not one which can be deserialized from `ExtractorDeserializer`
@@ -38,7 +40,8 @@ pub(crate) enum ExtractorError {
     /// Attempting to deserialize a value into a struct is one example where this error will be
     /// triggered, since a list of `0..n` values can't be converted into key/value pairs for
     /// mapping into the struct fields.
-    UnexpectedValueType(#[allow(dead_code)] &'static str),
+    #[error("Unexpected value type: {0}")]
+    UnexpectedValueType(&'static str),
 
     /// The enum variant is not able to be deserialized from the value, because the variant is not
     /// of the correct type. Only unit variants are supported - that is, enum variants with no data
@@ -59,41 +62,35 @@ pub(crate) enum ExtractorError {
     /// #
     /// # fn main() {}
     /// ```
-    UnexpectedEnumVariantType(#[allow(dead_code)] &'static str),
+    #[error("Unexpected enum variant type: {0}")]
+    UnexpectedEnumVariantType(&'static str),
 
     /// An invalid internal state occurred where a segment mapping had no values. This should never
     /// occur because the presence of a key implies the presence of a value.
+    #[error("No values")]
     NoValues,
 
     /// Multiple values were present, but the target type expected only a single value.
+    #[error("Multiple values")]
     MultipleValues,
 
     /// An invalid internal state occurred where the deserializer attempted to access a value but
     /// there was no current item. This should never occur because the attempt to access a value
     /// implies that the deserializer already retrieved the key from the current item.
+    #[error("No current item")]
     NoCurrentItem,
 
     /// An error occurred while parsing a string into a value type for one of the fields. For
     /// example, in a route for `/resource/:id`, and with `id: i32` in the `PathExtractor` struct,
     /// a request for `/resource/abc` would result in a parse error trying to convert to `i32`.
-    ParseError(#[allow(dead_code)] String),
+    #[error("Parse error: {0}")]
+    ParseError(String),
 
     /// An error occurred, and a `Deserialize` impl provided a custom error message. This is used
     /// in the implementation of the `serde::de::Error` trait for external types to provide
     /// informative error messages.
-    Custom(#[allow(dead_code)] String),
-}
-
-impl Display for ExtractorError {
-    fn fmt(&self, out: &mut fmt::Formatter<'_>) -> fmt::Result {
-        out.write_fmt(format_args!("{:?}", self))
-    }
-}
-
-impl Error for ExtractorError {
-    fn description(&self) -> &str {
-        unimplemented!()
-    }
+    #[error("{0}")]
+    Custom(String),
 }
 
 impl de::Error for ExtractorError {
@@ -101,7 +98,7 @@ impl de::Error for ExtractorError {
     where
         T: Display,
     {
-        ExtractorError::Custom(format!("{}", t))
+        ExtractorError::Custom(t.to_string())
     }
 }
 

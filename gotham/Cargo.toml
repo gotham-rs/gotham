@@ -52,7 +52,7 @@ rand = "0.9"
 rand_chacha = "0.9"
 regex = "1.0"
 serde = { version = "1.0.186", features = ["derive"] }
-thiserror = "1.0.2"
+thiserror = "2.0.18"
 time = { version = "0.3.4", default-features = false, features = ["std", "formatting", "macros"] }
 tokio = { version = "1.11.0", features = ["net", "rt-multi-thread", "time", "fs", "io-util"] }
 tokio-rustls = { version = "0.23", optional = true }
