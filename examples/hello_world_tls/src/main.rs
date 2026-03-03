@@ -1,6 +1,6 @@
 //! A Hello World example application for working with Gotham.
 use gotham::anyhow;
-use gotham::rustls::{Certificate, PrivateKey, ServerConfig};
+use gotham::rustls::ServerConfig;
 use gotham::state::State;
 use rustls_pemfile::{certs, pkcs8_private_keys};
 use std::io::BufReader;
@@ -27,13 +27,10 @@ pub fn main() -> anyhow::Result<()> {
 fn build_config() -> anyhow::Result<ServerConfig> {
     let mut cert_file = BufReader::new(&include_bytes!("cert.pem")[..]);
     let mut key_file = BufReader::new(&include_bytes!("key.pem")[..]);
-    let certs = certs(&mut cert_file)
-        .map(|result| result.map(|der| Certificate(der.to_vec())))
-        .collect::<Result<_, _>>()?;
+    let certs = certs(&mut cert_file).collect::<Result<_, _>>()?;
     let mut keys = pkcs8_private_keys(&mut key_file);
-    let key = PrivateKey(keys.next().unwrap()?.secret_pkcs8_der().to_vec());
+    let key = keys.next().unwrap()?.into();
     ServerConfig::builder()
-        .with_safe_defaults()
         .with_no_client_auth()
         .with_single_cert(certs, key)
         .map_err(Into::into)
