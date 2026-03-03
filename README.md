@@ -29,22 +29,22 @@ A flexible web framework that promotes **stability, safety, security and speed**
 
 Licensed under your option of:
 
-* [MIT License](LICENSE-MIT)
-* [Apache License, Version 2.0](LICENSE-APACHE)
+* [MIT License](https://github.com/gotham-rs/gotham/blob/main/LICENSE-MIT)
+* [Apache License, Version 2.0](https://github.com/gotham-rs/gotham/blob/main/LICENSE-APACHE)
 
 ## Community
 
 The following policies guide participation in our project and our community:
 
-* [Conduct](CODE_OF_CONDUCT.md)
-* [Contributing](CONTRIBUTING.md)
+* [Conduct](https://github.com/gotham-rs/gotham/blob/main/CODE_OF_CONDUCT.md)
+* [Contributing](https://github.com/gotham-rs/gotham/blob/main/CONTRIBUTING.md)
 
 ## Learning
 
 The following resources are available to assist you learning the Gotham web
 framework:
 
-* [An extensive set of examples](examples)
+* [An extensive set of examples](https://github.com/gotham-rs/gotham/blob/main/examples)
 * [API documentation](https://docs.rs/gotham/)
 * [Gitter chatroom](https://gitter.im/gotham-rs/gotham)
 * [Twitter](https://twitter.com/gotham_rs)
@@ -73,4 +73,4 @@ project there are alternative Rust web frameworks you might like to consider:
 1. [Rocket](https://github.com/SergioBenitez/Rocket)
 1. [Rouille](https://github.com/tomaka/rouille)
 
-Explore even more suggestions at [Are we web yet?](http://www.arewewebyet.org/).
+Explore even more suggestions at [Are we web yet?](https://www.arewewebyet.org/).
