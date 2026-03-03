@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 gotham.workspace = true
-askama = { version = "0.12.0", default-features = false }
+askama = { version = "0.15.4", default-features = false }
