@@ -5,5 +5,5 @@ publish = false
 edition = "2018"
 
 [dependencies]
-gotham = { path = "../../../gotham" }
+gotham.workspace = true
 askama = { version = "0.12.0", default-features = false }

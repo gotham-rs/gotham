@@ -7,3 +7,4 @@ description = "A type-safe, heterogeneous collection with zero-cost add and borr
 license.workspace = true
 homepage.workspace = true
 repository.workspace = true
+edition = "2015"

@@ -10,6 +10,6 @@ publish = false
 edition = "2018"
 
 [dependencies]
-gotham = { path = "../../../gotham" }
+gotham.workspace = true
 
 # Add other dependencies if necessary

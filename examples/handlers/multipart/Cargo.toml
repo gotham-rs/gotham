@@ -7,7 +7,7 @@ publish = false
 edition = "2018"
 
 [dependencies]
-gotham = { path = "../../../gotham" }
+gotham.workspace = true
 
 futures-util = "0.3.14"
 multipart = { version = "0.18", default-features = false, features = ["server"] }
