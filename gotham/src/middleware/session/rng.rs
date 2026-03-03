@@ -1,6 +1,4 @@
-use rand::rngs::adapter::ReseedingRng;
-use rand::rngs::OsRng;
-use rand::SeedableRng;
+use rand::rngs::{OsRng, ReseedingRng};
 use rand_chacha::ChaChaCore;
 
 // A `ChaChaRng` which is periodically reseeded from an `OsRng`. This was originally using an
@@ -12,8 +10,7 @@ pub(super) type SessionIdentifierRng = ReseedingRng<ChaChaCore, OsRng>;
 
 pub(super) fn session_identifier_rng() -> SessionIdentifierRng {
     let os_rng = OsRng;
-    let rng = ChaChaCore::from_entropy();
 
     // Reseed every 32KiB.
-    ReseedingRng::new(rng, 32_768, os_rng)
+    ReseedingRng::new(32_768, os_rng).unwrap()
 }
