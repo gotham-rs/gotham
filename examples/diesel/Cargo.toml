@@ -8,7 +8,7 @@ license = "MIT/Apache-2.0"
 publish = false
 
 [dependencies]
-gotham = { path = "../../gotham/"}
+gotham.workspace = true
 gotham_middleware_diesel = { path = "../../middleware/diesel"}
 
 diesel = { version = "2.1", features = ["r2d2", "sqlite"] }

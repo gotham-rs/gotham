@@ -6,7 +6,7 @@ publish = false
 edition = "2018"
 
 [dependencies]
-gotham = { path = "../../gotham" }
+gotham.workspace = true
 anyhow = "1.0"
 futures-util = "0.3.14"
 tokio = { version = "1.11.0", features = ["full"] }

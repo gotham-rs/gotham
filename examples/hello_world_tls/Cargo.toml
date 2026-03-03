@@ -6,5 +6,5 @@ publish = false
 edition = "2018"
 
 [dependencies]
-gotham = { path = "../../gotham", features = ["rustls"] }
+gotham = { workspace = true, features = ["rustls"] }
 rustls-pemfile = "2.1"

@@ -15,4 +15,4 @@ futures-util = "0.3.14"
 
 # Middlewares should reference the semantic versions of Gotham that are they compatible with
 # and not use relative references such as shown here.
-gotham = { path = "../../gotham", default-features = false, features = ["derive"] }
+gotham = { workspace = true, default-features = false, features = ["derive"] }

@@ -3,6 +3,9 @@ license = "MIT/Apache-2.0"
 homepage = "https://gotham.rs/"
 repository = "https://github.com/gotham-rs/gotham"
 
+[workspace.dependencies]
+gotham = { path = "gotham", version = "0.7.4", default-features = false }
+
 [workspace]
 members = [
     ## Gotham Core
