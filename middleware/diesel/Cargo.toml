@@ -7,7 +7,7 @@ description = "A Gotham Middleware that provides access to a Diesel connection v
 license.workspace = true
 homepage.workspace = true
 repository = "https://github.com/gotham-rs/gotham"
-readme.workspace = true
+readme = "README.md"
 categories = ["web-programming::http-server"]
 keywords = ["http", "async", "web", "gotham", "diesel"]
 
