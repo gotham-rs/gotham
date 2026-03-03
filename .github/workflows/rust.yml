@@ -17,11 +17,11 @@ jobs:
             command: "check"
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         id: rust-toolchain
       
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/git
@@ -45,13 +45,13 @@ jobs:
     
     continue-on-error: ${{ matrix.nightly }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
         id: rust-toolchain
         with:
           toolchain: ${{ matrix.toolchain }}
       
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/git
@@ -64,7 +64,7 @@ jobs:
   rustfmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
@@ -73,14 +73,14 @@ jobs:
   clippy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@master
         id: rust-toolchain
         with:
           toolchain: "1.93"
           components: clippy
       
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/git
@@ -94,7 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         id: rust-toolchain
       
@@ -102,7 +102,7 @@ jobs:
         id: tarpaulin-version
         run: echo "::set-output name=VERSION::$(wget -qO- 'https://crates.io/api/v1/crates/cargo-tarpaulin' | jq -r '.crate.max_stable_version')"
       
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/bin/cargo-tarpaulin
@@ -116,4 +116,4 @@ jobs:
       
       - run: cargo tarpaulin --workspace --forward --out Xml
       
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v5
