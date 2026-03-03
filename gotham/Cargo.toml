@@ -19,11 +19,16 @@ exclude = ["src/tls/tls_new_cert.sh"]
 
 [features]
 default = ["derive", "http2", "session", "testing"]
-derive = ["gotham_derive"]
+derive = ["dep:gotham_derive"]
 http2 = ["hyper/http2", "hyper-util/http2"]
-rustls = ["tokio-rustls"]
-session = ["bincode", "linked-hash-map"]
+rustls = ["rustls-aws-lc-rs"]
+rustls-aws-lc-rs = ["__tls", "tokio-rustls/aws-lc-rs"]
+rustls-ring = ["__tls", "tokio-rustls/ring"]
+session = ["dep:bincode", "linked-hash-map"]
 testing = ["hyper/client"]
+
+# Private implementation detail
+__tls = ["dep:tokio-rustls"]
 
 [dependencies]
 borrow-bag = { path = "../misc/borrow_bag", version = "1.1.1" }
@@ -55,7 +60,7 @@ serde = { version = "1.0.186", features = ["derive"] }
 thiserror = "2.0.18"
 time = { version = "0.3.4", default-features = false, features = ["std", "formatting", "macros"] }
 tokio = { version = "1.11.0", features = ["net", "rt-multi-thread", "time", "fs", "io-util"] }
-tokio-rustls = { version = "0.23", optional = true }
+tokio-rustls = { version = "0.26", features = ["logging", "tls12"], default-features = false, optional = true }
 tower-service = "0.3"
 uuid = { version = "1.0", features = ["v4"] }
 

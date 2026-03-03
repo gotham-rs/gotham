@@ -21,9 +21,8 @@ use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpStream;
 use tokio::time::Sleep;
 use tokio_rustls::client::TlsStream;
-use tokio_rustls::rustls::{
-    self, Certificate, ClientConfig, PrivateKey, RootCertStore, ServerConfig, ServerName,
-};
+use tokio_rustls::rustls::pki_types::{CertificateDer, PrivateSec1KeyDer, ServerName};
+use tokio_rustls::rustls::{self, ClientConfig, RootCertStore, ServerConfig};
 use tokio_rustls::TlsConnector;
 use tower_service::Service;
 
@@ -33,12 +32,11 @@ use crate::test::{self, TestClient, TestServerData};
 use crate::tls::rustls_wrap;
 
 fn server_config() -> ServerConfig {
-    let cert = Certificate(include_bytes!("tls_cert.der").to_vec());
-    let key = PrivateKey(include_bytes!("tls_key.der").to_vec());
+    let cert = CertificateDer::from_slice(include_bytes!("tls_cert.der"));
+    let key = PrivateSec1KeyDer::from(&include_bytes!("tls_key.der")[..]);
     ServerConfig::builder()
-        .with_safe_defaults()
         .with_no_client_auth()
-        .with_single_cert(vec![cert], key)
+        .with_single_cert(vec![cert], key.into())
         .expect("Unable to create TLS server config")
 }
 
@@ -261,7 +259,9 @@ impl Service<Uri> for TestConnect {
         async move {
             match TcpStream::connect(address).await {
                 Ok(stream) => {
-                    let domain = ServerName::try_from(req.host().unwrap()).unwrap();
+                    let domain = ServerName::try_from(req.host().unwrap())
+                        .unwrap()
+                        .to_owned();
                     match tls.connect(domain, stream).await {
                         Ok(tls_stream) => {
                             info!("Client TcpStream connected: {:?}", tls_stream);
@@ -283,10 +283,9 @@ impl Service<Uri> for TestConnect {
 impl From<SocketAddr> for TestConnect {
     fn from(addr: SocketAddr) -> Self {
         let mut root_store = RootCertStore::empty();
-        let ca_cert = include_bytes!("tls_ca_cert.der").to_vec();
-        root_store.add(&Certificate(ca_cert)).unwrap();
+        let ca_cert = CertificateDer::from_slice(include_bytes!("tls_ca_cert.der"));
+        root_store.add(ca_cert).unwrap();
         let cfg = ClientConfig::builder()
-            .with_safe_defaults()
             .with_root_certificates(root_store)
             .with_no_client_auth();
 

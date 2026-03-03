@@ -41,7 +41,7 @@ pub mod test;
 pub mod plain;
 
 /// Functions for creating a Gotham service using HTTPS.
-#[cfg(feature = "rustls")]
+#[cfg(feature = "__tls")]
 pub mod tls;
 
 /// Re-export anyhow
@@ -66,7 +66,7 @@ pub use mime;
 pub use tower_service;
 
 /// Re-export rustls
-#[cfg(feature = "rustls")]
+#[cfg(feature = "__tls")]
 pub use tokio_rustls::rustls;
 
 use futures_util::TryFutureExt;
@@ -84,7 +84,7 @@ use crate::handler::NewHandler;
 use crate::service::GothamService;
 
 pub use plain::*;
-#[cfg(feature = "rustls")]
+#[cfg(feature = "__tls")]
 pub use tls::start as start_with_tls;
 
 /// The error that can occur when starting the gotham server.
