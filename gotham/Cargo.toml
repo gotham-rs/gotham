@@ -19,6 +19,8 @@ exclude = ["src/tls/tls_new_cert.sh"]
 
 [features]
 default = ["derive", "http2", "session", "testing"]
+full = ["derive", "http2", "rustls", "session", "testing"]
+
 derive = ["dep:gotham_derive"]
 http2 = ["hyper/http2", "hyper-util/http2"]
 rustls = ["rustls-aws-lc-rs"]

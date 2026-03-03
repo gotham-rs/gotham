@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        flag: ["", "--all-features"]
+        flag: ["", "--features full"]
         command: ["test"]
         include:
           - flag: "--no-default-features"
