@@ -12,5 +12,5 @@ futures-util = "0.3.14"
 tokio-tungstenite = "0.21"
 tokio = { version = "1.11.0", features = ["macros"] }
 pretty_env_logger = "0.5"
-sha1 = "0.10"
+sha1 = "0.11"
 base64 = "0.22"
