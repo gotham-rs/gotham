@@ -12,7 +12,7 @@ use crate::state::{FromState, State};
 ///
 /// We implement `NewMiddleware` here for Gotham to allow us to work with the request
 /// lifecycle correctly. This trait requires `Clone`, so that is also included. Cookies
-/// become availabe on the request state as the `CookieJar` type.
+/// become available on the request state as the `CookieJar` type.
 #[derive(Copy, Clone)]
 pub struct CookieParser;
 

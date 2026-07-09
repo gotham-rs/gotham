@@ -67,7 +67,7 @@ impl RouteNonMatch {
     /// intended for use in cases where two `RouteMatcher` instances with a logical **AND**
     /// connection have both indicated a non-match, and their results need to be aggregated.
     ///
-    /// This is typically for Gotham internal use, but may be useful for implementors of matchers
+    /// This is typically for Gotham internal use, but may be useful for implementers of matchers
     /// which wrap other `RouteMatcher` instances. See the `AndRouteMatcher` implementation (in
     /// `gotham::router::route::matcher::and`) for an example.
     pub fn intersection(self, other: RouteNonMatch) -> RouteNonMatch {
@@ -96,7 +96,7 @@ impl RouteNonMatch {
     /// for use in cases where two `RouteMatcher` instances with a logical **OR** connection have
     /// both indicated a non-match, and their results need to be aggregated.
     ///
-    /// This is typically for Gotham internal use, but may be useful for implementors of matchers
+    /// This is typically for Gotham internal use, but may be useful for implementers of matchers
     /// which wrap other `RouteMatcher` instances. See the `Node::select_route` implementation (in
     /// `gotham::router::tree`) for an example.
     pub fn union(self, other: RouteNonMatch) -> RouteNonMatch {

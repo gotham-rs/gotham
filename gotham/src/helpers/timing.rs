@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 /// Timer struct used to record execution times of requests.
 ///
 /// The `elapsed` function returns the elapsed time in an easy to format way,
-/// suitable for use with requset logging middlewares.
+/// suitable for use with request logging middlewares.
 #[derive(Clone, Copy)]
 pub(crate) struct Timer {
     // We use 2 start fields

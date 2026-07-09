@@ -57,7 +57,7 @@ pub struct FileHandler {
 /// `FileOptions` implements `From` for `String` and `PathBuf` (and related reference types) - so that a
 /// path can be passed to router builder methods if only default options are required.
 ///
-/// For overridding default options, `FileOptions` provides builder methods. The default
+/// For overriding default options, `FileOptions` provides builder methods. The default
 /// values and use of the builder methods are shown in the example below.
 ///
 ///

@@ -113,7 +113,7 @@ impl TestServer {
     }
 
     /// Spawns the given future on the `TestServer`'s internal runtime.
-    /// This allows you to spawn more futures ontop of the `TestServer` in your
+    /// This allows you to spawn more futures on top of the `TestServer` in your
     /// tests.
     pub fn spawn<F>(&self, future: F)
     where
