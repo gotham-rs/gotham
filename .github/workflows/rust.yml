@@ -100,7 +100,8 @@ jobs:
       
       - name: Get Tarpaulin Version
         id: tarpaulin-version
-        run: echo "::set-output name=VERSION::$(wget -qO- 'https://crates.io/api/v1/crates/cargo-tarpaulin' | jq -r '.crate.max_stable_version')"
+        run: |
+          echo "version=$(wget -qO- --header 'User-Agent: https://github.com/gotham-rs/gotham' 'https://crates.io/api/v1/crates/cargo-tarpaulin' | jq -r '.crate.max_stable_version')" >>$GITHUB_OUTPUT
       
       - uses: actions/cache@v5
         with:
@@ -109,10 +110,10 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
             target
-          key: ${{ runner.os }}-rust-${{ steps.rust-toolchain.outputs.cachekey }}-tarpaulin-${{ steps.tarpaulin-version.outputs.VERSION }}
+          key: ${{ runner.os }}-rust-${{ steps.rust-toolchain.outputs.cachekey }}-tarpaulin-${{ steps.tarpaulin-version.outputs.version }}
       
       - name: Install Tarpaulin
-        run: test -e ~/.cargo/bin/cargo-tarpaulin || cargo install cargo-tarpaulin --version ${{ steps.tarpaulin-version.outputs.VERSION }}
+        run: test -e ~/.cargo/bin/cargo-tarpaulin || cargo install cargo-tarpaulin --version ${{ steps.tarpaulin-version.outputs.version }}
       
       - run: cargo tarpaulin --workspace --forward --out Xml
       
