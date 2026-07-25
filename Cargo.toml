@@ -5,12 +5,13 @@ repository = "https://github.com/gotham-rs/gotham"
 
 [workspace.dependencies]
 borrow-bag = { path = "misc/borrow_bag", version = "1.1.1" }
-gotham = { path = "gotham", version = "0.8.0", default-features = false }
-gotham_derive = { path = "gotham_derive", version = "0.8.0" }
+gotham = { path = "gotham", version = "0.8.1", default-features = false }
+gotham_derive = { path = "gotham_derive", version = "0.8.1" }
 gotham_middleware_diesel = { path = "middleware/diesel", version = "0.6.0" }
 gotham_middleware_jwt = { path = "middleware/jwt", version = "0.9.0" }
 
 [workspace]
+resolver = "2"
 members = [
     ## Gotham Core
     "gotham",

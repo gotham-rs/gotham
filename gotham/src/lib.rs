@@ -4,7 +4,7 @@
 //! <https://gotham.rs/>.
 //!
 //! We look forward to welcoming you into the Gotham community!
-#![doc(html_root_url = "https://docs.rs/gotham/0.8.0")]
+#![doc(html_root_url = "https://docs.rs/gotham/0.8.1")]
 // Update when changed in Cargo.toml
 // Stricter requirements once we get to pull request stage, all warnings must be resolved.
 #![cfg_attr(feature = "ci", deny(warnings))]
