@@ -55,7 +55,7 @@ mime_guess = "2.0.5"
 num_cpus = "1.8"
 percent-encoding = "2.1"
 pin-project = "1.0.0"
-rand = "0.9"
+rand = "0.10"
 rand_chacha = "0.9"
 regex = "1.0"
 serde = { version = "1.0.186", features = ["derive"] }
