@@ -21,7 +21,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         id: rust-toolchain
       
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/git
@@ -51,7 +51,7 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
       
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/git
@@ -80,7 +80,7 @@ jobs:
           toolchain: "1.93"
           components: clippy
       
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/git
@@ -103,7 +103,7 @@ jobs:
         run: |
           echo "version=$(wget -qO- --header 'User-Agent: https://github.com/gotham-rs/gotham' 'https://crates.io/api/v1/crates/cargo-tarpaulin' | jq -r '.crate.max_stable_version')" >>$GITHUB_OUTPUT
       
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/bin/cargo-tarpaulin
