@@ -40,6 +40,7 @@ members = [
     "examples/routing/http_verbs",
     "examples/routing/scopes",
     "examples/routing/associations",
+    "examples/routing/accept_header",
 
     # path
     "examples/path/introduction",
