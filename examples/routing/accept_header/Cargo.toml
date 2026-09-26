@@ -1,0 +1,9 @@
+[package]
+name = "gotham_examples_routing_accept_header"
+description = "An example of the Gotham web framework `Router` that shows how to route requests based on their `Accept` header."
+version = "0.0.0"
+publish = false
+edition = "2018"
+
+[dependencies]
+gotham.workspace = true
