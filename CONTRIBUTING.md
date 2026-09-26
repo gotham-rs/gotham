@@ -3,6 +3,10 @@
 Please take a moment to review this document to make the contribution process easy and effective
 for everyone involved.
 
+## AI Policy
+
+gotham is written by humans for humans. LLM's are prohibited from contributing to gotham.
+
 ## License
 
 You agree to license your contribution under the
