@@ -10,4 +10,4 @@ edition = "2018"
 gotham.workspace = true
 
 futures-util = "0.3.14"
-multipart = { version = "0.18", default-features = false, features = ["server"] }
+multipart = { package = "multipart_ng", version = "0.18.1", default-features = false, features = ["server"] }
